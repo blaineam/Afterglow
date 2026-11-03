@@ -11,6 +11,9 @@ namespace CardboardXR.Demos.Video
         Full360,
         // Equirectangular over the front half, as VR180 cameras record.
         Half180,
+        // Not wrapped at all: a flat screen ahead of the viewer, as a cinema screen. What an
+        // ordinary film, a 3D film and a spatial photo or video are, none of which surround you.
+        Flat,
     }
 
     // Whether a frame holds one picture or one per eye, and how they're arranged.
@@ -40,6 +43,9 @@ namespace CardboardXR.Demos.Video
 
         public static readonly VideoFormat Mono360 = new(Projection.Full360, StereoLayout.Mono);
 
+        // Spatial photos and videos, and 3D films: one picture per eye on a screen ahead of you.
+        public static readonly VideoFormat Stereo3D = new(Projection.Flat, StereoLayout.SideBySide);
+
         // The order the controls' Format button steps through.
         public static readonly VideoFormat[] All =
         {
@@ -48,17 +54,22 @@ namespace CardboardXR.Demos.Video
             new(Projection.Half180, StereoLayout.SideBySide),
             new(Projection.Half180, StereoLayout.Mono),
             new(Projection.Full360, StereoLayout.SideBySide),
+            new(Projection.Flat, StereoLayout.SideBySide),
+            new(Projection.Flat, StereoLayout.TopBottom),
+            new(Projection.Flat, StereoLayout.Mono),
         };
 
         public bool IsStereo => Layout != StereoLayout.Mono;
 
         // Tags are separated by anything that isn't a letter or digit: "beach_360_tb.mp4",
-        // "hike-VR180.mp4", "concert 180 sbs.mov". With no tag it's mono 360, the most common. A
-        // 180 video is side by side unless it says otherwise, since that's what VR180 cameras make.
+        // "hike-VR180.mp4", "concert 180 sbs.mov", "trailer_flat_sbs.mp4". With no tag it's mono
+        // 360, the most common. A 180 video is side by side unless it says otherwise, since that's
+        // what VR180 cameras make, and so is a flat one, since that's how 3D films are stored.
         public static VideoFormat FromFileName(string name)
         {
             var tokens = Regex.Split(System.IO.Path.GetFileNameWithoutExtension(name ?? "").ToLowerInvariant(), "[^a-z0-9]+");
             var half = false;
+            var flat = false;
             StereoLayout? layout = null;
             foreach (var token in tokens)
             {
@@ -67,6 +78,11 @@ namespace CardboardXR.Demos.Video
                     case "180":
                     case "vr180":
                         half = true;
+                        break;
+                    case "flat":
+                    case "screen":
+                    case "cinema":
+                        flat = true;
                         break;
                     case "sbs":
                     case "lr":
@@ -84,8 +100,9 @@ namespace CardboardXR.Demos.Video
                         break;
                 }
             }
-            return new VideoFormat(half ? Projection.Half180 : Projection.Full360,
-                layout ?? (half ? StereoLayout.SideBySide : StereoLayout.Mono));
+            var projection = flat ? Projection.Flat : half ? Projection.Half180 : Projection.Full360;
+            return new VideoFormat(projection,
+                layout ?? (projection == Projection.Full360 ? StereoLayout.Mono : StereoLayout.SideBySide));
         }
 
         // The part of the frame, in texture coordinates, that an eye sees (0 left, 1 right).
@@ -111,7 +128,12 @@ namespace CardboardXR.Demos.Video
 
         public override string ToString()
         {
-            var shape = Projection == Projection.Full360 ? "360" : "180";
+            var shape = Projection switch
+            {
+                Projection.Full360 => "360",
+                Projection.Half180 => "180",
+                _ => "Screen",
+            };
             return Layout switch
             {
                 StereoLayout.SideBySide => $"{shape} 3D side by side",

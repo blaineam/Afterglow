@@ -44,6 +44,11 @@ namespace CardboardXR.Demos.Video
         Coroutine m_Download;
         int m_Dropped;
         float m_NextStatus;
+        Texture2D m_SpatialLeft;
+        Texture2D m_SpatialRight;
+        bool m_WaitingForSpatial;
+        // Whether the Photos library question has been settled, either way, so it is asked once.
+        bool m_SpatialSettled;
 
         RectTransform m_Panel;
         RectTransform m_LibraryPage;
@@ -78,6 +83,10 @@ namespace CardboardXR.Demos.Video
             m_Sphere.Clicked += OnVideoClicked;
 
             BuildPanel();
+            // Put iOS's Photos question up as the demo opens rather than when a photo is picked, so
+            // the library can list the user's spatial photos alongside the files straight away.
+            m_SpatialSettled = !SpatialPhotos.Supported ||
+                               SpatialPhotos.Authorize() != SpatialPhotos.Access.Asking;
             Refresh();
             ShowLibrary();
         }
@@ -93,14 +102,31 @@ namespace CardboardXR.Demos.Video
             m_Player.Stop();
             m_Sphere.Show(null, default);
             ReleaseTexture();
+            ReleaseSpatial();
         }
 
-        void OnDestroy() => ReleaseTexture();
+        void OnDestroy()
+        {
+            ReleaseTexture();
+            ReleaseSpatial();
+        }
 
         void Update()
         {
             if (m_Core == null)
                 return;
+            if (m_WaitingForSpatial)
+                UpdateSpatialPhoto();
+            // The Photos question is answered after the demo has opened, so once it is, the library
+            // is listed again with the spatial photos in it.
+            if (!m_SpatialSettled && SpatialPhotos.Authorize() != SpatialPhotos.Access.Asking)
+            {
+                m_SpatialSettled = true;
+                Refresh();
+                if (m_ShowingLibrary)
+                    ShowLibrary();
+            }
+
             if (m_ShowingLibrary)
                 UpdateLibraryLabels();
             else if (m_ControlsShown)
@@ -136,7 +162,14 @@ namespace CardboardXR.Demos.Video
                 return;
             }
 
+            if (entry.IsSpatialPhoto)
+            {
+                PlaySpatialPhoto(entry, index);
+                return;
+            }
+
             m_Player.Stop();
+            ReleaseSpatial();
             m_Sphere.Show(null, default);
             m_Current = index;
             m_Player.url = entry.Url;
@@ -144,6 +177,88 @@ namespace CardboardXR.Demos.Video
             m_Title.text = entry.Title;
             entry.Status = "Loading";
             Debug.Log($"[Video] Opening {entry.Title} ({entry.Format})");
+        }
+
+        // A spatial photo is two pictures rather than a stream, so it doesn't go through
+        // VideoPlayer at all: the plugin decodes both of the file's eyes and Update picks them up
+        // when they're ready.
+        void PlaySpatialPhoto(VideoEntry entry, int index)
+        {
+            m_Player.Stop();
+            ReleaseSpatial();
+            m_Sphere.Show(null, default);
+            m_Current = index;
+            m_Title.text = entry.Title;
+
+            if (SpatialPhotos.Authorize() != SpatialPhotos.Access.Granted)
+            {
+                entry.Status = "Allow Photos to show this";
+                Debug.Log("[Video] The Photos library isn't allowed yet, so the spatial photo stays shut");
+                return;
+            }
+            if (!SpatialPhotos.OpenPhoto(entry.SpatialIndex))
+            {
+                m_Current = -1;
+                entry.Status = "Couldn't open that spatial photo";
+                Debug.LogWarning($"[Video] Couldn't open {entry.Title}");
+                ShowLibrary();
+                return;
+            }
+            entry.Status = "Loading";
+            m_WaitingForSpatial = true;
+            Debug.Log($"[Video] Opening {entry.Title} ({entry.Format})");
+        }
+
+        // Polled while a spatial photo loads, since the plugin decodes it off the main thread.
+        void UpdateSpatialPhoto()
+        {
+            switch (SpatialPhotos.PhotoState)
+            {
+                case SpatialPhotos.State.Loading:
+                    return;
+                case SpatialPhotos.State.Ready:
+                    m_WaitingForSpatial = false;
+                    if (!SpatialPhotos.TryTakeTextures(out m_SpatialLeft, out m_SpatialRight))
+                    {
+                        FailSpatial("That spatial photo's pictures couldn't be uploaded");
+                        return;
+                    }
+                    // A picture each, so the format's halves aren't used: the eyes are whole.
+                    m_Sphere.Show(m_SpatialLeft, VideoFormat.Stereo3D, m_SpatialRight);
+                    if (m_Current >= 0)
+                        m_Library[m_Current].Status = null;
+                    Debug.Log($"[Video] Spatial photo shown: {m_SpatialLeft.width}x{m_SpatialLeft.height} per eye");
+                    HidePanel();
+                    // The pictures are in textures now, so the plugin needn't keep its buffers.
+                    SpatialPhotos.Close();
+                    return;
+                default:
+                    FailSpatial(SpatialPhotos.PhotoError);
+                    return;
+            }
+        }
+
+        void FailSpatial(string message)
+        {
+            m_WaitingForSpatial = false;
+            if (m_Current >= 0)
+                m_Library[m_Current].Status = string.IsNullOrEmpty(message) ? "Couldn't show that spatial photo" : message;
+            Debug.LogWarning($"[Video] Spatial photo failed: {(string.IsNullOrEmpty(message) ? "no reason given" : message)}");
+            m_Current = -1;
+            SpatialPhotos.Close();
+            m_Sphere.Show(null, default);
+            ShowLibrary();
+        }
+
+        void ReleaseSpatial()
+        {
+            m_WaitingForSpatial = false;
+            SpatialPhotos.Close();
+            if (m_SpatialLeft != null)
+                Destroy(m_SpatialLeft);
+            if (m_SpatialRight != null)
+                Destroy(m_SpatialRight);
+            m_SpatialLeft = m_SpatialRight = null;
         }
 
         IEnumerator DownloadThenPlay(VideoEntry entry, int index)
@@ -223,6 +338,9 @@ namespace CardboardXR.Demos.Video
             if (m_Current < 0)
                 return;
             var entry = m_Library[m_Current];
+            // A spatial photo already has a picture per eye, so there's no layout to guess at.
+            if (entry.IsSpatialPhoto)
+                return;
             entry.Format = entry.Format.Next();
             if (m_Player.isPrepared)
                 m_Sphere.Show(m_Texture, entry.Format);

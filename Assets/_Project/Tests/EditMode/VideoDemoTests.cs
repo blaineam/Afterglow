@@ -17,6 +17,15 @@ namespace CardboardXR.Stereo.Tests
         // Tags only count as whole words.
         [TestCase("tbilisi_1800.mp4", Projection.Full360, StereoLayout.Mono)]
         [TestCase(null, Projection.Full360, StereoLayout.Mono)]
+        // A flat video is a film on a screen rather than anything wrapped around the viewer, and
+        // like a 180 one it is side by side unless its name says otherwise, since that is how 3D
+        // films are stored.
+        [TestCase("trailer_flat_sbs.mp4", Projection.Flat, StereoLayout.SideBySide)]
+        [TestCase("Feature-Flat.mp4", Projection.Flat, StereoLayout.SideBySide)]
+        [TestCase("lecture_screen_mono.mp4", Projection.Flat, StereoLayout.Mono)]
+        [TestCase("film cinema tb.mkv", Projection.Flat, StereoLayout.TopBottom)]
+        // Flat wins over 180: a name carrying both means a film on a screen, not half a sphere.
+        [TestCase("odd_180_flat.mp4", Projection.Flat, StereoLayout.SideBySide)]
         public void FormatComesFromTheFileName(string name, Projection projection, StereoLayout layout)
         {
             Assert.AreEqual(new VideoFormat(projection, layout), VideoFormat.FromFileName(name));
@@ -149,5 +158,41 @@ namespace CardboardXR.Stereo.Tests
 
         static void AssertClose(Vector3 expected, Vector3 actual) =>
             Assert.Less(Vector3.Distance(expected, actual), 1e-5f, $"{actual} isn't {expected}");
+
+        // Spatial photos and videos are one picture per eye on a screen ahead of the viewer, which
+        // is the shape a 3D film has too.
+        [Test]
+        public void Stereo3DIsAFlatScreenWithAPictureEachWay()
+        {
+            Assert.AreEqual(Projection.Flat, VideoFormat.Stereo3D.Projection);
+            Assert.AreEqual(StereoLayout.SideBySide, VideoFormat.Stereo3D.Layout);
+            Assert.IsTrue(VideoFormat.Stereo3D.IsStereo);
+        }
+
+        // The eye rects say which part of a frame each eye sees, and that is about the layout
+        // alone: a flat 2D film fills the frame just as a 360 one does.
+        [Test]
+        public void AFlatMonoVideoFillsTheFrame()
+        {
+            var flat = new VideoFormat(Projection.Flat, StereoLayout.Mono);
+            Assert.AreEqual(new Rect(0f, 0f, 1f, 1f), flat.EyeRect(0));
+            Assert.AreEqual(new Rect(0f, 0f, 1f, 1f), flat.EyeRect(1));
+            Assert.IsFalse(flat.IsStereo);
+        }
+
+        // Cycling the Format button has to reach every shape and come back, including the flat ones.
+        [Test]
+        public void CyclingTheFormatReachesEveryShapeAndReturns()
+        {
+            var seen = new System.Collections.Generic.HashSet<VideoFormat>();
+            var format = VideoFormat.Mono360;
+            for (var step = 0; step < VideoFormat.All.Length; step++)
+            {
+                Assert.IsTrue(seen.Add(format), $"{format} came round twice in {VideoFormat.All.Length} steps");
+                format = format.Next();
+            }
+            Assert.AreEqual(VideoFormat.Mono360, format, "the cycle should return to where it started");
+            CollectionAssert.Contains(seen, VideoFormat.Stereo3D);
+        }
     }
 }

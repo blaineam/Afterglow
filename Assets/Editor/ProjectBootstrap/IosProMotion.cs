@@ -8,7 +8,8 @@ using UnityEngine;
 namespace ProjectBootstrap
 {
     // Info.plist settings Unity has no option for. Lets the app draw faster than 60 fps on a
-    // ProMotion iPhone, and shares its Documents folder so videos can be copied in. Without
+    // ProMotion iPhone, shares its Documents folder so videos can be copied in, and says why the
+    // app reads the Photos library, which it does to show spatial photos. Without
     // CADisableMinimumFrameDuration, CoreAnimation holds every app to a frame duration of 1/60 s
     // however high Application.targetFrameRate is, and the iPhone 15 Pro's 120 Hz display goes to
     // waste. Unity writes the key as false, so this sets it once the Xcode project exists.
@@ -37,8 +38,13 @@ namespace ProjectBootstrap
             // so videos can be copied into Documents/Videos for the video demo.
             plist.root.SetBoolean("UIFileSharingEnabled", true);
             plist.root.SetBoolean("LSSupportsOpeningDocumentsInPlace", true);
+            // iOS kills the app the moment the Photos library is read unless it can say why. There
+            // is no PlayerSettings option for this one, unlike the camera's.
+            plist.root.SetString("NSPhotoLibraryUsageDescription",
+                "CardboardXR shows the spatial photos in your library in 3D through the viewer.");
             plist.WriteToFile(path);
-            Debug.Log("[ProjectSetup] ProMotion allowed: the display can run above 60 fps. Documents shared with Finder and Files.");
+            Debug.Log("[ProjectSetup] ProMotion allowed: the display can run above 60 fps. " +
+                      "Documents shared with Finder and Files, and the Photos library can be read.");
         }
     }
 }
