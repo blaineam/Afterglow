@@ -32,6 +32,10 @@ namespace CardboardXR.Stereo
 
         // How rarely Unity draws while the browser is in front. It still updates every frame.
         const int k_HiddenRenderInterval = 12;
+        // The page's size in pixels, which is also the size it lays out for. Wide enough that a
+        // site's desktop layout fits, small enough to snapshot a dozen times a second.
+        public const int WindowWidth = 1024;
+        public const int WindowHeight = 768;
         const string k_ShimPath = "webxr/cardboardxr-webxr.js";
 
 #if UNITY_IOS && !UNITY_EDITOR
@@ -61,7 +65,10 @@ namespace CardboardXR.Stereo
         // Opens a page over the app. The rig supplies the lens geometry, so it has to be built;
         // `hasPosition` says whether head tracking is giving position as well as rotation, which
         // the page is told so it doesn't imply the user can lean around things.
-        public static bool Open(string url, StereoRig rig, bool hasPosition)
+        // `windowed` hangs the page on a quad in the scene, which is what browsing wants; an
+        // immersive session switches to the full screen later, because only that needs the frame
+        // rate a snapshot cannot give.
+        public static bool Open(string url, StereoRig rig, bool hasPosition, bool windowed = true)
         {
             if (!Supported)
             {
@@ -79,14 +86,19 @@ namespace CardboardXR.Stereo
                 return false;
 
 #if UNITY_IOS && !UNITY_EDITOR
-            if (CardboardXR_WebOpen(url, BuildConfig(rig, hasPosition), shim) == 0)
+            if (CardboardXR_WebOpen(url, BuildConfig(rig, hasPosition), shim,
+                                    windowed ? 1 : 0, WindowWidth, WindowHeight) == 0)
             {
                 Debug.LogWarning($"[WebXR] Couldn't open {url}");
                 return false;
             }
-            s_RestoreRenderInterval = OnDemandRendering.renderFrameInterval;
-            OnDemandRendering.renderFrameInterval = k_HiddenRenderInterval;
-            Debug.Log($"[WebXR] Opened {url}; Unity draws every {k_HiddenRenderInterval} frames while it's in front");
+            // Only an overlay hides the scene; a window in it needs the scene drawn as usual.
+            if (!windowed)
+            {
+                s_RestoreRenderInterval = OnDemandRendering.renderFrameInterval;
+                OnDemandRendering.renderFrameInterval = k_HiddenRenderInterval;
+            }
+            Debug.Log($"[WebXR] Opened {url} {(windowed ? "as a window in the scene" : "over the scene")}");
             return true;
 #else
             return false;
@@ -130,6 +142,72 @@ namespace CardboardXR.Stereo
             return (Event)CardboardXR_WebTakeEvent();
 #else
             return Event.None;
+#endif
+        }
+
+        // The page's latest picture, uploaded into `target`, which is resized to fit the first
+        // time. False when nothing has changed since the last call, so a still page costs nothing.
+        public static bool TryUpdateTexture(ref Texture2D target)
+        {
+#if UNITY_IOS && !UNITY_EDITOR
+            if (CardboardXR_WebPixels(out var bytes, out var width, out var height) == 0)
+                return false;
+            if (bytes == IntPtr.Zero || width <= 0 || height <= 0)
+                return false;
+            if (target == null || target.width != width || target.height != height)
+            {
+                if (target != null)
+                    UnityEngine.Object.Destroy(target);
+                target = new Texture2D(width, height, TextureFormat.BGRA32, false, false)
+                {
+                    name = "Web Page",
+                    wrapMode = TextureWrapMode.Clamp,
+                };
+            }
+            target.LoadRawTextureData(bytes, width * height * 4);
+            target.Apply(false, false);
+            return true;
+#else
+            return false;
+#endif
+        }
+
+        // A click where the gaze met the window: 0-1 across and down from the page's top left.
+        public static void ClickAt(float u, float v)
+        {
+#if UNITY_IOS && !UNITY_EDITOR
+            CardboardXR_WebClickAt(u, v);
+#endif
+        }
+
+        public static void ScrollBy(float dx, float dy)
+        {
+#if UNITY_IOS && !UNITY_EDITOR
+            CardboardXR_WebScrollBy(dx, dy);
+#endif
+        }
+
+        public static void GoBack()
+        {
+#if UNITY_IOS && !UNITY_EDITOR
+            CardboardXR_WebGoBack();
+#endif
+        }
+
+        // Moves the page between a quad in the scene and the whole screen.
+        public static void SetWindowed(bool windowed)
+        {
+#if UNITY_IOS && !UNITY_EDITOR
+            CardboardXR_WebSetWindowed(windowed ? 1 : 0);
+            if (windowed)
+            {
+                OnDemandRendering.renderFrameInterval = Mathf.Max(1, s_RestoreRenderInterval);
+            }
+            else
+            {
+                s_RestoreRenderInterval = OnDemandRendering.renderFrameInterval;
+                OnDemandRendering.renderFrameInterval = k_HiddenRenderInterval;
+            }
 #endif
         }
 
@@ -187,7 +265,12 @@ namespace CardboardXR.Stereo
         }
 
 #if UNITY_IOS && !UNITY_EDITOR
-        [DllImport("__Internal")] static extern int CardboardXR_WebOpen(string url, string configJson, string shim);
+        [DllImport("__Internal")] static extern int CardboardXR_WebOpen(string url, string configJson, string shim, int windowed, int pixelWidth, int pixelHeight);
+        [DllImport("__Internal")] static extern int CardboardXR_WebPixels(out IntPtr bytes, out int width, out int height);
+        [DllImport("__Internal")] static extern void CardboardXR_WebClickAt(float u, float v);
+        [DllImport("__Internal")] static extern void CardboardXR_WebScrollBy(float dx, float dy);
+        [DllImport("__Internal")] static extern void CardboardXR_WebGoBack();
+        [DllImport("__Internal")] static extern void CardboardXR_WebSetWindowed(int windowed);
         [DllImport("__Internal")] static extern void CardboardXR_WebClose();
         [DllImport("__Internal")] static extern int CardboardXR_WebIsOpen();
         [DllImport("__Internal")] static extern void CardboardXR_WebPose(float px, float py, float pz, float qx, float qy, float qz, float qw);

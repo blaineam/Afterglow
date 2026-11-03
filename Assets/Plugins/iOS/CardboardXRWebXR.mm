@@ -26,6 +26,16 @@ enum WebEvent { WebEventNone = 0, WebEventSessionStart = 1, WebEventSessionEnd =
 @interface CardboardXRWebHost : NSObject <WKScriptMessageHandler, WKNavigationDelegate>
 @property (nonatomic, strong) WKWebView *web;
 @property (nonatomic, assign) int pending;
+// Windowed: the view lives behind Unity's, where it still renders but is never seen, and is
+// snapshotted into a buffer the scene draws on a quad. Only an immersive session brings it to
+// the front, because only that needs the frame rate.
+@property (nonatomic, assign) BOOL windowed;
+@property (nonatomic, strong) NSTimer *shots;
+@property (nonatomic, assign) void *pixels;
+@property (nonatomic, assign) int pixelWidth;
+@property (nonatomic, assign) int pixelHeight;
+@property (nonatomic, assign) BOOL freshPixels;
+- (void)capture;
 @end
 
 static CardboardXRWebHost *g_Host = nil;
@@ -52,11 +62,43 @@ static CardboardXRWebHost *g_Host = nil;
     NSLog(@"[WebXR] loaded %@", webView.URL.absoluteString);
 }
 
+// Draws the page into a tightly packed BGRA buffer, which is what Unity's BGRA32 wants. Takes
+// about as long as a page is complicated; at a dozen a second that is affordable, and a page being
+// read does not need more. afterScreenUpdates is NO because YES forces a layout pass per frame and
+// costs several times as much for a picture that is one frame staler.
+- (void)capture
+{
+    WKWebView *web = self.web;
+    if (web == nil || self.pixels == NULL || !self.windowed)
+        return;
+
+    const size_t w = (size_t)self.pixelWidth, h = (size_t)self.pixelHeight;
+    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+    CGContextRef context = CGBitmapContextCreate(self.pixels, w, h, 8, w * 4, space,
+                                                 kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little);
+    CGColorSpaceRelease(space);
+    if (context == NULL)
+        return;
+
+    // Unity's textures start at the bottom row and UIKit draws from the top.
+    CGContextTranslateCTM(context, 0, h);
+    CGContextScaleCTM(context, 1, -1);
+    const CGFloat scale = w / MAX(web.bounds.size.width, (CGFloat)1);
+    CGContextScaleCTM(context, scale, scale);
+
+    UIGraphicsPushContext(context);
+    [web drawViewHierarchyInRect:web.bounds afterScreenUpdates:NO];
+    UIGraphicsPopContext();
+    CGContextRelease(context);
+    self.freshPixels = YES;
+}
+
 @end
 
 // Opens `url` over Unity's view, with `configJson` and `shim` injected into every page it loads.
 // Returns 1 if the view went up.
-extern "C" int CardboardXR_WebOpen(const char *url, const char *configJson, const char *shim)
+extern "C" int CardboardXR_WebOpen(const char *url, const char *configJson, const char *shim,
+                                   int windowed, int pixelWidth, int pixelHeight)
 {
     if (url == nullptr || configJson == nullptr || shim == nullptr)
         return 0;
@@ -97,7 +139,13 @@ extern "C" int CardboardXR_WebOpen(const char *url, const char *configJson, cons
     configuration.allowsInlineMediaPlayback = YES;
     configuration.mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone;
 
-    WKWebView *web = [[WKWebView alloc] initWithFrame:root.view.bounds configuration:configuration];
+    // Windowed, the view is laid out at the texture's size in points and drawn at 1x, so what the
+    // page lays out for is what the scene shows; the shell's bounds would give a page shaped like
+    // the phone, which is not the shape of a window you hang in a room.
+    const CGRect frame = windowed != 0
+        ? CGRectMake(0, 0, pixelWidth, pixelHeight)
+        : root.view.bounds;
+    WKWebView *web = [[WKWebView alloc] initWithFrame:frame configuration:configuration];
     web.navigationDelegate = host;
     web.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     web.opaque = YES;
@@ -110,8 +158,23 @@ extern "C" int CardboardXR_WebOpen(const char *url, const char *configJson, cons
         web.scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
 
     host.web = web;
+    host.windowed = windowed != 0;
     g_Host = host;
-    [root.view addSubview:web];
+    if (host.windowed)
+    {
+        host.pixelWidth = pixelWidth;
+        host.pixelHeight = pixelHeight;
+        host.pixels = calloc((size_t)pixelWidth * pixelHeight, 4);
+        // Behind Unity's view: still in the hierarchy, so UIKit keeps drawing it, but never seen.
+        // A hidden or zero-alpha view stops rendering, and an offscreen one is not reliable.
+        [root.view insertSubview:web atIndex:0];
+        host.shots = [NSTimer scheduledTimerWithTimeInterval:1.0 / 12.0 repeats:YES
+                                                     block:^(NSTimer *t) { [host capture]; }];
+    }
+    else
+    {
+        [root.view addSubview:web];
+    }
     if (target.isFileURL)
     {
         // WKWebView refuses a file: URL given to loadRequest: it needs to be told which directory
@@ -130,6 +193,13 @@ extern "C" void CardboardXR_WebClose()
 {
     if (g_Host == nil)
         return;
+    [g_Host.shots invalidate];
+    g_Host.shots = nil;
+    if (g_Host.pixels != NULL)
+    {
+        free(g_Host.pixels);
+        g_Host.pixels = NULL;
+    }
     WKWebView *web = g_Host.web;
     [web.configuration.userContentController removeScriptMessageHandlerForName:@"cardboardxr"];
     [web stopLoading];
@@ -169,4 +239,71 @@ extern "C" int CardboardXR_WebTakeEvent()
     int event = g_Host.pending;
     g_Host.pending = WebEventNone;
     return event;
+}
+
+// The latest picture of the page, as tightly packed BGRA rows starting at the bottom. Returns 0
+// when there is nothing new, so Unity only uploads a texture when the page has actually changed.
+extern "C" int CardboardXR_WebPixels(void **bytes, int *width, int *height)
+{
+    if (g_Host == nil || !g_Host.windowed || g_Host.pixels == NULL || !g_Host.freshPixels)
+        return 0;
+    g_Host.freshPixels = NO;
+    if (bytes != nullptr) *bytes = g_Host.pixels;
+    if (width != nullptr) *width = g_Host.pixelWidth;
+    if (height != nullptr) *height = g_Host.pixelHeight;
+    return 1;
+}
+
+// A click at a point on the page, given where the gaze met the window: 0-1 across and down, with
+// the origin at the top left as the page sees it.
+//
+// The click is dispatched in JavaScript rather than as a synthesised touch, because UIKit has no
+// public way to inject one. That reaches links, buttons and anything listening for a click, which
+// is most of browsing; it will not drive a page that only handles raw touch events.
+extern "C" void CardboardXR_WebClickAt(float u, float v)
+{
+    if (g_Host == nil || g_Host.web == nil)
+        return;
+    NSString *js = [NSString stringWithFormat:
+        @"(function(){var x=%f*window.innerWidth,y=%f*window.innerHeight;"
+         "var e=document.elementFromPoint(x,y);if(!e)return;"
+         "['pointerdown','mousedown','pointerup','mouseup','click'].forEach(function(t){"
+         "e.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:x,clientY:y}));});"
+         "if(e.focus)e.focus();})()", u, v];
+    [g_Host.web evaluateJavaScript:js completionHandler:nil];
+}
+
+extern "C" void CardboardXR_WebScrollBy(float dx, float dy)
+{
+    if (g_Host == nil || g_Host.web == nil)
+        return;
+    NSString *js = [NSString stringWithFormat:@"window.scrollBy(%f,%f)", dx, dy];
+    [g_Host.web evaluateJavaScript:js completionHandler:nil];
+}
+
+extern "C" void CardboardXR_WebGoBack()
+{
+    if (g_Host != nil && g_Host.web != nil && g_Host.web.canGoBack)
+        [g_Host.web goBack];
+}
+
+// An immersive session needs the frame rate a snapshot cannot give, so the view comes to the
+// front and the scene stops drawing it on a quad. Ending the session puts it back.
+extern "C" void CardboardXR_WebSetWindowed(int windowed)
+{
+    if (g_Host == nil || g_Host.web == nil || g_Host.windowed == (windowed != 0))
+        return;
+    UIViewController *root = UnityGetGLViewController();
+    g_Host.windowed = windowed != 0;
+    if (g_Host.windowed)
+    {
+        g_Host.web.frame = CGRectMake(0, 0, g_Host.pixelWidth, g_Host.pixelHeight);
+        [root.view insertSubview:g_Host.web atIndex:0];
+    }
+    else
+    {
+        g_Host.web.frame = root.view.bounds;
+        [root.view addSubview:g_Host.web];
+    }
+    NSLog(@"[WebXR] %@", g_Host.windowed ? @"back to a window in the scene" : @"full screen for an immersive session");
 }
