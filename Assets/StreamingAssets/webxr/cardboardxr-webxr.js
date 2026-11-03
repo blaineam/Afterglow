@@ -142,6 +142,23 @@
         return o;
     }
 
+    // A plain symmetric frustum for phone view, matching the rig's single camera. Its field of
+    // view is vertical, as Unity's is, and the aspect comes from the canvas.
+    function monoProjection(near, far) {
+        var aspect = screenAspect();
+        var t = Math.tan((cfg.monoFov || (60 * DEG)) / 2) * near;
+        var r = t * aspect;
+        var o = new Float32Array(16);
+        o[0] = near / r; o[5] = near / t;
+        o[10] = -(far + near) / (far - near); o[11] = -1;
+        o[14] = -2 * far * near / (far - near);
+        return o;
+    }
+    function screenAspect() {
+        var w = window.innerWidth || 1, h = window.innerHeight || 1;
+        return w / h;
+    }
+
     // ---------------------------------------------------------------- head pose
     var pose = { p: [0, 0, 0], q: [0, 0, 0, 1] };
     window.__cardboardxrPose = function (px, py, pz, qx, qy, qz, qw) {
@@ -169,7 +186,7 @@
     }
 
     function XRView(eye, projectionMatrix, transform) {
-        this.eye = eye === 0 ? 'left' : 'right';
+        this.eye = eye === 0 ? 'left' : eye === 1 ? 'right' : 'none';
         this.projectionMatrix = projectionMatrix;
         this.transform = transform;
         this.recommendedViewportScale = null;
@@ -202,6 +219,8 @@
         get: function () { return this._session._fbHeight; }
     });
     XRWebGLLayer.prototype.getViewport = function (view) {
+        if (cfg.mono)
+            return { x: 0, y: 0, width: this._session._fbWidth, height: this._session._fbHeight };
         var half = this._session._fbWidth / 2;
         return { x: view.eye === 'left' ? 0 : half, y: 0, width: half, height: this._session._fbHeight };
     };
@@ -265,6 +284,11 @@
             { x: pose.p[0], y: pose.p[1] + lift, z: pose.p[2] },
             { x: q[0], y: q[1], z: q[2], w: q[3] });
         var near = this.session.renderState.depthNear, far = this.session.renderState.depthFar;
+        // Phone view: one picture from where the head is, no eye separation, so holding the phone
+        // in your hand shows the scene rather than a split pair meant for lenses.
+        if (cfg.mono)
+            return new XRViewerPose(head, [new XRView(-1, monoProjection(near, far), head)]);
+
         var views = [];
         for (var eye = 0; eye < 2; eye++) {
             var offset = rotateVec(q, [(eye === 0 ? -0.5 : 0.5) * cfg.interLens, 0, 0]);
@@ -350,6 +374,16 @@
             uTex: gl.getUniformLocation(p, 'uTex'),
             eyes: []
         };
+        // Phone view draws through this instead: the framebuffer straight onto the screen, with
+        // no warp, because there is no lens in front of it.
+        var flatPos = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, flatPos);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+        var flatUv = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, flatUv);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,0, 1,0, 0,1, 1,1]), gl.STATIC_DRAW);
+        d.flat = { pos: flatPos, uv: flatUv };
+
         for (var eye = 0; eye < 2; eye++) {
             var m = distortionMesh(eye);
             var pos = gl.createBuffer();
@@ -452,6 +486,18 @@
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this._tex);
         gl.uniform1i(d.uTex, 0);
+
+        if (cfg.mono) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, d.flat.pos);
+            gl.enableVertexAttribArray(d.aPos);
+            gl.vertexAttribPointer(d.aPos, 2, gl.FLOAT, false, 0, 0);
+            gl.bindBuffer(gl.ARRAY_BUFFER, d.flat.uv);
+            gl.enableVertexAttribArray(d.aUv);
+            gl.vertexAttribPointer(d.aUv, 2, gl.FLOAT, false, 0, 0);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            return;
+        }
+
         for (var eye = 0; eye < 2; eye++) {
             var m = d.eyes[eye];
             gl.bindBuffer(gl.ARRAY_BUFFER, m.pos);
@@ -526,6 +572,6 @@
     window.XRViewerPose = XRViewerPose;
     window.XRReferenceSpace = XRReferenceSpace;
 
-    console.log('[CardboardXR] WebXR ready: screen ' + cfg.screen[0].toFixed(4) + ' x ' +
+    console.log('[CardboardXR] WebXR ready' + (cfg.mono ? ' (phone view: one picture, no lens correction)' : '') + ': screen ' + cfg.screen[0].toFixed(4) + ' x ' +
                 cfg.screen[1].toFixed(4) + ' m, lenses ' + (cfg.interLens * 1000).toFixed(1) + ' mm apart');
 })();

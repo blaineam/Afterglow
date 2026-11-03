@@ -64,6 +64,9 @@ namespace CardboardXR.Stereo
         // browser passes it to the page so a WebXR scene is corrected with the same numbers.
         public LensDistortion Lens => m_Lens;
 
+        // The single camera's field of view in phone view, which the browser needs to match it.
+        public float MonoFieldOfView => m_MonoFieldOfView;
+
         // Puts both eyes at one point, so nothing the eye cameras draw has any disparity. Passthrough
         // turns it on: its picture is one flat image shown to both eyes at a single depth, and virtual
         // objects drawn with real depth fight it, which is seen as doubling. With the eyes together the

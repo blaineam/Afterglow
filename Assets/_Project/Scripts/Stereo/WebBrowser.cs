@@ -177,6 +177,11 @@ namespace CardboardXR.Stereo
                    $"\"k\":[{k}]," +
                    $"\"fov\":[{Fov(Eye.Left)},{Fov(Eye.Right)}]," +
                    $"\"hasPosition\":{(hasPosition ? "true" : "false")}," +
+                   // Phone view: one picture filling the screen, no lens correction, for holding
+                   // the phone in your hand rather than wearing it. The page has to be told,
+                   // otherwise it keeps drawing a split, distorted pair nobody is looking through.
+                   $"\"mono\":{(rig.IsMono ? "true" : "false")}," +
+                   $"\"monoFov\":{F(rig.MonoFieldOfView * Mathf.Deg2Rad)}," +
                    "\"eyeHeight\":1.6" +
                    "}";
         }
