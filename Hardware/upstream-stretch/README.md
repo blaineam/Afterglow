@@ -31,6 +31,8 @@ is untouched.
 | Shell outer | 102.70 × 162.16 × 121.98 | 109.70 × 174.16 × 121.98 | — |
 | **Phone bay** | **73.00 × 154.18** | **80.00 × 166.18** | **78.0 × 163.4** |
 | Lens carriage | 72.50 × 153.58 × 30.25 | 79.50 × 165.58 × 30.25 | — |
+| Door outer | 89.49 × 159.18 × 6.50 | 96.49 × 171.18 × 6.50 | — |
+| TPU locators ×4 | 15.87 × 22.26 × 7.65 | 17.60 × 19.99 × 7.60 | — |
 
 That leaves 2.00 mm of clearance across and 2.78 mm along. For comparison the Pixel 9 Pro, the
 largest phone upstream supports, has 1.00 and 1.38 mm.
@@ -53,18 +55,46 @@ openscad -D 'SRCDIR="/path/to/Mobile+VR+viewer+for+modern+smartphones"' -o shell
 openscad -D 'SRCDIR="/path/to/Mobile+VR+viewer+for+modern+smartphones"' -o carriage.stl carriage.scad
 ```
 
+```sh
+openscad -D 'SRCDIR="/path/to/Mobile+VR+viewer+for+modern+smartphones"' -o door.stl door.scad
+```
+
+```sh
+openscad -D 'part="camera-top"' -o locator-camera-top.stl locators.scad
+```
+
+## The door, and the camera opening
+
+`door.scad` stretches the iPhone 15 Pro door the same way, then does two things the method alone
+cannot. It clears everything standing above the plate inside the phone's footprint, because the
+upstream rim is sized for a 70.6 × 146.6 phone and would hold this one out rather than in. And it
+cuts the camera opening **deliberately oversized**: 70.6 mm across by 52 mm, leaving a 4 mm rim
+each side and 6 mm at the end.
+
+Oversized because the island's dimensions are not published in any form these scripts can rely on,
+and upstream's own cutout cannot be read back off the mesh — the door is perforated for
+ventilation and the vent gaps swamp the measurement (a scan for it returned a 66.74 mm "cutout",
+nearly the full door width, which is plainly the dot pattern). The rear camera drives passthrough,
+hand tracking and QR scanning, so an opening that is too small stops the app working, while one
+that is too large only costs some support under the phone. **If you measure the island, narrow
+`cam_rim` and `cam_len` to suit.**
+
+Stretching turns some of the round vent holes into short slots, where they happen to straddle a
+cut plane. They still vent.
+
+## The locators
+
+`locators.scad` makes the four TPU corner pieces, which are what actually take up the play between
+the phone and the bay — there is no pocket in the door to do it. They stand 0.60 mm proud of the
+bay so they go in with a squeeze; upstream's iPhone 15 Pro locator stands 1.81 mm proud of the
+phone corner into a 1.20 mm gap, which is 0.61 mm of the same thing.
+
 ## Not done yet
 
-- **The door.** It needs the same +7 / +12 stretch, which these scripts' method handles, plus two
-  things they do not: a phone pocket enlarged from 68.96 × 142.97 to about 76.4 × 159.9, and a
-  camera cutout for the iPhone 18 Pro Max's island. **That island's dimensions are the open
-  question** — upstream's cutouts cannot be read off the mesh reliably because the door is
-  perforated for ventilation and the vent gaps confound the measurement. Either measure a phone,
-  or cut the opening deliberately oversized: the rear camera drives passthrough, hand tracking and
-  QR scanning, so too large costs a little phone support while too small stops the app working.
-- **The TPU corner locators**, which are sized per phone and need redoing for the new corners.
 - **Fit between parts cannot be checked here.** The shell is modelled back-face-down and the
   carriage face-side-down, in different frames, and the download carries no assembly, so there is
   no transform to test them against each other. The argument that they still fit rests on their
   being cut on identical planes by identical amounts, not on a measurement.
 - The band arms and focus wheel are untouched, and should not need changing.
+- **Nothing here has been printed.** Every number is measured off the meshes; none is measured off
+  a part in hand.
