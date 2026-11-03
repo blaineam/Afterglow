@@ -102,6 +102,11 @@ namespace CardboardXR.Stereo
             // A render texture takes 1, 2, 4 or 8 samples and throws on anything else.
             m_Msaa = samples >= 8 ? 8 : samples >= 4 ? 4 : samples >= 2 ? 2 : 1;
             m_Mono = LaunchOptions.GetInt("mono", m_Mono ? 1 : 0) != 0;
+            // Where the viewer's focus wheel has left the lens carriage, in tenths of a millimeter
+            // (ViewerFocus). Given here it is saved, so it only has to be found once per viewer.
+            var focus = LaunchOptions.GetInt("focus", int.MinValue);
+            if (focus != int.MinValue)
+                ViewerFocus.Offset = focus * 0.0001f;
             // The frame-rate target doesn't switch the panel's refresh rate by itself.
             DisplayRefreshRate.Request(frameRate);
             // Measured on an iPhone 15 Pro: allowing a second queued frame changed nothing, so keep the

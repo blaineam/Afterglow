@@ -127,5 +127,34 @@ namespace CardboardXR.Stereo.Tests
             Assert.AreEqual(small.z, large.z, 1e-3f);
         }
 
+        // The printed viewer centres its lenses on the screen instead of standing them above a
+        // bottom tray, which is the one way its geometry departs from Cardboard's. Centred, both
+        // halves of the view reach about the same angle and the total is larger, so the profile has
+        // to say so or the app will build the distortion for a tray that isn't there.
+        [Test]
+        public void TheProjectsViewerSeesMoreVerticallyThanACardboardOne()
+        {
+            // The iPhone 18 Pro Max's active area, in meters.
+            const float width = 0.1584f, height = 0.0729f;
+            var centred = new LensDistortion(ViewerParams.CardboardXRViewer, width, height)
+                .GetFieldOfView(Eye.Left) * Mathf.Rad2Deg;
+            var tray = new LensDistortion(ViewerParams.CardboardV2, width, height)
+                .GetFieldOfView(Eye.Left) * Mathf.Rad2Deg;
+
+            Assert.AreEqual(centred.z, centred.w, 0.1f, "centred lenses should see as far down as up");
+            Assert.Greater(centred.z + centred.w, tray.z + tray.w, "and further in total than over a tray");
+            // The tray's loss is all at the bottom, where the screen runs out well before the lens.
+            Assert.Less(tray.z, centred.z);
+        }
+
+        [Test]
+        public void TheProjectsViewerHasNoButtonToPress()
+        {
+            // Its back is open for the camera, so a pinch in front of it is the click; there is no
+            // shell over the screen to need a magnet or a touch lever.
+            Assert.AreEqual(ViewerParams.ButtonType.None, ViewerParams.CardboardXRViewer.primaryButton);
+            Assert.AreEqual(ViewerParams.VerticalAlignment.Center, ViewerParams.CardboardXRViewer.verticalAlignment);
+        }
+
     }
 }

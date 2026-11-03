@@ -67,6 +67,26 @@ namespace CardboardXR.Stereo
             primaryButton = ButtonType.IndirectTouch,
         };
 
+        // The printed viewer in this project's Hardware folder. Cardboard v2's lenses and spacing,
+        // but with them centred on the screen rather than above a bottom tray: Cardboard's bottom
+        // alignment puts the optical axis 32 mm up a 73 mm screen, costing vertical view below
+        // (about 50 degrees against the lens's 60), where centred reaches about 58 both ways.
+        //   No button, either: a Cardboard viewer needs one because its shell covers the screen,
+        // and this app's input is gaze plus a pinch in front of the rear camera, which the open
+        // back leaves clear.
+        public static ViewerParams CardboardXRViewer => new()
+        {
+            vendor = "CardboardXR",
+            model = "CardboardXR Viewer",
+            screenToLensDistance = 0.0393f,
+            interLensDistance = 0.0639f,
+            leftEyeFieldOfViewAngles = new[] { 60f, 60f, 60f, 60f },
+            verticalAlignment = VerticalAlignment.Center,
+            trayToLensDistance = 0.035f,
+            distortionCoefficients = new[] { 0.3358f, 0.5535f },
+            primaryButton = ButtonType.None,
+        };
+
         public ViewerParams Clone() => new()
         {
             vendor = vendor,

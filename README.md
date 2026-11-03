@@ -16,6 +16,11 @@ Tested on a **Pixel 9 Pro** (Android, ARCore) and an **iPhone 15 Pro** (iOS, ARK
 **Print the viewer**: the 3D print files for a mobile VR viewer made for modern smartphones are on
 MakerWorld: [Mobile VR viewer for modern smartphones](https://makerworld.com/en/models/3511377-mobile-vr-viewer-for-modern-smartphones).
 
+This fork also carries a viewer of its own in [`Hardware/`](Hardware/), parametric in the phone so a
+new one is a row in a table rather than a redraw, with its own
+[bill of materials](Hardware/BOM.md). It is built for the iPhone 18 Pro Max and uses the same
+Cardboard v2 lenses. See [ROADMAP.md](ROADMAP.md) for what is being added and what is still missing.
+
 ## Interactive pages
 
 Two interactive pages go with the project. Click an image to open it.
@@ -117,6 +122,7 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
 | `pinchStudy 1` | A prompted run that logs pinch measurements, for tuning pinch detection |
 | `uiScale N` | Size of the Material UI in percent of Android XR's dp sizes (default 160, for phone viewers' lower resolution) |
 | `brightness N` | Screen brightness while the app is in front, in percent (default 90; 0 leaves it alone) |
+| `focus N` | Where the viewer's focus wheel has left the lens carriage, in tenths of a millimeter off the profile's screen-to-lens distance. Saved, so it is found once per viewer |
 
 ## Using the app
 
@@ -138,13 +144,17 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   the gaze, then the demo's own use (painting, hitting orbs), then picking up, then a plain click.
   If you rest your gaze on a button with no hand in the camera's view, a hint under the reticle says
   to raise it.
-- **360 Video** plays 360 and VR180 videos, 2D or 3D. Pinch on the video for the controls. Two
-  small test clips are bundled. To bundle your own in local builds, put them in a `360` folder
+- **360 Video** plays 360 and VR180 videos, 2D or 3D, flat films on a screen ahead of you, and the
+  **spatial photos** already in your Photos library, which an iPhone 15 Pro and later record with a
+  picture for each eye. Pinch on the video for the controls. Two small test clips are bundled, and
+  the spatial photos need no copying in: allow Photos the first time the demo opens and they are
+  listed with the files. To bundle your own in local builds, put them in a `360` folder
   beside the project (or set `CARDBOARDXR_VIDEOS`): the build scripts copy them into
   `Assets/StreamingAssets`, which git ignores apart from the test clips. Or add your own to the app's `Videos` folder on the phone: on
   Android `adb push video.mp4 /storage/emulated/0/Android/data/com.brenpoly.cardboardxr/files/Videos`;
   on iPhone, Finder's Files tab for the phone, then CardboardXR > Videos. Tags in the name set the
-  format (`_360`, `_180`, `_sbs`, `_tb`, `_mono`). For Google Drive, put share links in
+  format (`_360`, `_180`, `_flat`, `_sbs`, `_tb`, `_mono`); `_flat` (or `_screen`, `_cinema`) is a
+  film on a screen rather than anything wrapped around you, which is what a 3D film wants. For Google Drive, put share links in
   `videos.txt` in that folder, one per line; each downloads on first play.
 - **Air Paint** paints strokes in the air with your hand, like Tilt Brush, starting in passthrough
   so you paint in your own room: pinch to paint, and look at the tool panel on your left and pinch

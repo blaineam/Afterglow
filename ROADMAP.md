@@ -35,9 +35,17 @@ Verified against Apple's spec sheet, not assumed:
 
 Three consequences that drive everything below:
 
-1. **+8.6 mm of screen per eye.** More field of view is available than the current viewer
-   profile claims — but only if the lens FOV angles and carriage travel are retuned. Left
-   alone, the extra screen is wasted.
+1. **+8.6 mm of screen per eye — most of which cannot be used.** This was wrong in the first
+   draft of this file, and the arithmetic is worth keeping. With Cardboard v2 lenses the
+   horizontal view is *already* lens-limited on a 6.1" phone: its screen subtends 61° and the
+   profile allows 60°, so the 6.9" phone's 72.5° of screen falls outside what the lens renders
+   and is thrown away. The 60° is Google's statement about that lens, not an arbitrary cap, so
+   raising it only pushes the picture past the lens's usable field.
+   **Vertically there is a real gain**: the 6.1" screen runs out at about 52°, short of the lens,
+   where the taller screen reaches the full 60°. So a bigger phone buys a taller view, not a wider
+   one — and centring the lenses on the screen instead of standing them above a tray buys more
+   still (57.6° each way, 115.2° total, against the tray's 50.0/60.0 and 110.0). That is why
+   `Hardware/viewer.scad` centres them and ships its own viewer profile.
 2. **+62 g (+33%) of phone mass**, on a lever arm in front of the face. This is a comfort and
    strap problem, not just a bigger pocket in the tray.
 3. **A20 Pro + vapour chamber.** The premise of this whole expansion. Upstream's limits
@@ -46,11 +54,11 @@ Three consequences that drive everything below:
 
 ---
 
-## Phase 1 — Make the 18 Pro Max correct
+## Phase 1 — Make the 18 Pro Max correct — **done except the thermal retune**
 
 Nothing else is worth doing while the stereo geometry is wrong.
 
-### 1.1 Physical screen size on iOS *(bug, not a feature)*
+### 1.1 Physical screen size on iOS *(bug, not a feature)* — **done**
 
 `Assets/_Project/Scripts/Stereo/ScreenMetrics.cs` reads real per-axis DPI from
 `DisplayMetrics` on Android, but on iOS falls through to `Screen.dpi` — which comes from
@@ -63,7 +71,7 @@ Fix: a native plugin beside `Plugins/iOS/CardboardXRDeviceState.mm` reporting
 `UIScreen.nativeBounds` × scale and a `hw.machine` → ppi table, with the Unity value as
 last resort. Log which source won, as `ScreenMetrics` already does.
 
-### 1.2 Viewer profile for brenpoly's own viewer
+### 1.2 Viewer profile for brenpoly's own viewer — **done**
 
 The only built-in profile is **Cardboard v1** (42 mm screen-to-lens, 60 mm inter-lens,
 K₁ 0.441 / K₂ 0.156) — but the printed viewer uses **Cardboard v2 lenses**. Unless a QR code
@@ -77,7 +85,7 @@ Fix: ship a built-in profile per printed variant, and add a focus-offset control
 settings panel that adjusts `screenToLensDistance` live, so the software can be matched to
 where the wheel actually is.
 
-### 1.3 Thermal and frame-rate retune
+### 1.3 Thermal and frame-rate retune — **not started; needs a device**
 
 Re-measure first, then raise budgets: hand-model main-thread cost, time-to-`fair` from cold,
 and what frame rate actually holds with a hand in view. Replace the global
@@ -131,7 +139,7 @@ come from the MakerWorld `README.pdf` assembly guide or from brenpoly.
 
 ## Phase 3 — Media
 
-### 3.1 Flat screen projection *(do this first — three later features need it)*
+### 3.1 Flat screen projection — **done**
 
 `VideoFormat.Projection` is only `Full360` or `Half180`; both wrap the video on a sphere.
 There is no **flat rectilinear screen**. Adding `Projection.Flat` — a quad at a settable
@@ -139,7 +147,7 @@ size and distance, honouring the existing `StereoLayout` so side-by-side 3D film
 gives "a massive screen in a virtual room", and is also the display surface for HDMI capture
 (5.2) and desktop streaming (5.1). Cheapest high-value item on the list.
 
-### 3.2 Spatial video and photos from the Photos library
+### 3.2 Spatial photos — **done**. Spatial video — **not started**
 
 The strongest new feature, and the one that only works properly on this hardware. iPhone
 15 Pro and later shoot **MV-HEVC**, which carries both eyes as separate layers in one file.
@@ -194,7 +202,7 @@ build with the browser and streaming features **disabled** is the plausible rout
 
 ## Phase 5 — Stretch goals
 
-### 5.1 WebXR browsing — hard, possible
+### 5.1 WebXR browsing — **not started**; architecture settled, see below
 
 **iOS Safari does not support WebXR.** Not in 26, not in 27; `immersive-vr` is Vision Pro
 only, and Apple has published no iOS timeline. So this cannot be "open a WebXR page in a web
@@ -249,6 +257,34 @@ work.
 5. **Phase 4.1** — IPA + TestFlight.
 6. **Phase 3.3** — more mini games, as filler between the heavier items.
 7. **Phase 5**, in order: gamepad support → 5.2 network encoder → 5.1 WebXR → 5.3 SteamVR.
+
+## Where it stands
+
+| | State |
+|---|---|
+| Screen measured without Unity's device table | Done, unbuilt |
+| Cardboard v2 profile + focus-wheel offset | Done, unbuilt. Set with `focus N`; no settings-panel control yet |
+| Flat screen projection | Done, unbuilt |
+| Spatial photos from Photos | Done, unbuilt |
+| Printable viewer + BOM | Written, **unrendered** — OpenSCAD is Gatekeeper-blocked on this machine |
+| Thermal retune, spatial video, WebXR | Not started |
+
+**Nothing here has been compiled.** Unity 6000.6.0f1 is not installed on this machine, so no C#
+has been through a compiler, no EditMode test has run, and no `.mm` has been through clang. The
+code was written against the repo's own idioms and the arithmetic in it was checked by hand, but
+that is not the same as building. Installing Unity is the single thing standing between this and a
+real test.
+
+### WebXR, when it is picked up
+
+The approach is settled and worth writing down, because the obvious one does not work. iOS Safari
+has no WebXR, and rendering a `WKWebView` into a Unity texture at headset frame rates is not
+possible with public API. So: overlay a full-screen `WKWebView` above Unity's view and let the
+*page* draw the stereo pair and the barrel distortion itself, with a WebXR shim injected into it
+and fed this app's own fused head pose — which is better than the `DeviceOrientation` a page could
+get for itself. Unity hides its own view while the browser is up. The open question is whether to
+vendor `webxr-polyfill` (MIT, battle-tested, but its cardboard path wants `DeviceOrientation`) or
+write a small shim for the subset that matters; vendoring is the lower-risk start.
 
 ## Open inputs
 
