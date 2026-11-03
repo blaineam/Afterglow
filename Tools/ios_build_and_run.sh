@@ -44,9 +44,21 @@ fi
 # The phone, by UDID. Xcode remembers paired devices even when they're unplugged ("unavailable"), so
 # this takes one that's reachable: "connected", or "available (paired)", which an idle phone drops
 # to and devicectl reconnects on first use. devicectl prints the UDID as 8 hex, a dash, then 16 more.
-UDID=$(xcrun devicectl list devices 2>/dev/null | grep -E '[[:space:]](connected|available \(paired\))[[:space:]]' | grep -oE '[0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}' | head -1)
+# A real iPhone, by UDID. Three things have to be filtered, and missing any of them picks the
+# wrong device and fails five minutes later at the Xcode step:
+#   - simulators are listed here too, and a booted one shows as "connected";
+#   - so is every other paired device, and an Apple TV sitting on the desk shows as
+#     "available (paired)", which is how a tvOS build gets attempted;
+#   - a phone reconnecting settles on plain "available", not "available (paired)".
+UDID=$(xcrun devicectl list devices 2>/dev/null \
+    | grep -v 'simulated' \
+    | grep -iE '[[:space:]]iPhone[0-9]+,[0-9]+|[[:space:]]iPhone [0-9]' \
+    | grep -E '[[:space:]](connected|available)([[:space:]]|$|[[:space:]]\(paired\))' \
+    | grep -oE '[0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}' | head -1)
 if [ -z "$UDID" ]; then
-    echo "No connected iPhone. Plug it in, unlock it, and trust this Mac."
+    echo "No reachable iPhone. Plug it in, unlock it, and trust this Mac."
+    echo "Paired devices devicectl can see:"
+    xcrun devicectl list devices 2>/dev/null | grep -v simulated | sed -n '3,12p'
     exit 1
 fi
 echo "== iPhone $UDID"

@@ -172,7 +172,7 @@ PlayerSettings:
   applicationIdentifier:
     Android: com.brenpoly.cardboardxr
     Standalone: com.Unity-Technologies.com.unity.template.urp-blank
-    iPhone: com.brenpoly.cardboardxr
+    iPhone: com.wemiller.cardboardxr
   buildNumber:
     Standalone: 0
     VisionOS: 0
@@ -795,7 +795,7 @@ PlayerSettings:
   webProgressiveAssetLoading: 0
   scriptingDefineSymbols:
     Android: APP_UI_EDITOR_ONLY
-    iPhone: UNITY_XR_ARKIT_LOADER_ENABLED;APP_UI_EDITOR_ONLY
+    iPhone: UNITY_XR_ARKIT_LOADER_ENABLED;APP_UI_EDITOR_ONLY;SENTIS_ANALYTICS_ENABLED
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend:
