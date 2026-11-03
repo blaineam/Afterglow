@@ -8,8 +8,9 @@
 
 part = "camera-top";     // camera-top, camera-bottom, usb-top, usb-bottom, or all
 
-phone_x = 78.0;          // iPhone 18 Pro Max
-phone_y = 163.4;
+// Apple's figures, from the dimensional drawing (see README).
+phone_x = 77.98;
+phone_y = 163.43;
 bay_x   = 80.00;         // the stretched shell's bay
 bay_y   = 166.18;
 squeeze = 0.6;           // how far past the bay it stands before being pressed in
