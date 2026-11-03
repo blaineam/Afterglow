@@ -63,8 +63,8 @@ nose_width   = 34.0;           // must stay under the gap between the lenses
 nose_height  = 22.0;
 nose_depth   = 34.0;           // how far back from the face the notch runs
 strap_slot   = [25.0, 4.0];    // for a 25 mm strap
-door_band    = 10.0;           // how wide the retaining frame is
-door_inset   = 2.0;            // recess the door sits in, at the back
+door_inset   = 2.0;            // the door's thickness, and how deep its recess is
+door_bar     = 20.0;           // the bar across the phone's back, which is all that holds it
 
 $fn = 72;
 
@@ -87,8 +87,14 @@ slide_back  = screen_to_lens_nominal - focus_travel - lens_seat_depth / 2;
 slide_front = screen_to_lens_nominal + focus_travel - lens_seat_depth / 2 + plate_thick;
 front_z = slide_front + eye_relief;
 
+// The door's own outline: the recess it drops into, less a sliding clearance.
+door_l = outer_l - 2 * wall + 2 * door_inset - fit;
+door_w = outer_w - 2 * wall + 2 * door_inset - fit;
+
 // The carriage rides in channels cut into the side walls, so it is wider than the window.
 plate_l = window_l + 2 * slide_depth - fit;
+// How far the thumb slot cuts, from the cavity wall out past the shell's face.
+thumb_reach = outer_l / 2 + 1 - window_l / 2;
 
 module rounded_box(size, radius) {
     hull() for (x = [-1, 1], y = [-1, 1])
@@ -103,9 +109,11 @@ module body() {
         translate([0, 0, (front_z + back_z) / 2])
             rounded_box([outer_l, outer_w, front_z - back_z], 4);
 
-        // The phone's pocket, open at the back.
-        translate([0, 0, back_z + pocket_d / 2 - 0.01])
-            cube([pocket_l, pocket_w, pocket_d + 0.02], center = true);
+        // The phone's pocket, from the open back right up to the screen plane at Z = 0. It has to
+        // reach the screen plane: stopping at the phone's own thickness leaves a wall across its
+        // face, and the lip that holds the phone comes from the window being smaller, not from this.
+        translate([0, 0, back_z / 2])
+            cube([pocket_l, pocket_w, -back_z + 0.02], center = true);
 
         // Everything in front of the screen, which the lip's edge defines.
         translate([0, 0, front_z / 2])
@@ -116,10 +124,12 @@ module body() {
             translate([side * (window_l + slide_depth) / 2, 0, (slide_back + slide_front) / 2])
                 cube([slide_depth + 0.02, plate_height, slide_front - slide_back], center = true);
 
-        // A thumb slot each side, so the carriage can be pushed without taking the phone out.
+        // A thumb slot each side, so the carriage can be pushed without taking the phone out. It
+        // runs from inside the cavity out through the wall, so it meets the channel: a slot that
+        // only cuts the wall leaves the carriage's edge still buried behind 0.3 mm of plastic.
         for (side = [-1, 1])
-            translate([side * outer_l / 2, 0, (slide_back + slide_front) / 2])
-                cube([2 * wall + 0.02, 20, slide_front - slide_back], center = true);
+            translate([side * (window_l / 2 + thumb_reach / 2), 0, (slide_back + slide_front) / 2])
+                cube([thumb_reach, 20, slide_front - slide_back], center = true);
 
         // The nose notch, in the bottom wall at the face end.
         translate([0, -outer_w / 2, front_z - nose_depth / 2 + 0.01])
@@ -130,11 +140,12 @@ module body() {
             translate([side * outer_l / 2, 0, front_z - 14])
                 cube([2 * wall + 0.02, strap_slot[0], strap_slot[1]], center = true);
 
-        // The recess the door's frame drops into.
-        translate([0, 0, back_z - 0.01])
+        // The recess the door drops into: one door thick, at the very back, and only out to the
+        // ring's outline, so a shoulder is left inside it for the ring to rest on.
+        translate([0, 0, back_z + door_inset / 2 - 0.01])
             difference() {
-                cube([outer_l - 2 * wall + 2 * door_inset, outer_w - 2 * wall + 2 * door_inset, 2 * door_inset], center = true);
-                cube([pocket_l - 2 * door_band, pocket_w - 2 * door_band, 4 * door_inset], center = true);
+                cube([door_l + fit, door_w + fit, door_inset + 0.02], center = true);
+                cube([pocket_l, pocket_w, door_inset + 0.04], center = true);
             }
     }
 }
@@ -155,23 +166,23 @@ module plate() {
     }
 }
 
-// The door: a frame that holds the phone in and leaves the whole back open, so the rear camera is
-// never covered. That matters more than it sounds — the camera is what the app uses for
-// passthrough, hand tracking and reading a viewer's QR code, so a door that clipped the camera
-// island would not look wrong, it would stop the tracking working.
+// The door: a ring that sits in the body's recess, with one bar across the middle of the phone's
+// back. Both ends of the phone stay completely open, and so does everything but a strip at the
+// centre.
+//   That shape is deliberate. The rear camera is what the app uses for passthrough, hand tracking
+// and reading a viewer's QR code, so a door that clipped the camera island would not look wrong,
+// it would stop the tracking working. The island sits at one end of the phone and its size is not
+// published in any form this file could rely on, so rather than cut an opening sized from a guess,
+// the door holds the phone where no phone has a camera: across the middle.
 module door() {
-    difference() {
-        union() {
-            cube([outer_l - 2 * wall, outer_w - 2 * wall, door_inset], center = true);
-            // The lip that sits in the body's recess.
-            translate([0, 0, door_inset])
-                difference() {
-                    cube([outer_l - 2 * wall + 2 * door_inset - fit, outer_w - 2 * wall + 2 * door_inset - fit, door_inset], center = true);
-                    cube([pocket_l - 2 * door_band, pocket_w - 2 * door_band, 4 * door_inset], center = true);
-                }
+    union() {
+        // The ring, which rests on the shoulder the body's recess leaves.
+        difference() {
+            cube([door_l, door_w, door_inset], center = true);
+            cube([pocket_l, pocket_w, door_inset + 0.2], center = true);
         }
-        // The open middle.
-        cube([pocket_l - 2 * door_band, pocket_w - 2 * door_band, 4 * door_inset], center = true);
+        // The bar, reaching the ring top and bottom so the part comes off the plate in one piece.
+        cube([door_bar, door_w, door_inset], center = true);
     }
 }
 
@@ -182,5 +193,5 @@ else {
     // Laid out as assembled, for a look before printing.
     body();
     #translate([0, 0, slide_back + plate_thick / 2]) plate();
-    #translate([0, 0, back_z - door_inset / 2]) door();
+    #translate([0, 0, back_z + door_inset / 2]) door();
 }

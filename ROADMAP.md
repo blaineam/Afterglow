@@ -266,14 +266,19 @@ work.
 | Cardboard v2 profile + focus-wheel offset | Done, unbuilt. Set with `focus N`; no settings-panel control yet |
 | Flat screen projection | Done, unbuilt |
 | Spatial photos from Photos | Done, unbuilt |
-| Printable viewer + BOM | Written, **unrendered** — OpenSCAD is Gatekeeper-blocked on this machine |
+| Printable viewer + BOM | Done and **rendered**: three manifold STLs, checked by 21 solid/empty probes and an interference pass |
 | Thermal retune, spatial video, WebXR | Not started |
 
-**Nothing here has been compiled.** Unity 6000.6.0f1 is not installed on this machine, so no C#
+**None of the C# has been compiled.** Unity 6000.6.0f1 is not installed on this machine, so no C#
 has been through a compiler, no EditMode test has run, and no `.mm` has been through clang. The
 code was written against the repo's own idioms and the arithmetic in it was checked by hand, but
 that is not the same as building. Installing Unity is the single thing standing between this and a
 real test.
+
+The hardware is a different matter: `Hardware/` renders, and the geometry has been checked rather
+than eyeballed. Rendering caught a real bug the arithmetic had not — the phone's pocket stopped at
+the phone's own thickness instead of reaching the screen plane, leaving a 2.4 mm slab across the
+screen. The model reported itself genus 0, a closed box, where a viewer has to be a tube.
 
 ### WebXR, when it is picked up
 

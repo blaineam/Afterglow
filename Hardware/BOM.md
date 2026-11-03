@@ -49,7 +49,9 @@ lenses loose, and those are the right lenses by construction.
   unreachable. This app's input is gaze plus a pinch in front of the rear camera, which the open
   back leaves clear, so there is nothing to press. The matching viewer profile declares
   `ButtonType.None`.
-- **No screws or nuts.** The carriage slides in channels and the door is a friction frame.
+- **No screws or nuts.** The carriage slides in channels and the door is a ring with one bar
+  across the middle of the phone's back, which drops into a recess. Both ends of the phone stay
+  open, which is how the rear camera is kept clear without needing the camera island's dimensions.
 - **No lens spacers.** The focus carriage is the adjustment.
 
 ## Parked
@@ -67,7 +69,7 @@ Two features are deferred, and neither needs anything bought yet:
 |---|---|---|
 | `body` | Open face down on the plate | None |
 | `plate` | Flat | None |
-| `door` | Flat, lip up | None |
+| `door` | Flat | None |
 
 PLA is fine; PETG if it will sit in a car. 0.2 mm layers, 3 perimeters, 15% infill. The only
 dimension worth a test print is the carriage fit — print `plate` first and check it slides in the
