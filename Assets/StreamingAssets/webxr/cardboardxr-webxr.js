@@ -168,7 +168,7 @@
         });
     }
 
-    function XRView(eye, viewMatrix, projectionMatrix, transform) {
+    function XRView(eye, projectionMatrix, transform) {
         this.eye = eye === 0 ? 'left' : 'right';
         this.projectionMatrix = projectionMatrix;
         this.transform = transform;
@@ -271,12 +271,18 @@
             var transform = new XRRigidTransform(
                 { x: head.position.x + offset[0], y: head.position.y + offset[1], z: head.position.z + offset[2] },
                 head.orientation);
-            views.push(new XRView(eye, null, projection(eye, near, far), transform));
+            views.push(new XRView(eye, projection(eye, near, far), transform));
         }
         return new XRViewerPose(head, views);
     };
+    // Only the viewer's own spaces have a pose here: the gaze ray starts at the head, and there
+    // is nothing else being tracked. Anything else returns null, which is what a page should see
+    // for a space this cannot locate.
     XRFrame.prototype.getPose = function (space, base) {
-        return this.getViewerPose(base).transform ? { transform: this.getViewerPose(base).transform } : null;
+        if (!space || (space._kind !== 'viewer' && space._kind !== 'local' && space._kind !== 'local-floor'))
+            return null;
+        var viewer = this.getViewerPose(base);
+        return viewer ? { transform: viewer.transform, emulatedPosition: viewer.emulatedPosition } : null;
     };
 
     function XRInputSource() {
