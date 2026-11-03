@@ -173,15 +173,25 @@ extern "C" int CardboardXR_SpatialScan()
     if (CardboardXR_SpatialAuthorize() != 1)
         return -1;
 
-    PHFetchOptions *options = [PHFetchOptions new];
-    // Spatial media is marked by a subtype rather than being its own media type, so the filter is
-    // a test on that bit; it matches both the photos and the videos.
-    options.predicate = [NSPredicate predicateWithFormat:@"(mediaSubtypes & %lu) != 0",
-                         (unsigned long)PHAssetMediaSubtypeSpatialMedia];
-    options.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO]];
-    g_Assets = [PHAsset fetchAssetsWithOptions:options];
-    NSLog(@"[Spatial] %lu spatial items in the library", (unsigned long)g_Assets.count);
-    return (int)g_Assets.count;
+    // Spatial photos arrived with the iPhone 15 Pro on iOS 17, and the stereo pair is read through
+    // ImageIO group keys that landed in the same release, so there is nothing to find before then.
+    // The subtype constant is itself newer than this app's deployment target, which is why the
+    // whole fetch sits behind the check rather than just the decode.
+    if (@available(iOS 17.0, *))
+    {
+        PHFetchOptions *options = [PHFetchOptions new];
+        // Spatial media is marked by a subtype rather than being its own media type, so the filter
+        // is a test on that bit; it matches both the photos and the videos.
+        options.predicate = [NSPredicate predicateWithFormat:@"(mediaSubtypes & %lu) != 0",
+                             (unsigned long)PHAssetMediaSubtypeSpatialMedia];
+        options.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO]];
+        g_Assets = [PHAsset fetchAssetsWithOptions:options];
+        NSLog(@"[Spatial] %lu spatial items in the library", (unsigned long)g_Assets.count);
+        return (int)g_Assets.count;
+    }
+
+    NSLog(@"[Spatial] This iOS is older than spatial photos, so there are none to list");
+    return 0;
 }
 
 // Describes one item: whether it's a video, how long it runs, and a title for the list.
