@@ -121,9 +121,21 @@ namespace CardboardXR.Stereo
             Debug.Log($"[Stereo] Target {frameRate} fps, max queued frames {QualitySettings.maxQueuedFrames}, " +
                       $"render scale {m_RenderScale:F2}, MSAA {m_Msaa}x, {(m_Mono ? "mono" : "stereo")}");
             Rebuild();
+            ViewerFocus.Changed += OnFocusChanged;
         }
 
-        void OnDisable() => Teardown();
+        void OnDisable()
+        {
+            ViewerFocus.Changed -= OnFocusChanged;
+            Teardown();
+        }
+
+        // The focus wheel moved the lens carriage, so the distortion is built from a new distance.
+        void OnFocusChanged()
+        {
+            if (isActiveAndEnabled)
+                Rebuild();
+        }
 
         // Switches between the two eyes through the viewer's lenses and one view on the whole screen.
         public void ToggleMono() => SetMono(!m_Mono);
@@ -154,17 +166,21 @@ namespace CardboardXR.Stereo
                 screenSize = ScreenMetrics.GetScreenSizeMeters(out source);
             }
 
-            m_Lens = new LensDistortion(m_Viewer, screenSize.x, screenSize.y);
+            // Where the focus wheel has left the lens carriage, if it has been set (ViewerFocus).
+            var viewer = ViewerFocus.Apply(m_Viewer);
+            m_Lens = new LensDistortion(viewer, screenSize.x, screenSize.y);
             var fov = m_Lens.GetFieldOfView(Eye.Left) * Mathf.Rad2Deg;
-            Debug.Log($"[Stereo] {m_Viewer.model}: screen {screenSize.x:F4} x {screenSize.y:F4} m ({source}), " +
-                      $"left eye fov L{fov.x:F1} R{fov.y:F1} B{fov.z:F1} T{fov.w:F1}");
+            var focus = ViewerFocus.Offset;
+            Debug.Log($"[Stereo] {viewer.model}: screen {screenSize.x:F4} x {screenSize.y:F4} m ({source}), " +
+                      $"left eye fov L{fov.x:F1} R{fov.y:F1} B{fov.z:F1} T{fov.w:F1}" +
+                      (Mathf.Approximately(focus, 0f) ? "" : $", focus {focus * 1000f:+0.0;-0.0} mm"));
             // In full, for Tools/record_eye.py, which undoes the lens distortion in screen recordings.
             var invariant = System.Globalization.CultureInfo.InvariantCulture;
             Debug.Log("[Stereo] Viewer lens: " + string.Format(invariant,
                 "screenToLens {0:F4} interLens {1:F4} trayToLens {2:F4} alignment {3} fov {4} k {5}",
-                m_Viewer.screenToLensDistance, m_Viewer.interLensDistance, m_Viewer.trayToLensDistance, (int)m_Viewer.verticalAlignment,
-                string.Join(",", System.Array.ConvertAll(m_Viewer.leftEyeFieldOfViewAngles, a => a.ToString("F2", invariant))),
-                string.Join(",", System.Array.ConvertAll(m_Viewer.distortionCoefficients, c => c.ToString("F5", invariant)))));
+                viewer.screenToLensDistance, viewer.interLensDistance, viewer.trayToLensDistance, (int)viewer.verticalAlignment,
+                string.Join(",", System.Array.ConvertAll(viewer.leftEyeFieldOfViewAngles, a => a.ToString("F2", invariant))),
+                string.Join(",", System.Array.ConvertAll(viewer.distortionCoefficients, c => c.ToString("F5", invariant)))));
 
             if (m_Mono)
             {

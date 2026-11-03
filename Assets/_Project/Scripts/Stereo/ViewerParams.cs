@@ -49,5 +49,35 @@ namespace CardboardXR.Stereo
             distortionCoefficients = new[] { 0.441f, 0.156f },
             primaryButton = ButtonType.Magnet,
         };
+
+        // The 2015 Google Cardboard, whose lenses the printed viewers in this project's hardware
+        // folder use. Values from a real viewer's QR code, decoded in ViewerParamsCodecTests; its
+        // own code is at goo.gl/KS2FEm. Scanning that code gives exactly these, so this profile is
+        // only the default for a build that hasn't been shown one.
+        public static ViewerParams CardboardV2 => new()
+        {
+            vendor = "Google",
+            model = "Cardboard",
+            screenToLensDistance = 0.0393f,
+            interLensDistance = 0.0639f,
+            leftEyeFieldOfViewAngles = new[] { 60f, 60f, 60f, 60f },
+            verticalAlignment = VerticalAlignment.Bottom,
+            trayToLensDistance = 0.035f,
+            distortionCoefficients = new[] { 0.3358f, 0.5535f },
+            primaryButton = ButtonType.IndirectTouch,
+        };
+
+        public ViewerParams Clone() => new()
+        {
+            vendor = vendor,
+            model = model,
+            screenToLensDistance = screenToLensDistance,
+            interLensDistance = interLensDistance,
+            leftEyeFieldOfViewAngles = (float[])leftEyeFieldOfViewAngles.Clone(),
+            verticalAlignment = verticalAlignment,
+            trayToLensDistance = trayToLensDistance,
+            distortionCoefficients = (float[])distortionCoefficients.Clone(),
+            primaryButton = primaryButton,
+        };
     }
 }
