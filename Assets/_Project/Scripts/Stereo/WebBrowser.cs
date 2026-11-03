@@ -34,7 +34,10 @@ namespace CardboardXR.Stereo
         const int k_HiddenRenderInterval = 12;
         const string k_ShimPath = "webxr/cardboardxr-webxr.js";
 
+#if UNITY_IOS && !UNITY_EDITOR
+        // What the frame interval was before the browser took the screen, to put back on close.
         static int s_RestoreRenderInterval = 1;
+#endif
 
         public static bool Supported =>
 #if UNITY_IOS && !UNITY_EDITOR
