@@ -18,6 +18,8 @@ namespace ProjectBootstrap
     // it can use: ARCore on Android, ARKit on iOS. Safe to re-run.
     public static class ProjectSetup
     {
+        const string IconPath = "Assets/_Project/Branding/AppIcon.png";
+
         const string ArCoreLoader = "UnityEngine.XR.ARCore.ARCoreLoader";
         const string ArKitLoader = "UnityEngine.XR.ARKit.ARKitLoader";
         const string XrFolder = "Assets/XR";
@@ -114,10 +116,53 @@ namespace ProjectBootstrap
             }
 
             ConfigureUrpRenderers();
+            ConfigureIcons();
 
             AssetDatabase.SaveAssets();
             Debug.Log("[ProjectSetup] Android and iOS player and XR settings applied.");
             EditorApplication.Exit(0);
+        }
+
+        // The app icon, for both platforms, from the one 1024 master that Tools/make_icon.py draws.
+        // Unity wants a texture per size; they are all the same picture, scaled on export.
+        static void ConfigureIcons()
+        {
+            var icon = AssetDatabase.LoadAssetAtPath<Texture2D>(IconPath);
+            if (icon == null)
+            {
+                Debug.LogWarning($"[ProjectSetup] No app icon at {IconPath}; run Tools/make_icon.py.");
+                return;
+            }
+
+            // GetSupportedIconKinds asks the installed module what shapes it wants, so this needs
+            // neither iOSPlatformIconKind nor AndroidPlatformIconKind -- which matters, because
+            // naming those types makes this file fail to compile unless *both* platform modules
+            // are installed, and a checkout with only one is a perfectly reasonable checkout.
+            void Apply(NamedBuildTarget target)
+            {
+                PlatformIconKind[] kinds;
+                try
+                {
+                    kinds = PlayerSettings.GetSupportedIconKinds(target);
+                }
+                catch (System.ArgumentException)
+                {
+                    // That platform's module isn't installed here.
+                    Debug.Log($"[ProjectSetup] No {target.TargetName} module, so no icon set for it.");
+                    return;
+                }
+                foreach (var kind in kinds)
+                {
+                    var icons = PlayerSettings.GetPlatformIcons(target, kind);
+                    foreach (var slot in icons)
+                        slot.SetTextures(icon);
+                    PlayerSettings.SetPlatformIcons(target, kind, icons);
+                }
+            }
+
+            Apply(NamedBuildTarget.iOS);
+            Apply(NamedBuildTarget.Android);
+            Debug.Log("[ProjectSetup] App icon set for every installed platform.");
         }
 
         // Sets a player setting that has no scripting API, as the Project Settings window does.
