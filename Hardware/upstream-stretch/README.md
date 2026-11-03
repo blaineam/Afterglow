@@ -68,19 +68,33 @@ openscad -D 'part="camera-top"' -o locator-camera-top.stl locators.scad
 `door.scad` stretches the iPhone 15 Pro door the same way, then does two things the method alone
 cannot. It clears everything standing above the plate inside the phone's footprint, because the
 upstream rim is sized for a 70.6 × 146.6 phone and would hold this one out rather than in. And it
-cuts the camera opening **deliberately oversized**: 70.6 mm across by 52 mm, leaving a 4 mm rim
-each side and 6 mm at the end.
+cuts the camera opening to **Apple's own published geometry**.
 
-Oversized because the island's dimensions are not published in any form these scripts can rely on,
-and upstream's own cutout cannot be read back off the mesh — the door is perforated for
-ventilation and the vent gaps swamp the measurement (a scan for it returned a 66.74 mm "cutout",
-nearly the full door width, which is plainly the dot pattern). The rear camera drives passthrough,
-hand tracking and QR scanning, so an opening that is too small stops the app working, while one
-that is too large only costs some support under the phone. **If you measure the island, narrow
-`cam_rim` and `cam_len` to suit.**
+Apple's Accessory Design Guidelines point at a per-device drawing library, and the iPhone 18 Pro
+Max is published there as a dimensioned mechanical drawing
+([developer.apple.com/accessories/dimensional-drawings/](https://developer.apple.com/accessories/dimensional-drawings/),
+sheet dated 2026-09-09). It gives the body as **163.43 × 77.98 × 8.75**, every imaging feature's
+centre and diameter, and the plateau standing **2.78 mm** proud of the back plate with the camera
+glass **2.11 mm** above that again.
 
-Stretching turns some of the round vent holes into short slots, where they happen to straddle a
-cut plane. They still vent.
+| Feature | Across | Along | Ø |
+|---|---|---|---|
+| Rear camera 1 | 14.37 | 14.37 | 16.58 |
+| Rear camera 2 | 14.37 | 33.61 | 16.58 |
+| Rear camera 3 | 32.49 | 23.99 | 16.58 |
+| Flash | 64.16 | 13.82 | 6.90 |
+| Rear mic | 64.16 | 23.99 | 1.15 |
+| Rear sensor | 64.16 | 34.16 | 6.90 |
+
+Measured off the same drawing, the plateau runs about 0.8–75.8 across and 0.5–46.7 along: within
+a millimetre of the phone's long edges and half a millimetre of its end.
+
+**This corrected a real error.** A first pass cut the opening "generously oversized" at 70.6 × 52
+with a 6 mm end rim, on the reasoning that too large only costs support while too small breaks
+tracking. Against Apple's figures that opening is too *small*: it would have rested on the plateau
+by about 3 mm each side and lapped 5.5 mm over its end, and the door would not have closed flat.
+The opening is now 77.00 × 56.77, clearing the plateau by 0.80 and 1.20 mm across and 8.77 and
+1.80 mm along.
 
 ## The locators
 

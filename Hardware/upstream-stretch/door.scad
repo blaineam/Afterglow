@@ -8,14 +8,17 @@
 //      hold the phone out rather than hold it in;
 //   3. the camera opening is cut deliberately oversized.
 //
-// On (3): the island's dimensions are not published in any form this file can rely on, and
-// upstream's own cutout cannot be read back off the mesh because the door is perforated for
-// ventilation and the vent gaps swamp the measurement. The rear camera is what drives passthrough,
-// hand tracking and QR scanning, so an opening that is too small stops the app working while one
-// that is too large only costs some support under the phone. So it is cut large, leaving a rim.
+// On (3): the dimensions come from Apple's own drawing -- the Accessory Design Guidelines point
+// at a per-device library, and iPhone 18 Pro Max is published there as a dimensioned mechanical
+// drawing (developer.apple.com/accessories/dimensional-drawings/, sheet dated 2026-09-09). It
+// gives the body as 163.43 x 77.98 x 8.75, every imaging feature's centre and diameter, and the
+// plateau standing 2.78 mm proud of the back plate with the camera glass 2.11 mm above that.
+//
+// That matters more than it sounds. A first pass at this cut the opening "generously oversized"
+// at 70.6 x 52 with a 6 mm end rim, which is in fact too small: the plateau runs to within about
+// 0.8 mm of the phone's long edges and 0.5 mm of its end, so that door would have rested on the
+// plateau by roughly 3 mm each side and covered 5.5 mm of it. It would not have closed flat.
 
-// Point SRCDIR at the unzipped MakerWorld download:
-//   openscad -D 'SRCDIR="/path/to/Mobile+VR+viewer+for+modern+smartphones"' -o door.stl door.scad
 SRCDIR = "..";
 SRC = str(SRCDIR, "/Door - Print-ready STLs - iPhone 15 Pro/Door - iPhone 15 Pro (PETG, outer face down).stl");
 
@@ -23,15 +26,26 @@ yc = 55; dy = 6;        // the shell's cut planes and inserts, exactly
 xc = 26; dx = 3.5;
 big = 400;
 
-phone_x = 78.0;         // iPhone 18 Pro Max
-phone_y = 163.4;
-fit = 0.6;              // clearance around the phone
-plate_top = 1.9;        // everything above this, inside the footprint, is cleared
+// Apple's figures, datum at the top-left of the phone's back, x across and y along.
+phone_x = 77.98;
+phone_y = 163.43;
+fit     = 0.6;           // clearance around the phone
+plate_top = 1.9;         // everything above this, inside the footprint, is cleared
 
-// The camera opening: full phone width less a rim, running from the camera end inward.
-cam_rim = 4.0;          // material kept outside the opening, each side
-cam_len = 52.0;         // how far in from the phone's end it reaches
-cam_end_rim = 6.0;      // material kept at the very end of the phone's footprint
+// The camera plateau's footprint, measured off Apple's drawing. The lens centres it dimensions
+// exactly (cameras at 14.37/14.37, 14.37/33.61 and 32.49/23.99, all 16.58 across; flash and rear
+// sensor at 64.16/13.82 and 64.16/34.16, both 6.90) sit inside this, so clearing the plateau
+// clears every one of them.
+plateau_across = [0.8, 75.8];
+plateau_along  = [0.5, 46.7];
+plateau_margin = 1.2;    // clearance around the plateau
+
+// The opening, in the door's own centred coordinates. It reaches the phone's full width, because
+// the plateau very nearly does, and past the phone's end, so nothing laps over it.
+cam_x0 = max(-phone_x / 2, plateau_across[0] - plateau_margin - phone_x / 2);
+cam_x1 = min( phone_x / 2, plateau_across[1] + plateau_margin - phone_x / 2);
+cam_y0 = phone_y / 2 - plateau_along[1] - plateau_margin;
+cam_y1 = phone_y / 2 + 1.3;
 
 module src() { import(SRC, convexity = 12); }
 module sec_y(y) { projection(cut = true) translate([0, 0, -y]) rotate([90, 0, 0]) src(); }
@@ -67,7 +81,7 @@ difference() {
     // (2) Clear the old rim: it is sized for a much smaller phone.
     translate([0, 0, plate_top + big / 2]) rrect(fx, fy, big);
 
-    // (3) The camera opening, through the plate, at the camera end (+y).
-    translate([0, fy / 2 - cam_end_rim - cam_len / 2, 0])
-        rrect(fx - 2 * cam_rim, cam_len, big);
+    // (3) The camera opening, through the plate, clearing the whole plateau.
+    translate([(cam_x0 + cam_x1) / 2, (cam_y0 + cam_y1) / 2, 0])
+        rrect(cam_x1 - cam_x0, cam_y1 - cam_y0, big, 5);
 }

@@ -49,6 +49,15 @@ shell, not an extrusion, so it cannot be cut in half and bridged to gain length.
 means extending curved surfaces in CAD, on every part that spans the phone: shell, carriage and
 band arms.
 
+## The phone's own numbers
+
+Apple publishes a dimensioned mechanical drawing per device, linked from the Accessory Design
+Guidelines: [developer.apple.com/accessories/dimensional-drawings/](https://developer.apple.com/accessories/dimensional-drawings/).
+The iPhone 18 Pro Max sheet gives the body as 163.43 × 77.98 × 8.75 and dimensions every imaging
+feature and the camera plateau, which is what the door's opening has to clear. Use it rather than
+leaks or dummy measurements; the figures are in
+[upstream-stretch/README.md](upstream-stretch/README.md).
+
 ## What was worth taking from it
 
 The lens spacing. The carriage's bores sit at y = ±32.2 mm, so its inter-lens distance is about
