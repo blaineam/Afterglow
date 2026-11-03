@@ -37,7 +37,12 @@ while [ $# -gt 0 ]; do
 done
 [ $CHECK_ONLY = 1 ] && exit 0
 
-UDID=$(xcrun devicectl list devices 2>/dev/null | grep -E '[[:space:]](connected|available \(paired\))[[:space:]]' | grep -oE '[0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}' | head -1)
+# Same filtering as ios_build_and_run.sh: a real iPhone, not a simulator or an Apple TV.
+UDID=$(xcrun devicectl list devices 2>/dev/null \
+    | grep -v 'simulated' \
+    | grep -iE '[[:space:]]iPhone[0-9]+,[0-9]+|[[:space:]]iPhone [0-9]' \
+    | grep -E '[[:space:]](connected|available)([[:space:]]|$|[[:space:]]\(paired\))' \
+    | grep -oE '[0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}' | head -1)
 if [ -z "$UDID" ]; then
     echo "No connected iPhone. Plug it in, unlock it, and trust this Mac."
     exit 1

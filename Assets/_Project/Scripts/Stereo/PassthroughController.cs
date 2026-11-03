@@ -62,6 +62,8 @@ namespace CardboardXR.Stereo
         Vector2 m_FrustumCenter;
         Vector2 m_FrustumSize;
         bool m_HasImage;
+        float m_NextTransformLog;
+        bool m_Turned;
         float? m_FocusDistance;
         float m_ShownDistance;
 
@@ -157,7 +159,20 @@ namespace CardboardXR.Stereo
             // Always the whole camera image, in both views. Mono once cropped it to ARCore's
             // screen-shaped rectangle so it filled the screen, as an ordinary AR app does, but seeing
             // everything the camera saw was better even at the price of a border around it.
-            if (!TryWidenDisplayTransform(args.displayMatrix.Value, out var widened, out var min, out var max))
+            // Turned a quarter first, where the platform's matrix disagrees with the screen.
+            var display = args.displayMatrix.Value;
+            var turn = LaunchOptions.GetInt("camTurn", -1);
+            var turning = turn < 0 ? NeedsQuarterTurn(display, Screen.width, Screen.height) : turn != 0;
+            if (turning)
+                display = QuarterTurn(display, turn >= 2 ? turn : 1);
+            if (turning != m_Turned)
+            {
+                m_Turned = turning;
+                Debug.Log($"[Passthrough] Camera image turned a quarter: {turning}" +
+                          (turn < 0 ? " (decided from the display matrix)" : " (from camTurn)"));
+            }
+
+            if (!TryWidenDisplayTransform(display, out var widened, out var min, out var max))
                 return;
 
             if (m_CameraMaterial == null)
@@ -180,6 +195,18 @@ namespace CardboardXR.Stereo
             m_FrustumCenter = new Vector2(
                 (min.x + max.x - 1f + projection.m02) / projection.m00,
                 (min.y + max.y - 1f + projection.m12) / projection.m11);
+            // The transform is logged again every few seconds, because the one that matters is not
+            // the first: a matrix that is wrong at startup and right a second later is a race with
+            // the orientation settling, and one that never changes is a standing mismatch. They
+            // need different fixes, and the first frame alone cannot tell them apart.
+            if (Time.unscaledTime >= m_NextTransformLog && args.displayMatrix.HasValue)
+            {
+                m_NextTransformLog = Time.unscaledTime + 5f;
+                var m = args.displayMatrix.Value;
+                Debug.Log($"[Passthrough] Display matrix now r0 {m.GetRow(0)} r1 {m.GetRow(1)} r2 {m.GetRow(2)}, " +
+                          $"screen {Screen.width}x{Screen.height} {Screen.orientation}");
+            }
+
             if (m_HasImage)
                 return;
 
@@ -187,8 +214,58 @@ namespace CardboardXR.Stereo
             m_Screen.enabled = m_On;
             Debug.Log($"[Passthrough] Camera image {m_Texture.width}x{m_Texture.height}, " +
                       $"{2f * Mathf.Atan(m_FrustumSize.x / 2f) * Mathf.Rad2Deg:F0} x " +
-                      $"{2f * Mathf.Atan(m_FrustumSize.y / 2f) * Mathf.Rad2Deg:F0} deg");
+                      $"{2f * Mathf.Atan(m_FrustumSize.y / 2f) * Mathf.Rad2Deg:F0} deg; " +
+                      // AR Foundation builds the display transform from the screen's orientation,
+                      // so when the picture comes out turned a quarter, this says whether the
+                      // screen had settled into landscape by the time the first frame arrived.
+                      $"screen {Screen.width}x{Screen.height} {Screen.orientation}, " +
+                      $"autorotate {Screen.autorotateToLandscapeLeft}/{Screen.autorotateToPortrait}");
             LogCameraMaterial(args);
+        }
+
+        // ARKit on this phone hands back a display matrix built for a portrait interface even
+        // though the screen is landscape and stays that way: measured on an iPhone 18 Pro Max on
+        // iOS 27, the matrix was identical over twenty seconds, with screen UV's horizontal axis
+        // driving the texture's vertical one and a 0.35 crop -- which is 0.75/2.173, exactly what
+        // cropping a turned 4:3 image to a 2868x1320 screen costs. The projection that came with
+        // it was right for landscape, so it is the display matrix alone that disagrees.
+        //
+        // So the screen UV is turned a quarter before the matrix sees it, which puts the texture's
+        // long axis back along the screen's long axis; TryWidenDisplayTransform then re-crops as
+        // it always did. `camTurn 0` switches it off, for a phone where the matrix is already
+        // right, and `camTurn 1` forces it on.
+        public static bool NeedsQuarterTurn(Matrix4x4 display, int screenWidth, int screenHeight)
+        {
+            var landscape = screenWidth > screenHeight;
+            // Which way screen-u drives the texture: m00 across, m01 up.
+            var uDrivesVertical = Mathf.Abs(display.m01) > Mathf.Abs(display.m00);
+            return landscape == uDrivesVertical;
+        }
+
+        // Turns the screen's UV a quarter before the display matrix is applied.
+        //
+        // Swapping the two axes alone is not a turn: (u,v) -> (v,u) is a reflection across the
+        // diagonal, which is a quarter turn *and* a mirror, and it shows up as a picture the right
+        // way up but flipped left to right. One axis has to be negated as well. `way` picks which,
+        // since the two differ by a 180-degree turn and only the phone can say which is right.
+        public static Matrix4x4 QuarterTurn(Matrix4x4 display, int way = 1)
+        {
+            var turn = Matrix4x4.identity;
+            if (way >= 2)
+            {
+                // (u,v) -> (v, 1-u)
+                turn.m00 = 0f;  turn.m01 = -1f;
+                turn.m10 = 1f;  turn.m11 = 0f;
+                turn.m20 = 0f;  turn.m21 = 1f;
+            }
+            else
+            {
+                // (u,v) -> (1-v, u)
+                turn.m00 = 0f;  turn.m01 = 1f;
+                turn.m10 = -1f; turn.m11 = 0f;
+                turn.m20 = 1f;  turn.m21 = 0f;
+            }
+            return display * turn;
         }
 
         // ARCore's background shader maps screen UV to camera-texture UV as
@@ -313,6 +390,20 @@ namespace CardboardXR.Stereo
             Debug.Log($"[Passthrough] Texture centre reads {SampleTextureCentre()}, " +
                       $"display transform {m_CameraMaterial.GetMatrix(k_DisplayTransformId).GetRow(0)} " +
                       $"{m_CameraMaterial.GetMatrix(k_DisplayTransformId).GetRow(1)}");
+            // The one above is this code's widened version, with its offset row left out. When the
+            // picture comes out turned a quarter, what matters is what the platform actually
+            // handed over, all three rows of it, and the projection it came with.
+            if (args.displayMatrix.HasValue)
+            {
+                var raw = args.displayMatrix.Value;
+                Debug.Log($"[Passthrough] Raw display matrix r0 {raw.GetRow(0)} r1 {raw.GetRow(1)} r2 {raw.GetRow(2)}");
+            }
+            if (args.projectionMatrix.HasValue)
+            {
+                var p = args.projectionMatrix.Value;
+                Debug.Log($"[Passthrough] Projection m00 {p.m00:F4} m11 {p.m11:F4} m02 {p.m02:F4} m12 {p.m12:F4}" +
+                          $" (m00<m11 means a taller-than-wide frustum, which on a landscape screen is the turn)");
+            }
         }
 
         // Draws the camera image into the texture the way ARCameraBackground draws the screen: a unit
