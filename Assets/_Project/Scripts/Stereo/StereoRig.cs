@@ -60,6 +60,10 @@ namespace CardboardXR.Stereo
         // viewer's lenses.
         public bool IsMono => m_Mono;
 
+        // The lens geometry this rig is drawing through, once it has been built. The in-app
+        // browser passes it to the page so a WebXR scene is corrected with the same numbers.
+        public LensDistortion Lens => m_Lens;
+
         // Puts both eyes at one point, so nothing the eye cameras draw has any disparity. Passthrough
         // turns it on: its picture is one flat image shown to both eyes at a single depth, and virtual
         // objects drawn with real depth fight it, which is seen as doubling. With the eyes together the

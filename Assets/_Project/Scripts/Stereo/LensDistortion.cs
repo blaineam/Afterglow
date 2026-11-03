@@ -49,6 +49,11 @@ namespace CardboardXR.Stereo
 
         public ViewerParams Viewer => m_Viewer;
         public PolynomialRadialDistortion Distortion => m_Distortion;
+        public float ScreenWidthMeters => m_ScreenWidthMeters;
+        public float ScreenHeightMeters => m_ScreenHeightMeters;
+        // Height of the lenses' optical center above the bottom of the screen, which depends on
+        // how the viewer holds the phone. The browser needs it to build the same geometry.
+        public float YEyeOffsetMeters => GetYEyeOffsetMeters();
 
         // Angles from the eye's optical axis to the edges of its view, in radians:
         // (left, right, bottom, top).

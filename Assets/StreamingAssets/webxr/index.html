@@ -1,0 +1,62 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CardboardXR</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; padding: 7vh 6vw; background: #000; color: #e6e6e6;
+         font: 16px/1.5 -apple-system, system-ui, sans-serif; }
+  h1 { font-size: 1.3rem; font-weight: 600; margin: 0 0 .2rem; }
+  p.sub { color: #8d8d8d; margin: 0 0 1.6rem; font-size: .95rem; }
+  form { display: flex; gap: .5rem; margin-bottom: 1.6rem; }
+  input { flex: 1; min-width: 0; padding: .7rem .8rem; border-radius: 10px;
+          border: 1px solid #333; background: #141414; color: inherit; font-size: 1rem; }
+  button { padding: .7rem 1rem; border-radius: 10px; border: 0; background: #2f6fd0;
+           color: #fff; font-size: 1rem; }
+  a.item { display: block; padding: .8rem .9rem; margin-bottom: .5rem; border-radius: 10px;
+           background: #141414; color: inherit; text-decoration: none; border: 1px solid #262626; }
+  a.item small { display: block; color: #8d8d8d; }
+  .note { margin-top: 1.8rem; color: #7a7a7a; font-size: .85rem; }
+  .warn { color: #d8a657; }
+</style>
+
+<h1>CardboardXR browser</h1>
+<p class="sub">WebXR pages render in stereo through the viewer's lenses. Everything else browses flat.</p>
+
+<form onsubmit="go(event)">
+  <input id="url" type="url" inputmode="url" placeholder="https://..." autocapitalize="off" autocorrect="off">
+  <button type="submit">Open</button>
+</form>
+
+<a class="item" href="https://immersive-web.github.io/webxr-samples/immersive-vr-session.html">
+  Immersive VR session<small>immersive-web.github.io — the reference sample</small></a>
+<a class="item" href="https://threejs.org/examples/webxr_vr_cubes.html">
+  three.js cubes<small>threejs.org — a WebGL scene in an XR session</small></a>
+<a class="item" href="https://aframe.io/aframe/examples/showcase/hello-world/">
+  A-Frame hello world<small>aframe.io — scene markup</small></a>
+
+<p class="note" id="status"></p>
+<p class="note warn">
+  No hit testing, anchors, planes, depth or AR. A page that asks for those will fail rather than
+  pretend. Input is a pinch in front of the rear camera, reported as <code>select</code>.
+</p>
+
+<script>
+  function go(e) {
+    e.preventDefault();
+    var v = document.getElementById('url').value.trim();
+    if (!v) return;
+    if (!/^https?:/i.test(v)) v = 'https://' + v;
+    location.href = v;
+  }
+  // Says whether the shim actually loaded, which is the first thing to check if a page is flat.
+  var s = document.getElementById('status');
+  if (navigator.xr && window.__cardboardxrConfig) {
+    var c = window.__cardboardxrConfig;
+    s.textContent = 'Ready: screen ' + (c.screen[0] * 1000).toFixed(0) + ' x ' +
+      (c.screen[1] * 1000).toFixed(0) + ' mm, lenses ' + (c.interLens * 1000).toFixed(1) +
+      ' mm apart, ' + (c.hasPosition ? '6DoF' : '3DoF') + '.';
+  } else {
+    s.textContent = 'WebXR is not available here — this page is not running inside the app.';
+  }
+</script>

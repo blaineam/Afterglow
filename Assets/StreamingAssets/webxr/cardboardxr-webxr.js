@@ -232,3 +232,294 @@
         var handler = this['on' + type];
         if (typeof handler === 'function') handler.call(this, event);
     };
+
+    // Rotates a vector by a quaternion, for placing each eye beside the head.
+    function rotateVec(q, v) {
+        var x = q[0], y = q[1], z = q[2], w = q[3];
+        var ix = w * v[0] + y * v[2] - z * v[1];
+        var iy = w * v[1] + z * v[0] - x * v[2];
+        var iz = w * v[2] + x * v[1] - y * v[0];
+        var iw = -x * v[0] - y * v[1] - z * v[2];
+        return [
+            ix * w + iw * -x + iy * -z - iz * -y,
+            iy * w + iw * -y + iz * -x - ix * -z,
+            iz * w + iw * -z + ix * -y - iy * -x
+        ];
+    }
+
+    function XRViewerPose(transform, views) {
+        this.transform = transform;
+        this.views = views;
+        this.emulatedPosition = !cfg.hasPosition;
+    }
+
+    function XRFrame(session) {
+        this.session = session;
+        this.predictedDisplayTime = performance.now();
+    }
+    XRFrame.prototype.getViewerPose = function (space) {
+        var q = pose.q;
+        // A floor-relative space puts the origin under the user rather than at the head.
+        var lift = space && space._kind === 'local-floor' ? (cfg.eyeHeight || 1.6) : 0;
+        var head = new XRRigidTransform(
+            { x: pose.p[0], y: pose.p[1] + lift, z: pose.p[2] },
+            { x: q[0], y: q[1], z: q[2], w: q[3] });
+        var near = this.session.renderState.depthNear, far = this.session.renderState.depthFar;
+        var views = [];
+        for (var eye = 0; eye < 2; eye++) {
+            var offset = rotateVec(q, [(eye === 0 ? -0.5 : 0.5) * cfg.interLens, 0, 0]);
+            var transform = new XRRigidTransform(
+                { x: head.position.x + offset[0], y: head.position.y + offset[1], z: head.position.z + offset[2] },
+                head.orientation);
+            views.push(new XRView(eye, null, projection(eye, near, far), transform));
+        }
+        return new XRViewerPose(head, views);
+    };
+    XRFrame.prototype.getPose = function (space, base) {
+        return this.getViewerPose(base).transform ? { transform: this.getViewerPose(base).transform } : null;
+    };
+
+    function XRInputSource() {
+        this.handedness = 'none';
+        this.targetRayMode = 'gaze';
+        this.targetRaySpace = new XRReferenceSpace('viewer');
+        this.gripSpace = null;
+        this.profiles = [];
+        this.gamepad = null;
+    }
+
+    // ---------------------------------------------------------------- the render target
+    // The page draws both eyes into one offscreen framebuffer; the distortion pass then warps each
+    // half onto its side of the screen. Drawing straight to the canvas would skip the lenses'
+    // correction, which on a Cardboard viewer is the difference between a usable image and a
+    // pincushioned one.
+    function createTarget(gl, w, h) {
+        var tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        var depth = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, depth);
+        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
+
+        var fbo = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depth);
+        var ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        if (!ok) { console.error('[CardboardXR] eye framebuffer incomplete'); return null; }
+        return { fbo: fbo, tex: tex, depth: depth };
+    }
+
+    var VERT = 'attribute vec2 aPos; attribute vec2 aUv; varying vec2 vUv;' +
+               'void main() { vUv = aUv; gl_Position = vec4(aPos, 0.0, 1.0); }';
+    var FRAG = 'precision mediump float; varying vec2 vUv; uniform sampler2D uTex;' +
+               'void main() { gl_FragColor = texture2D(uTex, vUv); }';
+
+    function compile(gl, type, src) {
+        var s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+            console.error('[CardboardXR] shader: ' + gl.getShaderInfoLog(s));
+        return s;
+    }
+
+    function createDistortion(gl) {
+        var p = gl.createProgram();
+        gl.attachShader(p, compile(gl, gl.VERTEX_SHADER, VERT));
+        gl.attachShader(p, compile(gl, gl.FRAGMENT_SHADER, FRAG));
+        gl.linkProgram(p);
+        if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+            console.error('[CardboardXR] program: ' + gl.getProgramInfoLog(p));
+        var d = {
+            program: p,
+            aPos: gl.getAttribLocation(p, 'aPos'),
+            aUv: gl.getAttribLocation(p, 'aUv'),
+            uTex: gl.getUniformLocation(p, 'uTex'),
+            eyes: []
+        };
+        for (var eye = 0; eye < 2; eye++) {
+            var m = distortionMesh(eye);
+            var pos = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, pos);
+            gl.bufferData(gl.ARRAY_BUFFER, m.pos, gl.STATIC_DRAW);
+            var uv = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, uv);
+            gl.bufferData(gl.ARRAY_BUFFER, m.uv, gl.STATIC_DRAW);
+            var idx = gl.createBuffer();
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idx);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, m.idx, gl.STATIC_DRAW);
+            d.eyes.push({ pos: pos, uv: uv, idx: idx, count: m.idx.length });
+        }
+        return d;
+    }
+
+    // ---------------------------------------------------------------- session lifecycle
+    XRSession.prototype._attachLayer = function (layer, gl) {
+        this._gl = gl;
+        var dpr = window.devicePixelRatio || 1;
+        var canvas = gl.canvas;
+        var w = Math.max(2, Math.floor(window.innerWidth * dpr));
+        var h = Math.max(2, Math.floor(window.innerHeight * dpr));
+        canvas.width = w;
+        canvas.height = h;
+        canvas.style.position = 'fixed';
+        canvas.style.left = '0';
+        canvas.style.top = '0';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.zIndex = '2147483647';
+        this._fbWidth = w;
+        this._fbHeight = h;
+
+        var target = createTarget(gl, w, h);
+        if (target) { this._fbo = target.fbo; this._tex = target.tex; this._depth = target.depth; }
+        this._distort = createDistortion(gl);
+        this.renderState.baseLayer = layer;
+    };
+
+    XRSession.prototype.updateRenderState = function (state) {
+        for (var key in state) if (Object.prototype.hasOwnProperty.call(state, key))
+            this.renderState[key] = state[key];
+    };
+
+    XRSession.prototype.requestReferenceSpace = function (type) {
+        if (type === 'viewer' || type === 'local' || type === 'local-floor')
+            return Promise.resolve(new XRReferenceSpace(type));
+        // Anything else -- bounded-floor, unbounded -- this cannot honestly provide.
+        return Promise.reject(new Error('CardboardXR has no "' + type + '" reference space'));
+    };
+
+    XRSession.prototype.requestAnimationFrame = function (cb) {
+        var handle = this._nextHandle++;
+        this._callbacks.push({ handle: handle, cb: cb });
+        this._schedule();
+        return handle;
+    };
+    XRSession.prototype.cancelAnimationFrame = function (handle) {
+        for (var i = 0; i < this._callbacks.length; i++)
+            if (this._callbacks[i].handle === handle) { this._callbacks.splice(i, 1); return; }
+    };
+    XRSession.prototype._schedule = function () {
+        if (this._pending || this._ended) return;
+        this._pending = true;
+        var self = this;
+        window.requestAnimationFrame(function (t) { self._onFrame(t); });
+    };
+    XRSession.prototype._onFrame = function (time) {
+        this._pending = false;
+        if (this._ended) return;
+        // Taken before the callbacks run, so frames they ask for go in the next batch.
+        var due = this._callbacks;
+        this._callbacks = [];
+        var gl = this._gl;
+        if (gl && this._fbo) gl.bindFramebuffer(gl.FRAMEBUFFER, this._fbo);
+        var frame = new XRFrame(this);
+        for (var i = 0; i < due.length; i++) {
+            try { due[i].cb(time, frame); }
+            catch (e) { console.error('[CardboardXR] frame callback: ' + (e && e.message)); }
+        }
+        if (gl && this._fbo) this._composite();
+        if (this._callbacks.length) this._schedule();
+    };
+
+    // Warps both halves of the eye framebuffer onto the screen through the lens meshes.
+    XRSession.prototype._composite = function () {
+        var gl = this._gl, d = this._distort;
+        if (!d) return;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, this._fbWidth, this._fbHeight);
+        gl.disable(gl.DEPTH_TEST);
+        gl.disable(gl.CULL_FACE);
+        gl.disable(gl.BLEND);
+        gl.disable(gl.SCISSOR_TEST);
+        // Black outside the lens's reach, which is what the viewer's shell shows anyway.
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.useProgram(d.program);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this._tex);
+        gl.uniform1i(d.uTex, 0);
+        for (var eye = 0; eye < 2; eye++) {
+            var m = d.eyes[eye];
+            gl.bindBuffer(gl.ARRAY_BUFFER, m.pos);
+            gl.enableVertexAttribArray(d.aPos);
+            gl.vertexAttribPointer(d.aPos, 2, gl.FLOAT, false, 0, 0);
+            gl.bindBuffer(gl.ARRAY_BUFFER, m.uv);
+            gl.enableVertexAttribArray(d.aUv);
+            gl.vertexAttribPointer(d.aUv, 2, gl.FLOAT, false, 0, 0);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.idx);
+            gl.drawElements(gl.TRIANGLES, m.count, gl.UNSIGNED_SHORT, 0);
+        }
+    };
+
+    XRSession.prototype.end = function () {
+        if (this._ended) return Promise.resolve();
+        this._ended = true;
+        this._callbacks = [];
+        var gl = this._gl;
+        if (gl) {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            if (this._fbo) gl.deleteFramebuffer(this._fbo);
+            if (this._tex) gl.deleteTexture(this._tex);
+            if (this._depth) gl.deleteRenderbuffer(this._depth);
+        }
+        this._emit('end');
+        // Lets the app put its own view back.
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cardboardxr)
+            window.webkit.messageHandlers.cardboardxr.postMessage({ event: 'sessionend' });
+        return Promise.resolve();
+    };
+
+    // A pinch in front of the camera, or a tap, arrives here from the app.
+    window.__cardboardxrSelect = function () {
+        if (!active || active._ended) return;
+        var source = active.inputSources[0];
+        active._emit('selectstart', { inputSource: source, frame: new XRFrame(active) });
+        active._emit('select', { inputSource: source, frame: new XRFrame(active) });
+        active._emit('selectend', { inputSource: source, frame: new XRFrame(active) });
+    };
+
+    // ---------------------------------------------------------------- navigator.xr
+    var active = null;
+    navigator.xr = {
+        isSessionSupported: function (mode) {
+            return Promise.resolve(mode === 'immersive-vr' || mode === 'inline');
+        },
+        requestSession: function (mode) {
+            if (mode !== 'immersive-vr' && mode !== 'inline')
+                return Promise.reject(new Error('CardboardXR supports immersive-vr and inline only'));
+            active = new XRSession();
+            active.inputSources = [new XRInputSource()];
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cardboardxr)
+                window.webkit.messageHandlers.cardboardxr.postMessage({ event: 'sessionstart' });
+            return Promise.resolve(active);
+        },
+        addEventListener: function () {},
+        removeEventListener: function () {},
+        ondevicechange: null
+    };
+
+    // Pages call this before handing the context to a layer.
+    if (window.WebGLRenderingContext && !WebGLRenderingContext.prototype.makeXRCompatible)
+        WebGLRenderingContext.prototype.makeXRCompatible = function () { return Promise.resolve(); };
+    if (window.WebGL2RenderingContext && !WebGL2RenderingContext.prototype.makeXRCompatible)
+        WebGL2RenderingContext.prototype.makeXRCompatible = function () { return Promise.resolve(); };
+
+    window.XRWebGLLayer = XRWebGLLayer;
+    window.XRRigidTransform = XRRigidTransform;
+    window.XRSession = XRSession;
+    window.XRFrame = XRFrame;
+    window.XRView = XRView;
+    window.XRViewerPose = XRViewerPose;
+    window.XRReferenceSpace = XRReferenceSpace;
+
+    console.log('[CardboardXR] WebXR ready: screen ' + cfg.screen[0].toFixed(4) + ' x ' +
+                cfg.screen[1].toFixed(4) + ' m, lenses ' + (cfg.interLens * 1000).toFixed(1) + ' mm apart');
+})();

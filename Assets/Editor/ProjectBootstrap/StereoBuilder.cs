@@ -211,7 +211,14 @@ namespace ProjectBootstrap
             var passthrough = origin.AddComponent<PassthroughController>();
             var demosObject = new GameObject("Demos");
             var demos = demosObject.AddComponent<DemoManager>();
-            var (toolbar, panel) = BuildToolbar(fusion, passthrough, demos);
+            // The browser needs the rig's lens geometry to hand the page, and the head's pose to
+            // feed it; it lives beside the demos because pinches reach it from the hands assembly.
+            var browser = demosObject.AddComponent<WebBrowserSession>();
+            var serializedBrowser = new SerializedObject(browser);
+            serializedBrowser.FindProperty("m_Rig").objectReferenceValue = rig;
+            serializedBrowser.FindProperty("m_Fusion").objectReferenceValue = fusion;
+            serializedBrowser.ApplyModifiedPropertiesWithoutUndo();
+            var (toolbar, panel) = BuildToolbar(fusion, passthrough, demos, browser);
             var modeToggle = toolbar[2];
             var passthroughToggle = toolbar[3];
             var serializedFusion = new SerializedObject(fusion);
@@ -777,7 +784,7 @@ namespace ProjectBootstrap
         // showing. Scan Room is added once the room boundary exists, then ArrangeToolbar finishes it.
         // Returns the items (Apps, Recenter, 6DoF, Passthrough, then one empty for Scan Room) and the panel.
         static (M3Button[] items, RectTransform panel) BuildToolbar(HeadPoseFusion fusion,
-            PassthroughController passthrough, DemoManager demos)
+            PassthroughController passthrough, DemoManager demos, WebBrowserSession browser)
         {
             // Low, out of the way, until SettingsSummoner opens it in front of the user.
             const float pitch = -30f;
@@ -790,7 +797,7 @@ namespace ProjectBootstrap
 
             // The view switch isn't here: it's on the screen itself, in the settings menu, since it's
             // pressed with the phone in hand where this panel can't be reached.
-            var items = new M3Button[5];
+            var items = new M3Button[6];
             // Apps shows the app library above the panel (BuildLibrary), the way to the lobby and
             // between demos.
             var library = demos.gameObject.AddComponent<AppLibrary>();
@@ -798,6 +805,9 @@ namespace ProjectBootstrap
             items[1] = ToolbarItem(panel, "Recenter", "my_location", "Recenter", fusion.Recenter);
             items[2] = ToolbarItem(panel, "Tracking Mode", "view_in_ar", "6DoF", fusion.ToggleMode);
             items[3] = ToolbarItem(panel, "Passthrough", "visibility", "Passthrough", passthrough.Toggle);
+            // The in-app browser, which is the only way to a WebXR page on this phone: Safari has
+            // none, so a page opened anywhere else falls back to flat.
+            items[5] = ToolbarItem(panel, "Browser", "public", "Browser", browser.Toggle);
             return (items, panel);
         }
 
@@ -871,9 +881,9 @@ namespace ProjectBootstrap
         // Orders the items into their groups, with a divider before each group after the first.
         static void ArrangeToolbar(RectTransform panel, M3Button[] items)
         {
-            // Apps | Recenter, Scan Room | 6DoF, Passthrough.
-            var order = new[] { items[0], items[1], items[4], items[2], items[3] };
-            var groups = new[] { 0, 1, 1, 2, 2 };
+            // Apps, Browser | Recenter, Scan Room | 6DoF, Passthrough.
+            var order = new[] { items[0], items[5], items[1], items[4], items[2], items[3] };
+            var groups = new[] { 0, 0, 1, 1, 2, 2 };
             var dividers = new Image[3];
             for (var g = 1; g < dividers.Length; g++)
             {
