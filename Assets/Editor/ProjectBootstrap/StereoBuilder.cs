@@ -242,7 +242,7 @@ namespace ProjectBootstrap
             var settings = BuildSettings(origin, fusion, panel);
             BuildLibrary(panel, demos, settings, toolbar[0], catalog);
             BuildArDebugView(origin, rig, fusion, boundary, arCamera, arViewOnly);
-            BuildPassthrough(passthrough, fusion, rig, arCamera, passthroughToggle, passthroughShader);
+            BuildPassthrough(passthrough, fusion, rig, arCamera, head.transform, passthroughToggle, passthroughShader);
             BuildLighting(origin, fusion, passthrough, arCamera);
             BuildDemos(demosObject, demos, catalog, fusion, rig, passthrough, boundary, origin, settings);
 
@@ -633,13 +633,19 @@ namespace ProjectBootstrap
         }
 
         // Camera passthrough: the whole camera image, drawn into a texture, shown on a screen quad in
-        // front of the AR camera that both eyes see. Its shader draws it first, ignoring depth and
-        // writing none, so virtual things always draw over it, however near or far they are.
+        // front of the eyes. Its shader draws it first, ignoring depth and writing none, so virtual
+        // things always draw over it, however near or far they are.
+        //
+        // The quad is held with the head, not with the AR camera, because it is only the surface the
+        // picture is drawn on: the shader reprojects the image onto it from the pose it was taken
+        // from, so the quad has to cover the view rather than match the camera's frustum. Held with
+        // the AR camera it covered the view only while the head had not turned since the image was
+        // taken, which it always has (PassthroughController).
         static void BuildPassthrough(PassthroughController passthrough, HeadPoseFusion fusion, StereoRig rig,
-            Camera arCamera, M3Button toggle, Shader passthroughShader)
+            Camera arCamera, Transform head, M3Button toggle, Shader passthroughShader)
         {
             var material = SaveAsset(new Material(passthroughShader) { name = "Passthrough" }, $"{GeneratedFolder}/Passthrough.mat");
-            var screen = CreatePrimitive(PrimitiveType.Quad, "Passthrough Screen", arCamera.transform, material);
+            var screen = CreatePrimitive(PrimitiveType.Quad, "Passthrough Screen", head, material);
             screen.layer = PassthroughLayer;
             var screenRenderer = screen.GetComponent<MeshRenderer>();
             screenRenderer.shadowCastingMode = ShadowCastingMode.Off;

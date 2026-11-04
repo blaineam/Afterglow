@@ -9,28 +9,65 @@ namespace CardboardXR.Stereo
     // Camera passthrough in the viewer. Each new ARCore camera image is drawn with ARCore's own
     // background material into a texture, with its display transform widened so the texture holds
     // the whole camera image instead of the screen-shaped crop ARCore shows. A screen quad in front
-    // of the AR camera shows it to both eyes at the angle the camera saw it, so the room appears at
-    // true scale. The AR camera's pose driver moves it only with each new ARCore pose, which comes
-    // with each new image, so the picture stays fixed to the room as the head turns and only its
-    // edges trail. The camera sees less than a Cardboard eye, so the image is a window with a dark
-    // border. Passthrough needs 6DoF, since ARCore must run, and hides the virtual environment (every
+    // of the eyes shows it at the angle the camera saw it, so the room appears at true scale. The
+    // camera sees less than a Cardboard eye, so the image is a window with a dark border.
+    // Passthrough needs 6DoF, since ARCore must run, and hides the virtual environment (every
     // VirtualEnvironment, in whichever scene).
+    //
+    // The image is always behind: it was taken 45-100 ms ago, and the head has moved since. The quad
+    // is therefore not the picture, only the surface the picture is drawn on. It sits square to the
+    // view, wide enough to cover the whole field of view, and the shader decides what each of its
+    // pixels shows from the direction that pixel looks in, turned into the axes of the camera that
+    // took the image (m_CaptureInSession). Depth drops out of that, and so does where the head is:
+    // only which way it faces can move the picture.
+    //
+    // That last part is the point, and it is worth being exact about why, because the quad it
+    // replaces was not wrong in the way it looks. That quad hung on the AR camera, covering that
+    // camera's frustum at m_ShownDistance. Seen from the point the image was taken from, a flat
+    // screen rigidly attached to the camera is an exact re-rendering however the head has turned:
+    // turning the head only re-rasterizes it. So rotation was never the error.
+    //
+    // The error came in through the other end of the pose. The eye is not at the point the image was
+    // taken from; it is at the position filter's prediction for now, and the image is from 45-100 ms
+    // ago, so the two are a centimeter or two apart whenever the head is moving. Reprojecting onto a
+    // plane at distance d is exact only for what really is d away, and everything else is thrown off
+    // by about t * (1/Z - 1/d) radians, for an offset t and a true depth Z. With the plane at 2 m
+    // that is a fraction of a degree. But PassthroughHandFocus pulls the plane in to 0.3 m whenever a
+    // hand is up, and then 2 cm of offset swings a wall 3 m away through three and a half degrees
+    // while the hand itself stays put: the picture stretches and pulls, in proportion to how fast the
+    // head is moving. Tilting makes it worse again, because a tilt the gyro and ARCore disagree on
+    // leaks gravity into the accelerations the filter integrates, so t itself grows.
+    //
+    // Reprojecting a direction takes d and t out of it together. What is given up is the parallax of
+    // a move of the head, which the plane did carry for things at d: walk a meter a second and the
+    // picture now sits about 7 cm behind, a couple of degrees of offset that slides with the body
+    // rather than shearing with every twitch of it. That is the right trade here. Rotation comes from
+    // a 400 Hz sensor fusion and is good; position comes from a filter coasting between 30 Hz fixes
+    // that are already old, and is the shakiest thing in the stack. It no longer reaches the picture.
+    //
     // Switching to 3DoF turns it off until 6DoF is back. The "passthrough" launch option (1) starts
     // with it on. While it's on, the eyes move onto the camera (HeadPoseFusion.EyesAtCamera), so the
-    // image is seen from where it was taken. The image is flat, so things in it only line up in both
-    // eyes at its own distance; FocusDistance moves it to what the user is looking at, such as a
-    // tracked hand. Anything else drawn keeps its own depth and fights that flat image, which is seen
-    // as doubling, so while passthrough is on the rig's eyes move together (StereoRig.MonoEyes) and
-    // the whole view becomes one flat, self-consistent window. In the single phone view the view also
-    // takes the AR camera's pose itself, as an ordinary AR app does: the image then sits still on the
-    // screen, at the price of the image's delay, which only matters in a viewer.
+    // image is seen from where it was taken. It is still one flat picture, and anything else drawn
+    // keeps its own depth and fights it, which is seen as doubling, so while passthrough is on the
+    // rig's eyes move together (StereoRig.MonoEyes) and the whole view becomes one flat,
+    // self-consistent window. In the single phone view the view also takes the AR camera's pose
+    // itself, as an ordinary AR app does, which leaves the reprojection nothing to undo: the image
+    // then sits still on the screen, at the price of the image's delay, which only matters in a
+    // viewer.
     public class PassthroughController : MonoBehaviour
     {
         static readonly int k_DisplayTransformId = Shader.PropertyToID("_UnityDisplayTransform");
+        static readonly int k_CaptureFromWorldId = Shader.PropertyToID("_CaptureFromWorld");
+        static readonly int k_CaptureFrustumId = Shader.PropertyToID("_CaptureFrustum");
         // The nearest the image comes, in meters.
         const float k_MinDistance = 0.2f;
         // How quickly the image follows a change of focus: most of the way in this many seconds.
         const float k_FocusSeconds = 0.25f;
+        // The quad has to reach past every corner of both eye frustums, or the picture would be cut
+        // off at the edges of the view. A little over, for a viewer whose lenses are wider than the
+        // numbers say, and never under this, which covers the phone view's own 60 degrees.
+        const float k_ViewMargin = 1.15f;
+        const float k_MinViewExtent = 1.2f;
 
         [SerializeField] HeadPoseFusion m_Fusion;
         [Tooltip("The stereo rig: its eyes move together while passthrough is on, so nothing drawn has " +
@@ -50,6 +87,10 @@ namespace CardboardXR.Stereo
         ARCameraManager m_CameraManager;
         TrackedPoseDriver m_PoseDriver;
         Material m_CameraMaterial;
+        // The quad's own material instance, which carries the reprojection to the shader.
+        Material m_ScreenMaterial;
+        // The pose the image now in the texture was taken from, in the AR session's own space.
+        Matrix4x4 m_CaptureInSession = Matrix4x4.identity;
         Mesh m_Quad;
         CommandBuffer m_Commands;
         RenderTexture m_Texture;
@@ -69,7 +110,10 @@ namespace CardboardXR.Stereo
 
         public bool IsOn => m_On;
 
-        // Where the image should be, in meters from the camera, or null for m_Distance. It eases there.
+        // Where the quad should sit, in meters from the eyes, or null for m_Distance. It eases there.
+        // The reprojection decides what the quad shows from direction alone, so this no longer
+        // changes the picture at all; it is only where the surface sits. PassthroughHandFocus still
+        // sets it, and used to warp the picture by doing so.
         public float? FocusDistance
         {
             get => m_FocusDistance;
@@ -86,6 +130,11 @@ namespace CardboardXR.Stereo
             m_CameraManager = m_ArCamera.GetComponent<ARCameraManager>();
             m_PoseDriver = m_ArCamera.GetComponent<TrackedPoseDriver>();
             m_ShownDistance = m_Distance;
+            // Instantiated once here rather than through m_Screen.material on each use, which
+            // returns the same instance but reads as though it made another.
+            m_ScreenMaterial = m_Screen.material;
+            // Until the first image, zero size tells the shader there is nothing to show.
+            m_ScreenMaterial.SetVector(k_CaptureFrustumId, Vector4.zero);
         }
 
         // After the other components' OnEnable, so the mode set here sticks.
@@ -195,6 +244,14 @@ namespace CardboardXR.Stereo
             m_FrustumCenter = new Vector2(
                 (min.x + max.x - 1f + projection.m02) / projection.m00,
                 (min.y + max.y - 1f + projection.m12) / projection.m11);
+            // The pose this image was taken from, which is what the shader reprojects out of. The AR
+            // camera's transform carries the pose of the frame being delivered. Kept in the session's
+            // own space -- this component sits on the XR Origin, so its transform is where that space
+            // is in the world -- because that placing moves: RoomBoundary eases it to line the
+            // detected floor up with the virtual one, and recentering turns it bodily. Held as a world
+            // pose instead, the picture would lurch whenever the session moved under it, until the
+            // next image arrived a thirtieth of a second later.
+            m_CaptureInSession = transform.worldToLocalMatrix * m_ArCamera.transform.localToWorldMatrix;
             // The transform is logged again every few seconds, because the one that matters is not
             // the first: a matrix that is wrong at startup and right a second later is a race with
             // the orientation settling, and one that never changes is a standing mismatch. They
@@ -203,8 +260,15 @@ namespace CardboardXR.Stereo
             {
                 m_NextTransformLog = Time.unscaledTime + 5f;
                 var m = args.displayMatrix.Value;
+                // How far the head has turned since this image was taken, which is how much work the
+                // reprojection is doing. It is the only thing left that can misplace the picture, and
+                // it misplaces it bodily rather than stretching it, so the number is worth having:
+                // a degree or two is the lag working as intended, ten says rotational latency itself
+                // is what to chase next.
+                var turned = Quaternion.Angle(m_ArCamera.transform.rotation, m_Fusion.transform.rotation);
                 Debug.Log($"[Passthrough] Display matrix now r0 {m.GetRow(0)} r1 {m.GetRow(1)} r2 {m.GetRow(2)}, " +
-                          $"screen {Screen.width}x{Screen.height} {Screen.orientation}");
+                          $"screen {Screen.width}x{Screen.height} {Screen.orientation}, " +
+                          $"reprojecting {turned:F1} deg of head turn");
             }
 
             if (m_HasImage)
@@ -322,8 +386,10 @@ namespace CardboardXR.Stereo
             // write SV_Depth. Metal drops the draw when the target has no depth to write to, which
             // left the texture on the clear colour; GLES on Android tolerated it, so this only ever
             // showed up on the iPhone, as a black passthrough image with nothing logged.
-            m_Texture = new RenderTexture(width, height, 24) { name = "Passthrough" };
-            m_Screen.material.mainTexture = m_Texture;
+            // Clamped, because the shader samples right up to the edge of the image and Repeat would
+            // wrap the far edge into that last row of pixels.
+            m_Texture = new RenderTexture(width, height, 24) { name = "Passthrough", wrapMode = TextureWrapMode.Clamp };
+            m_ScreenMaterial.mainTexture = m_Texture;
         }
 
         // Reads one pixel back from the middle of the passthrough texture, once. A black quad in the
@@ -469,10 +535,67 @@ namespace CardboardXR.Stereo
             var target = Mathf.Clamp(m_FocusDistance ?? m_Distance, k_MinDistance, m_Distance);
             var step = 1f - Mathf.Exp(-Time.unscaledDeltaTime / k_FocusSeconds);
             m_ShownDistance = Mathf.Exp(Mathf.Lerp(Mathf.Log(m_ShownDistance), Mathf.Log(target), step));
+            // After RoomBoundary's Update, which places the session in the world this frame.
+            m_ScreenMaterial.SetMatrix(k_CaptureFromWorldId,
+                (transform.localToWorldMatrix * m_CaptureInSession).inverse);
+            m_ScreenMaterial.SetVector(k_CaptureFrustumId,
+                new Vector4(m_FrustumCenter.x, m_FrustumCenter.y, m_FrustumSize.x, m_FrustumSize.y));
+
             var d = m_ShownDistance;
+            // Square to the view and centered on it, rather than on the camera's frustum: the shader
+            // decides what each pixel shows from the direction it looks in, so this only has to be
+            // the surface those pixels are drawn on, and has to reach the edges of the view.
             var screen = m_Screen.transform;
-            screen.SetLocalPositionAndRotation(new Vector3(m_FrustumCenter.x * d, m_FrustumCenter.y * d, d), Quaternion.identity);
-            screen.localScale = new Vector3(m_FrustumSize.x * d, m_FrustumSize.y * d, 1f);
+            screen.SetLocalPositionAndRotation(new Vector3(0f, 0f, d), Quaternion.identity);
+            var across = 2f * d * ViewExtent();
+            screen.localScale = new Vector3(across, across, 1f);
         }
+
+        // The tangent of the widest half-angle either eye sees. A square quad of this half-extent
+        // covers a frustum whose own corner is at (tan right, tan top), so the corners are in.
+        float ViewExtent()
+        {
+            var extent = k_MinViewExtent;
+            var lens = m_Rig != null ? m_Rig.Lens : null;
+            if (lens != null)
+            {
+                extent = Mathf.Max(extent, Widest(lens.GetFieldOfView(Eye.Left)));
+                extent = Mathf.Max(extent, Widest(lens.GetFieldOfView(Eye.Right)));
+            }
+            return extent * k_ViewMargin;
+
+            // Left, right, bottom and top half-angles, in radians.
+            static float Widest(Vector4 fov) => Mathf.Max(
+                Mathf.Max(Mathf.Tan(fov.x), Mathf.Tan(fov.y)),
+                Mathf.Max(Mathf.Tan(fov.z), Mathf.Tan(fov.w)));
+        }
+
+        // Where a point the eye is looking at falls in the passthrough texture, from 0 to 1 on each
+        // axis. False when there is no image yet, or when the point lies behind the camera that took
+        // the one there is; InImage then says whether it was in the picture at all.
+        //
+        // The shader does exactly this, per pixel, on the world position of the fragment and this
+        // eye's own position. It is here as well so the mapping can be tested, because the two
+        // properties the fix rests on are statements about this function: every point along one line
+        // of sight lands on the same pixel, and sliding the eye along that line of sight -- which is
+        // all a wrong position estimate does to it -- cannot move the picture.
+        public static bool TryImageUv(Matrix4x4 captureFromWorld, Vector3 eyePosition, Vector3 worldPoint,
+                                      Vector2 center, Vector2 size, out Vector2 uv)
+        {
+            uv = Vector2.zero;
+            if (size.x <= 1e-6f || size.y <= 1e-6f)
+                return false;
+            // A direction, so only the rotation in captureFromWorld bears on it.
+            var inCamera = captureFromWorld.MultiplyVector(worldPoint - eyePosition);
+            if (inCamera.z <= 1e-6f)
+                return false;
+            uv = new Vector2(
+                (inCamera.x / inCamera.z - center.x) / size.x + 0.5f,
+                (inCamera.y / inCamera.z - center.y) / size.y + 0.5f);
+            return true;
+        }
+
+        public static bool InImage(Vector2 uv) =>
+            uv.x >= 0f && uv.x <= 1f && uv.y >= 0f && uv.y <= 1f;
     }
 }
