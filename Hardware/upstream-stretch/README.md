@@ -21,10 +21,13 @@ So each part is **cut, moved and bridged** — the outer pieces slide outward an
 by extruding the cut face straight. Every feature keeps its true size; the contour gains a flat
 band as wide as the insert.
 
-Both parts are cut on the **same planes** (y = ±55, x = ±26) and gain the **same amounts**
-(6 mm each side along, 3.5 mm each side across), so any pair of mating features moves together.
-The cuts sit outboard of the lens bores, so the lens spacing the app's viewer profile depends on
-is untouched.
+Every part is cut on the **same planes in its own coordinates** (y = ±55, x = ±26) and gains the
+**same amounts** (6 mm each side along, 3.5 mm each side across), so a pair of mating features moves
+together. Not quite the same thing as cutting them on the same planes in the assembly, as it turns
+out — the print-ready STLs are each re-centred for the plate, and the door's origin sits 0.600 mm
+across from the shell's. It does not matter here, and
+[The door against the shell](#the-door-against-the-shell) measures why. The cuts sit outboard of the
+lens bores, so the lens spacing the app's viewer profile depends on is untouched.
 
 | | Before | After | Phone needs |
 |---|---|---|---|
@@ -62,6 +65,66 @@ Measured off the rendered meshes, not computed:
   84.95, Z 0.60 … 8.25 against a prediction of 21.24 … 40.61 and 62.69 … 84.95 with Z untouched,
   and all four are genus 0. Against the door's pockets that leaves about 0.23 mm of interference a
   side — upstream's own press fit, which the from-scratch version had no relationship to at all.
+
+## The door against the shell
+
+Nothing above said whether the stretched door still drops into the stretched shell. It does, with
+upstream's own clearances to the third decimal place.
+
+The two can be compared at all because the STEP download is **one assembly**: `Viewer shell.step`
+and `Door - iPhone 15 Pro.step` are modelled in a shared frame, and a boolean intersection of the
+two solids is exactly **0 mm³**. The print-ready STLs are that same geometry re-centred for the
+build plate, so each carries a fixed offset into that frame:
+
+| | into the assembly frame |
+|---|---|
+| `Viewer shell (back face down).stl` | + (0.250, 0, −0.500) |
+| `Door - iPhone 15 Pro (PETG, outer face down).stl` | + (0.850, 0, −2.500) |
+| `TPU locator - … corner.stl` | + (0.850, 0, −2.500) |
+
+Those are measured, not guessed. The shell's comes from its fourteen largest flat horizontal faces,
+which land on the STEP's at exactly +0.500 in Z with areas agreeing to 0.3 mm², and from the
+77.200 mm inner wall, which lands at +0.250 in X. The door's comes from the locators, whose STL
+bounding boxes land on the STEP's locator solids to 0.003 mm under + (0.850, 0, −2.500).
+
+**So the door's print frame is 0.600 mm across from the shell's.** Both are cut at x = ±26 in their
+own coordinates, which puts the door's cut planes at +26.850 and −25.150 in the assembly and the
+shell's at +26.250 and −25.750: two 0.600 mm bands where one part's material has slid 3.5 mm and
+the other's has not. A mating feature with an edge inside one of those bands would be thrown 3.5 mm
+out. None is — every door-to-shell contact sits between 38 and 47 across, well outboard of both
+planes — and in Y the two frames agree exactly, so y = ±55 genuinely is shared. Worth knowing before
+anyone cuts a part on a different plane.
+
+Measured by cross-sectioning both meshes in the assembly frame at twelve heights from z = −0.45 to
+z = 3.90 and comparing the outlines against each other:
+
+| | upstream door, upstream shell | new door, stretched shell |
+|---|---|---|
+| outline crossings, all twelve heights | **0** | **0** |
+| gap, hinge side | 0.300 mm | 0.300 mm |
+| gap, latch side | 0.147 mm (0.156 at z = 0.5) | 0.147 mm (0.156 at z = 0.5) |
+| tightest spot | 38.747 across | 42.247 across |
+
+The clearances are identical, and the tightest spot has moved by exactly the 3.500 mm the insert
+adds. That is the case for cut-and-bridge in one line: the fit is not re-derived, it is carried.
+
+Two things about that fit are worth knowing before printing:
+
+- **The seat is a flange.** The door's outline is full size below z = −0.500 and the shell has no
+  material below it, so 2.00 mm of door stands proud of the shell's back face and the flange's top
+  lands flush on it. The strip filled back into the plate (z −2.500 … −0.600) and the MagSafe
+  recess (−2.500 … −1.700) are both inside that 2.00 mm, so neither can foul the shell however
+  deep the recess is taken.
+- **The locators clear the shell completely.** Not one of their 184–224 vertices is inside it, in
+  any of the four corners.
+
+How it was measured: read both STEP files with FreeCAD to establish the assembly frame, then work on
+the meshes, because the meshes are what gets printed and the STEP is a different revision (its
+locators are a sliding fit in the pockets where the printed ones are a press fit). Cross-sections
+come from the triangle soup directly; the clearance is a nearest-neighbour query between the two
+outlines sampled at 0.05 mm, and the crossing count is an orientation test on every door-segment /
+shell-segment pair. Running the whole thing on upstream's own door and shell first is what makes the
+numbers mean anything — without that control, 0.147 mm would look alarming rather than intentional.
 
 ## Running them
 
@@ -210,13 +273,14 @@ face is a single filament change with no tower at all.
 
 ## Not done yet
 
-- **Fit between parts has still not been checked**, but it now can be. The download's
-  `STEP file for remixing/` folder carries the shell, door, lens carriage, focus wheel and band
-  arms as solids, and they share one assembly frame: the shell spans Y ±81.09 around the door's
-  ±79.59, and the carriage's Z sits inside the shell's. That is the transform this file once said
-  did not exist. Reading the STEP also settled one thing the meshes implied wrongly — the door and
-  a locator intersect in **exactly zero** volume, so they are a slip fit in the plate and the
-  squeeze is against the phone and the bay, not against the pocket.
+- **The door against the shell has now been checked** — see the section above. What has not is the
+  **lens carriage** against the stretched shell, and the focus wheel against the carriage. The
+  assembly frame and the method are both in hand now, so those are the same job again with
+  different files.
+- One thing the STEP settled that the meshes implied wrongly: the door and a locator intersect in
+  **exactly zero** volume there, so in that revision they are a slip fit in the plate and the
+  squeeze is against the phone and the bay, not against the pocket. The printed meshes do carry
+  about 0.23 mm a side, and the meshes are what gets printed.
 - **These scripts still work from the meshes, deliberately.** A shell printed from `shell.scad` is
   the one this door has to match, so the stretch stays exactly as it was and only the
   phone-facing features were changed. Moving the pipeline onto the STEP solids would be better
