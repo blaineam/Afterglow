@@ -65,6 +65,10 @@ namespace CardboardXR.Hands
         // What the rest of the app reads: the joints as shown, moved on from the last result.
         public readonly Vector3[] joints = new Vector3[HandGeometry.JointCount];
         public bool isTracking;
+        // Goes up by one with each result placed for THIS hand. The tracker's own
+        // ResultCount counts both, so anything watching for a new result on one hand has to
+        // watch this instead or it reacts to the other hand's.
+        public int results;
         public float distance;
         public float pinchDistance;
         public float pinchRatio;

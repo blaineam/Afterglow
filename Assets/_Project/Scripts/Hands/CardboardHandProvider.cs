@@ -6,9 +6,9 @@ using UnityEngine.XR.Hands.ProviderImplementation;
 namespace CardboardXR.Hands
 {
     // Hands for XR Hands, and through it the XR Interaction Toolkit, from the camera-based tracking:
-    // the one hand HandTracker follows, as the left or right hand, with the pointing, grip, pinch and
+    // the hands HandTracker follows, as the left and right hand, with the pointing, grip, pinch and
     // poke poses and the pinch that XRI's hand interactors read through XRHandDevice. HandSubsystemFeed
-    // creates the subsystem and supplies the hand. No XR loader is involved: AR Foundation's is the
+    // creates the subsystem and supplies them. No XR loader is involved: AR Foundation's is the
     // only one.
     public class CardboardHandProvider : XRHandSubsystemProvider
     {
@@ -43,20 +43,28 @@ namespace CardboardXR.Hands
                 handJointsInLayout[i] = true;
         }
 
-        // A hand left out of the returned flags is reported as not tracked.
+        // A hand left out of the returned flags is reported as not tracked, so each side is asked
+        // for on its own and whichever are there are reported together.
         public override XRHandSubsystem.UpdateSuccessFlags TryUpdateHands(XRHandSubsystem.UpdateType updateType,
             ref Pose leftHandRootPose, NativeArray<XRHandJoint> leftHandJoints,
             ref Pose rightHandRootPose, NativeArray<XRHandJoint> rightHandJoints)
         {
-            if (Feed == null || !Feed.TryGetJoints(out var handedness, out var joints))
+            if (Feed == null)
                 return XRHandSubsystem.UpdateSuccessFlags.None;
-            if (handedness == Handedness.Left)
+            var flags = XRHandSubsystem.UpdateSuccessFlags.None;
+            if (Feed.TryGetJoints(Handedness.Left, out var left))
             {
-                leftHandRootPose = Fill(handedness, joints, leftHandJoints);
-                return XRHandSubsystem.UpdateSuccessFlags.LeftHandRootPose | XRHandSubsystem.UpdateSuccessFlags.LeftHandJoints;
+                leftHandRootPose = Fill(Handedness.Left, left, leftHandJoints);
+                flags |= XRHandSubsystem.UpdateSuccessFlags.LeftHandRootPose |
+                         XRHandSubsystem.UpdateSuccessFlags.LeftHandJoints;
             }
-            rightHandRootPose = Fill(handedness, joints, rightHandJoints);
-            return XRHandSubsystem.UpdateSuccessFlags.RightHandRootPose | XRHandSubsystem.UpdateSuccessFlags.RightHandJoints;
+            if (Feed.TryGetJoints(Handedness.Right, out var right))
+            {
+                rightHandRootPose = Fill(Handedness.Right, right, rightHandJoints);
+                flags |= XRHandSubsystem.UpdateSuccessFlags.RightHandRootPose |
+                         XRHandSubsystem.UpdateSuccessFlags.RightHandJoints;
+            }
+            return flags;
         }
 
         // Copies the joints in and returns the root pose, which is the wrist's.

@@ -950,6 +950,7 @@ namespace CardboardXR.Hands
                 MeasureJump(shownTip, hand.joints[HandGeometry.IndexTip], heldTip, hand.resultJoints[HandGeometry.IndexTip],
                     shownPalm, PalmCentre(hand.joints), heldPalm, PalmCentre(hand.resultJoints));
             m_Results++;
+            hand.results++;
             ResultCount++;
         }
 

@@ -6,19 +6,22 @@ using UnityEngine.XR.Hands.ProviderImplementation;
 
 namespace CardboardXR.Hands
 {
-    // Runs the XR Hands subsystem for the camera-tracked hand (CardboardHandProvider) and supplies it:
-    // HandTracker's joints in the XR Origin's tracking space, where XR Hands' poses are, as the left or
-    // right hand by the landmarker's handedness; the pointing ray, from the eyes through the point
-    // between the thumb and index fingertips, as the aim pose; and the pinch. XR Hands updates the
-    // hand early in each frame and again just before rendering, and XRHandDevice passes it on to
-    // input actions. Put it on the XR Origin. It runs after HandTracker and before HandInteractorRig
+    // Runs the XR Hands subsystem for the camera-tracked hands (CardboardHandProvider) and supplies
+    // it: HandTracker's joints in the XR Origin's tracking space, where XR Hands' poses are, as the
+    // left and right hand by the landmarker's handedness; the pointing ray, from the eyes through the
+    // point between the thumb and index fingertips, as the aim pose; and the pinch. XR Hands updates
+    // the hands early in each frame and again just before rendering, and XRHandDevice passes them on
+    // to input actions. Put it on the XR Origin. It runs after HandTracker and before HandInteractorRig
     // and XRI's interaction manager, which use its pinch. Logs [Hands].
+    //
+    // One HandFeed per hand the tracker follows, paired to its slot for good. Each carries its own
+    // pinch detector and turn gate, since both are state machines about a particular hand.
     [DefaultExecutionOrder(-115)]
     public class HandSubsystemFeed : MonoBehaviour
     {
         internal enum PoseKind { Aim, Grip, Pinch, Poke }
 
-        // The handedness is smoothed over results, and the hand only changes sides when the smoothed
+        // The handedness is smoothed over results, and a hand only changes sides when the smoothed
         // chance of a right hand is this far past even, so a wavering reading doesn't swap it.
         const float k_HandednessRate = 0.3f;
         const float k_SideChangeMargin = 0.2f;
@@ -49,8 +52,7 @@ namespace CardboardXR.Hands
 
         XRHandSubsystem m_Subsystem;
         XRHandProviderUtility.SubsystemUpdater m_Updater;
-        PinchDetector m_Pinch;
-        readonly HandTurnGate m_Turn = new();
+        readonly List<HandFeed> m_Feeds = new();
         // A pinch only ends on k_OpenResults tracker results in a row that read the fingers open, with
         // the hand at least k_EdgeMargin of the image from its edge: telling letting go from the hand
         // leaving the camera's view, where most losses happen (0-10% from the edge in the logs; false
@@ -58,41 +60,91 @@ namespace CardboardXR.Hands
         const int k_OpenResults = 2;
         // Longer than HandInteractorRig's m_LostSeconds (0.25 s).
         const float k_PinchKeptSeconds = 0.3f;
-        float m_LostSince = -1f;
         const float k_EdgeMargin = 0.03f;
-        int m_OpenResults;
-        int m_PinchResult = -1;
-        bool m_LoggedEdge;
-        // Whether a pinch was held back during this turn, to log it once.
-        bool m_LoggedTurn;
-        readonly Vector3[] m_Landmarks = new Vector3[HandGeometry.JointCount];
-        readonly Pose[] m_Joints = new Pose[HandSkeleton.JointCount];
-        bool m_HasHand;
-        bool m_IsRight;
-        // The smoothed chance that the hand is a right hand.
-        float m_RightChance;
-        int m_LastResult;
         float m_StatusStart;
         // XR Hands' updates since the last status line, early in the frame and just before rendering.
         int m_EarlyUpdates;
         int m_BeforeRenderUpdates;
 
+        // The feed the single-hand API reports: the first one with a hand.
+        HandFeed Primary
+        {
+            get
+            {
+                foreach (var feed in m_Feeds)
+                {
+                    if (feed.hasHand)
+                        return feed;
+                }
+                return m_Feeds.Count > 0 ? m_Feeds[0] : null;
+            }
+        }
 
         // Which hand is being reported, or Invalid while none is.
-        public Handedness TrackedHandedness => !m_HasHand ? Handedness.Invalid : m_IsRight ? Handedness.Right : Handedness.Left;
+        public Handedness TrackedHandedness => Primary?.Side ?? Handedness.Invalid;
 
-        public bool IsPinching => m_Pinch != null && m_Pinch.IsPinched;
+        // Whether either hand is pinching, which is what the one-handed callers meant by it.
+        public bool IsPinching
+        {
+            get
+            {
+                foreach (var feed in m_Feeds)
+                {
+                    if (feed.hasHand && feed.IsPinching)
+                        return true;
+                }
+                return false;
+            }
+        }
 
-        // From 0 with the fingertips open to 1 once they pinch; 0 while there's no hand.
-        public float PinchValue => !m_HasHand ? 0f
-            : IsPinching ? 1f
-            : Mathf.InverseLerp(m_OpenDistance, m_PinchDistance, m_Tracker.PinchDistance);
+        // Whether that particular hand is pinching. What a caller drawing one hand wants: with
+        // two up, "is anything pinching" would swell the fingertips of a hand resting at your side
+        // because the other one pinched.
+        public bool IsPinchingWith(TrackedHand hand)
+        {
+            foreach (var feed in m_Feeds)
+            {
+                if (feed.hand == hand)
+                    return feed.hasHand && feed.IsPinching;
+            }
+            return false;
+        }
+
+        // From 0 with the fingertips open to 1 once they pinch; 0 while there's no hand. The
+        // furthest along of the hands, so a caller watching one number sees the hand that is
+        // actually pinching.
+        public float PinchValue
+        {
+            get
+            {
+                var most = 0f;
+                foreach (var feed in m_Feeds)
+                {
+                    if (feed.hasHand)
+                        most = Mathf.Max(most, PinchValueOf(feed));
+                }
+                return most;
+            }
+        }
+
+        float PinchValueOf(HandFeed feed) => feed.IsPinching
+            ? 1f
+            : Mathf.InverseLerp(m_OpenDistance, m_PinchDistance, feed.hand.pinchDistance);
 
         Transform TrackingSpace => m_TrackingSpace != null ? m_TrackingSpace : transform;
 
         void Awake()
         {
-            m_Pinch = new PinchDetector(m_PinchDistance, m_ReleaseDistance);
+            if (m_Tracker == null)
+            {
+                Debug.LogError("[Hands] No tracker, so XR Hands has nothing to report");
+                return;
+            }
+            // One feed per tracker slot, paired for good: the tracker's hands are stable objects,
+            // so which feed follows which hand never has to be worked out again.
+            foreach (var hand in m_Tracker.Hands)
+                m_Feeds.Add(new HandFeed(hand, m_PinchDistance, m_ReleaseDistance));
+
             SubsystemManager.GetSubsystemDescriptors(s_Descriptors);
             foreach (var descriptor in s_Descriptors)
             {
@@ -138,7 +190,8 @@ namespace CardboardXR.Hands
             m_Subsystem.Stop();
             if (CardboardHandProvider.Feed == this)
                 CardboardHandProvider.Feed = null;
-            m_HasHand = false;
+            foreach (var feed in m_Feeds)
+                feed.Forget();
         }
 
         void OnDestroy()
@@ -150,33 +203,65 @@ namespace CardboardXR.Hands
 
         void Update()
         {
-            if (!m_Tracker.IsTracking)
+            foreach (var feed in m_Feeds)
+                UpdateFeed(feed);
+            ResolveSides();
+            LogStatus();
+        }
+
+        void UpdateFeed(HandFeed feed)
+        {
+            if (!feed.hand.isTracking)
             {
-                if (m_HasHand)
-                    Debug.Log($"[Hands] XR Hands lost the {SideName} hand");
-                m_HasHand = false;
+                if (feed.hasHand)
+                    Debug.Log($"[Hands] XR Hands lost the {feed.SideName} hand");
+                feed.hasHand = false;
                 // A pinch outlasts a brief miss: dropping it at once read as the fingers opening when the
                 // hand came back, which let go of (and threw) what it held. Past HandInteractorRig's grace
                 // the hand counts as lost, and the pinch goes.
-                if (m_LostSince < 0f)
-                    m_LostSince = Time.unscaledTime;
-                if (Time.unscaledTime - m_LostSince > k_PinchKeptSeconds)
-                    m_Pinch.Reset();
-                m_Turn.Reset();
+                if (feed.lostSince < 0f)
+                    feed.lostSince = Time.unscaledTime;
+                if (Time.unscaledTime - feed.lostSince > k_PinchKeptSeconds)
+                    feed.pinch.Reset();
+                feed.turn.Reset();
                 return;
             }
-            m_LostSince = -1f;
+            feed.lostSince = -1f;
 
-            if (m_Tracker.ResultCount != m_LastResult)
+            // This hand's own results, not the tracker's total: that counts both hands, so one
+            // hand's result would otherwise look like news to the other.
+            if (feed.hand.results != feed.lastResult)
             {
-                m_LastResult = m_Tracker.ResultCount;
-                UpdateSide();
-                var landmarks = m_Tracker.ImageLandmarks;
-                m_Turn.Update(PalmGesture.Facing(landmarks[PalmGesture.k_Wrist], landmarks[PalmGesture.k_IndexKnuckle],
-                    landmarks[PalmGesture.k_PinkyKnuckle], m_Tracker.HandednessScore >= 0.5f), Time.unscaledTime);
+                feed.lastResult = feed.hand.results;
+                UpdateSide(feed);
+                var landmarks = feed.hand.imageLandmarks;
+                feed.turn.Update(PalmGesture.Facing(landmarks[PalmGesture.k_Wrist], landmarks[PalmGesture.k_IndexKnuckle],
+                    landmarks[PalmGesture.k_PinkyKnuckle], feed.hand.handednessScore >= 0.5f), Time.unscaledTime);
             }
-            UpdatePinch();
-            LogStatus();
+            UpdatePinch(feed);
+        }
+
+        // Two hands cannot both be the right hand, and the landmarker decides each one on its own,
+        // so they can agree. Whichever is less sure of itself gives way, which keeps the hand the
+        // model is confident about on the side it says.
+        void ResolveSides()
+        {
+            HandFeed first = null;
+            foreach (var feed in m_Feeds)
+            {
+                if (!feed.hasHand)
+                    continue;
+                if (first == null)
+                {
+                    first = feed;
+                    continue;
+                }
+                var giving = HandFeed.MakeDistinct(feed, first, k_SideChangeMargin);
+                if (giving == null)
+                    continue;
+                Debug.Log($"[Hands] Both hands read as the same side; the less sure one is now the " +
+                          $"{giving.SideName} hand");
+            }
         }
 
         // The fingertips' gap in the model's 3D hand shape decides the pinch, except that closed
@@ -193,40 +278,42 @@ namespace CardboardXR.Hands
         //
         // A pinch doesn't start while the hand is turning over (HandTurnGate): passing edge-on, the
         // shape squeezes the fingertips together for a few frames.
-        void UpdatePinch()
+        void UpdatePinch(HandFeed feed)
         {
-            var newResult = m_Tracker.ResultCount != m_PinchResult;
-            m_PinchResult = m_Tracker.ResultCount;
-            if (!m_Pinch.IsPinched)
+            var hand = feed.hand;
+            var newResult = hand.results != feed.pinchResult;
+            feed.pinchResult = hand.results;
+            if (!feed.pinch.IsPinched)
             {
-                m_OpenResults = 0;
-                if (!m_Tracker.ShapeFits)
+                feed.openResults = 0;
+                if (!hand.shapeFits)
                     return;
-                var wouldClose = m_Tracker.PinchDistance < m_PinchDistance;
-                if (wouldClose && m_Turn.IsTurning)
+                var wouldClose = hand.pinchDistance < m_PinchDistance;
+                if (wouldClose && feed.turn.IsTurning)
                 {
-                    if (!m_LoggedTurn)
-                        Debug.Log($"[Hands] Fingertips {m_Tracker.PinchDistance * 100f:F1} cm apart while the hand turned over; not a pinch");
-                    m_LoggedTurn = true;
+                    if (!feed.loggedTurn)
+                        Debug.Log($"[Hands] Fingertips {hand.pinchDistance * 100f:F1} cm apart while the " +
+                                  $"{feed.SideName} hand turned over; not a pinch");
+                    feed.loggedTurn = true;
                 }
                 else
                 {
-                    m_Pinch.Update(m_Tracker.PinchDistance);
+                    feed.pinch.Update(hand.pinchDistance);
                 }
-                if (!m_Turn.IsTurning)
-                    m_LoggedTurn = false;
+                if (!feed.turn.IsTurning)
+                    feed.loggedTurn = false;
                 return;
             }
 
             // Pinched: whether this result says the fingers have opened, by the 3D shape while it fits,
             // by the image's gap once it has collapsed.
-            var opens = m_Tracker.ShapeFits ? m_Tracker.PinchDistance > m_ReleaseDistance : m_Tracker.PinchRatio > m_OpenRatio;
-            if (m_Tracker.ShapeFits && !opens && m_Tracker.PinchRatio > m_OpenRatio)
+            var opens = hand.shapeFits ? hand.pinchDistance > m_ReleaseDistance : hand.pinchRatio > m_OpenRatio;
+            if (hand.shapeFits && !opens && hand.pinchRatio > m_OpenRatio)
                 m_IgnoredOpens++;
             if (!opens)
             {
-                m_OpenResults = 0;
-                m_LoggedEdge = false;
+                feed.openResults = 0;
+                feed.loggedEdge = false;
                 return;
             }
             if (!newResult)
@@ -234,61 +321,73 @@ namespace CardboardXR.Hands
             // Near the image's edge the fingers are often partly out of view, and read open as the hand
             // leaves it: that's a hand being lost, not let go, so the pinch holds. Either the hand comes
             // back into view or it's lost (and what it held stays where it was: CubePhysics).
-            var edge = m_Tracker.EdgeDistance;
+            var edge = m_Tracker.EdgeDistanceOf(hand);
             if (edge < k_EdgeMargin)
             {
-                if (!m_LoggedEdge)
-                    Debug.Log($"[Hands] Fingers read open {edge * 100f:F0}% from the image's edge; holding the pinch");
-                m_LoggedEdge = true;
-                m_OpenResults = 0;
+                if (!feed.loggedEdge)
+                    Debug.Log($"[Hands] The {feed.SideName} hand's fingers read open {edge * 100f:F0}% from " +
+                              "the image's edge; holding the pinch");
+                feed.loggedEdge = true;
+                feed.openResults = 0;
                 return;
             }
             // And only once it lasts: a single result can be a glitch.
-            if (++m_OpenResults < k_OpenResults)
+            if (++feed.openResults < k_OpenResults)
                 return;
-            if (!m_Tracker.ShapeFits)
-                Debug.Log($"[Hands] Fingers opened to {m_Tracker.PinchRatio:F2} of the palm's width; ending the pinch, " +
-                          "whose 3D shape had collapsed");
-            m_Pinch.Reset();
-            m_OpenResults = 0;
+            if (!hand.shapeFits)
+                Debug.Log($"[Hands] The {feed.SideName} hand's fingers opened to {hand.pinchRatio:F2} of the " +
+                          "palm's width; ending the pinch, whose 3D shape had collapsed");
+            feed.pinch.Reset();
+            feed.openResults = 0;
         }
 
-        void UpdateSide()
+        void UpdateSide(HandFeed feed)
         {
             // MediaPipe documents its handedness as if the image were mirrored, as a selfie camera's
             // is, which would swap the rear camera's hands. On the phone it reads them the right way
             // round: swapping them put the other hand's mesh, turned over, on the real hand.
-            var right = m_Tracker.HandednessScore;
-            if (!m_HasHand)
+            var right = feed.hand.handednessScore;
+            if (!feed.hasHand)
             {
-                m_HasHand = true;
-                m_RightChance = right;
-                m_IsRight = right >= 0.5f;
-                Debug.Log($"[Hands] XR Hands found a {SideName} hand (chance of a right hand {right:F2})");
+                feed.hasHand = true;
+                feed.rightChance = right;
+                feed.isRight = right >= 0.5f;
+                Debug.Log($"[Hands] XR Hands found a {feed.SideName} hand (chance of a right hand {right:F2})");
                 return;
             }
-            m_RightChance = Mathf.Lerp(m_RightChance, right, k_HandednessRate);
-            if (m_IsRight ? m_RightChance < 0.5f - k_SideChangeMargin : m_RightChance > 0.5f + k_SideChangeMargin)
+            feed.rightChance = Mathf.Lerp(feed.rightChance, right, k_HandednessRate);
+            if (feed.isRight ? feed.rightChance < 0.5f - k_SideChangeMargin : feed.rightChance > 0.5f + k_SideChangeMargin)
             {
-                m_IsRight = !m_IsRight;
-                Debug.Log($"[Hands] XR Hands now reads it as a {SideName} hand (chance of a right hand {m_RightChance:F2})");
+                feed.isRight = !feed.isRight;
+                Debug.Log($"[Hands] XR Hands now reads it as a {feed.SideName} hand " +
+                          $"(chance of a right hand {feed.rightChance:F2})");
             }
         }
 
-        string SideName => m_IsRight ? "right" : "left";
-
-        // The hand's joints in the tracking space, for the provider; false while there's no hand.
-        internal bool TryGetJoints(out Handedness handedness, out Pose[] joints)
+        HandFeed Find(Handedness handedness)
         {
-            handedness = TrackedHandedness;
-            joints = m_Joints;
-            if (!m_HasHand || !m_Tracker.IsTracking)
+            foreach (var feed in m_Feeds)
+            {
+                if (feed.hasHand && feed.Side == handedness)
+                    return feed;
+            }
+            return null;
+        }
+
+        // Each side's joints in the tracking space, for the provider; false while that side has no
+        // hand. The provider asks for both sides every update.
+        internal bool TryGetJoints(Handedness handedness, out Pose[] joints)
+        {
+            joints = null;
+            var feed = Find(handedness);
+            if (feed == null || !feed.hand.isTracking)
                 return false;
+            joints = feed.joints;
             var space = TrackingSpace;
-            var world = m_Tracker.Joints;
-            for (var i = 0; i < m_Landmarks.Length; i++)
-                m_Landmarks[i] = space.InverseTransformPoint(world[i]);
-            HandSkeleton.Build(m_Landmarks, m_IsRight, m_Joints);
+            var world = feed.hand.joints;
+            for (var i = 0; i < feed.landmarks.Length; i++)
+                feed.landmarks[i] = space.InverseTransformPoint(world[i]);
+            HandSkeleton.Build(feed.landmarks, feed.isRight, feed.joints);
             return true;
         }
 
@@ -296,19 +395,20 @@ namespace CardboardXR.Hands
         internal bool TryGetPose(Handedness handedness, PoseKind kind, out Pose pose)
         {
             pose = Pose.identity;
-            if (!m_HasHand || handedness != TrackedHandedness)
+            var feed = Find(handedness);
+            if (feed == null)
                 return false;
             switch (kind)
             {
                 case PoseKind.Grip:
-                    pose = m_Joints[HandSkeleton.Palm];
+                    pose = feed.joints[HandSkeleton.Palm];
                     break;
                 case PoseKind.Poke:
-                    pose = m_Joints[HandSkeleton.IndexTip];
+                    pose = feed.joints[HandSkeleton.IndexTip];
                     break;
                 default:
                     var space = TrackingSpace;
-                    var fingertips = (m_Landmarks[HandGeometry.ThumbTip] + m_Landmarks[HandGeometry.IndexTip]) / 2f;
+                    var fingertips = (feed.landmarks[HandGeometry.ThumbTip] + feed.landmarks[HandGeometry.IndexTip]) / 2f;
                     var eyes = space.InverseTransformPoint(m_Eyes.position);
                     pose = new Pose(fingertips, Quaternion.LookRotation(fingertips - eyes, space.InverseTransformDirection(m_Eyes.up)));
                     break;
@@ -321,29 +421,47 @@ namespace CardboardXR.Hands
         {
             value = 0f;
             pinched = false;
-            if (!m_HasHand || handedness != TrackedHandedness)
+            var feed = Find(handedness);
+            if (feed == null)
                 return false;
-            pinched = m_Pinch.IsPinched;
-            value = PinchValue;
+            pinched = feed.IsPinching;
+            value = PinchValueOf(feed);
             return true;
         }
 
-        // What XR Hands and its input device report, to check them against the tracker.
+        // What XR Hands and its input device report, to check them against the tracker. One line
+        // per hand that is up, so two hands do not have to be told apart by guesswork.
         void LogStatus()
         {
             if (Time.unscaledTime - m_StatusStart < k_StatusSeconds)
                 return;
             m_StatusStart = Time.unscaledTime;
-            var hand = m_IsRight ? m_Subsystem.rightHand : m_Subsystem.leftHand;
-            var common = m_IsRight ? m_Subsystem.rightHandCommonGestures : m_Subsystem.leftHandCommonGestures;
-            var device = m_IsRight ? XRHandDevice.rightHand : XRHandDevice.leftHand;
+            var any = false;
+            foreach (var feed in m_Feeds)
+            {
+                if (!feed.hasHand)
+                    continue;
+                any = true;
+                Debug.Log(Describe(feed));
+            }
+            if (!any)
+                Debug.Log($"[Hands] XR Hands has no hand; {m_EarlyUpdates} early and " +
+                          $"{m_BeforeRenderUpdates} before-render updates");
+            m_EarlyUpdates = m_BeforeRenderUpdates = m_IgnoredOpens = 0;
+        }
+
+        string Describe(HandFeed feed)
+        {
+            var hand = feed.isRight ? m_Subsystem.rightHand : m_Subsystem.leftHand;
+            var common = feed.isRight ? m_Subsystem.rightHandCommonGestures : m_Subsystem.leftHandCommonGestures;
+            var device = feed.isRight ? XRHandDevice.rightHand : XRHandDevice.leftHand;
             var wrist = TrackingSpace.TransformPoint(hand.rootPose.position);
-            var wristOff = Vector3.Distance(wrist, m_Tracker.Joints[0]);
+            var wristOff = Vector3.Distance(wrist, feed.hand.joints[0]);
             // The aim at each step on its way to input actions: this feed, XR Hands, its input device.
-            var feedAim = TryGetPose(TrackedHandedness, PoseKind.Aim, out var aim) ? $"{aim.rotation.eulerAngles:F0}" : "none";
+            var feedAim = TryGetPose(feed.Side, PoseKind.Aim, out var aim) ? $"{aim.rotation.eulerAngles:F0}" : "none";
             var subsystemAim = common != null && common.TryGetAimPose(out var commonAim) ? $"{commonAim.rotation.eulerAngles:F0}" : "none";
-            var status = $"[Hands] XR Hands {SideName} hand: tracked {hand.isTracked}, wrist {wristOff * 100f:F1} cm from the tracker's, " +
-                         $"chance of a right hand {m_RightChance:F2}; {m_EarlyUpdates} early and {m_BeforeRenderUpdates} before-render " +
+            var status = $"[Hands] XR Hands {feed.SideName} hand: tracked {hand.isTracked}, wrist {wristOff * 100f:F1} cm from the tracker's, " +
+                         $"chance of a right hand {feed.rightChance:F2}; {m_EarlyUpdates} early and {m_BeforeRenderUpdates} before-render " +
                          $"updates; aim from the feed {feedAim}, in XR Hands {subsystemAim}";
             if (device != null)
                 status += $", on the device {device.aimRotation.ReadValue().eulerAngles:F0} (tracking {device.aimTrackingState.ReadValue()}, " +
@@ -352,8 +470,7 @@ namespace CardboardXR.Hands
             else
                 status += "; no XRHandDevice";
             status += $"; {m_IgnoredOpens} frames the image read open fingers while the 3D shape held the pinch";
-            Debug.Log(status);
-            m_EarlyUpdates = m_BeforeRenderUpdates = m_IgnoredOpens = 0;
+            return status;
         }
 
         void OnUpdatedHands(XRHandSubsystem subsystem, XRHandSubsystem.UpdateSuccessFlags flags, XRHandSubsystem.UpdateType updateType)
