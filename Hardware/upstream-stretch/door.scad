@@ -55,25 +55,42 @@ plateau_margin = 1.2;    // clearance around the plateau
 // middle is -0.855. Leaving this out skews every phone-referenced feature by that much.
 phone_cx = -0.855;
 
-// The opening, in the door's own coordinates: the plateau plus a margin all round, and past the
-// phone's end so nothing laps over it.
-cam_x0 = phone_cx + plateau_across[0] - plateau_margin - phone_x / 2;
-cam_x1 = phone_cx + plateau_across[1] + plateau_margin - phone_x / 2;
-cam_y0 = phone_y / 2 - plateau_along[1] - plateau_margin;
-cam_y1 = phone_y / 2 + 1.3;
-
 // The opening's corners are deliberately tighter than the plateau's own, which makes them reach
 // further out: a corner that is too square clears the plateau and costs a little rim, where one
 // that is too round would land on it.
 cam_r = 8;
 
+// The opening, in the door's own coordinates: the plateau plus a margin all round.
+cam_x0 = phone_cx + plateau_across[0] - plateau_margin - phone_x / 2;
+cam_x1 = phone_cx + plateau_across[1] + plateau_margin - phone_x / 2;
+cam_y0 = phone_y / 2 - plateau_along[1] - plateau_margin;
+
+// It runs clear off the camera end, and that is forced, not chosen. The door's plate at that end is
+// about 66.6 mm wide where the plateau needs 72.81, so the opening is wider than the plate it is cut
+// into and anything left above the opening has nothing holding it. Ending it 1.3 mm past the phone
+// (cam_y1 = phone_y / 2 + 1.3 = 83.015) left a strip at y 83.015 .. 85.590 attached to nothing: a
+// 267.78 mm3 island, which Bambu Studio reported as a second part. So the cut goes past the door's
+// own end -- and past it by more than cam_r, because the corner arcs would otherwise curve back
+// inside the plate and leave two 1 mm slivers doing the same thing on a smaller scale.
+door_end = 85.59;                 // measured on the stretched mesh: 171.18 / 2
+cam_y1 = door_end + cam_r + 2;
+
 // MagSafe. Apple's drawing puts the magnet array at 57.50 across, centred 38.99 across and 81.72
-// along -- the dead centre of the phone's back to within 5 microns. This is a recess in the outer
+// along -- the dead centre of the phone's back to within 5 microns. This is a groove in the outer
 // face for a ring to sit in and be located by, not a hole: the plate is 1.9 mm thick here and
 // Apple's note 8 allows a case up to 2.1 mm on the back for full functionality, so MagSafe already
 // works through it and cutting through would only throw away the plate that holds the phone.
+// It is an annular GROOVE, not a circular recess, and that is a printing constraint rather than a
+// design preference. The door prints outer face down, so a recess in this face is a pocket that
+// opens downward: a full 58 mm circle leaves the plate above it bridging 58 mm with nothing
+// underneath, over a region that is perforated, so the bridge lines break at every 2 mm hole.
+// Measured on the mesh it was 2090 mm2 of unsupported ceiling, the only such area in the part.
+// A groove leaves the middle sitting on the plate from the first layer and the bridge is one
+// 7 mm span, anchored both sides. A ring is a ring; the groove locates its outer diameter, which
+// is the only face that has to be located.
 magsafe_d      = 57.50;
 magsafe_clear  = 0.5;    // so a printed ring drops in rather than having to be pressed
+magsafe_id     = 44.00;  // the groove's inner wall: takes any ring with ID >= 44 and OD <= 58
 magsafe_depth  = 0.8;    // of the 1.9 mm plate, leaving 1.1
 
 // The locator pockets, as the stretch leaves them: upstream's are at -38.58..-24.48 and
@@ -144,10 +161,15 @@ difference() {
     translate([(cam_x0 + cam_x1) / 2, (cam_y0 + cam_y1) / 2, 0])
         rrect(cam_x1 - cam_x0, cam_y1 - cam_y0, big, cam_r);
 
-    // (3) The MagSafe ring's recess, in the outer face, which is at z = 0 because the source STL
+    // (3) The MagSafe ring's groove, in the outer face, which is at z = 0 because the source STL
     // is the "outer face down" one.
-    translate([phone_cx, phone_y / 2 - 81.72, -0.01])
-        cylinder(h = magsafe_depth + 0.01, d = magsafe_d + magsafe_clear, $fn = 160);
+    translate([phone_cx, phone_y / 2 - 81.72, 0])
+        difference() {
+            translate([0, 0, -0.01])
+                cylinder(h = magsafe_depth + 0.01, d = magsafe_d + magsafe_clear, $fn = 160);
+            translate([0, 0, -0.02])
+                cylinder(h = magsafe_depth + 0.03, d = magsafe_id, $fn = 160);
+        }
 
     // The locator pockets, reopened through the fill.
     for (k = pockets)

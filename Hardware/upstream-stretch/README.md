@@ -50,7 +50,14 @@ largest phone upstream supports, has 1.00 and 1.38 mm.
 
 Measured off the rendered meshes, not computed:
 
-- **The door comes out 96.50 × 171.18 × 6.50**, and **genus 642**. That number matters: the plate
+- **Every part is one part.** Bambu Studio's own `--info` reports `manifold = yes` and
+  `number_of_parts = 1` for the door and all four locators. That check is worth running every time:
+  it is what caught the loose island at the camera end, which OpenSCAD had reported as
+  `Status: NoError`, genus 642, manifold — all true, and all compatible with the part being in two
+  pieces. OpenSCAD's own export leaves zero-area sliver facets at the cut planes (1256 of them in
+  the door, 4 in a locator); the slicer discards them and so should any check, since upstream's
+  files have the same class of artifact.
+- **The door comes out 96.49 × 170.59 × 6.50**, and **genus 643**. That number matters: the plate
   carries a grid of 2 mm perforations, and an earlier attempt to fill the plate back in across the
   whole phone footprint closed almost all of them (genus 677 → 2). The fill is now one strip, which
   costs about 35 of them.
@@ -59,8 +66,9 @@ Measured off the rendered meshes, not computed:
   is, cutting a narrower opening had not narrowed the hole at all, because upstream's own opening
   was still there and the two unioned. The pockets still open out to 40.37 over the 21.8 mm the
   locators pass through, which they have to.
-- **The MagSafe recess measures 58.00 × 58.00 centred on (−0.86, 0.00)** in the door's frame, which
-  is the phone's centre to within 0.01 mm.
+- **The MagSafe groove measures Ø43.99 … Ø58.00, 7.004 mm wide and 0.8 deep**, centred on
+  (−0.86, 0.00) in the door's frame, which is the phone's centre to within 0.01 mm. 5774 vertices
+  of the island inside it sit on the build plate, which is the point of making it a groove.
 - **The locators stretch exactly as predicted.** camera-top comes out X 21.24 … 40.61, Y 62.69 …
   84.95, Z 0.60 … 8.25 against a prediction of 21.24 … 40.61 and 62.69 … 84.95 with Z untouched,
   and all four are genus 0. Against the door's pockets that leaves about 0.23 mm of interference a
@@ -113,8 +121,8 @@ Two things about that fit are worth knowing before printing:
 - **The seat is a flange.** The door's outline is full size below z = −0.500 and the shell has no
   material below it, so 2.00 mm of door stands proud of the shell's back face and the flange's top
   lands flush on it. The strip filled back into the plate (z −2.500 … −0.600) and the MagSafe
-  recess (−2.500 … −1.700) are both inside that 2.00 mm, so neither can foul the shell however
-  deep the recess is taken.
+  groove (−2.500 … −1.700) are both inside that 2.00 mm, so neither can foul the shell however
+  deep the groove is taken.
 - **The locators clear the shell completely.** Not one of their 184–224 vertices is inside it, in
   any of the four corners.
 
@@ -149,7 +157,7 @@ openscad -D 'part="camera-top"' -o locator-camera-top.stl locators.scad
 `door.scad` stretches the iPhone 15 Pro door the same way, then does three things the method alone
 cannot. It clears everything standing above the plate inside the phone's footprint, because the
 upstream rim is sized for a 70.6 × 146.6 phone and would hold this one out rather than in. It cuts
-the camera opening to clear the camera plateau. And it sinks a recess for a MagSafe ring.
+the camera opening to clear the camera plateau. And it sinks a groove for a MagSafe ring.
 
 All of it comes from **Apple's own published geometry**. The Accessory Design Guidelines point at a
 per-device drawing library, and the iPhone 18 Pro Max is published there as a dimensioned mechanical
@@ -193,7 +201,9 @@ the full width and a little past it, which is exactly why it looked like a full-
 PETG door is not conductive, so it may cover that zone freely. Only the raised plateau has to be
 cleared, and that measures **3.79 … 74.20 across — 70.40 wide, inset 3.79 mm from each side wall**.
 
-The opening is now **72.81 × 51.37**, leaving **2.59 mm of rim over the phone on each side**.
+The opening is now **72.81 wide**, leaving **2.59 mm of rim over the phone on each side**, and it
+runs off the camera end of the door rather than stopping short of it — see below for why that is
+not optional.
 
 A second error went with it. The opening was laid out in the door's own centred coordinates, but
 the door is asymmetric — hinge knuckles down one long side, latch tabs down the other — so its
@@ -209,15 +219,46 @@ at the camera end. **This door cannot.** The 18 Pro Max's plateau is 70.40 of 77
 near-full-width shelf, and no opening that clears it leaves more than about 2.6 mm a side. The
 phone changed; a door for it has to hold the phone somewhere other than across the camera end.
 
+Two consequences, both measured rather than argued, and both worth knowing before printing:
+
+- **The camera end of the door is open.** The door's plate at that end is about 66.6 mm wide and
+  the opening is 72.81, so the opening is wider than the plate it is cut into — whatever is left
+  above it is attached to nothing. Ending the opening 1.3 mm past the phone left a strip at
+  y 83.015 … 85.590 doing exactly that: a **267.78 mm³ island**, which Bambu Studio reported as
+  `number_of_parts = 2` and which would have printed as a loose piece. The cut now runs clear off
+  the end, past it by more than the corner radius so the arcs cannot leave slivers either, and the
+  part is one piece. The phone is held by the plate below the opening, the four locators and the
+  shell's bay.
+- **The two camera-end locator pockets have lost their inboard wall**, because that wall would sit
+  over the plateau. Rastered at mid-plate height, the 3 mm band around each pocket holds:
+
+  | pocket | inboard | outboard | toward the middle | toward the end |
+  |---|---|---|---|---|
+  | camera-top | 0.0 mm² | 17.5 mm² | 14.4 mm² | 1.4 mm² |
+  | camera-bottom | 0.0 mm² | 12.3 mm² | 14.7 mm² | 0.0 mm² |
+  | usb-top | 49.7 mm² | 10.9 mm² | 0.2 mm² | 1.1 mm² |
+  | usb-bottom | 44.5 mm² | 12.0 mm² | 0.2 mm² | 1.1 mm² |
+
+  The outboard and toward-the-middle faces are the ones the phone loads a locator into, and those
+  are the two that survive, so the camera-end pair are still captured — but on two faces, not four.
+  Whether that holds has not been tested on a printed part.
+
 ### MagSafe
 
-The recess is **Ø58.00 (57.50 plus 0.5 clearance), 0.8 mm deep, in the outer face**, centred on the
-magnet array — which is the dead centre of the phone's back to within five microns.
+The groove is **Ø58.00 outside (57.50 plus 0.5 clearance), Ø44.00 inside, 0.8 mm deep, in the outer
+face**, centred on the magnet array — which is the dead centre of the phone's back to within five
+microns. Measured off the mesh it comes out Ø43.99 … Ø58.00, 7.004 mm wide. Any ring with an inside
+diameter of 44 or more and an outside diameter of 58 or less drops in and is located by the outer
+wall; `magsafe_id` is the one number to change if yours is narrower. Apple's drawing gives the array
+as a single Ø57.50 circle with no inner diameter, so 44.00 is a choice, not a measurement.
 
-It is a recess rather than a hole on purpose. The plate is 1.9 mm thick there and Apple's note 8
+It is a groove rather than a hole on purpose. The plate is 1.9 mm thick there and Apple's note 8
 allows a case up to **2.1 mm on the back for full functionality**, so MagSafe already works through
-the door; cutting through would only throw away plate that is holding the phone. The recess is
+the door; cutting through would only throw away plate that is holding the phone. The groove is
 there to locate and seat a ring, not to let the magnets reach.
+
+It is a groove rather than a full circular recess because of how the door prints — see
+[Printing the door](#printing-the-door).
 
 Keep magnets away from the **compass at 49.79 across, 157.45 along** — the drawing marks it "do not
 obstruct with magnetic or permeable material".
@@ -248,6 +289,35 @@ the stretched locator leaves exactly what that gap has room for.
 `squeeze` is the one free number: the inner face is held 0.60 mm inside the phone's outline, so the
 locator is compressed when the phone goes in. Upstream's iPhone 15 Pro locator stands 1.81 mm proud
 of the phone corner into a 1.20 mm gap, which is 0.61 mm of the same thing.
+
+## Printing the door
+
+**Outer face down, the way upstream prints theirs, and the STL already sits that way** — put it on
+the plate without rotating it. That is measured, not inherited: the downward-facing flat area above
+the plate is **1080 mm² that way up and 7237 mm² the other**, because flipping it puts the whole
+inside of the plate — the land the phone rests on — in the air. Face down there is one bridge; face
+up there are five, the largest 5904 mm² at Z 4.60.
+
+**That orientation is what turned the MagSafe recess into a groove.** Anything sunk into the outer
+face is a pocket that opens downward, so the plate above it has to bridge. A full Ø58 circular
+recess left **2090 mm² of ceiling spanning 58 mm** with nothing beneath it, across a region carrying
+the 2 mm perforation grid — so the bridge lines break at every hole and have nothing to anchor to.
+The groove leaves everything inside Ø44 sitting on the plate from the first layer, and the longest
+bridge in the part is now **7.004 mm**, anchored both sides. Changing `magsafe_id` changes that span
+directly, so a narrower groove for a narrower ring prints better, not worse.
+
+It is the only overhang worth a thought. The remaining 493 mm² of sloped underside is upstream's
+own, unchanged, and prints as theirs does; the camera opening, the locator pockets and the
+perforations all go straight through, so nothing needs support.
+
+Ask the slicer what it thinks before you print, not after:
+
+```sh
+/Applications/BambuStudio.app/Contents/MacOS/BambuStudio --info door.stl
+```
+
+`manifold = yes` and `number_of_parts = 1` are the two lines that matter. The second one is how the
+loose island at the camera end was found; nothing in OpenSCAD's own report would have told you.
 
 ## Printing the locators
 
