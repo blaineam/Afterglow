@@ -1,8 +1,10 @@
+using System;
 using System.IO;
 using CardboardXR.Hands;
 using CardboardXR.Interaction;
 using CardboardXR.Stereo;
 using CardboardXR.UI;
+using TMPro;
 using UnityEngine.UI;
 using UnityEngine;
 
@@ -45,6 +47,21 @@ namespace CardboardXR.Demos
         bool m_Immersive;
         float m_LastAim;
 
+        // Typing. Three ways in -- a Bluetooth keyboard, the keys on screen, and speech -- all
+        // arriving through the same two handlers, so the page cannot tell which was used.
+        WebKeyboard m_Keyboard;
+        RectTransform m_Address;
+        TMP_Text m_AddressText;
+        // What is being typed into the address bar, or null while the typing is going to a field
+        // on the page. Which of the two it is is the page's business, not a mode the user sets.
+        string m_Typed;
+        // What is being heard, shown as it fills in but not committed until the phrase ends.
+        string m_Heard;
+        string m_SpokenOnto;
+        string m_UrlShown = "";
+        float m_NextUrlPoll;
+        float m_NextHeardPoll;
+
         public bool IsOpen => WebBrowser.IsOpen;
 
         public void Toggle()
@@ -77,10 +94,39 @@ namespace CardboardXR.Demos
             // The window is what the pinches are for, until a page takes the screen.
             m_Interrupted = PinchRouter.Handler;
             PinchRouter.Handler = this;
+
+            m_Keyboard = GetComponent<WebKeyboard>();
+            if (m_Keyboard == null)
+                m_Keyboard = gameObject.AddComponent<WebKeyboard>();
+            m_Keyboard.Typed += OnTyped;
+            m_Keyboard.Pressed += OnPressed;
+            m_Keyboard.Dictate += OnDictate;
+            KeyboardInput.Typed += OnTyped;
+            KeyboardInput.Pressed += OnPressed;
         }
 
         public void Close()
         {
+            // Input and the microphone first, and whether or not the page is still up: these are
+            // static events, and a handler left subscribed to one outlives the browser that
+            // wanted it. Both are safe to let go of twice.
+            KeyboardInput.Typed -= OnTyped;
+            KeyboardInput.Pressed -= OnPressed;
+            KeyboardInput.Release();
+            if (m_Keyboard != null)
+            {
+                m_Keyboard.Typed -= OnTyped;
+                m_Keyboard.Pressed -= OnPressed;
+                m_Keyboard.Dictate -= OnDictate;
+                m_Keyboard.Close();
+            }
+            // Never leave the microphone running behind a closed browser.
+            if (Dictation.Listening)
+                Dictation.Stop();
+            m_Typed = null;
+            m_Heard = null;
+            m_SpokenOnto = null;
+
             if (!WebBrowser.IsOpen)
                 return;
             WebBrowser.Close();
@@ -121,8 +167,29 @@ namespace CardboardXR.Demos
             m_Renderer.sharedMaterial = m_Material;
             m_Width = k_Widths[m_WidthStep];
             ApplySize();
+            BuildAddressBar();
             BuildControls();
             Place();
+        }
+
+        // The address, with the two ways into it beside it: the keys and the microphone. It is
+        // also the only thing that says where the typing is going, so it is never a mystery
+        // whether a keystroke reached the page or the bar.
+        void BuildAddressBar()
+        {
+            if (m_Address != null)
+                return;
+            const float width = 628f, height = 72f;
+            m_Address = M3.Canvas("Web Address", transform, new Vector2(width, height),
+                M3Theme.k_OverlayDistance, M3Theme.SurfaceContainerHigh, M3Theme.k_ShapeFull);
+            m_Address.gameObject.AddComponent<GazeCanvas>();
+            M3.IconButton("Keys", m_Address, "keyboard", M3Button.Variant.Tonal,
+                new Vector2(width / 2f - 44f, 0f), ToggleKeys);
+            M3.IconButton("Dictate", m_Address, "mic", M3Button.Variant.Tonal,
+                new Vector2(width / 2f - 104f, 0f), OnDictate);
+            m_AddressText = M3.Text("Address", m_Address, "", M3Theme.Type.BodyLarge,
+                new Vector2(-66f, 0f), new Vector2(width - 160f, height - 16f),
+                M3Theme.OnSurface, TextAlignmentOptions.Left);
         }
 
         void GoHome()
@@ -136,6 +203,10 @@ namespace CardboardXR.Demos
             if (m_Bar != null)
                 Destroy(m_Bar.gameObject);
             m_Bar = null;
+            if (m_Address != null)
+                Destroy(m_Address.gameObject);
+            m_Address = null;
+            m_AddressText = null;
             if (m_Window != null)
                 Destroy(m_Window);
             if (m_Material != null)
@@ -160,14 +231,40 @@ namespace CardboardXR.Demos
             forward.Normalize();
             m_Window.transform.position = head.position + forward * m_Distance;
             m_Window.transform.rotation = Quaternion.LookRotation(forward, Vector3.up);
+            // Stacked under the window, facing the same way, far enough down to clear the page's
+            // bottom edge at whatever size it is now: the address, then the toolbar, then the keys.
+            var pageHeight = m_Width * WebBrowser.WindowHeight / WebBrowser.WindowWidth;
+            var below = m_Window.transform.position - m_Window.transform.up * (pageHeight / 2f);
+            if (m_Address != null)
+            {
+                m_Address.position = below - m_Window.transform.up * 0.07f;
+                m_Address.rotation = m_Window.transform.rotation;
+            }
             if (m_Bar != null)
             {
-                // Just under the window, facing the same way, far enough down to clear the page's
-                // bottom edge at whatever size it is now.
-                var height = m_Width * WebBrowser.WindowHeight / WebBrowser.WindowWidth;
-                m_Bar.position = m_Window.transform.position - m_Window.transform.up * (height / 2f + 0.09f);
+                m_Bar.position = below - m_Window.transform.up * 0.20f;
                 m_Bar.rotation = m_Window.transform.rotation;
             }
+            PlaceKeyboard();
+        }
+
+        // Lower than the toolbar and nearer, tipped to face the head rather than standing
+        // upright, because this one is looked down at the way a real keyboard is. Pointing its
+        // back at the head is what faces it forward -- the window is oriented the same way.
+        //
+        // Separate from Place() because the keys can be shown and hidden without the page moving.
+        void PlaceKeyboard()
+        {
+            if (m_Window == null || m_Fusion == null || m_Keyboard == null || m_Keyboard.Panel == null)
+                return;
+            var pageHeight = m_Width * WebBrowser.WindowHeight / WebBrowser.WindowWidth;
+            var panel = m_Keyboard.Panel;
+            panel.position = m_Window.transform.position
+                             - m_Window.transform.up * (pageHeight / 2f + 0.52f)
+                             - m_Window.transform.forward * 0.25f;
+            var away = panel.position - m_Fusion.transform.position;
+            if (away.sqrMagnitude > 1e-4f)
+                panel.rotation = Quaternion.LookRotation(away.normalized, Vector3.up);
         }
 
         void Update()
@@ -214,6 +311,12 @@ namespace CardboardXR.Demos
             if (WebBrowser.TryUpdateTexture(ref m_Page) && m_Material != null)
                 m_Material.mainTexture = m_Page;
 
+            // Binds a Bluetooth keyboard as one appears, which is how it will be paired: with the
+            // phone already in the viewer.
+            KeyboardInput.Poll();
+            UpdateDictation();
+            UpdateAddress();
+
             var aimed = TryGazePoint(out var u, out var v);
             ShowAim(aimed, u, v);
             if (aimed)
@@ -221,11 +324,13 @@ namespace CardboardXR.Demos
             // And from a controller's stick, which is steadier than holding a gaze at an edge.
             // At the gaze point, so a stick scrolls whatever is being read rather than only the
             // page as a whole; the middle of the window if the gaze is off it.
+            // Scroll already carries its own speed in page pixels a second, so this only needs
+            // the frame's share of it.
             var stick = GamepadInput.Scroll;
             if (stick.sqrMagnitude > 0f)
                 WebBrowser.ScrollAt(aimed ? u : 0.5f, aimed ? v : 0.5f,
-                                    stick.x * m_ScrollSpeed * Time.unscaledDeltaTime,
-                                    -stick.y * m_ScrollSpeed * Time.unscaledDeltaTime);
+                                    stick.x * Time.unscaledDeltaTime,
+                                    -stick.y * Time.unscaledDeltaTime);
         }
 
         // Puts a crosshair on the page where the gaze is, with whatever a pinch would press
@@ -238,6 +343,187 @@ namespace CardboardXR.Demos
             // Off the page: park it in a corner rather than leave it where the gaze last was,
             // which would read as a crosshair that has stuck.
             WebBrowser.HoverAt(aimed ? u : -1f, aimed ? v : -1f);
+        }
+
+        void ToggleKeys()
+        {
+            if (m_Keyboard == null)
+                return;
+            m_Keyboard.Toggle();
+            // The panel is built the first time it opens, so this is when it gets put somewhere.
+            // Only the panel: Place() moves the window to wherever the head is pointing, and
+            // pressing a button on the toolbar is not a request to move the page you are reading.
+            if (m_Keyboard.IsOpen)
+                PlaceKeyboard();
+        }
+
+        // Typing goes to the page's own field whenever it has one focused, and to the address bar
+        // when it does not. Which it is is the page's business rather than a mode to be set: click
+        // a search box and type, or click nothing and type where you want to go.
+        void OnTyped(string text)
+        {
+            if (!WebBrowser.IsOpen || m_Immersive)
+                return;
+            if (WebBrowser.TextFocused)
+            {
+                WebBrowser.Type(text);
+                return;
+            }
+            m_Typed = (m_Typed ?? "") + text;
+        }
+
+        void OnPressed(string key)
+        {
+            if (!WebBrowser.IsOpen || m_Immersive)
+                return;
+            var toPage = WebBrowser.TextFocused;
+            switch (key)
+            {
+                case "Escape":
+                    // Back out one layer at a time: what was typed, then the keys themselves.
+                    if (m_Typed != null)
+                        m_Typed = null;
+                    else if (m_Keyboard != null)
+                        m_Keyboard.Close();
+                    break;
+                case "Enter":
+                    if (toPage)
+                        WebBrowser.Key("Enter");
+                    else
+                        Go();
+                    break;
+                case "Clear":
+                    if (toPage)
+                        WebBrowser.Key("Clear");
+                    else
+                        m_Typed = "";
+                    break;
+                default:
+                    if (toPage)
+                        WebBrowser.Key("Backspace");
+                    else if (!string.IsNullOrEmpty(m_Typed))
+                        m_Typed = m_Typed.Substring(0, m_Typed.Length - 1);
+                    break;
+            }
+        }
+
+        void Go()
+        {
+            var address = WebBrowser.NormalizeAddress(m_Typed);
+            if (address == null)
+                return;
+            Debug.Log($"[WebXR] Going to {address}");
+            WebBrowser.LoadUrl(address);
+            m_Typed = null;
+            if (m_Keyboard != null)
+                m_Keyboard.Close();
+        }
+
+        // Push to talk, as a toggle: pressing it again stops, and a phrase that ends on its own
+        // stops too. Holding a gaze on a button is not a thing anyone can do comfortably, so the
+        // press-and-hold a microphone usually wants is a press-and-press here.
+        void OnDictate()
+        {
+            if (!WebBrowser.IsOpen || m_Immersive)
+                return;
+            if (Dictation.Listening)
+            {
+                Dictation.Stop();
+                return;
+            }
+            if (!Dictation.Supported)
+            {
+                Debug.Log($"[Speech] {Dictation.Describe(Dictation.State.Unavailable)}");
+                return;
+            }
+            // What was already in the address bar is kept and spoken onto the end of; a field on
+            // the page is appended to by the page itself, at its caret.
+            m_SpokenOnto = WebBrowser.TextFocused ? null : m_Typed ?? "";
+            Dictation.Start();
+        }
+
+        void UpdateDictation()
+        {
+            if (Dictation.Listening)
+            {
+                // Shown filling in as it is spoken, but not committed: a phrase is only worth
+                // acting on once it has finished. Ten times a second, which reads as live and is
+                // not a string built out of Objective-C on every frame.
+                if (Time.unscaledTime >= m_NextHeardPoll)
+                {
+                    m_NextHeardPoll = Time.unscaledTime + 0.1f;
+                    m_Heard = Dictation.Text;
+                }
+                return;
+            }
+            if (!Dictation.TakeFinished())
+                return;
+            var heard = Dictation.Text;
+            m_Heard = null;
+            if (string.IsNullOrWhiteSpace(heard))
+                return;
+            Debug.Log($"[Speech] Heard \"{heard}\"");
+            if (m_SpokenOnto == null)
+                WebBrowser.Type(heard);
+            else
+                m_Typed = m_SpokenOnto.Length > 0 ? m_SpokenOnto + " " + heard : heard;
+            m_SpokenOnto = null;
+        }
+
+        // The bar shows what is being heard, else what is being typed, else where the page is.
+        void UpdateAddress()
+        {
+            if (m_AddressText == null)
+                return;
+            if (Time.unscaledTime >= m_NextUrlPoll)
+            {
+                // Twice a second: it crosses into Objective-C and the address rarely changes.
+                m_NextUrlPoll = Time.unscaledTime + 0.5f;
+                m_UrlShown = WebBrowser.CurrentUrl;
+            }
+            m_AddressText.text = m_Heard != null ? m_Heard + " ..."
+                               : m_Typed != null ? m_Typed + "|"
+                               : ShortenUrl(m_UrlShown);
+            if (m_Keyboard != null && m_Keyboard.IsOpen)
+                m_Keyboard.SetCaption(Caption());
+        }
+
+        string Caption()
+        {
+            var state = Dictation.Current;
+            if (state != Dictation.State.Idle)
+                return Dictation.Describe(state);
+            if (WebBrowser.TextFocused)
+                return "Typing into the page";
+            return KeyboardInput.Present
+                ? "Typing an address, and a keyboard is connected"
+                : "Typing an address";
+        }
+
+        // The address as it is worth showing. A bar in a viewer is read at a glance through a
+        // lens, so the scheme and a trailing slash are noise; a long one is cut in the middle,
+        // since the host is at the front and the page's own name is at the end and both matter.
+        public static string ShortenUrl(string url, int limit = 56)
+        {
+            if (string.IsNullOrEmpty(url))
+                return "";
+            var text = url;
+            foreach (var prefix in new[] { "https://", "http://", "file://" })
+            {
+                if (!text.StartsWith(prefix, StringComparison.Ordinal))
+                    continue;
+                text = text.Substring(prefix.Length);
+                break;
+            }
+            if (text.StartsWith("www.", StringComparison.Ordinal))
+                text = text.Substring(4);
+            if (text.Length > 1 && text.EndsWith("/", StringComparison.Ordinal))
+                text = text.Substring(0, text.Length - 1);
+            if (text.Length <= limit)
+                return text;
+            var keepEnd = limit / 3;
+            var keepStart = limit - keepEnd - 1;
+            return text.Substring(0, keepStart) + "…" + text.Substring(text.Length - keepEnd);
         }
 
         // Looking near the window's top or bottom edge scrolls the page, so reading needs no

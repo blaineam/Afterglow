@@ -14,8 +14,10 @@ namespace ProjectBootstrap
     // from CardboardXRWebXR.o". Nothing earlier -- not the Editor's own compile, not the EditMode
     // tests, not Unity's export -- says a word about it.
     //
-    //   WebKit  the in-app browser's WKWebView (CardboardXRWebXR.mm)
-    //   Photos  the spatial photo library (CardboardXRSpatialPhotos.mm)
+    //   WebKit        the in-app browser's WKWebView (CardboardXRWebXR.mm)
+    //   Photos        the spatial photo library (CardboardXRSpatialPhotos.mm)
+    //   Speech        dictation into the browser (CardboardXRDictation.mm)
+    //   AVFoundation  the microphone that feeds it, in the same plugin
     //
     // They go on UnityFramework, which is the target the plugins are compiled into; adding them to
     // Unity-iPhone instead links them into the shell app, where the plugins are not.
@@ -24,7 +26,10 @@ namespace ProjectBootstrap
         // After IosProMotion, which only touches the plist.
         public int callbackOrder => 1;
 
-        static readonly string[] k_Frameworks = { "WebKit.framework", "Photos.framework" };
+        static readonly string[] k_Frameworks =
+        {
+            "WebKit.framework", "Photos.framework", "Speech.framework", "AVFoundation.framework",
+        };
 
         public void OnPostprocessBuild(BuildReport report)
         {

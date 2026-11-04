@@ -202,6 +202,154 @@ static const char *kHelperSource = R"JS(
     }
     window.scrollBy(dx, dy);
   };
+
+  function tell(body) {
+    try { window.webkit.messageHandlers.cardboardxr.postMessage(body); } catch (e) { /* no host */ }
+  }
+
+  // Which field, if any, the typing goes into -- following focus through same-origin frames,
+  // since a site's search box is often in one.
+  function focused() {
+    var el = document.activeElement;
+    for (var depth = 0; el && el.tagName === 'IFRAME' && depth < 4; depth++) {
+      var inner = null;
+      try { inner = el.contentDocument; } catch (e) { inner = null; }
+      if (!inner) break;
+      el = inner.activeElement;
+    }
+    if (!el) return null;
+    if (el.isContentEditable) return el;
+    var tag = (el.tagName || '').toLowerCase();
+    if (tag === 'textarea') return el;
+    // Focusable is not the same as typable: a checkbox or a button takes focus too.
+    if (tag === 'input' && /^(text|search|url|email|tel|password|number|)$/i.test(el.type || ''))
+      return el;
+    return null;
+  }
+
+  // A page's own copy of the value is not kept in the DOM property. React and the rest track
+  // changes through the property's own setter and keep their own state beside it, so a plain
+  // assignment is invisible to them and gets overwritten on the next render. Going through the
+  // prototype's setter is what makes the page notice it was typed into.
+  function setValue(el, v) {
+    var proto = (typeof HTMLTextAreaElement !== 'undefined' && el instanceof HTMLTextAreaElement)
+      ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    var d = Object.getOwnPropertyDescriptor(proto, 'value');
+    if (d && d.set) d.set.call(el, v); else el.value = v;
+  }
+
+  function valueOf(el) {
+    return el.isContentEditable ? (el.textContent || '') : (el.value || '');
+  }
+
+  // input every keystroke, change only on commit, which is what the DOM promises and what
+  // pages are written against.
+  function fireInput(el, data, how) {
+    try {
+      el.dispatchEvent(new InputEvent('beforeinput',
+        { bubbles: true, cancelable: true, data: data, inputType: how }));
+    } catch (e) { /* older engines */ }
+    try {
+      el.dispatchEvent(new InputEvent('input', { bubbles: true, data: data, inputType: how }));
+    } catch (e) {
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+
+  function reportFocus() {
+    var el = focused();
+    tell({ event: 'focus', has: el ? 1 : 0,
+           kind: el ? ((el.tagName || '').toLowerCase() + (el.type ? ':' + el.type : '')) : '',
+           value: el ? valueOf(el) : '' });
+  }
+  document.addEventListener('focusin', reportFocus, true);
+  // After the fact: at focusout the old element is still the active one.
+  document.addEventListener('focusout', function () { setTimeout(reportFocus, 0); }, true);
+
+  window.__cardboardxrType = function (text) {
+    var el = focused();
+    if (!el) { tell({ event: 'typed', ok: 0, note: 'nothing is focused' }); return; }
+    if (el.isContentEditable) {
+      // The only insert that fires an editable region's own events. The Selection API alone
+      // moves the text but leaves the page unaware of it.
+      var done = false;
+      try { done = document.execCommand('insertText', false, text); } catch (e) { done = false; }
+      if (!done) { el.textContent = (el.textContent || '') + text; fireInput(el, text, 'insertText'); }
+    } else {
+      var start = el.selectionStart, end = el.selectionEnd, v = el.value || '';
+      if (typeof start === 'number' && typeof end === 'number') {
+        setValue(el, v.slice(0, start) + text + v.slice(end));
+        try { el.setSelectionRange(start + text.length, start + text.length); } catch (e) { }
+      } else {
+        setValue(el, v + text);
+      }
+      fireInput(el, text, 'insertText');
+    }
+    tell({ event: 'typed', ok: 1, value: valueOf(el) });
+  };
+
+  window.__cardboardxrKey = function (key) {
+    var el = focused();
+    if (!el) { tell({ event: 'key', ok: 0, note: 'nothing is focused', which: key }); return; }
+
+    if (key === 'Backspace' || key === 'Clear') {
+      if (el.isContentEditable) {
+        var cmd = key === 'Clear' ? null : 'delete';
+        if (cmd) { try { document.execCommand(cmd, false, null); } catch (e) { } }
+        else { el.textContent = ''; fireInput(el, null, 'deleteContent'); }
+      } else {
+        var v = el.value || '', s = el.selectionStart, e2 = el.selectionEnd;
+        if (key === 'Clear') {
+          setValue(el, '');
+        } else if (typeof s === 'number' && typeof e2 === 'number' && s !== e2) {
+          setValue(el, v.slice(0, s) + v.slice(e2));
+          try { el.setSelectionRange(s, s); } catch (e) { }
+        } else if (typeof s === 'number' && s > 0) {
+          setValue(el, v.slice(0, s - 1) + v.slice(s));
+          try { el.setSelectionRange(s - 1, s - 1); } catch (e) { }
+        } else {
+          setValue(el, v.slice(0, -1));
+        }
+        fireInput(el, null, 'deleteContentBackward');
+      }
+      tell({ event: 'key', ok: 1, which: key, value: valueOf(el) });
+      return;
+    }
+
+    // Enter commits. The key events go first, because a page that listens for them should get
+    // its chance; if nothing came of it the form is submitted outright, since a search box
+    // watching for a real keypress will not accept a synthetic one.
+    var win = window;
+    try {
+      var doc = el.ownerDocument;
+      if (doc && doc.defaultView) win = doc.defaultView;
+    } catch (e) { win = window; }
+    var before = win.location.href;
+    ['keydown', 'keypress', 'keyup'].forEach(function (t) {
+      try {
+        el.dispatchEvent(new KeyboardEvent(t, { bubbles: true, cancelable: true,
+          key: key, code: key, keyCode: key === 'Enter' ? 13 : 0, which: key === 'Enter' ? 13 : 0 }));
+      } catch (e) { /* older engines */ }
+    });
+    if (key !== 'Enter') { tell({ event: 'key', ok: 1, which: key }); return; }
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    setTimeout(function () {
+      var now = before;
+      try { now = win.location.href; } catch (e) { now = before; }
+      if (now !== before) { tell({ event: 'key', ok: 1, which: key, note: 'the page moved' }); return; }
+      var form = el.form || (el.closest ? el.closest('form') : null);
+      if (form) {
+        try {
+          // requestSubmit runs the page's validation and its submit handlers; submit() skips
+          // both, which silently breaks any site that does its searching in one.
+          if (form.requestSubmit) form.requestSubmit(); else form.submit();
+          tell({ event: 'key', ok: 1, which: key, note: 'submitted the form' });
+          return;
+        } catch (e) { /* fall through to the report below */ }
+      }
+      tell({ event: 'key', ok: 1, which: key, note: form ? 'the form refused' : 'no form to submit' });
+    }, 120);
+  };
 })();
 )JS";
 
@@ -221,6 +369,10 @@ static const char *kHelperSource = R"JS(
 // cannot go on the web view itself: drawViewHierarchyInRect captures a view as displayed, so a
 // nearly transparent view gives a nearly transparent snapshot.
 @property (nonatomic, strong) UIView *veil;
+// Whether the page has a field focused, so the keyboard knows whether it is typing into the page
+// or into the address bar. Kept here because the page reports it as it changes: evaluateJavaScript
+// cannot be asked for an answer on the spot, and the keyboard needs one every frame.
+@property (nonatomic, assign) int focusHas;
 - (void)capture;
 @end
 
@@ -241,6 +393,24 @@ static CardboardXRWebHost *g_Host = nil;
         NSLog(@"[WebXR] clicked %@: %@ (%@)", body[@"hit"] ?: @"?",
               [body[@"moved"] boolValue] ? @"went somewhere" : @"stayed put",
               body[@"note"] ?: @"");
+        return;
+    }
+    else if ([event isEqualToString:@"focus"])
+    {
+        NSDictionary *body = message.body;
+        int has = [body[@"has"] intValue];
+        if (has != self.focusHas)
+            NSLog(@"[WebXR] %@", has ? [NSString stringWithFormat:@"typing goes to the page's %@",
+                                        body[@"kind"] ?: @"field"]
+                                    : @"no field focused; typing goes to the address bar");
+        self.focusHas = has;
+        return;
+    }
+    else if ([event isEqualToString:@"typed"] || [event isEqualToString:@"key"])
+    {
+        NSDictionary *body = message.body;
+        if (![body[@"ok"] boolValue] || body[@"note"] != nil)
+            NSLog(@"[WebXR] %@ %@: %@", event, body[@"which"] ?: @"", body[@"note"] ?: @"refused");
         return;
     }
     NSLog(@"[WebXR] page said %@", event ?: @"?");
@@ -593,6 +763,82 @@ extern "C" void CardboardXR_WebReload()
 {
     if (g_Host != nil && g_Host.web != nil)
         [g_Host.web reload];
+}
+
+// A JavaScript string literal for arbitrary typed text. Hand-rolled escaping is where injection
+// bugs live, so this goes through the JSON writer and then fixes the one place the two formats
+// disagree: U+2028 and U+2029 are ordinary characters in JSON and line terminators in JavaScript,
+// so a literal containing them would not parse.
+static NSString *JsString(NSString *text)
+{
+    NSData *data = [NSJSONSerialization dataWithJSONObject:@[text ?: @""] options:0 error:nil];
+    NSString *wrapped = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    NSString *literal = wrapped.length >= 4
+        ? [wrapped substringWithRange:NSMakeRange(1, wrapped.length - 2)]
+        : @"\"\"";
+    literal = [literal stringByReplacingOccurrencesOfString:@" " withString:@"\\u2028"];
+    return [literal stringByReplacingOccurrencesOfString:@" " withString:@"\\u2029"];
+}
+
+// Types text into whatever field the page has focused.
+extern "C" void CardboardXR_WebType(const char *text)
+{
+    if (g_Host == nil || g_Host.web == nil || text == nullptr)
+        return;
+    NSString *js = [NSString stringWithFormat:@"window.__cardboardxrType&&window.__cardboardxrType(%@)",
+                    JsString([NSString stringWithUTF8String:text])];
+    [g_Host.web evaluateJavaScript:js completionHandler:nil];
+}
+
+// Backspace, Clear or Enter, which commits.
+extern "C" void CardboardXR_WebKey(const char *key)
+{
+    if (g_Host == nil || g_Host.web == nil || key == nullptr)
+        return;
+    NSString *js = [NSString stringWithFormat:@"window.__cardboardxrKey&&window.__cardboardxrKey(%@)",
+                    JsString([NSString stringWithUTF8String:key])];
+    [g_Host.web evaluateJavaScript:js completionHandler:nil];
+}
+
+// Whether the page has a field focused, so the keyboard can say where the typing is going.
+extern "C" int CardboardXR_WebTextFocused()
+{
+    return g_Host != nil ? g_Host.focusHas : 0;
+}
+
+extern "C" void CardboardXR_WebLoadUrl(const char *url)
+{
+    if (g_Host == nil || g_Host.web == nil || url == nullptr)
+        return;
+    NSURL *target = [NSURL URLWithString:[NSString stringWithUTF8String:url]];
+    if (target == nil)
+    {
+        NSLog(@"[WebXR] not a URL: %s", url);
+        return;
+    }
+    g_Host.focusHas = 0;
+    [g_Host.web loadRequest:[NSURLRequest requestWithURL:target]];
+    NSLog(@"[WebXR] going to %@", target.absoluteString);
+}
+
+// The current address, for the bar to show. Returns the length written, or what it would have
+// needed if the buffer was too small.
+extern "C" int CardboardXR_WebCopyUrl(char *buffer, int capacity)
+{
+    if (g_Host == nil || g_Host.web == nil)
+        return 0;
+    NSString *url = g_Host.web.URL.absoluteString ?: @"";
+    const char *utf8 = url.UTF8String;
+    if (utf8 == NULL)
+        return 0;
+    const int length = (int)strlen(utf8);
+    if (buffer != nullptr && capacity > 0)
+    {
+        const int room = length < capacity - 1 ? length : capacity - 1;
+        memcpy(buffer, utf8, (size_t)room);
+        buffer[room] = '\0';
+    }
+    return length;
 }
 
 // An immersive session needs the frame rate a snapshot cannot give, so the view comes to the

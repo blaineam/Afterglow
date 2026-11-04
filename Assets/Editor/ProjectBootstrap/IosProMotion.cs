@@ -42,9 +42,19 @@ namespace ProjectBootstrap
             // is no PlayerSettings option for this one, unlike the camera's.
             plist.root.SetString("NSPhotoLibraryUsageDescription",
                 "CardboardXR shows the spatial photos in your library in 3D through the viewer.");
+            // Dictation into the browser, which needs both: recognition and the microphone that
+            // feeds it. Said here rather than through PlayerSettings because the build method
+            // does not run ProjectSetup.Apply, so anything set there can be missing from a build.
+            plist.root.SetString("NSSpeechRecognitionUsageDescription",
+                "CardboardXR turns what you say into text for the browser. Recognition happens on " +
+                "this iPhone and your voice is not sent anywhere.");
+            plist.root.SetString("NSMicrophoneUsageDescription",
+                "CardboardXR listens only while you hold the dictate button, to type what you say " +
+                "into the browser.");
             plist.WriteToFile(path);
             Debug.Log("[ProjectSetup] ProMotion allowed: the display can run above 60 fps. " +
-                      "Documents shared with Finder and Files, and the Photos library can be read.");
+                      "Documents shared with Finder and Files, the Photos library can be read, " +
+                      "and dictation can ask for the microphone.");
         }
     }
 }

@@ -220,6 +220,97 @@ namespace CardboardXR.Stereo
 #endif
         }
 
+        // Types into whatever field the page has focused. Nothing focused and the page says so
+        // rather than putting the text somewhere arbitrary; the caller should be sending it to
+        // the address bar instead, which TextFocused is for.
+        public static void Type(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return;
+#if UNITY_IOS && !UNITY_EDITOR
+            CardboardXR_WebType(text);
+#endif
+        }
+
+        // "Backspace", "Clear" or "Enter". Enter commits: it offers the page the key events
+        // first and submits the form itself if nothing came of them.
+        public static void Key(string key)
+        {
+#if UNITY_IOS && !UNITY_EDITOR
+            CardboardXR_WebKey(key);
+#endif
+        }
+
+        // Whether the page has a text field focused, which decides where typing goes.
+        public static bool TextFocused
+        {
+            get
+            {
+#if UNITY_IOS && !UNITY_EDITOR
+                return CardboardXR_WebTextFocused() != 0;
+#else
+                return false;
+#endif
+            }
+        }
+
+        public static void LoadUrl(string url)
+        {
+            if (string.IsNullOrEmpty(url))
+                return;
+#if UNITY_IOS && !UNITY_EDITOR
+            CardboardXR_WebLoadUrl(url);
+#endif
+        }
+
+        // What the page is showing now, for the address bar.
+        public static string CurrentUrl
+        {
+            get
+            {
+#if UNITY_IOS && !UNITY_EDITOR
+                var needed = CardboardXR_WebCopyUrl(null, 0);
+                if (needed <= 0)
+                    return string.Empty;
+                var buffer = new byte[needed + 1];
+                CardboardXR_WebCopyUrl(buffer, buffer.Length);
+                return Encoding.UTF8.GetString(buffer, 0, needed);
+#else
+                return string.Empty;
+#endif
+            }
+        }
+
+        // Where typed text should take you. A scheme is obeyed; something shaped like a host
+        // gets https; anything else was meant as a search, which is the common case and the one
+        // a browser gets wrong most visibly.
+        //
+        // DuckDuckGo because it does not need an account or carry one around, which is the same
+        // reason the rest of this app keeps to itself.
+        const string k_Search = "https://duckduckgo.com/?q=";
+
+        public static string NormalizeAddress(string typed)
+        {
+            if (string.IsNullOrWhiteSpace(typed))
+                return null;
+            var text = typed.Trim();
+            // Only a real scheme can carry its own slashes. Matching on a bare colon would read
+            // "localhost:8080" as one.
+            if (text.Contains("://"))
+                return text;
+            if (text.StartsWith("about:", StringComparison.OrdinalIgnoreCase))
+                return text;
+
+            var host = text.Split('/')[0];
+            // A space means it was a search however much the rest of it looks like a host, and a
+            // trailing dot means the end of a sentence rather than a domain.
+            var looksLikeHost = !text.Contains(' ')
+                                && !host.EndsWith(".", StringComparison.Ordinal)
+                                && (host.Contains('.')
+                                    || host.StartsWith("localhost", StringComparison.OrdinalIgnoreCase));
+            return looksLikeHost ? "https://" + text : k_Search + Uri.EscapeDataString(text);
+        }
+
         // Moves the page between a quad in the scene and the whole screen.
         public static void SetWindowed(bool windowed)
         {
@@ -299,6 +390,11 @@ namespace CardboardXR.Stereo
         [DllImport("__Internal")] static extern void CardboardXR_WebGoBack();
         [DllImport("__Internal")] static extern void CardboardXR_WebGoForward();
         [DllImport("__Internal")] static extern void CardboardXR_WebReload();
+        [DllImport("__Internal")] static extern void CardboardXR_WebType(string text);
+        [DllImport("__Internal")] static extern void CardboardXR_WebKey(string key);
+        [DllImport("__Internal")] static extern int CardboardXR_WebTextFocused();
+        [DllImport("__Internal")] static extern void CardboardXR_WebLoadUrl(string url);
+        [DllImport("__Internal")] static extern int CardboardXR_WebCopyUrl(byte[] buffer, int capacity);
         [DllImport("__Internal")] static extern void CardboardXR_WebSetWindowed(int windowed);
         [DllImport("__Internal")] static extern void CardboardXR_WebClose();
         [DllImport("__Internal")] static extern int CardboardXR_WebIsOpen();

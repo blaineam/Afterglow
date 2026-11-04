@@ -68,5 +68,66 @@ namespace CardboardXR.Stereo.Tests
                 Assert.That(v, Is.InRange(0f, 1f));
             }
         }
+
+        // What typing into the address bar does with what was typed. The interesting cases are
+        // the ones where a browser is visibly wrong: a search treated as a host, or a host sent
+        // to a search engine.
+        [TestCase("https://immersiveweb.dev", "https://immersiveweb.dev")]
+        [TestCase("http://example.com/a/b", "http://example.com/a/b")]
+        [TestCase("about:blank", "about:blank")]
+        [TestCase("immersiveweb.dev", "https://immersiveweb.dev")]
+        [TestCase("example.com/path?q=1", "https://example.com/path?q=1")]
+        [TestCase("  example.com  ", "https://example.com")]
+        // A port is not a scheme, which is what matching on a bare colon would make of it.
+        [TestCase("localhost:8080", "https://localhost:8080")]
+        [TestCase("localhost", "https://localhost")]
+        public void AnAddressIsTakenAsOne(string typed, string expected)
+        {
+            Assert.AreEqual(expected, WebBrowser.NormalizeAddress(typed));
+        }
+
+        [TestCase("webxr samples")]
+        [TestCase("what is a spatial photo")]
+        // A dot does not make it a host when there is a space in it.
+        [TestCase("compare example.com and the other one")]
+        [TestCase("hello")]
+        // The end of a sentence, not a domain.
+        [TestCase("is that so.")]
+        public void AnythingElseIsASearch(string typed)
+        {
+            var result = WebBrowser.NormalizeAddress(typed);
+            Assert.That(result, Does.StartWith("https://duckduckgo.com/?q="), result);
+            // And the text survives being put in a query, spaces and all.
+            Assert.AreEqual(typed.Trim(),
+                System.Uri.UnescapeDataString(result.Substring("https://duckduckgo.com/?q=".Length)));
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase("   ")]
+        public void NothingTypedGoesNowhere(string typed)
+        {
+            Assert.IsNull(WebBrowser.NormalizeAddress(typed));
+        }
+
+        [Test]
+        public void TheAddressBarDropsWhatIsNotWorthReading()
+        {
+            Assert.AreEqual("immersiveweb.dev", WebBrowserSession.ShortenUrl("https://immersiveweb.dev/"));
+            Assert.AreEqual("example.com/a", WebBrowserSession.ShortenUrl("https://www.example.com/a"));
+            Assert.AreEqual("", WebBrowserSession.ShortenUrl(null));
+        }
+
+        [Test]
+        public void ALongAddressKeepsBothItsEnds()
+        {
+            // The host is at the front and the page's name at the end, so the middle is what goes.
+            var url = "https://example.com/" + new string('x', 200) + "/the-page.html";
+            var shown = WebBrowserSession.ShortenUrl(url, 40);
+            Assert.That(shown.Length, Is.LessThanOrEqualTo(40), shown);
+            Assert.That(shown, Does.StartWith("example.com/"), shown);
+            Assert.That(shown, Does.EndWith("page.html"), shown);
+            Assert.That(shown, Does.Contain("…"), shown);
+        }
     }
 }
