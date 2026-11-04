@@ -47,6 +47,12 @@ namespace CardboardXR.Hands
             return anchors;
         }
 
+        // Two palms whose boxes overlap by more than this are taken to be the same hand seen by
+        // two anchors, and the lower-scoring one is dropped. The detector fires several
+        // neighbouring anchors on one hand, so without this a second "hand" is usually just the
+        // side of the first.
+        public const float MaxOverlap = 0.35f;
+
         // The highest-scoring palm, if its score reaches minScore. boxes holds AnchorCount *
         // ValuesPerAnchor values and scores AnchorCount logits.
         public static bool TryDecodeBest(float[] boxes, float[] scores, Vector2[] anchors, float minScore, out Palm palm)
@@ -58,13 +64,66 @@ namespace CardboardXR.Hands
                 if (scores[i] > scores[best])
                     best = i;
             }
-            var score = Sigmoid(scores[best]);
-            if (score < minScore)
+            if (Sigmoid(scores[best]) < minScore)
                 return false;
+            palm = At(boxes, anchors, best, Sigmoid(scores[best]));
+            return true;
+        }
 
-            var anchor = anchors[best];
-            var o = best * ValuesPerAnchor;
-            palm = new Palm
+        // Every palm worth having, best first, with the duplicate anchors on one hand collapsed.
+        // The detector is given the whole image and finds both hands in the one pass, so this is
+        // what makes a second hand available without running the expensive model again.
+        //
+        // `suppressed` is scratch the caller owns, AnchorCount long, cleared here. It is a
+        // parameter rather than a local because this runs on every detector result and a hand
+        // being tracked is not worth an allocation -- and rather than being done by writing over
+        // `scores`, which the caller reuses and would then find full of holes.
+        //
+        // Returns how many palms were written to `into`, at most its length.
+        public static int DecodeAll(float[] boxes, float[] scores, Vector2[] anchors, float minScore,
+                                    bool[] suppressed, Palm[] into)
+        {
+            if (into == null || into.Length == 0 || suppressed == null || suppressed.Length < AnchorCount)
+                return 0;
+            System.Array.Clear(suppressed, 0, AnchorCount);
+
+            var found = 0;
+            // Greedy non-maximum suppression: take the best anchor still standing, then strike
+            // out every anchor whose box is mostly the same box. One pass over the anchors per
+            // palm, which for the two or three wanted here beats sorting all 2016.
+            while (found < into.Length)
+            {
+                var best = -1;
+                for (var i = 0; i < AnchorCount; i++)
+                {
+                    if (suppressed[i])
+                        continue;
+                    if (best < 0 || scores[i] > scores[best])
+                        best = i;
+                }
+                if (best < 0 || Sigmoid(scores[best]) < minScore)
+                    break;
+
+                var palm = At(boxes, anchors, best, Sigmoid(scores[best]));
+                into[found++] = palm;
+                for (var i = 0; i < AnchorCount; i++)
+                {
+                    if (suppressed[i])
+                        continue;
+                    // Below the threshold it can never be chosen, so striking it out now saves
+                    // decoding its box on every later pass.
+                    if (Sigmoid(scores[i]) < minScore || Overlap(At(boxes, anchors, i, 0f), palm) > MaxOverlap)
+                        suppressed[i] = true;
+                }
+            }
+            return found;
+        }
+
+        static Palm At(float[] boxes, Vector2[] anchors, int index, float score)
+        {
+            var anchor = anchors[index];
+            var o = index * ValuesPerAnchor;
+            return new Palm
             {
                 score = score,
                 center = anchor + new Vector2(boxes[o], boxes[o + 1]) / InputSize,
@@ -72,7 +131,22 @@ namespace CardboardXR.Hands
                 wrist = anchor + new Vector2(boxes[o + k_WristOffset], boxes[o + k_WristOffset + 1]) / InputSize,
                 middleKnuckle = anchor + new Vector2(boxes[o + k_MiddleKnuckleOffset], boxes[o + k_MiddleKnuckleOffset + 1]) / InputSize,
             };
-            return true;
+        }
+
+        // Intersection over union of two palms' boxes.
+        public static float Overlap(Palm a, Palm b)
+        {
+            var aMin = a.center - a.size / 2f;
+            var aMax = a.center + a.size / 2f;
+            var bMin = b.center - b.size / 2f;
+            var bMax = b.center + b.size / 2f;
+            var width = Mathf.Min(aMax.x, bMax.x) - Mathf.Max(aMin.x, bMin.x);
+            var height = Mathf.Min(aMax.y, bMax.y) - Mathf.Max(aMin.y, bMin.y);
+            if (width <= 0f || height <= 0f)
+                return 0f;
+            var overlap = width * height;
+            var union = a.size.x * a.size.y + b.size.x * b.size.y - overlap;
+            return union > 0f ? overlap / union : 0f;
         }
 
         public static float Sigmoid(float x) => 1f / (1f + Mathf.Exp(-x));

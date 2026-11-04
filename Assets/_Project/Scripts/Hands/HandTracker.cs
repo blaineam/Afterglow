@@ -84,11 +84,6 @@ namespace CardboardXR.Hands
         const float k_CalibrationFitError = 15f;
         // Poses up to this far apart can be interpolated between, for an image with no pose of its own.
         const long k_MaxPoseGapNs = 100_000_000;
-        // One Euro filter settings: the cutoff in Hz when still, and how much it rises per m/s.
-        const float k_JointMinCutoff = 1.5f;
-        const float k_JointBeta = 8f;
-        const float k_DepthMinCutoff = 1f;
-        const float k_DepthBeta = 4f;
         // The joints are moved on by this share of their speed times the time since their image, for
         // up to k_MaxPredictionSeconds; less than all of it, so they don't overshoot when the hand stops.
         const float k_PredictionGain = 0.8f;
@@ -117,56 +112,115 @@ namespace CardboardXR.Hands
         [SerializeField, Range(0f, 1f)] float m_MinPalmScore = 0.5f;
         [SerializeField, Range(0f, 1f)] float m_MinHandPresence = 0.5f;
 
-        public bool IsTracking { get; private set; }
+        // The hands being followed, each with its own region, landmarks, filters and joints (see
+        // TrackedHand). Two: the camera sees about 68 degrees across, which is only wide enough
+        // for two hands held in front of the chest, and every hand past the first costs a
+        // landmarker run on every image.
+        public const int MaxHands = 2;
+        readonly TrackedHand[] m_Hands = { new(), new() };
+
+        // Every hand, tracked or not, for a caller that wants to ask about each.
+        public IReadOnlyList<TrackedHand> Hands => m_Hands;
+
+        // The hand the single-hand API below reports: the first one tracked, so a one-handed user
+        // sees exactly what they saw before there were two.
+        public TrackedHand Primary
+        {
+            get
+            {
+                foreach (var hand in m_Hands)
+                {
+                    if (hand.isTracking)
+                        return hand;
+                }
+                return m_Hands[0];
+            }
+        }
+
+        // The other one, when two are up. Null when only one is.
+        public TrackedHand Secondary
+        {
+            get
+            {
+                var primary = Primary;
+                foreach (var hand in m_Hands)
+                {
+                    if (hand != primary && hand.isTracking)
+                        return hand;
+                }
+                return null;
+            }
+        }
+
+        public int TrackedCount
+        {
+            get
+            {
+                var count = 0;
+                foreach (var hand in m_Hands)
+                {
+                    if (hand.isTracking)
+                        count++;
+                }
+                return count;
+            }
+        }
+
+        // The single-hand API, which is the primary hand's. Everything written against one hand --
+        // the demos, the pinch sensor, the settings gesture -- keeps working unchanged, and
+        // anything that wants both reads Hands.
+        public bool IsTracking => Primary.isTracking;
 
         // The 21 joints' world positions, in MediaPipe's order, while IsTracking.
-        public Vector3[] Joints { get; } = new Vector3[HandGeometry.JointCount];
+        public Vector3[] Joints => Primary.joints;
 
         // The palm's distance ahead of the camera, in meters, while IsTracking.
-        public float HandDistance { get; private set; }
+        public float HandDistance => Primary.distance;
 
         // How far apart the thumb and index fingertips are in the model's hand shape, in meters, while
         // IsTracking. The shape doesn't depend on how far away the hand is thought to be.
-        public float PinchDistance { get; private set; }
+        public float PinchDistance => Primary.pinchDistance;
 
         // Midway between the thumb and index fingertips, in world space, while IsTracking.
-        public Vector3 PinchPoint => (Joints[HandGeometry.ThumbTip] + Joints[HandGeometry.IndexTip]) / 2f;
+        public Vector3 PinchPoint => PinchPointOf(Primary);
 
-        // Goes up by one with each result placed.
+        public static Vector3 PinchPointOf(TrackedHand hand) =>
+            (hand.joints[HandGeometry.ThumbTip] + hand.joints[HandGeometry.IndexTip]) / 2f;
+
+        // Goes up by one with each result placed, for either hand.
         public int ResultCount { get; private set; }
 
         // For the latest result: the thumb and index fingertips' distance in the image over the palm's
         // size there, from the model's 2D landmarks, its most reliable output; its hand presence
         // score; and whether its 3D shape fit (if not, PinchDistance is from the last one that did).
-        public float PinchRatio { get; private set; }
-        public float Presence { get; private set; }
-        public bool ShapeFits { get; private set; }
+        public float PinchRatio => Primary.pinchRatio;
+        public float Presence => Primary.presence;
+        public bool ShapeFits => Primary.shapeFits;
 
         // For the latest result: the landmarker's handedness, as the chance that it's a right hand
         // (see HandSubsystemFeed).
-        public float HandednessScore { get; private set; }
+        public float HandednessScore => Primary.handednessScore;
 
         // The latest result's 21 landmarks in the camera image, in pixels (x right, y down), for 2D
         // tests such as which way the palm faces (PalmGesture).
-        public System.Collections.Generic.IReadOnlyList<Vector2> ImageLandmarks => m_ImageLandmarks;
+        public IReadOnlyList<Vector2> ImageLandmarks => Primary.imageLandmarks;
 
         // How near the hand comes to the camera image's edge, as the smallest of its landmarks' distances
         // to an edge over the image's size there: 0 touching it, 0.5 in the middle.
-        public float EdgeDistance
+        public float EdgeDistance => EdgeDistanceOf(Primary);
+
+        public float EdgeDistanceOf(TrackedHand hand)
         {
-            get
+            if (m_ImageWidth <= 0 || m_ImageHeight <= 0)
+                return 0.5f;
+            var nearest = 0.5f;
+            foreach (var point in hand.imageLandmarks)
             {
-                if (m_ImageWidth <= 0 || m_ImageHeight <= 0)
-                    return 0.5f;
-                var nearest = 0.5f;
-                foreach (var point in m_ImageLandmarks)
-                {
-                    var x = point.x / m_ImageWidth;
-                    var y = point.y / m_ImageHeight;
-                    nearest = Mathf.Min(nearest, Mathf.Min(Mathf.Min(x, 1f - x), Mathf.Min(y, 1f - y)));
-                }
-                return nearest;
+                var x = point.x / m_ImageWidth;
+                var y = point.y / m_ImageHeight;
+                nearest = Mathf.Min(nearest, Mathf.Min(Mathf.Min(x, 1f - x), Mathf.Min(y, 1f - y)));
             }
+            return nearest;
         }
 
         Worker m_DetectorWorker;
@@ -184,6 +238,11 @@ namespace CardboardXR.Hands
         float[] m_LandmarkerPixels;
         float[] m_Boxes;
         float[] m_Scores;
+        // Scratch for decoding more than one palm out of a detector result: the palms
+        // found, and which anchors the suppression has struck out. Owned here rather than
+        // inside the decoder so a detection costs no allocation.
+        readonly Palm[] m_Palms = new Palm[MaxHands];
+        readonly bool[] m_Suppressed = new bool[PalmDecoder.AnchorCount];
         readonly float[] m_LandmarkValues = new float[HandGeometry.JointCount * 3];
         readonly float[] m_MetricValues = new float[HandGeometry.JointCount * 3];
         Vector2[] m_Anchors;
@@ -194,13 +253,12 @@ namespace CardboardXR.Hands
         long m_LastImageNs;
         Vector2 m_FocalLength;
         Vector2 m_PrincipalPoint;
-        HandRegion? m_Region;
         bool m_Running;
         bool m_LoopActive;
         bool m_WasPaused;
         // When the palm detector may next look for a hand, and the landmarker next run.
         float m_NextSearch;
-        float m_NextTrack;
+        // Per hand; the detector's m_NextSearch is shared.
 
         // Whether tracking is paused while the room is scanned, leaving the CPU to plane detection
         // (RoomBoundary.PausesHands).
@@ -216,19 +274,13 @@ namespace CardboardXR.Hands
         Matrix4x4 m_DisplayMatrix;
         bool m_LoggedSetup;
 
-        readonly Vector2[] m_ImageLandmarks = new Vector2[HandGeometry.JointCount];
-        readonly Vector3[] m_MetricLandmarks = new Vector3[HandGeometry.JointCount];
         // The user's palm size in 3D, in meters, learned from shapes that fit well.
         float m_PalmSize = k_TypicalPalmSize;
-        readonly OneEuroFilter[] m_JointFilters = CreateJointFilters();
         // The latest result's smoothed joints, their image's time, and the hand's smoothed speed.
-        readonly Vector3[] m_ResultJoints = new Vector3[HandGeometry.JointCount];
         // The palm's, which every joint is moved on by. Each joint once had its own, and a pinch's
         // fingertips, hiding each other, jump in the image: their speeds doubled the jitter the eye
         // saw while pinching on the iPhone, 25-38 mm a step against 13-17 held. The palm is what the
         // fit locks on to, and a hand dragging something moves mostly as one piece.
-        Vector3 m_HandSpeed;
-        long m_ResultImageNs;
         // Tells how old a camera image is. The camera shares the native sensors' clock on Android
         // and stamps on the system clock on iOS, where there are no native sensors; this works out
         // which from the first result rather than assuming a platform.
@@ -252,18 +304,12 @@ namespace CardboardXR.Hands
         bool m_DroppingStray;
         // Whether the region comes from the palm detector and no result from it has been taken yet:
         // a new hand, which must be within reach, rather than one being followed.
-        bool m_Acquiring;
         // The fingertip's steps as each result arrives, shown and without prediction (see MeasureJump).
         double m_ShownDepthJumps, m_ShownAcrossJumps, m_HeldDepthJumps, m_HeldAcrossJumps, m_ShownPalmJumps, m_HeldPalmJumps;
         int m_Jumps;
         // The last shape that fit its landmarks, and its smoothed depth, for images whose shape
         // collapsed.
-        readonly Vector3[] m_GoodShape = new Vector3[HandGeometry.JointCount];
-        bool m_HasGoodShape;
-        float m_GoodDepth;
         // Smooths the hand's depth before the joints are placed with it.
-        readonly OneEuroFilter m_DepthFilter = new(k_DepthMinCutoff, k_DepthBeta);
-        readonly Vector3[] m_CameraJoints = new Vector3[HandGeometry.JointCount];
 
         // Statistics for the [Hands] status line.
         int m_Images;
@@ -277,6 +323,9 @@ namespace CardboardXR.Hands
         float m_PresenceSum;
         float m_Handedness;
         float m_NearestHand = float.PositiveInfinity;
+        // Seconds of the status window with two hands tracked and with exactly one.
+        double m_BothSeconds;
+        double m_OneSeconds;
         float m_FarthestHand;
         int m_Fits;
         int m_BadFits;
@@ -292,9 +341,6 @@ namespace CardboardXR.Hands
         int m_InterpolatedPoses;
         float m_StatusStart;
         // The previous result, for logging jumps in distance.
-        float m_LastDistance;
-        float m_LastPalmSpan;
-        float m_LastResultTime = float.NegativeInfinity;
         float m_LastJumpLog = float.NegativeInfinity;
         float m_LastLossLog = float.NegativeInfinity;
 
@@ -326,7 +372,7 @@ namespace CardboardXR.Hands
             m_CameraManager.frameReceived -= OnCameraFrame;
             if (m_Occlusion != null)
                 m_Occlusion.enabled = false;
-            Lose();
+            LoseAll();
         }
 
         void OnCameraFrame(ARCameraFrameEventArgs args)
@@ -356,26 +402,32 @@ namespace CardboardXR.Hands
                 m_WasPaused = paused;
                 Debug.Log(paused ? "[Hands] Paused while the room is scanned" : "[Hands] Resumed after the scan");
             }
-            PredictJoints();
+            foreach (var hand in m_Hands)
+                PredictJoints(hand);
+            var tracked = TrackedCount;
+            if (tracked >= 2)
+                m_BothSeconds += Time.unscaledDeltaTime;
+            else if (tracked == 1)
+                m_OneSeconds += Time.unscaledDeltaTime;
             LogStatus();
         }
 
         // Moves the latest result's joints on by the hand's speed for the time since their image, so
         // they keep up with the hand between results and make up for most of the delay. Only where the
         // image timestamps' clock can be read.
-        void PredictJoints()
+        void PredictJoints(TrackedHand hand)
         {
-            if (!IsTracking)
+            if (!hand.isTracking)
                 return;
             var lead = 0f;
-            if (TryGetImageAge(m_ResultImageNs, out var sinceImage))
+            if (TryGetImageAge(hand.resultImageNs, out var sinceImage))
             {
                 lead = Mathf.Clamp((float)sinceImage, 0f, k_MaxPredictionSeconds) * k_PredictionGain;
                 m_LeadSum += lead;
                 m_Leads++;
             }
             for (var i = 0; i < HandGeometry.JointCount; i++)
-                Joints[i] = m_ResultJoints[i] + m_HandSpeed * lead;
+                hand.joints[i] = hand.resultJoints[i] + hand.speed * lead;
         }
 
         static Vector3 PalmCentre(Vector3[] joints)
@@ -460,11 +512,11 @@ namespace CardboardXR.Hands
         }
 
         // The depth sensor's reading at the palm's middle, in meters, for the image just taken.
-        bool TryMeasurePalm(out float measured)
+        bool TryMeasurePalm(TrackedHand hand, out float measured)
         {
             var palm = Vector2.zero;
             foreach (var joint in HandGeometry.Palm)
-                palm += m_ImageLandmarks[joint];
+                palm += hand.imageLandmarks[joint];
             palm /= HandGeometry.Palm.Length;
             var uv = new Vector2(palm.x / m_ImageWidth, palm.y / m_ImageHeight);
             // Two depth pixels either side stays inside a palm at arm's length, and medium confidence
@@ -483,7 +535,7 @@ namespace CardboardXR.Hands
 
         // Drops a newly found hand too far away to be the user's, and forgets its region, so the palm
         // detector searches the whole image again rather than following the stray.
-        void DropOutOfReach(float estimate, float measured)
+        void DropOutOfReach(TrackedHand hand, float estimate, float measured)
         {
             m_OutOfReach++;
             if (!m_DroppingStray)
@@ -493,10 +545,10 @@ namespace CardboardXR.Hands
                     ? $"[Hands] Ignored a new hand estimated {estimate:F2} m away, beyond reach; searching again"
                     : $"[Hands] Ignored a new hand measured {measured:F2} m away (estimated {estimate:F2}), beyond reach; searching again");
             }
-            if (IsTracking)
-                Lose();
+            if (hand.isTracking)
+                Lose(hand);
             else
-                Forget();
+                hand.Forget();
         }
 
         string DepthSummary()
@@ -614,45 +666,133 @@ namespace CardboardXR.Hands
         {
             if (m_Fusion.CurrentMode != HeadPoseFusion.Mode.SixDof || !m_CameraManager.enabled || IsPaused)
             {
-                Lose();
+                LoseAll();
                 return false;
             }
-            if (Time.unscaledTime < (m_Region == null ? m_NextSearch : m_NextTrack))
+            // The detector looks for whatever hand is missing; each hand being followed has its
+            // own cadence for the landmarker.
+            var wantsSearch = HasFreeSlot && Time.unscaledTime >= m_NextSearch;
+            var wantsTrack = false;
+            foreach (var candidate in m_Hands)
+                wantsTrack |= candidate.region != null && Time.unscaledTime >= candidate.nextTrack;
+            if (!wantsSearch && !wantsTrack)
                 return false;
             if (!TryTakeImage(out var imageNs))
                 return false;
 
             m_Images++;
-            var stopwatch = Stopwatch.StartNew();
-            if (m_Region == null)
+            if (wantsSearch)
+                await Search();
+            if (!m_Running)
+                return true;
+
+            // One landmarker run per hand, on the same image. The detector is what costs -- about
+            // 30 ms against the landmarker's 4 -- and it finds both hands in the one pass, so the
+            // second hand costs a landmarker run and the region sampling that feeds it.
+            foreach (var hand in m_Hands)
             {
-                var letterbox = Letterbox.Fit(m_ImageWidth, m_ImageHeight, PalmDecoder.InputSize);
-                ImageSampler.SampleLetterbox(m_Image, m_ImageWidth, m_ImageHeight, letterbox, m_DetectorPixels);
-                m_SampleMs += stopwatch.Elapsed.TotalMilliseconds;
-                stopwatch.Restart();
-                m_DetectorInput.Upload(m_DetectorPixels);
-                m_DetectorWorker.Schedule(m_DetectorInput);
-                // Once the first output is back the rest are ready.
-                using (var scores = await (m_DetectorWorker.PeekOutput(m_ScoresIndex) as Tensor<float>).ReadbackAndCloneAsync())
-                    CopyTo(scores, m_Scores);
-                using (var boxes = (m_DetectorWorker.PeekOutput(m_BoxesIndex) as Tensor<float>).ReadbackAndClone())
-                    CopyTo(boxes, m_Boxes);
-                m_DetectMs += stopwatch.Elapsed.TotalMilliseconds;
-                m_Detections++;
+                if (hand.region == null || Time.unscaledTime < hand.nextTrack)
+                    continue;
+                await TrackHand(hand, imageNs);
                 if (!m_Running)
                     return true;
-                if (!PalmDecoder.TryDecodeBest(m_Boxes, m_Scores, m_Anchors, m_MinPalmScore, out var palm))
+            }
+            return true;
+        }
+
+        // Whether there is room for another hand, which is what makes the detector keep looking.
+        bool HasFreeSlot
+        {
+            get
+            {
+                foreach (var hand in m_Hands)
                 {
-                    m_NextSearch = Time.unscaledTime + m_SearchInterval;
-                    Lose();
-                    return true;
+                    if (hand.region == null)
+                        return true;
                 }
-                m_Region = HandRegion.FromPalm(palm, letterbox);
-                m_Acquiring = true;
+                return false;
+            }
+        }
+
+        // Runs the palm detector over the whole image and gives any hand it finds to a free slot.
+        async Awaitable Search()
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var letterbox = Letterbox.Fit(m_ImageWidth, m_ImageHeight, PalmDecoder.InputSize);
+            ImageSampler.SampleLetterbox(m_Image, m_ImageWidth, m_ImageHeight, letterbox, m_DetectorPixels);
+            m_SampleMs += stopwatch.Elapsed.TotalMilliseconds;
+            stopwatch.Restart();
+            m_DetectorInput.Upload(m_DetectorPixels);
+            m_DetectorWorker.Schedule(m_DetectorInput);
+            // Once the first output is back the rest are ready.
+            using (var scores = await (m_DetectorWorker.PeekOutput(m_ScoresIndex) as Tensor<float>).ReadbackAndCloneAsync())
+                CopyTo(scores, m_Scores);
+            using (var boxes = (m_DetectorWorker.PeekOutput(m_BoxesIndex) as Tensor<float>).ReadbackAndClone())
+                CopyTo(boxes, m_Boxes);
+            m_DetectMs += stopwatch.Elapsed.TotalMilliseconds;
+            m_Detections++;
+            if (!m_Running)
+                return;
+
+            m_NextSearch = Time.unscaledTime + m_SearchInterval;
+            var found = PalmDecoder.DecodeAll(m_Boxes, m_Scores, m_Anchors, m_MinPalmScore,
+                                              m_Suppressed, m_Palms);
+            if (found == 0)
+            {
+                // Nothing in the whole image, so anything still being followed is gone too: the
+                // detector only runs while a slot is free, and a hand it cannot see is not there.
+                foreach (var hand in m_Hands)
+                    Lose(hand);
+                return;
             }
 
-            var region = m_Region.Value;
-            m_NextTrack = Time.unscaledTime + m_TrackInterval;
+            for (var i = 0; i < found; i++)
+            {
+                var region = HandRegion.FromPalm(m_Palms[i], letterbox);
+                // Not one already being followed. Without this the detector hands the same hand
+                // to the free slot and the user gets two of one hand.
+                if (AlreadyFollowed(region))
+                    continue;
+                var slot = FreeSlot();
+                if (slot == null)
+                    break;
+                slot.region = region;
+                slot.acquiring = true;
+            }
+        }
+
+        TrackedHand FreeSlot()
+        {
+            foreach (var hand in m_Hands)
+            {
+                if (hand.region == null)
+                    return hand;
+            }
+            return null;
+        }
+
+        // Whether a region the detector found is a hand already being followed: the two regions
+        // are squares in image pixels, so centres nearer than half their average width are the
+        // same hand seen twice.
+        bool AlreadyFollowed(HandRegion found)
+        {
+            foreach (var hand in m_Hands)
+            {
+                if (hand.region == null)
+                    continue;
+                var mine = hand.region.Value;
+                if (Vector2.Distance(mine.center, found.center) < (mine.size + found.size) / 4f)
+                    return true;
+            }
+            return false;
+        }
+
+        // Runs the landmarker on one hand's region and places its joints.
+        async Awaitable TrackHand(TrackedHand hand, long imageNs)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var region = hand.region.Value;
+            hand.nextTrack = Time.unscaledTime + m_TrackInterval;
             stopwatch.Restart();
             ImageSampler.SampleRegion(m_Image, m_ImageWidth, m_ImageHeight, region, k_LandmarkerSize, m_LandmarkerPixels);
             m_SampleMs += stopwatch.Elapsed.TotalMilliseconds;
@@ -670,7 +810,7 @@ namespace CardboardXR.Hands
                 CopyTo(metric, m_MetricValues);
             m_LandmarkMs += stopwatch.Elapsed.TotalMilliseconds;
             if (!m_Running)
-                return true;
+                return;
 
             // The model may give a probability or a logit.
             if (presence < 0f || presence > 1f)
@@ -679,41 +819,41 @@ namespace CardboardXR.Hands
             m_Handedness = handedness;
             if (presence < m_MinHandPresence)
             {
-                Lose();
-                return true;
+                Lose(hand);
+                return;
             }
 
             for (var i = 0; i < HandGeometry.JointCount; i++)
             {
                 var crop = new Vector2(m_LandmarkValues[i * 3], m_LandmarkValues[i * 3 + 1]) / k_LandmarkerSize;
-                m_ImageLandmarks[i] = region.CropToImage(crop);
+                hand.imageLandmarks[i] = region.CropToImage(crop);
             }
-            m_Region = HandRegion.FromLandmarks(m_ImageLandmarks);
-            PinchRatio = Vector2.Distance(m_ImageLandmarks[HandGeometry.ThumbTip], m_ImageLandmarks[HandGeometry.IndexTip]) /
-                         Mathf.Max(1f, HandGeometry.PalmSpan(m_ImageLandmarks));
-            Presence = presence;
-            HandednessScore = handedness < 0f || handedness > 1f ? PalmDecoder.Sigmoid(handedness) : handedness;
+            hand.region = HandRegion.FromLandmarks(hand.imageLandmarks);
+            hand.pinchRatio = Vector2.Distance(hand.imageLandmarks[HandGeometry.ThumbTip], hand.imageLandmarks[HandGeometry.IndexTip]) /
+                         Mathf.Max(1f, HandGeometry.PalmSpan(hand.imageLandmarks));
+            hand.presence = presence;
+            hand.handednessScore = handedness < 0f || handedness > 1f ? PalmDecoder.Sigmoid(handedness) : handedness;
 
             // The hand's real size doesn't change, but the model's estimate of it wavers from image to
             // image, so each shape is scaled to the user's palm size.
-            ShapeFromModel(region.rotation, m_MetricLandmarks);
-            var palmSize = HandGeometry.PalmSize(m_MetricLandmarks);
+            ShapeFromModel(region.rotation, hand.metricLandmarks);
+            var palmSize = HandGeometry.PalmSize(hand.metricLandmarks);
             if (!(palmSize > 0f))
             {
                 m_BadFits++;
-                IsTracking = false;
-                return true;
+                hand.isTracking = false;
+                return;
             }
             var scale = m_PalmSize / palmSize;
             for (var i = 0; i < HandGeometry.JointCount; i++)
-                m_MetricLandmarks[i] *= scale;
+                hand.metricLandmarks[i] *= scale;
 
             // The palm places the hand: the model's fingers bend and are less sure.
-            var position = HandGeometry.FitPosition(m_ImageLandmarks, m_MetricLandmarks, HandGeometry.Palm,
+            var position = HandGeometry.FitPosition(hand.imageLandmarks, hand.metricLandmarks, HandGeometry.Palm,
                 m_FocalLength, m_PrincipalPoint, out var fitError);
             float depth;
-            ShapeFits = fitError <= k_MaxFitError;
-            if (ShapeFits)
+            hand.shapeFits = fitError <= k_MaxFitError;
+            if (hand.shapeFits)
             {
                 // Once measured depth has taught the palm size, it alone does: against LiDAR, the size
                 // learned from the model's own estimates wandered 10% in 20 s, and left depth 8% short
@@ -724,94 +864,93 @@ namespace CardboardXR.Hands
                     var learned = Mathf.Exp(Mathf.Lerp(Mathf.Log(m_PalmSize), Mathf.Log(palmSize), k_PalmSizeRate));
                     m_PalmSize = Mathf.Clamp(learned, k_MinPalmSize, k_MaxPalmSize);
                 }
-                PinchDistance = Vector3.Distance(m_MetricLandmarks[HandGeometry.ThumbTip], m_MetricLandmarks[HandGeometry.IndexTip]);
-                m_ClosestPinch = Mathf.Min(m_ClosestPinch, PinchDistance);
-                m_WidestPinch = Mathf.Max(m_WidestPinch, PinchDistance);
-                depth = m_DepthFilter.Filter(new Vector3(position.z, 0f, 0f), imageNs * 1e-9).x;
-                Array.Copy(m_MetricLandmarks, m_GoodShape, HandGeometry.JointCount);
-                m_GoodDepth = depth;
-                m_HasGoodShape = true;
+                hand.pinchDistance = Vector3.Distance(hand.metricLandmarks[HandGeometry.ThumbTip], hand.metricLandmarks[HandGeometry.IndexTip]);
+                m_ClosestPinch = Mathf.Min(m_ClosestPinch, hand.pinchDistance);
+                m_WidestPinch = Mathf.Max(m_WidestPinch, hand.pinchDistance);
+                depth = hand.depthFilter.Filter(new Vector3(position.z, 0f, 0f), imageNs * 1e-9).x;
+                Array.Copy(hand.metricLandmarks, hand.goodShape, HandGeometry.JointCount);
+                hand.goodDepth = depth;
+                hand.hasGoodShape = true;
             }
-            else if (m_HasGoodShape)
+            else if (hand.hasGoodShape)
             {
                 // A collapsed shape. The landmarks in the image still hold, so the joints follow them
                 // at the last good shape's depths, and the pinch keeps its last state.
                 m_RejectedFits++;
-                Array.Copy(m_GoodShape, m_MetricLandmarks, HandGeometry.JointCount);
-                depth = m_GoodDepth;
+                Array.Copy(hand.goodShape, hand.metricLandmarks, HandGeometry.JointCount);
+                depth = hand.goodDepth;
             }
             else
             {
                 m_RejectedFits++;
-                return true;
+                return;
             }
-            HandGeometry.PlaceJoints(m_ImageLandmarks, m_MetricLandmarks, depth, m_FocalLength, m_PrincipalPoint, m_CameraJoints);
-            var distance = HandGeometry.PalmDepth(m_CameraJoints);
+            HandGeometry.PlaceJoints(hand.imageLandmarks, hand.metricLandmarks, depth, m_FocalLength, m_PrincipalPoint, hand.cameraJoints);
+            var distance = HandGeometry.PalmDepth(hand.cameraJoints);
             if (float.IsNaN(distance) || distance < k_MinHandDistance)
             {
                 m_BadFits++;
-                IsTracking = false;
-                return true;
+                hand.isTracking = false;
+                return;
             }
             var measured = float.NaN;
-            if (m_UseDepth && m_DepthSampler.TimestampNs == imageNs && !TryMeasurePalm(out measured))
+            if (m_UseDepth && m_DepthSampler.TimestampNs == imageNs && !TryMeasurePalm(hand, out measured))
                 m_DepthNoPixels++;
-            if (m_Acquiring && !WithinReach(distance, measured))
+            if (hand.acquiring && !WithinReach(distance, measured))
             {
-                DropOutOfReach(distance, measured);
-                return true;
+                DropOutOfReach(hand, distance, measured);
+                return;
             }
-            m_Acquiring = false;
+            hand.acquiring = false;
             m_DroppingStray = false;
             m_Fits++;
             m_FitErrorSum += fitError;
             // Only fresh estimates: a collapsed shape's depth is carried over from an earlier image.
-            if (ShapeFits && !float.IsNaN(measured))
+            if (hand.shapeFits && !float.IsNaN(measured))
                 MeasureDepth(distance, measured, fitError < k_CalibrationFitError);
             m_NearestHand = Mathf.Min(m_NearestHand, distance);
             m_FarthestHand = Mathf.Max(m_FarthestHand, distance);
-            LogDistanceJump(distance, position.z, HandGeometry.PalmSpan(m_ImageLandmarks), fitError, presence, region.size, palmSize);
+            LogDistanceJump(hand, distance, position.z, HandGeometry.PalmSpan(hand.imageLandmarks), fitError, presence, region.size, palmSize);
 
             if (!m_HasAxes || !TryFindPose(imageNs, out var pose))
             {
                 m_WithoutPose++;
-                IsTracking = false;
-                return true;
+                hand.isTracking = false;
+                return;
             }
 
             // A speed needs the previous result to be of this hand and recent.
-            var gap = (imageNs - m_ResultImageNs) * 1e-9;
-            var hasSpeed = IsTracking && gap > 0 && gap <= k_MaxSpeedGapSeconds;
-            var shownTip = Joints[HandGeometry.IndexTip];
-            var heldTip = m_ResultJoints[HandGeometry.IndexTip];
-            var shownPalm = PalmCentre(Joints);
-            var heldPalm = PalmCentre(m_ResultJoints);
+            var gap = (imageNs - hand.resultImageNs) * 1e-9;
+            var hasSpeed = hand.isTracking && gap > 0 && gap <= k_MaxSpeedGapSeconds;
+            var shownTip = hand.joints[HandGeometry.IndexTip];
+            var heldTip = hand.resultJoints[HandGeometry.IndexTip];
+            var shownPalm = PalmCentre(hand.joints);
+            var heldPalm = PalmCentre(hand.resultJoints);
             for (var i = 0; i < HandGeometry.JointCount; i++)
             {
-                var joint = m_CameraJoints[i];
+                var joint = hand.cameraJoints[i];
                 // The AR camera's local space has x right, y up and z forward on the screen.
                 var across = m_ImageXOnScreen * joint.x + m_ImageYOnScreen * joint.y;
                 var session = pose.position + pose.rotation * new Vector3(across.x, across.y, joint.z);
-                m_ResultJoints[i] = m_JointFilters[i].Filter(transform.TransformPoint(session), imageNs * 1e-9);
+                hand.resultJoints[i] = hand.jointFilters[i].Filter(transform.TransformPoint(session), imageNs * 1e-9);
             }
-            m_HandSpeed = hasSpeed
-                ? Vector3.Lerp(m_HandSpeed, (PalmCentre(m_ResultJoints) - heldPalm) / (float)gap, k_SpeedBlend)
+            hand.speed = hasSpeed
+                ? Vector3.Lerp(hand.speed, (PalmCentre(hand.resultJoints) - heldPalm) / (float)gap, k_SpeedBlend)
                 : Vector3.zero;
-            m_ResultImageNs = imageNs;
+            hand.resultImageNs = imageNs;
             if (TryGetImageAge(imageNs, out var resultAge))
             {
                 m_ResultAgeSum += resultAge;
                 m_ResultAges++;
             }
-            HandDistance = distance;
-            IsTracking = true;
-            PredictJoints();
+            hand.distance = distance;
+            hand.isTracking = true;
+            PredictJoints(hand);
             if (hasSpeed)
-                MeasureJump(shownTip, Joints[HandGeometry.IndexTip], heldTip, m_ResultJoints[HandGeometry.IndexTip],
-                    shownPalm, PalmCentre(Joints), heldPalm, PalmCentre(m_ResultJoints));
+                MeasureJump(shownTip, hand.joints[HandGeometry.IndexTip], heldTip, hand.resultJoints[HandGeometry.IndexTip],
+                    shownPalm, PalmCentre(hand.joints), heldPalm, PalmCentre(hand.resultJoints));
             m_Results++;
             ResultCount++;
-            return true;
         }
 
         // Converts the newest camera image to RGBA, scaled down, with its intrinsics to match.
@@ -914,69 +1053,58 @@ namespace CardboardXR.Hands
             }
         }
 
-        void Lose()
+        void Lose(TrackedHand hand)
         {
-            if (IsTracking || m_Region != null)
+            if (hand.isTracking || hand.region != null)
             {
                 m_Losses++;
-                LogLoss();
+                LogLoss(hand);
             }
-            Forget();
+            hand.Forget();
         }
 
-        // Lets go of the hand and everything learned from its last results, without counting a loss.
-        void Forget()
+        // Lets go of every hand, for the paths that are about the tracker rather than a hand:
+        // going to sleep, losing the camera, or the room scan taking the CPU.
+        void LoseAll()
         {
-            IsTracking = false;
-            m_Region = null;
-            foreach (var filter in m_JointFilters)
-                filter.Reset();
-            m_DepthFilter.Reset();
-            m_HandSpeed = Vector3.zero;
-            m_HasGoodShape = false;
+            foreach (var hand in m_Hands)
+                Lose(hand);
         }
 
         // Where the hand was when it went. One that left the camera's view goes at the frame's edge,
         // which tells that apart from a hand lost to a poor reading while in plain view: the camera
         // only covers 68 by 42 degrees, so anything meant to be reached for has to sit inside that.
         // At most one line a second.
-        void LogLoss()
+        void LogLoss(TrackedHand hand)
         {
-            if (m_Region == null || m_ImageWidth <= 0 || m_ImageHeight <= 0 || Time.unscaledTime - m_LastLossLog < 1f)
+            if (hand.region == null || m_ImageWidth <= 0 || m_ImageHeight <= 0 || Time.unscaledTime - m_LastLossLog < 1f)
                 return;
             m_LastLossLog = Time.unscaledTime;
-            var center = m_Region.Value.center;
+            var center = hand.region.Value.center;
             var across = center.x / m_ImageWidth;
             var down = center.y / m_ImageHeight;
             var toEdge = Mathf.Min(Mathf.Min(across, 1f - across), Mathf.Min(down, 1f - down));
             Debug.Log($"[Hands] Lost the hand {across * 100f:F0}% across and {down * 100f:F0}% down the image " +
-                      $"({toEdge * 100f:F0}% from the nearest edge), last {m_LastDistance:F2} m away");
+                      $"({toEdge * 100f:F0}% from the nearest edge), last {hand.lastDistance:F2} m away");
         }
 
-        static OneEuroFilter[] CreateJointFilters()
-        {
-            var filters = new OneEuroFilter[HandGeometry.JointCount];
-            for (var i = 0; i < filters.Length; i++)
-                filters[i] = new OneEuroFilter(k_JointMinCutoff, k_JointBeta);
-            return filters;
-        }
 
         // Logs a sudden change in the hand's distance between consecutive results, with what the
         // models saw, to find what throws the estimate. At most one line a second.
-        void LogDistanceJump(float distance, float rawDepth, float palmSpan, float fitError, float presence, float regionSize, float palmSize)
+        void LogDistanceJump(TrackedHand hand, float distance, float rawDepth, float palmSpan, float fitError, float presence, float regionSize, float palmSize)
         {
             var now = Time.unscaledTime;
-            if (now - m_LastResultTime < 0.25f && m_LastDistance > 0f && now - m_LastJumpLog > 1f &&
-                Mathf.Abs(Mathf.Log(distance / m_LastDistance)) > Mathf.Log(k_JumpRatio))
+            if (now - hand.lastResultTime < 0.25f && hand.lastDistance > 0f && now - m_LastJumpLog > 1f &&
+                Mathf.Abs(Mathf.Log(distance / hand.lastDistance)) > Mathf.Log(k_JumpRatio))
             {
                 m_LastJumpLog = now;
-                Debug.Log($"[Hands] Distance jumped {m_LastDistance:F2} -> {distance:F2} m (unsmoothed {rawDepth:F2}): palm spans " +
-                          $"{m_LastPalmSpan:F0} -> {palmSpan:F0} px, model's palm {palmSize * 100f:F1} cm (learned " +
+                Debug.Log($"[Hands] Distance jumped {hand.lastDistance:F2} -> {distance:F2} m (unsmoothed {rawDepth:F2}): palm spans " +
+                          $"{hand.lastPalmSpan:F0} -> {palmSpan:F0} px, model's palm {palmSize * 100f:F1} cm (learned " +
                           $"{m_PalmSize * 100f:F1}), fit error {fitError:F1} px, presence {presence:F2}, region {regionSize:F0} px");
             }
-            m_LastDistance = distance;
-            m_LastPalmSpan = palmSpan;
-            m_LastResultTime = now;
+            hand.lastDistance = distance;
+            hand.lastPalmSpan = palmSpan;
+            hand.lastResultTime = now;
         }
 
         static void CopyTo(Tensor<float> tensor, float[] values)
@@ -995,8 +1123,11 @@ namespace CardboardXR.Hands
             {
                 var landmarkerRuns = Mathf.Max(1, m_Images - (m_Detections - (m_Images - m_Results - m_WithoutPose)));
                 var distance = float.IsPositiveInfinity(m_NearestHand) ? "no hand" : $"hand {m_NearestHand:F2}-{m_FarthestHand:F2} m away";
+                // How often each hand was up over the window, which is the only way to tell a
+                // second hand that is being found from one that is being found and lost again.
+                var both = $"hands up {m_BothSeconds / seconds * 100f:F0}% two, {m_OneSeconds / seconds * 100f:F0}% one";
                 Debug.Log($"[Hands] {m_Images / seconds:F1} images/s, placed {m_Results}, {m_Detections} detector runs, " +
-                          $"{m_Losses} lost, {m_WithoutPose} without a pose; {distance}; per image sampling " +
+                          $"{m_Losses} lost, {m_WithoutPose} without a pose; {distance}; {both}; per image sampling " +
                           $"{m_SampleMs / m_Images:F1} ms; detector {m_DetectMs / Mathf.Max(1, m_Detections):F0} ms and landmarker " +
                           $"{m_LandmarkMs / landmarkerRuns:F0} ms including waits; presence {m_PresenceSum / landmarkerRuns:F2}, " +
                           $"handedness {m_Handedness:F2}; fit error {m_FitErrorSum / Mathf.Max(1, m_Fits):F1} px, {m_RejectedFits} " +
@@ -1009,6 +1140,7 @@ namespace CardboardXR.Hands
             }
             m_ShownDepthJumps = m_ShownAcrossJumps = m_HeldDepthJumps = m_HeldAcrossJumps = m_ShownPalmJumps = m_HeldPalmJumps = 0;
             m_Jumps = 0;
+            m_BothSeconds = m_OneSeconds = 0;
             m_NearDepthRatios.Clear();
             m_FarDepthRatios.Clear();
             m_DepthNoPixels = m_DepthCalibrations = m_ImplausibleDepths = 0;
