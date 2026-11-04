@@ -1,42 +1,28 @@
 // The door, remade for an iPhone 18 Pro Max.
 //
-// Four changes to upstream's iPhone 15 Pro door:
-//   1. stretched +7 across and +12 along, on the same planes and by the same amounts as the shell
-//      and carriage, so the hinge knuckles and latch tabs still line up with the shell's;
-//   2. anything standing above the plate inside the phone's footprint is cleared, because the
-//      upstream rim is sized for a 70.6 x 146.6 phone and this one is 78.0 x 163.4 -- it would
-//      hold the phone out rather than hold it in;
-//   3. the camera opening is cut to clear the camera plateau, and the plate is filled back in
-//      around it so a rim survives all the way round the camera end;
-//   4. a retaining collar stands up outside the phone's outline at the camera end, in place of the
-//      two TPU corner locators that used to go there and no longer can.
+// This does NOT reuse upstream's plate. It keeps the stretched door's frame -- the outline, the
+// flange, the hinge knuckles and the latch tabs, which are what the shell mates with -- fills the
+// plate solid, and then cuts a new interior: a hex dot field, an opening shaped to this phone's
+// camera island, a MagSafe ring groove, and four integral anchors that locate the phone.
 //
-// On (3) and (4): the dimensions come from Apple's own drawing -- the Accessory Design Guidelines
-// point at a per-device library, and iPhone 18 Pro Max is published there as a dimensioned
-// mechanical drawing (developer.apple.com/accessories/dimensional-drawings/, sheet dated
-// 2026-09-09). It gives the body as 163.43 x 77.98 x 8.75, every imaging feature's centre and
-// diameter, and the plateau standing 2.78 mm proud of the back plate with the camera glass 2.11 mm
-// above that.
+// Earlier versions kept upstream's plate and cut into it. That is why the camera opening had a
+// step in its lower edge (upstream's own opening, for an iPhone 15 Pro island, unioning with the
+// new one) and why the dot field came out as rows of dashes (the cut-and-bridge stretch extrudes
+// whatever sits on a cut plane, and the dots sit on the cut planes). Both are gone: nothing of
+// upstream's plate survives.
 //
-// THE PLATEAU IS THE PHONE'S OWN OUTLINE, INSET. That is the thing two earlier passes got wrong,
-// in two different ways, and both mistakes cost a printed part:
+// EVERY PHONE FIGURE COMES FROM APPLE'S DRAWING
+// (developer.apple.com/accessories/dimensional-drawings/, iPhone 18 Pro Max, sheet 2026-09-09),
+// read as described in README.md. Two earlier readings of the camera island were wrong and both
+// cost a printed part; the third was checked by plotting the drawing's own paths on a millimetre
+// grid in the phone's coordinates and reading the island off it:
 //
-//   - the first read the plateau as running 0.8 .. 75.8 across. That is the ANTENNA KEEPOUT, a
-//     hatched region on the same sheet marked "do not obstruct with metal or other conductive
-//     material (full product volume including sidewalls)". It runs the full width and a little
-//     past it, which is exactly why it looked like a full-width plateau. A PETG door is not
-//     conductive and may cover it freely.
-//   - the second read it as a rectangle 3.79 .. 74.20 across by 0 .. 48.87 along, and modelled the
-//     opening as a rounded rectangle. The across figures are right -- they are the plateau wall
-//     and its chamfer, and they check out at 3.79/3.84/3.89 and 74.09/74.15/74.20 -- but reading
-//     them as a rectangle starting at along 0 put the plateau hard against the phone's camera end,
-//     and cutting that away took the door's whole end with it.
+//   island walls          across 3.93 and 74.05      (70.12 wide, centred on the phone)
+//   island ends           along  4.87 and 43.10      (38.23 long)
+//   island corner radius  about 12 .. 15             (12 used: a smaller radius cuts FURTHER out)
 //
-// Sampling the drawing's paths across the phone shows the same inset on every side: 3.79 .. 3.93
-// from each side wall AND 3.93 from the camera end. The plateau is the phone's outline brought in
-// about 3.8 mm, closed off at along 48.87. So the opening is cut the same way -- `phone_plan`
-// shrunk by the rim -- and the rim it leaves is the same width all the way round the camera end
-// instead of running off it.
+// The reading before that had the island 70.41 x 44.94 running from along 0, which is 6 mm too
+// long and starts 4 mm too high -- it cut away the whole camera end of the door.
 
 include <phone.scad>
 
@@ -47,111 +33,65 @@ yc = 55; dy = 6;        // the shell's cut planes and inserts, exactly
 xc = 26; dx = 3.5;
 big = 400;
 
-// Apple's figures. `phone_x` and `phone_y` come from phone.scad.
-fit       = 0.6;         // clearance around the phone
-plate_top = 1.9;         // everything above this, inside the footprint, is cleared
+fit       = 0.6;        // clearance around the phone
+plate_top = 1.9;        // the face the phone rests on
 
-// The camera plateau. `plateau_inset` is how far its wall stands inside the phone's outline, and
-// `plateau_far` is how far it reaches from the camera end. The lens centres Apple dimensions
-// exactly (cameras at 14.37/14.37, 14.37/33.61 and 32.49/23.99, all 16.58 across; flash and rear
-// sensor at 64.16/13.82 and 64.16/34.16, both 6.90) sit inside this, so clearing the plateau
-// clears every one of them.
-plateau_inset  = 3.79;   // the innermost of the three concentric lines: the safe one to trust
-plateau_far    = 48.87;
-plateau_margin = 1.2;    // clearance around the plateau
+// The door's own body, measured off the stretched outline at 1 mm steps along both ends: a rounded
+// rectangle that matches to +-0.10 mm everywhere except where the hinge knuckles and latch tabs
+// stand out. Everything built here is clipped to it, so nothing can stand proud of the door.
+body_x0 = -42.90; body_x1 = 41.20;
+body_y  =  85.59; body_r  = 13.58;
 
-// Where the phone's centre sits in the door's own coordinates. It is not the door's centre: the
-// door is asymmetric, with the hinge knuckles down one long side and the latch tabs down the
-// other, so its outline is offset from the bay it covers. The figure is read off the door's own
-// locator pockets, which are symmetric about the phone: they span -38.58 .. 36.87 across, whose
-// middle is -0.855. Leaving this out skews every phone-referenced feature by that much.
+// Where the phone's centre sits in the door's own coordinates. The door is asymmetric -- hinge
+// knuckles down one long side, latch tabs down the other -- so its outline is offset from the bay
+// it covers. Read off upstream's locator pockets, which are symmetric about the phone.
 phone_cx = -0.855;
 
-// The rim the opening leaves over the phone, all the way round the camera end.
-rim_w  = plateau_inset - plateau_margin;          // 2.59
-cam_y0 = phone_y / 2 - plateau_far - plateau_margin;
+// The camera island, in the door's own coordinates: x = across - 39.845, y = 81.715 - along.
+island_x0 = -36.055; island_x1 = 34.365;
+island_y0 =  38.615; island_y1 = 76.845;
+island_r  =  12.00;
+island_margin = 1.20;
 
-// The plate filled back in at the camera end. The method only ever moves material, it never adds
-// any, and upstream's door has no plate this far out -- its own camera opening is a corner square
-// for the iPhone 15 Pro's island, so the end of its plate is both narrower and shorter than this
-// phone needs. Without this there is nothing for the rim to be cut from.
-//   The bounds stay inside the door's own outline, and short of its end at 85.59 so the fill never
-// stands proud. The 2 mm perforation grid stops at 31.35 across, so the only perforations this
-// closes are the few the opening would have taken anyway.
-//   The x bounds also have to clear the door's own pocket walls rather than stop just inside them:
-// at -42.00 and 40.50 they landed 0.31 and 0.11 mm short of faces at -42.311 and 40.605, and the
-// two slivers left over came out as inside-out shells -- the part reported as three.
-//   Two pieces. `side_` is the strip down the latch side, which has to go back whatever else
-// happens: upstream's own camera opening is a corner square offset to that side, and stretched it
-// reaches 40.37 across -- wider than this opening -- so without the strip the hole never narrows.
-// `end_` is the camera end proper, which is new.
-side_x0 =  35.55; side_x1 = 41.00;
-side_y0 =  24.00; side_y1 = 85.00;
-end_x0  = -42.60; end_x1  = 41.00;
-end_y0  =  60.00; end_y1  = 85.00;
+cam_r  = island_r;                       // not grown with the margin, so the corners cut further out
+cam_x0 = island_x0 - island_margin;      // -37.255
+cam_x1 = island_x1 + island_margin;      //  35.565
+cam_y0 = island_y0 - island_margin;      //  37.415
+cam_y1 = island_y1 + island_margin;      //  78.045
 
-// Both are clipped to the door's own outline, because a plain rectangle squares off its rounded
-// camera-end corner: measured against the stretched outline, a fill reaching 41.00 stands 9.40 mm
-// proud at y 85. The outline there is two straight sides at -42.90 and 41.20 closing on a 13.58
-// corner radius at y 85.59 -- a fit good to 0.02 mm at every y from 75 to 85.
-door_x0 = -42.90; door_x1 = 41.20;
-door_end = 85.59; door_r = 13.58;
-fill_inset = 0.20;       // so the fill stops just short of the outline rather than on it
+// MagSafe. Apple puts the magnet array at 57.50 across, centred on the dead centre of the back to
+// within 5 microns. An annular GROOVE rather than a circular recess, for two reasons: an adhesive
+// metal ring is a ring, and the door prints outer face down, so a full 58 mm recess would leave
+// the plate above it bridging 58 mm over the dot field with nothing underneath.
+magsafe_od    = 58.00;   // 57.50 plus 0.5, so a ring drops in rather than being pressed
+magsafe_id    = 44.00;
+magsafe_depth = 0.80;
 
-// The retaining collar. It stands outside the phone's outline, on the filled plate, and takes over
-// from the two camera-end TPU locators -- which cannot work here, whatever they are made of:
-// upstream's locator is 15.87 mm wide, and the part of the pocket that would hold one lies under
-// the camera plateau, which has to be cut through. A rigid lip at a known clearance is what fits.
-//
-// Every number here is the bay's, measured on the stretched shell in this frame rather than taken
-// from the 80.00 x 166.18 the bay is nominally. The bay runs -40.80 .. 39.15 across for its whole
-// straight length and its camera end wall stands at y 83.05, so:
-//
-//   down the sides, outboard of the phone      0.955 mm (left), 1.015 mm (right)
-//   across the end, beyond the phone's 81.715  1.335 mm
-//
-// The end is what binds, and 0.35 + 0.80 leaves 0.185 mm to the bay there. That is also the whole
-// retention gain: the phone could travel 1.335 mm toward the camera end before the shell stopped
-// it, and now it travels 0.35.
-//
-// (An earlier pass put the collar at 0.40 + 0.90 from y 60, off a reading of 1.87 mm taken at
-// y 70 -- which happens to be one of two local pockets in the bay wall, not the wall. The collar
-// stood 0.28 mm into the shell for 9 mm of its length.)
-//
-// `collar_gap` also has to clear the rim-clearing cut below, which takes fit/2 = 0.30.
-collar_gap = 0.35;
-collar_w   = 0.80;
-collar_y0  = 74.00;      // where the phone's corner has curved far enough in to leave 2.2 mm
-collar_top = 4.50;
+// The dot field. Upstream's door is a hex-packed field of round holes with solid zones around the
+// border, the camera opening and the MagSafe ring; this keeps that, with two dot sizes so the
+// field fades out at its edges the way theirs does.
+dot_pitch = 3.40;
+dot_big   = 2.20;
+dot_small = 1.40;
+dot_fade  = 2.60;        // width of the small-dot band at the field's edge
+dot_inset = 1.00;        // how far inside the phone's own outline the field stops
+dot_clear = 2.60;        // solid margin kept around the camera opening
+ring_r0   = 20.50;       // solid annulus for the MagSafe ring
+ring_r1   = 30.50;
 
-// MagSafe. Apple's drawing puts the magnet array at 57.50 across, centred 38.99 across and 81.72
-// along -- the dead centre of the phone's back to within 5 microns. This is a groove in the outer
-// face for a ring to sit in and be located by, not a hole: the plate is 1.9 mm thick here and
-// Apple's note 8 allows a case up to 2.1 mm on the back for full functionality, so MagSafe already
-// works through it and cutting through would only throw away the plate that holds the phone.
-//   It is an annular GROOVE, not a circular recess, and that is a printing constraint rather than
-// a design preference. The door prints outer face down, so a recess in this face is a pocket that
-// opens downward: a full 58 mm circle leaves the plate above it bridging 58 mm with nothing
-// underneath, over a region that is perforated, so the bridge lines break at every 2 mm hole.
-// Measured on the mesh it was 2090 mm2 of unsupported ceiling, the only such area in the part.
-// A groove leaves the middle sitting on the plate from the first layer and the bridge is one
-// 7 mm span, anchored both sides. A ring is a ring; the groove locates its outer diameter, which
-// is the only face that has to be located.
-magsafe_d      = 57.50;
-magsafe_clear  = 0.5;    // so a printed ring drops in rather than having to be pressed
-magsafe_id     = 44.00;  // the groove's inner wall: takes any ring with ID >= 44 and OD <= 58
-magsafe_depth  = 0.8;    // of the 1.9 mm plate, leaving 1.1
+// The anchors: four integral PETG ribs standing on the plate just outside the phone's outline, at
+// the corners. They are what locates the phone now that there are no TPU locators.
+//   The sizes are the bay's, measured on the stretched shell in this frame: it runs -40.80 .. 39.15
+// across for its whole straight length, against a phone at -39.845 .. 38.135, so there is about
+// 1.0 mm a side -- and its camera-end wall stands at y 83.05, 1.335 mm beyond the phone. The
+// corners are where the room is: by |y| = 74 the phone's own corner has curved in far enough to
+// leave 2.2 mm.
+anchor_gap = 0.35;
+anchor_w   = 0.80;
+anchor_y0  = 74.00;
+anchor_top = 5.00;
 
-// The locator pockets, as the stretch leaves them: upstream's are at -38.58..-24.48 and
-// 21.47..36.87 across and +-56.92..78.72 along, and each edge moves by the same rule as everything
-// else (past -26 by -3.5, past 26 by +3.5, past +-55 by +-6). They have to be cut again because
-// the plate is filled back in below, which would otherwise close them.
-//   Only the USB-end pair. The camera-end pair are gone: see `collar_gap` above.
-pocket_r = 2;
-pockets = [
-    [-42.08, -24.48, -84.72, -62.92],
-    [ 21.47,  40.37, -84.72, -62.92],
-];
+// ---------------------------------------------------------------- the stretched upstream frame
 
 module src() { import(SRC, convexity = 12); }
 module sec_y(y) { projection(cut = true) translate([0, 0, -y]) rotate([90, 0, 0]) src(); }
@@ -173,87 +113,91 @@ module grown() {
     translate([-xc - dx, 0, 0]) rotate([0, 90, 0]) linear_extrude(height = dx) sec_x2(-xc);
 }
 
-module rrect(w, l, h, r = 6) {
-    hull() for (sx = [-1, 1], sy = [-1, 1])
-        translate([sx * (w / 2 - r), sy * (l / 2 - r), 0]) cylinder(h = h, r = r, center = true, $fn = 48);
+// ---------------------------------------------------------------- 2-D helpers
+
+module rr(x0, x1, y0, y1, r) {
+    hull() for (x = [x0 + r, x1 - r], y = [y0 + r, y1 - r])
+        translate([x, y]) circle(r = r, $fn = 72);
 }
 
-// Everything above the plate inside the phone's own footprint. Shaped like the phone rather than
-// like a rounded rectangle, so it agrees with the collar at the corners.
-module phone_above(extra) {
-    translate([phone_cx, 0, plate_top])
-        linear_extrude(height = big) phone_plan(extra);
+module body(k = 0) { offset(r = k) rr(body_x0, body_x1, -body_y, body_y, body_r); }
+module opening_2d(k = 0) { offset(r = k) rr(cam_x0, cam_x1, cam_y0, cam_y1, cam_r); }
+module phone_2d(k = 0) { translate([phone_cx, 0]) phone_plan(k); }
+
+// Where dots are allowed: inside the phone's footprint, clear of the opening and the MagSafe ring.
+module field(k = 0) {
+    difference() {
+        intersection() { offset(r = k) phone_2d(-dot_inset); body(-2.0); }
+        opening_2d(dot_clear);
+        difference() {
+            translate([phone_cx, 0]) circle(r = ring_r1, $fn = 160);
+            translate([phone_cx, 0]) circle(r = ring_r0, $fn = 160);
+        }
+    }
 }
 
-// The camera opening: the phone's outline brought in by the rim, from the plateau's far edge out
-// past the camera end. Cut through, because the plateau stands 2.78 mm proud of the phone's back
-// and the plate is only 1.9 thick.
+module dots(d) {
+    for (j = [-30 : 30]) {
+        yy = j * dot_pitch * 0.8660254;
+        off = (j % 2 == 0) ? 0 : dot_pitch / 2;
+        for (i = [-16 : 16])
+            translate([phone_cx + i * dot_pitch + off, yy]) circle(d = d, $fn = 16);
+    }
+}
+
+// ---------------------------------------------------------------- the part
+
+module plate() {
+    linear_extrude(height = plate_top) body();
+}
+
+module dot_holes() {
+    translate([0, 0, -1])
+        linear_extrude(height = plate_top + 2) {
+            intersection() { dots(dot_big); field(-dot_fade); }
+            intersection() { dots(dot_small); difference() { field(); field(-dot_fade); } }
+        }
+}
+
 module camera_opening() {
-    intersection() {
-        translate([phone_cx, 0, -big / 2]) linear_extrude(height = big) phone_plan(-rim_w);
-        translate([-big / 2, cam_y0, -big / 2]) cube(big);
-    }
+    translate([0, 0, -big / 2]) linear_extrude(height = big) opening_2d();
 }
 
-// The door's own outline over the camera end, as a 2-D shape to clip the fills with.
-module end_outline() {
-    offset(r = -fill_inset) hull() {
-        for (x = [door_x0 + door_r, door_x1 - door_r], y = [0, door_end - door_r])
-            translate([x, y]) circle(r = door_r, $fn = 96);
-    }
-}
-
-module fill_box(x0, x1, y0, y1) {
-    translate([0, 0, plate_top / 2])
-        linear_extrude(height = plate_top, center = true)
-            intersection() {
-                translate([x0, y0]) square([x1 - x0, y1 - y0]);
-                end_outline();
+module magsafe_groove() {
+    translate([phone_cx, 0, -0.01])
+        linear_extrude(height = magsafe_depth + 0.01)
+            difference() {
+                circle(d = magsafe_od, $fn = 200);
+                circle(d = magsafe_id, $fn = 200);
             }
 }
 
-module end_fill() {
-    fill_box(side_x0, side_x1, side_y0, side_y1);
-    fill_box(end_x0, end_x1, end_y0, end_y1);
-}
-
-module end_collar() {
+module anchors() {
     translate([0, 0, plate_top])
-        linear_extrude(height = collar_top - plate_top)
+        linear_extrude(height = anchor_top - plate_top)
             intersection() {
                 difference() {
-                    translate([phone_cx, 0]) phone_plan(collar_gap + collar_w);
-                    translate([phone_cx, 0]) phone_plan(collar_gap);
+                    phone_2d(anchor_gap + anchor_w);
+                    phone_2d(anchor_gap);
                 }
-                translate([-big / 2, collar_y0]) square(big);
+                body(-0.2);
+                union() {
+                    translate([-big / 2, anchor_y0]) square(big);
+                    translate([-big / 2, -anchor_y0 - big]) square(big);
+                }
             }
 }
 
 difference() {
     union() {
         grown();
-        end_fill();
-        end_collar();
+        plate();
+        anchors();
     }
-
-    // (2) Clear the old rim: it is sized for a much smaller phone.
-    phone_above(fit / 2);
-
-    // (3) The camera opening.
+    // Clear everything standing above the plate inside the phone's footprint: upstream's rim is
+    // sized for a 70.6 x 146.6 phone and would hold this one out rather than in.
+    translate([0, 0, plate_top]) linear_extrude(height = big) phone_2d(fit / 2);
     camera_opening();
-
-    // The MagSafe ring's groove, in the outer face, which is at z = 0 because the source STL is
-    // the "outer face down" one.
-    translate([phone_cx, phone_y / 2 - 81.72, 0])
-        difference() {
-            translate([0, 0, -0.01])
-                cylinder(h = magsafe_depth + 0.01, d = magsafe_d + magsafe_clear, $fn = 160);
-            translate([0, 0, -0.02])
-                cylinder(h = magsafe_depth + 0.03, d = magsafe_id, $fn = 160);
-        }
-
-    // The USB-end locator pockets, reopened through the fill.
-    for (k = pockets)
-        translate([(k[0] + k[1]) / 2, (k[2] + k[3]) / 2, 0])
-            rrect(k[1] - k[0], k[3] - k[2], big, pocket_r);
+    magsafe_groove();
+    dot_holes();
 }
