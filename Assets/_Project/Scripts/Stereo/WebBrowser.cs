@@ -180,10 +180,22 @@ namespace CardboardXR.Stereo
 #endif
         }
 
-        public static void ScrollBy(float dx, float dy)
+        // Draws a crosshair at that point on the page and outlines whatever a click would land
+        // on. The page carries them, so the snapshot shows them: aiming through a lens is
+        // imprecise enough without having to guess the target.
+        public static void HoverAt(float u, float v)
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_WebScrollBy(dx, dy);
+            CardboardXR_WebHoverAt(u, v);
+#endif
+        }
+
+        // Scrolls whatever is under that point, falling back to the window. Pages that keep
+        // their content in an inner scroller ignore a window scroll entirely.
+        public static void ScrollAt(float u, float v, float dx, float dy)
+        {
+#if UNITY_IOS && !UNITY_EDITOR
+            CardboardXR_WebScrollAt(u, v, dx, dy);
 #endif
         }
 
@@ -191,6 +203,20 @@ namespace CardboardXR.Stereo
         {
 #if UNITY_IOS && !UNITY_EDITOR
             CardboardXR_WebGoBack();
+#endif
+        }
+
+        public static void GoForward()
+        {
+#if UNITY_IOS && !UNITY_EDITOR
+            CardboardXR_WebGoForward();
+#endif
+        }
+
+        public static void Reload()
+        {
+#if UNITY_IOS && !UNITY_EDITOR
+            CardboardXR_WebReload();
 #endif
         }
 
@@ -268,8 +294,11 @@ namespace CardboardXR.Stereo
         [DllImport("__Internal")] static extern int CardboardXR_WebOpen(string url, string configJson, string shim, int windowed, int pixelWidth, int pixelHeight);
         [DllImport("__Internal")] static extern int CardboardXR_WebPixels(out IntPtr bytes, out int width, out int height);
         [DllImport("__Internal")] static extern void CardboardXR_WebClickAt(float u, float v);
-        [DllImport("__Internal")] static extern void CardboardXR_WebScrollBy(float dx, float dy);
+        [DllImport("__Internal")] static extern void CardboardXR_WebHoverAt(float u, float v);
+        [DllImport("__Internal")] static extern void CardboardXR_WebScrollAt(float u, float v, float dx, float dy);
         [DllImport("__Internal")] static extern void CardboardXR_WebGoBack();
+        [DllImport("__Internal")] static extern void CardboardXR_WebGoForward();
+        [DllImport("__Internal")] static extern void CardboardXR_WebReload();
         [DllImport("__Internal")] static extern void CardboardXR_WebSetWindowed(int windowed);
         [DllImport("__Internal")] static extern void CardboardXR_WebClose();
         [DllImport("__Internal")] static extern int CardboardXR_WebIsOpen();

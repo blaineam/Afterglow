@@ -23,7 +23,189 @@ extern "C" UIViewController *UnityGetGLViewController();
 // What the page has told us, picked up by C# on its own thread.
 enum WebEvent { WebEventNone = 0, WebEventSessionStart = 1, WebEventSessionEnd = 2, WebEventClose = 3 };
 
-@interface CardboardXRWebHost : NSObject <WKScriptMessageHandler, WKNavigationDelegate>
+// Injected into every page at document start, so pointing, clicking and scrolling are three small
+// calls rather than three long strings re-parsed on every use.
+//
+// All three take a point as 0-1 across and down the window the scene draws, because that is what
+// the gaze knows. They turn it into client coordinates against documentElement.clientWidth rather
+// than window.innerWidth: a page that lays itself out wider or narrower than the view is scaled to
+// fit, and client coordinates -- which is what elementFromPoint and the events are in -- measure
+// the layout, not the scaled result. innerWidth measures the scaled result, so on any page with a
+// viewport that isn't the view's width it pointed somewhere else.
+static const char *kHelperSource = R"JS(
+(function () {
+  'use strict';
+  var SEL = 'a[href],button,input,select,textarea,summary,label,[role="button"],[role="link"],' +
+            '[role="menuitem"],[role="tab"],[onclick],[contenteditable="true"],' +
+            '[tabindex]:not([tabindex="-1"])';
+
+  function viewport() {
+    var d = document.documentElement;
+    return [d.clientWidth || window.innerWidth, d.clientHeight || window.innerHeight];
+  }
+
+  // What is under a point, descending into same-origin frames. elementFromPoint stops at a
+  // frame's own box, so without this every click inside an iframe landed on the iframe.
+  function pick(u, v) {
+    var vp = viewport();
+    // A view with no size yet would make every coordinate NaN, and elementFromPoint throws on
+    // those rather than returning nothing -- which would take the whole call down with it.
+    if (!(vp[0] > 0) || !(vp[1] > 0)) return null;
+    var x = Math.max(0, Math.min(vp[0] - 1, u * vp[0]));
+    var y = Math.max(0, Math.min(vp[1] - 1, v * vp[1]));
+    var offx = 0, offy = 0;
+    var el = document.elementFromPoint(x, y);
+    for (var depth = 0; el && el.tagName === 'IFRAME' && depth < 4; depth++) {
+      var inner = null;
+      try { inner = el.contentDocument; } catch (e) { inner = null; }
+      if (!inner || !inner.elementFromPoint) break;
+      var r = el.getBoundingClientRect();
+      offx += r.left; offy += r.top;
+      x -= r.left; y -= r.top;
+      var next = inner.elementFromPoint(x, y);
+      if (!next) break;
+      el = next;
+    }
+    if (!el) return null;
+    var act = el.closest ? el.closest(SEL) : null;
+    return { el: act || el, x: x, y: y, offx: offx, offy: offy, actionable: !!act };
+  }
+
+  function overlay(id, css) {
+    var e = document.getElementById(id);
+    if (!e) {
+      e = document.createElement('div');
+      e.id = id;
+      e.setAttribute('aria-hidden', 'true');
+      e.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483647;' + css;
+      (document.body || document.documentElement).appendChild(e);
+    }
+    return e;
+  }
+
+  // Where the gaze is and what a pinch would press, drawn into the page itself so the snapshot
+  // carries them. Aiming by eye through a lens is imprecise enough without having to guess the
+  // target, and a crosshair that comes back from the page is also the proof that the point the
+  // scene sends and the point the page reads are the same one.
+  window.__cardboardxrHover = function (u, v) {
+    var vp = viewport();
+    // A negative point means the gaze has left the window. Both marks go away, rather than
+    // staying where the gaze last was, which would read as a crosshair that had stuck.
+    if (u < 0 || v < 0) {
+      var old = document.getElementById('__cxrDot');
+      if (old) old.style.display = 'none';
+      var oldBox = document.getElementById('__cxrBox');
+      if (oldBox) oldBox.style.display = 'none';
+      return;
+    }
+    var dot = overlay('__cxrDot',
+      'width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;' +
+      'background:rgba(255,63,164,.92);box-shadow:0 0 0 2px rgba(10,6,26,.8),0 0 14px #ff3fa4');
+    dot.style.display = 'block';
+    dot.style.left = (u * vp[0]) + 'px';
+    dot.style.top = (v * vp[1]) + 'px';
+    var box = overlay('__cxrBox',
+      'border:3px solid #2de2e6;border-radius:5px;' +
+      'box-shadow:0 0 0 2px rgba(10,6,26,.7),0 0 18px rgba(45,226,230,.7)');
+    var hit = pick(u, v);
+    if (!hit || !hit.actionable) { box.style.display = 'none'; return; }
+    var r = hit.el.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) { box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    box.style.left = (r.left + hit.offx) + 'px';
+    box.style.top = (r.top + hit.offy) + 'px';
+    box.style.width = r.width + 'px';
+    box.style.height = r.height + 'px';
+  };
+
+  window.__cardboardxrClick = function (u, v) {
+    function say(hit, moved, note) {
+      try {
+        window.webkit.messageHandlers.cardboardxr.postMessage(
+          { event: 'click', hit: hit, moved: !!moved, note: note || '' });
+      } catch (e) { /* nothing to report to */ }
+    }
+    var p = pick(u, v);
+    if (!p) { say('nothing', false, 'no element there'); return; }
+    var t = p.el;
+    var link = t.closest ? t.closest('a[href]') : null;
+    var name = (t.tagName || '?').toLowerCase() + (p.actionable ? '' : ' (not actionable)');
+    // Whose address bar this click is about. A link inside a frame moves that frame, so watching
+    // -- and later setting -- the top page's URL would miss the navigation and then replace the
+    // whole site with the frame's target.
+    var win = window;
+    try {
+      var doc = (link || t).ownerDocument;
+      if (doc && doc.defaultView) win = doc.defaultView;
+    } catch (e) { win = window; }
+    // Read the URL first. A click that navigates synchronously would otherwise be compared
+    // against the page it had already reached and reported as having gone nowhere -- and then
+    // the fallback below would follow the link a second time.
+    var before = win.location.href;
+    var o = { bubbles: true, cancelable: true, composed: true, clientX: p.x, clientY: p.y,
+              view: window, button: 0, buttons: 1 };
+    var po = Object.assign({ pointerId: 1, pointerType: 'touch', isPrimary: true,
+                             width: 8, height: 8, pressure: 0.5 }, o);
+    function up(base) { return Object.assign({}, base, { buttons: 0 }); }
+    try {
+      // Hover before pressing: a menu that opens on hover has nothing to click until it has
+      // been pointed at, so the press alone did nothing on any site with a drop-down nav.
+      t.dispatchEvent(new PointerEvent('pointerover', up(po)));
+      t.dispatchEvent(new MouseEvent('mouseover', up(o)));
+      t.dispatchEvent(new PointerEvent('pointermove', up(po)));
+      t.dispatchEvent(new MouseEvent('mousemove', up(o)));
+      t.dispatchEvent(new PointerEvent('pointerdown', po));
+      t.dispatchEvent(new MouseEvent('mousedown', o));
+      if (t.focus) t.focus({ preventScroll: true });
+      t.dispatchEvent(new PointerEvent('pointerup', up(po)));
+      t.dispatchEvent(new MouseEvent('mouseup', up(o)));
+      t.dispatchEvent(new MouseEvent('click', up(o)));
+    } catch (e) {
+      say(name, false, 'events threw: ' + e);
+      return;
+    }
+    setTimeout(function () {
+      var now = before;
+      try { now = win.location.href; } catch (e) { now = before; }
+      if (now !== before) { say(name, true, 'the page moved'); return; }
+      var href = link ? (link.getAttribute('href') || '') : '';
+      // A plain link that did not take gets followed outright. A synthetic click carries
+      // isTrusted false, which some handlers check, and target=_blank goes to the window
+      // delegate rather than here.
+      if (href && !/^javascript:/i.test(href) && href.charAt(0) !== '#') {
+        say(name + ' link', true, 'followed the href');
+        try { win.location.href = link.href; } catch (e) { location.href = link.href; }
+        return;
+      }
+      var typable = /^(input|textarea)$/.test((t.tagName || '').toLowerCase()) || t.isContentEditable;
+      say(name, false, typable ? 'focused a field, but there is no keyboard yet'
+                     : href ? 'a link within the page' : 'nothing navigated');
+    }, 80);
+  };
+
+  // Scrolls whatever is under the gaze. Most sites now put their content in an inner scroller,
+  // and window.scrollBy does not move those at all -- which looked like a page that would not
+  // scroll, and left every link below the fold unreachable.
+  window.__cardboardxrScroll = function (u, v, dx, dy) {
+    var p = pick(u, v);
+    var node = p ? p.el : null;
+    for (var depth = 0; node && depth < 12; node = node.parentElement, depth++) {
+      if (node === document.body || node === document.documentElement) break;
+      var style = null;
+      try { style = getComputedStyle(node); } catch (e) { break; }
+      var over = style.overflowY;
+      if ((over === 'auto' || over === 'scroll') && node.scrollHeight > node.clientHeight + 1) {
+        var was = node.scrollTop;
+        node.scrollTop += dy;
+        if (node.scrollTop !== was) return;
+      }
+    }
+    window.scrollBy(dx, dy);
+  };
+})();
+)JS";
+
+@interface CardboardXRWebHost : NSObject <WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate>
 @property (nonatomic, strong) WKWebView *web;
 @property (nonatomic, assign) int pending;
 // Windowed: the view lives behind Unity's, where it still renders but is never seen, and is
@@ -56,8 +238,9 @@ static CardboardXRWebHost *g_Host = nil;
     else if ([event isEqualToString:@"click"])
     {
         NSDictionary *body = message.body;
-        NSLog(@"[WebXR] click hit %@, navigated %@", body[@"hit"] ?: @"?",
-              [body[@"moved"] boolValue] ? @"yes" : @"no");
+        NSLog(@"[WebXR] clicked %@: %@ (%@)", body[@"hit"] ?: @"?",
+              [body[@"moved"] boolValue] ? @"went somewhere" : @"stayed put",
+              body[@"note"] ?: @"");
         return;
     }
     NSLog(@"[WebXR] page said %@", event ?: @"?");
@@ -65,12 +248,65 @@ static CardboardXRWebHost *g_Host = nil;
 
 - (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(WKNavigation *)nav withError:(NSError *)error
 {
-    NSLog(@"[WebXR] couldn't load: %@", error.localizedDescription);
+    NSLog(@"[WebXR] couldn't start loading: %@", error.localizedDescription);
+}
+
+- (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)nav withError:(NSError *)error
+{
+    NSLog(@"[WebXR] load failed partway: %@", error.localizedDescription);
+}
+
+- (void)webView:(WKWebView *)webView didStartProvisionalNavigation:(WKNavigation *)nav
+{
+    NSLog(@"[WebXR] loading %@", webView.URL.absoluteString);
 }
 
 - (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)nav
 {
-    NSLog(@"[WebXR] loaded %@", webView.URL.absoluteString);
+    NSLog(@"[WebXR] loaded %@ (back %@, forward %@)", webView.URL.absoluteString,
+          webView.canGoBack ? @"yes" : @"no", webView.canGoForward ? @"yes" : @"no");
+}
+
+// A link asking for a new window gets this one: there are no tabs here, and without this a
+// target=_blank link is simply dropped, which is one of the ways a page "didn't navigate".
+- (WKWebView *)webView:(WKWebView *)webView
+    createWebViewWithConfiguration:(WKWebViewConfiguration *)configuration
+               forNavigationAction:(WKNavigationAction *)action
+                    windowFeatures:(WKWindowFeatures *)features
+{
+    if (action.targetFrame == nil || !action.targetFrame.isMainFrame)
+    {
+        NSLog(@"[WebXR] a link wanted a new window; following it here: %@",
+              action.request.URL.absoluteString);
+        [webView loadRequest:action.request];
+    }
+    return nil;
+}
+
+// Nobody can reach a system dialog from inside a viewer, and WKWebView stops the page's
+// JavaScript until one is answered -- so an alert() would wedge the page for good.
+- (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message
+    initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(void))completionHandler
+{
+    NSLog(@"[WebXR] page alert, dismissed: %@", message);
+    completionHandler();
+}
+
+- (void)webView:(WKWebView *)webView runJavaScriptConfirmPanelWithMessage:(NSString *)message
+    initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(BOOL))completionHandler
+{
+    NSLog(@"[WebXR] page confirm, accepted: %@", message);
+    completionHandler(YES);
+}
+
+- (void)webView:(WKWebView *)webView
+    runJavaScriptTextInputPanelWithPrompt:(NSString *)prompt
+                              defaultText:(NSString *)defaultText
+                         initiatedByFrame:(WKFrameInfo *)frame
+                        completionHandler:(void (^)(NSString *))completionHandler
+{
+    NSLog(@"[WebXR] page prompt, cancelled: %@", prompt);
+    completionHandler(nil);
 }
 
 // Draws the page into a tightly packed BGRA buffer, which is what Unity's BGRA32 wants. Takes
@@ -160,6 +396,11 @@ extern "C" int CardboardXR_WebOpen(const char *url, const char *configJson, cons
     [content addUserScript:[[WKUserScript alloc] initWithSource:[NSString stringWithUTF8String:shim]
                                                   injectionTime:WKUserScriptInjectionTimeAtDocumentStart
                                                forMainFrameOnly:NO]];
+    // Pointing, clicking and scrolling. Main frame only: they reach into child frames themselves,
+    // and evaluateJavaScript runs in the main frame.
+    [content addUserScript:[[WKUserScript alloc] initWithSource:[NSString stringWithUTF8String:kHelperSource]
+                                                  injectionTime:WKUserScriptInjectionTimeAtDocumentStart
+                                               forMainFrameOnly:YES]];
 
     WKWebViewConfiguration *configuration = [WKWebViewConfiguration new];
     configuration.userContentController = content;
@@ -174,13 +415,17 @@ extern "C" int CardboardXR_WebOpen(const char *url, const char *configJson, cons
         : root.view.bounds;
     WKWebView *web = [[WKWebView alloc] initWithFrame:frame configuration:configuration];
     web.navigationDelegate = host;
+    web.UIDelegate = host;
     web.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     web.opaque = YES;
     web.backgroundColor = UIColor.blackColor;
     web.scrollView.bounces = NO;
-    // A viewer has no way to scroll, and a page that drifts under the lenses is worse than one
-    // that cannot move at all.
-    web.scrollView.scrollEnabled = NO;
+    // Left enabled on purpose. A disabled scroll view also refuses window.scrollBy, so the page
+    // could not be scrolled at all and every link below the fold was out of reach. Nothing can
+    // touch it by hand anyway: windowed, it sits inside a veil that takes no interaction.
+    web.scrollView.scrollEnabled = YES;
+    web.scrollView.showsVerticalScrollIndicator = NO;
+    web.scrollView.showsHorizontalScrollIndicator = NO;
     if (@available(iOS 11.0, *))
         web.scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
 
@@ -298,53 +543,37 @@ extern "C" int CardboardXR_WebPixels(void **bytes, int *width, int *height)
 // A click at a point on the page, given where the gaze met the window: 0-1 across and down, with
 // the origin at the top left as the page sees it.
 //
-// Synthesised rather than a real touch, because UIKit has no public way to inject one. The first
-// attempt dispatched a mouse click at the deepest element under the point, which navigated
-// sometimes and did nothing other times: the deepest element is usually a span or an image inside
-// the link, pages increasingly listen for pointer events rather than mouse ones, and a synthetic
-// click carries isTrusted false, which some handlers check.
-//
-// So it finds the nearest thing that actually does something, sends the whole pointer-then-mouse
-// sequence a touch would, and -- if that was a plain link and nothing moved -- follows the href
-// itself. Links that open a new window are followed in this one, since there are no tabs here.
+// Synthesised rather than a real touch, because UIKit has no public way to inject one. The work is
+// in kHelperSource above; all this does is name the point.
 extern "C" void CardboardXR_WebClickAt(float u, float v)
 {
     if (g_Host == nil || g_Host.web == nil)
         return;
-    NSString *js = [NSString stringWithFormat:
-        @"(function(){"
-         "var x=%f*window.innerWidth,y=%f*window.innerHeight;"
-         "var el=document.elementFromPoint(x,y);"
-         "if(!el){window.webkit.messageHandlers.cardboardxr.postMessage({event:'click',hit:'nothing'});return;}"
-         "var act=el.closest?el.closest('a[href],button,input,select,textarea,summary,[role=button],[role=link],[onclick],[tabindex]'):null;"
-         "var t=act||el;"
-         "var o={bubbles:true,cancelable:true,composed:true,clientX:x,clientY:y,view:window,button:0,buttons:1};"
-         "var po=Object.assign({pointerId:1,pointerType:'touch',isPrimary:true},o);"
-         "try{t.dispatchEvent(new PointerEvent('pointerdown',po));"
-         "t.dispatchEvent(new MouseEvent('mousedown',o));"
-         "if(t.focus)t.focus({preventScroll:true});"
-         "t.dispatchEvent(new PointerEvent('pointerup',Object.assign({},po,{buttons:0})));"
-         "t.dispatchEvent(new MouseEvent('mouseup',Object.assign({},o,{buttons:0})));"
-         "t.dispatchEvent(new MouseEvent('click',Object.assign({},o,{buttons:0})));}catch(e){}"
-         "var before=location.href;"
-         "setTimeout(function(){"
-           "var a=t.closest?t.closest('a[href]'):null;"
-           "if(a&&location.href===before&&!/^javascript:/i.test(a.getAttribute('href')||'')){location.href=a.href;}"
-           "window.webkit.messageHandlers.cardboardxr.postMessage("
-             "{event:'click',hit:(t.tagName||'?')+(a?' link':''),moved:location.href!==before});"
-         "},60);"
-         "})()", u, v];
+    NSString *js = [NSString stringWithFormat:@"window.__cardboardxrClick&&window.__cardboardxrClick(%.5f,%.5f)", u, v];
     [g_Host.web evaluateJavaScript:js completionHandler:^(id result, NSError *error) {
         if (error != nil)
             NSLog(@"[WebXR] click script failed: %@", error.localizedDescription);
     }];
 }
 
-extern "C" void CardboardXR_WebScrollBy(float dx, float dy)
+// Draws the crosshair and outlines whatever a click would land on. Called a dozen times a second
+// while the gaze is on the window, which is as often as the snapshot that carries it.
+extern "C" void CardboardXR_WebHoverAt(float u, float v)
+{
+    if (g_Host == nil || g_Host.web == nil || !g_Host.windowed)
+        return;
+    NSString *js = [NSString stringWithFormat:@"window.__cardboardxrHover&&window.__cardboardxrHover(%.5f,%.5f)", u, v];
+    [g_Host.web evaluateJavaScript:js completionHandler:nil];
+}
+
+// Scrolls what is under the point rather than always the window, so pages that put their content
+// in an inner scroller move too.
+extern "C" void CardboardXR_WebScrollAt(float u, float v, float dx, float dy)
 {
     if (g_Host == nil || g_Host.web == nil)
         return;
-    NSString *js = [NSString stringWithFormat:@"window.scrollBy(%f,%f)", dx, dy];
+    NSString *js = [NSString stringWithFormat:
+        @"window.__cardboardxrScroll&&window.__cardboardxrScroll(%.5f,%.5f,%.2f,%.2f)", u, v, dx, dy];
     [g_Host.web evaluateJavaScript:js completionHandler:nil];
 }
 
@@ -352,6 +581,18 @@ extern "C" void CardboardXR_WebGoBack()
 {
     if (g_Host != nil && g_Host.web != nil && g_Host.web.canGoBack)
         [g_Host.web goBack];
+}
+
+extern "C" void CardboardXR_WebGoForward()
+{
+    if (g_Host != nil && g_Host.web != nil && g_Host.web.canGoForward)
+        [g_Host.web goForward];
+}
+
+extern "C" void CardboardXR_WebReload()
+{
+    if (g_Host != nil && g_Host.web != nil)
+        [g_Host.web reload];
 }
 
 // An immersive session needs the frame rate a snapshot cannot give, so the view comes to the

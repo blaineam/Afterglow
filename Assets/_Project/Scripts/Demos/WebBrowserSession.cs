@@ -43,6 +43,7 @@ namespace CardboardXR.Demos
         Material m_Material;
         Texture2D m_Page;
         bool m_Immersive;
+        float m_LastAim;
 
         public bool IsOpen => WebBrowser.IsOpen;
 
@@ -108,8 +109,10 @@ namespace CardboardXR.Demos
             var shader = Shader.Find("Universal Render Pipeline/Unlit");
             m_Material = new Material(shader) { name = "Web Page" };
             // The capture's rows and the quad's UV disagree about which way is up, so the page
-            // arrived upside down. Flipping V here keeps the fix in one place: TryGazePoint flips
-            // with it, so where you look and what you click stay the same point.
+            // arrived upside down. PageV reads this same flag to work out where on the page a
+            // point on the quad is -- as the opposite flip, not the same one, which is the thing
+            // that was wrong: the picture needs turning over and the gaze then needs turning
+            // back, and doing both the same way mirrored every click vertically.
             if (m_FlipV)
             {
                 m_Material.mainTextureScale = new Vector2(1f, -1f);
@@ -211,27 +214,44 @@ namespace CardboardXR.Demos
             if (WebBrowser.TryUpdateTexture(ref m_Page) && m_Material != null)
                 m_Material.mainTexture = m_Page;
 
-            GazeScroll();
+            var aimed = TryGazePoint(out var u, out var v);
+            ShowAim(aimed, u, v);
+            if (aimed)
+                GazeScroll(u, v);
             // And from a controller's stick, which is steadier than holding a gaze at an edge.
+            // At the gaze point, so a stick scrolls whatever is being read rather than only the
+            // page as a whole; the middle of the window if the gaze is off it.
             var stick = GamepadInput.Scroll;
             if (stick.sqrMagnitude > 0f)
-                WebBrowser.ScrollBy(stick.x * Time.unscaledDeltaTime, -stick.y * Time.unscaledDeltaTime);
+                WebBrowser.ScrollAt(aimed ? u : 0.5f, aimed ? v : 0.5f,
+                                    stick.x * m_ScrollSpeed * Time.unscaledDeltaTime,
+                                    -stick.y * m_ScrollSpeed * Time.unscaledDeltaTime);
+        }
+
+        // Puts a crosshair on the page where the gaze is, with whatever a pinch would press
+        // outlined around it. At the capture's own rate, since that is how often it can be seen.
+        void ShowAim(bool aimed, float u, float v)
+        {
+            if (Time.unscaledTime - m_LastAim < 1f / 12f)
+                return;
+            m_LastAim = Time.unscaledTime;
+            // Off the page: park it in a corner rather than leave it where the gaze last was,
+            // which would read as a crosshair that has stuck.
+            WebBrowser.HoverAt(aimed ? u : -1f, aimed ? v : -1f);
         }
 
         // Looking near the window's top or bottom edge scrolls the page, so reading needs no
         // hands at all -- which matters in a viewer, where a pinch is the only other input and
         // holding one to scroll is tiring.
-        void GazeScroll()
+        void GazeScroll(float u, float v)
         {
-            if (!TryGazePoint(out _, out var v))
-                return;
             var from = v < m_ScrollEdge ? (v - m_ScrollEdge) / m_ScrollEdge
                      : v > 1f - m_ScrollEdge ? (v - (1f - m_ScrollEdge)) / m_ScrollEdge
                      : 0f;
             if (Mathf.Approximately(from, 0f))
                 return;
             // v is measured down the page, so looking low scrolls down.
-            WebBrowser.ScrollBy(0f, from * m_ScrollSpeed * Time.unscaledDeltaTime);
+            WebBrowser.ScrollAt(u, v, 0f, from * m_ScrollSpeed * Time.unscaledDeltaTime);
         }
 
         // Where the head's gaze meets the window, as 0-1 across and down the page.
@@ -247,11 +267,22 @@ namespace CardboardXR.Demos
                 return false;
             var local = m_Window.transform.InverseTransformPoint(hit.point);
             u = local.x + 0.5f;
-            // Unity's quad has y up and a page counts down from the top; m_FlipV is the same
-            // correction the material gets, so the two always agree.
-            v = m_FlipV ? local.y + 0.5f : 0.5f - local.y;
+            v = PageV(local.y, m_FlipV);
             return u >= 0f && u <= 1f && v >= 0f && v <= 1f;
         }
+
+        // How far down the page a point on the quad is, from a local y of +0.5 at the top to
+        // -0.5 at the bottom. Pure so it can be checked, because getting it backwards is not
+        // visible -- it mirrors every click vertically, which on a page full of links looks like
+        // a browser that works erratically rather than one aiming at the wrong place.
+        //
+        // The capture writes the page's top row first, and Unity's textures start at the bottom,
+        // so the stored picture is upside down and the material flips it: m_FlipV. That flip is
+        // what decides this. With it, quad v maps to texture 1-v, and texture v counts down the
+        // page from its top -- so the page fraction is 1 - (localY + 0.5). Without it, the
+        // picture would be upside down and the page fraction would be localY + 0.5 to match.
+        public static float PageV(float localY, bool flipV) =>
+            flipV ? 0.5f - localY : localY + 0.5f;
 
         // A pinch clicks wherever the gaze is on the page.
         public bool TryBeginPinch(GameObject gazeTarget, PinchSource source)
@@ -296,8 +327,9 @@ namespace CardboardXR.Demos
             var labels = new (string icon, string label, UnityEngine.Events.UnityAction action)[]
             {
                 ("chevron_left", "Back", WebBrowser.GoBack),
+                ("chevron_right", "Forward", WebBrowser.GoForward),
                 ("home", "Home", GoHome),
-                ("refresh", "Reload", () => WebBrowser.ScrollBy(0f, 0f)),
+                ("refresh", "Reload", WebBrowser.Reload),
                 ("aspect_ratio", "Size", CycleSize),
                 ("open_with", "Place", Place),
                 ("close", "Close", Close),
@@ -313,7 +345,8 @@ namespace CardboardXR.Demos
             {
                 var (icon, label, action) = labels[i];
                 items[i] = (RectTransform)M3.ToolbarItem(label, m_Bar, icon, label, Vector2.zero, width, action).transform;
-                groups[i] = i < 3 ? 0 : 1;
+                // Where you go on the left, what the window does on the right.
+                groups[i] = i < 4 ? 0 : 1;
             }
             m_Bar.gameObject.AddComponent<M3Toolbar>()
                 .Initialize(items, groups, new Image[2], new RectTransform[0], width, padding, 0f);
