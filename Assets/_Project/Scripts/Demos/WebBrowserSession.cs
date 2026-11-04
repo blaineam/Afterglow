@@ -1,6 +1,9 @@
 using System.IO;
 using CardboardXR.Hands;
+using CardboardXR.Interaction;
 using CardboardXR.Stereo;
+using CardboardXR.UI;
+using UnityEngine.UI;
 using UnityEngine;
 
 namespace CardboardXR.Demos
@@ -28,9 +31,14 @@ namespace CardboardXR.Demos
         [Tooltip("Looking within this fraction of the window's top or bottom scrolls the page.")]
         [SerializeField, Range(0.02f, 0.3f)] float m_ScrollEdge = 0.12f;
         [SerializeField] float m_ScrollSpeed = 900f;
+        [Tooltip("The capture and the quad disagree about which way is up; this is which one wins.")]
+        [SerializeField] bool m_FlipV = true;
 
         IPinchHandler m_Interrupted;
         GameObject m_Window;
+        RectTransform m_Bar;
+        static readonly float[] k_Widths = { 0.8f, 1.25f, 1.9f, 2.8f };
+        int m_WidthStep = 1;
         MeshRenderer m_Renderer;
         Material m_Material;
         Texture2D m_Page;
@@ -59,6 +67,12 @@ namespace CardboardXR.Demos
 
             BuildWindow();
             m_Immersive = false;
+            // PinchRouter asks the scene's handler only while the settings panel is shut, and the
+            // browser is opened from that panel -- so leaving it up means every pinch goes to its
+            // buttons and the page never gets one.
+            var settings = CoreServices.Instance != null ? CoreServices.Instance.Settings : null;
+            if (settings != null && settings.IsOpen)
+                settings.Close();
             // The window is what the pinches are for, until a page takes the screen.
             m_Interrupted = PinchRouter.Handler;
             PinchRouter.Handler = this;
@@ -93,12 +107,32 @@ namespace CardboardXR.Demos
             m_Renderer.receiveShadows = false;
             var shader = Shader.Find("Universal Render Pipeline/Unlit");
             m_Material = new Material(shader) { name = "Web Page" };
+            // The capture's rows and the quad's UV disagree about which way is up, so the page
+            // arrived upside down. Flipping V here keeps the fix in one place: TryGazePoint flips
+            // with it, so where you look and what you click stay the same point.
+            if (m_FlipV)
+            {
+                m_Material.mainTextureScale = new Vector2(1f, -1f);
+                m_Material.mainTextureOffset = new Vector2(0f, 1f);
+            }
             m_Renderer.sharedMaterial = m_Material;
+            m_Width = k_Widths[m_WidthStep];
+            ApplySize();
+            BuildControls();
             Place();
+        }
+
+        void GoHome()
+        {
+            Close();
+            Open();
         }
 
         void TearDownWindow()
         {
+            if (m_Bar != null)
+                Destroy(m_Bar.gameObject);
+            m_Bar = null;
             if (m_Window != null)
                 Destroy(m_Window);
             if (m_Material != null)
@@ -123,6 +157,14 @@ namespace CardboardXR.Demos
             forward.Normalize();
             m_Window.transform.position = head.position + forward * m_Distance;
             m_Window.transform.rotation = Quaternion.LookRotation(forward, Vector3.up);
+            if (m_Bar != null)
+            {
+                // Just under the window, facing the same way, far enough down to clear the page's
+                // bottom edge at whatever size it is now.
+                var height = m_Width * WebBrowser.WindowHeight / WebBrowser.WindowWidth;
+                m_Bar.position = m_Window.transform.position - m_Window.transform.up * (height / 2f + 0.09f);
+                m_Bar.rotation = m_Window.transform.rotation;
+            }
         }
 
         void Update()
@@ -144,16 +186,18 @@ namespace CardboardXR.Demos
                     WebBrowser.SetWindowed(false);
                     if (m_Window != null)
                         m_Window.SetActive(false);
+                    if (m_Bar != null)
+                        m_Bar.gameObject.SetActive(false);
                     Debug.Log("[WebXR] Immersive session: the page has the screen");
                     break;
                 case WebBrowser.Event.SessionEnd:
                     m_Immersive = false;
                     WebBrowser.SetWindowed(true);
                     if (m_Window != null)
-                    {
                         m_Window.SetActive(true);
-                        Place();
-                    }
+                    if (m_Bar != null)
+                        m_Bar.gameObject.SetActive(true);
+                    Place();
                     Debug.Log("[WebXR] Session ended: back to a window in the scene");
                     break;
                 case WebBrowser.Event.Close:
@@ -199,8 +243,9 @@ namespace CardboardXR.Demos
                 return false;
             var local = m_Window.transform.InverseTransformPoint(hit.point);
             u = local.x + 0.5f;
-            // Unity's quad has y up and a page counts down from the top.
-            v = 0.5f - local.y;
+            // Unity's quad has y up and a page counts down from the top; m_FlipV is the same
+            // correction the material gets, so the two always agree.
+            v = m_FlipV ? local.y + 0.5f : 0.5f - local.y;
             return u >= 0f && u <= 1f && v >= 0f && v <= 1f;
         }
 
@@ -211,9 +256,63 @@ namespace CardboardXR.Demos
                 return false;
             if (!TryGazePoint(out var u, out var v))
                 return false;
+
             WebBrowser.ClickAt(u, v);
             Debug.Log($"[WebXR] Click at {u:F2}, {v:F2} on the page");
             return true;
+        }
+
+        // Through the sizes rather than by a factor, so the button lands somewhere sensible every
+        // time instead of drifting.
+        void CycleSize()
+        {
+            m_WidthStep = (m_WidthStep + 1) % k_Widths.Length;
+            m_Width = k_Widths[m_WidthStep];
+            ApplySize();
+            Place();
+            Debug.Log($"[WebXR] Window {m_Width:F2} m wide");
+        }
+
+        void ApplySize()
+        {
+            if (m_Window == null)
+                return;
+            var height = m_Width * WebBrowser.WindowHeight / WebBrowser.WindowWidth;
+            m_Window.transform.localScale = new Vector3(m_Width, height, 1f);
+        }
+
+        // The controls, as the app's own toolbar rather than invented gestures: real buttons the
+        // gaze lights up and a pinch presses, which PinchRouter already handles before it ever
+        // reaches this demo. It hangs under the window and moves with it.
+        void BuildControls()
+        {
+            if (m_Bar != null)
+                return;
+            const float width = 92f, padding = 12f;
+            var labels = new (string icon, string label, UnityEngine.Events.UnityAction action)[]
+            {
+                ("chevron_left", "Back", WebBrowser.GoBack),
+                ("home", "Home", GoHome),
+                ("refresh", "Reload", () => WebBrowser.ScrollBy(0f, 0f)),
+                ("aspect_ratio", "Size", CycleSize),
+                ("open_with", "Place", Place),
+                ("close", "Close", Close),
+            };
+            m_Bar = M3.Canvas("Web Controls", transform,
+                new Vector2(labels.Length * width + 2f * padding, 76f + 2f * padding),
+                M3Theme.k_OverlayDistance, M3Theme.SurfaceContainerHigh, M3Theme.k_ShapeFull);
+            m_Bar.gameObject.AddComponent<GazeCanvas>();
+
+            var items = new RectTransform[labels.Length];
+            var groups = new int[labels.Length];
+            for (var i = 0; i < labels.Length; i++)
+            {
+                var (icon, label, action) = labels[i];
+                items[i] = (RectTransform)M3.ToolbarItem(label, m_Bar, icon, label, Vector2.zero, width, action).transform;
+                groups[i] = i < 3 ? 0 : 1;
+            }
+            m_Bar.gameObject.AddComponent<M3Toolbar>()
+                .Initialize(items, groups, new Image[2], new RectTransform[0], width, padding, 0f);
         }
 
         public void EndPinch() { }

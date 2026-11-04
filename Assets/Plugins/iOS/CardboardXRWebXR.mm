@@ -35,6 +35,10 @@ enum WebEvent { WebEventNone = 0, WebEventSessionStart = 1, WebEventSessionEnd =
 @property (nonatomic, assign) int pixelWidth;
 @property (nonatomic, assign) int pixelHeight;
 @property (nonatomic, assign) BOOL freshPixels;
+// Windowed, the web view sits inside this, and this is what is made almost invisible. The alpha
+// cannot go on the web view itself: drawViewHierarchyInRect captures a view as displayed, so a
+// nearly transparent view gives a nearly transparent snapshot.
+@property (nonatomic, strong) UIView *veil;
 - (void)capture;
 @end
 
@@ -91,6 +95,22 @@ static CardboardXRWebHost *g_Host = nil;
     UIGraphicsPopContext();
     CGContextRelease(context);
     self.freshPixels = YES;
+
+    // Whether anything was actually drawn. drawViewHierarchyInRect is the usual way to capture a
+    // view that is not the one on screen, but it can come back empty, and an empty buffer and a
+    // page that happens to be white look identical from Unity's side.
+    static int reported = 0;
+    if (reported < 3)
+    {
+        reported++;
+        const unsigned char *px = (const unsigned char *)self.pixels;
+        unsigned long lit = 0;
+        const size_t step = (w * h) / 4000 + 1;
+        size_t looked = 0;
+        for (size_t i = 0; i < w * h; i += step, looked++)
+            if (px[i * 4] || px[i * 4 + 1] || px[i * 4 + 2]) lit++;
+        NSLog(@"[WebXR] Snapshot %zux%zu: %lu of %zu sampled pixels have colour", w, h, lit, looked);
+    }
 }
 
 @end
@@ -165,15 +185,27 @@ extern "C" int CardboardXR_WebOpen(const char *url, const char *configJson, cons
         host.pixelWidth = pixelWidth;
         host.pixelHeight = pixelHeight;
         host.pixels = calloc((size_t)pixelWidth * pixelHeight, 4);
-        // Behind Unity's view: still in the hierarchy, so UIKit keeps drawing it, but never seen.
-        // A hidden or zero-alpha view stops rendering, and an offscreen one is not reliable.
-        [root.view insertSubview:web atIndex:0];
+        // Unity draws into the view controller's own view, not a subview of it, so a subview is
+        // always on top however low its index -- putting the page at index 0 did not hide it, it
+        // just covered the app. It has to be made invisible rather than placed behind.
+        //
+        // A hidden view, or one at alpha 0, stops being drawn at all and snapshots empty; one
+        // moved offscreen is throttled. So it keeps its own alpha and sits in a veil that has
+        // almost none, which UIKit still renders and nobody can see.
+        UIView *veil = [[UIView alloc] initWithFrame:frame];
+        veil.alpha = 0.01;
+        veil.userInteractionEnabled = NO;   // taps belong to the app, not the hidden page
+        [veil addSubview:web];
+        host.veil = veil;
+        [root.view addSubview:veil];
         host.shots = [NSTimer scheduledTimerWithTimeInterval:1.0 / 12.0 repeats:YES
                                                      block:^(NSTimer *t) { [host capture]; }];
+        NSLog(@"[WebXR] Windowed: page %dx%d behind a veil, snapshotting at 12 Hz", pixelWidth, pixelHeight);
     }
     else
     {
         [root.view addSubview:web];
+        NSLog(@"[WebXR] Full screen over the app");
     }
     if (target.isFileURL)
     {
@@ -204,6 +236,8 @@ extern "C" void CardboardXR_WebClose()
     [web.configuration.userContentController removeScriptMessageHandlerForName:@"cardboardxr"];
     [web stopLoading];
     [web removeFromSuperview];
+    [g_Host.veil removeFromSuperview];
+    g_Host.veil = nil;
     g_Host.web = nil;
     g_Host = nil;
     NSLog(@"[WebXR] closed");
@@ -298,10 +332,20 @@ extern "C" void CardboardXR_WebSetWindowed(int windowed)
     if (g_Host.windowed)
     {
         g_Host.web.frame = CGRectMake(0, 0, g_Host.pixelWidth, g_Host.pixelHeight);
-        [root.view insertSubview:g_Host.web atIndex:0];
+        if (g_Host.veil == nil)
+        {
+            UIView *veil = [[UIView alloc] initWithFrame:g_Host.web.frame];
+            veil.alpha = 0.01;
+            veil.userInteractionEnabled = NO;
+            g_Host.veil = veil;
+        }
+        g_Host.veil.frame = g_Host.web.frame;
+        [g_Host.veil addSubview:g_Host.web];
+        [root.view addSubview:g_Host.veil];
     }
     else
     {
+        [g_Host.veil removeFromSuperview];
         g_Host.web.frame = root.view.bounds;
         [root.view addSubview:g_Host.web];
     }
