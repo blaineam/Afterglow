@@ -15,9 +15,13 @@ namespace ProjectBootstrap
     // tests, not Unity's export -- says a word about it.
     //
     //   WebKit        the in-app browser's WKWebView (CardboardXRWebXR.mm)
-    //   Photos        the spatial photo library (CardboardXRSpatialPhotos.mm)
+    //   Photos        the spatial photo and video library (CardboardXRSpatialPhotos.mm)
     //   Speech        dictation into the browser (CardboardXRDictation.mm)
-    //   AVFoundation  the microphone that feeds it, in the same plugin
+    //   AVFoundation  the microphone that feeds it, and the player that decodes both layers of a
+    //                 spatial video (CardboardXRSpatialVideo.mm)
+    //   CoreMedia     the tagged buffer groups a spatial video's two eyes arrive in, same plugin
+    //   CoreVideo     the pixel buffers inside them, and the Metal texture cache that wraps those
+    //   Metal         the textures themselves, which Unity draws from without a copy
     //
     // They go on UnityFramework, which is the target the plugins are compiled into; adding them to
     // Unity-iPhone instead links them into the shell app, where the plugins are not.
@@ -29,6 +33,7 @@ namespace ProjectBootstrap
         static readonly string[] k_Frameworks =
         {
             "WebKit.framework", "Photos.framework", "Speech.framework", "AVFoundation.framework",
+            "CoreMedia.framework", "CoreVideo.framework", "Metal.framework",
         };
 
         public void OnPostprocessBuild(BuildReport report)
@@ -43,7 +48,7 @@ namespace ProjectBootstrap
             foreach (var framework in k_Frameworks)
                 project.AddFrameworkToProject(target, framework, false);
             project.WriteToFile(path);
-            Debug.Log($"[ProjectSetup] Linked {string.Join(" and ", k_Frameworks)} into UnityFramework.");
+            Debug.Log($"[ProjectSetup] Linked {string.Join(", ", k_Frameworks)} into UnityFramework.");
         }
     }
 }

@@ -17,18 +17,26 @@ namespace CardboardXR.Demos.Video
         public string DriveId;
         // Where a download stands, while one runs or after one failed.
         public string Status;
-        // A spatial photo in the Photos library, by its place in SpatialPhotos.Scan's list; -1 for
-        // anything with a file. These have no Url: their two pictures are decoded by the plugin.
+        // A spatial photo or video in the Photos library, by its place in SpatialPhotos.Scan's
+        // list; -1 for anything with a file. These have no Url: the library only hands them over
+        // whole, so their two views are decoded by a plugin instead.
         public int SpatialIndex = -1;
+        // Whether that item is a video rather than a photo. The two are opened by different
+        // plugins, and only one of them has a clock to play, pause and seek.
+        public bool SpatialIsVideo;
 
         public bool NeedsDownload => Url == null && DriveId != null;
 
-        public bool IsSpatialPhoto => SpatialIndex >= 0;
+        public bool IsSpatial => SpatialIndex >= 0;
+
+        public bool IsSpatialPhoto => IsSpatial && !SpatialIsVideo;
+
+        public bool IsSpatialVideo => IsSpatial && SpatialIsVideo;
     }
 
     // Finds the videos to offer: the ones bundled with the app, files the user copied into the
     // Videos folder, Google Drive links listed in videos.txt in that folder, and, on an iPhone,
-    // the spatial photos already in the user's Photos library.
+    // the spatial photos and videos already in the user's Photos library.
     //   Android: /storage/emulated/0/Android/data/com.brenpoly.cardboardxr/files/Videos
     //            (adb push beach_360.mp4 there; no storage permission needed)
     //   iPhone:  the app's Documents/Videos, which Finder (the phone's Files tab) and the Files app
@@ -91,25 +99,21 @@ namespace CardboardXR.Demos.Video
             return entries;
         }
 
-        // The spatial photos in the Photos library, which need no copying in: the phone in the
-        // viewer is the one that took them. Empty everywhere but an iPhone, and empty until the
-        // user has allowed the library.
-        //   Spatial videos are in the same list and are left out until the player can decode both
-        // of an MV-HEVC file's layers; a plain decode would show one eye to both, which looks like
-        // an ordinary flat video and is worse than not offering it.
+        // The spatial photos and videos in the Photos library, which need no copying in: the phone
+        // in the viewer is the one that took them. Empty everywhere but an iPhone, and empty until
+        // the user has allowed the library.
         static IEnumerable<VideoEntry> SpatialEntries()
         {
             if (!SpatialPhotos.Supported)
                 yield break;
             foreach (var item in SpatialPhotos.Scan())
             {
-                if (item.IsVideo)
-                    continue;
                 yield return new VideoEntry
                 {
-                    Title = $"Spatial photo, {item.Title}",
+                    Title = $"Spatial {(item.IsVideo ? "video" : "photo")}, {item.Title}",
                     Format = VideoFormat.Stereo3D,
                     SpatialIndex = item.Index,
+                    SpatialIsVideo = item.IsVideo,
                 };
             }
         }

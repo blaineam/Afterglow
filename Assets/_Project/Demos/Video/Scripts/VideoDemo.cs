@@ -7,8 +7,9 @@ using UnityEngine.Video;
 
 namespace CardboardXR.Demos.Video
 {
-    // Watch 360 and VR180 videos, 2D or 3D. It opens on a library of what's on the phone (see
-    // VideoLibrary); pick one and it plays around you. Pinch (or tap the screen) anywhere on the
+    // Watch 360 and VR180 videos, 2D or 3D, and the spatial photos and videos the phone itself
+    // took. It opens on a library of what's on the phone (see VideoLibrary); pick one and it plays
+    // around you, or, for a spatial one, on a screen ahead of you with a picture per eye. Pinch (or tap the screen) anywhere on the
     // video to bring up the controls, a little below where you're looking: play and pause, jump back
     // or ahead 10 s, seek by clicking the bar, the next video, the format (when a file's name doesn't
     // say it), and the library (the lobby is on the settings panel). Pinch on the video again to
@@ -47,6 +48,9 @@ namespace CardboardXR.Demos.Video
         Texture2D m_SpatialLeft;
         Texture2D m_SpatialRight;
         bool m_WaitingForSpatial;
+        // A spatial video the plugin has open, and whether its first frame has reached the screen.
+        bool m_SpatialVideoOpen;
+        bool m_SpatialVideoShown;
         // Whether the Photos library question has been settled, either way, so it is asked once.
         bool m_SpatialSettled;
 
@@ -117,6 +121,8 @@ namespace CardboardXR.Demos.Video
                 return;
             if (m_WaitingForSpatial)
                 UpdateSpatialPhoto();
+            if (m_SpatialVideoOpen)
+                UpdateSpatialVideo();
             // The Photos question is answered after the demo has opened, so once it is, the library
             // is listed again with the spatial photos in it.
             if (!m_SpatialSettled && SpatialPhotos.Authorize() != SpatialPhotos.Access.Asking)
@@ -132,20 +138,53 @@ namespace CardboardXR.Demos.Video
             else if (m_ControlsShown)
                 UpdateControls();
 
-            if (m_Current >= 0 && m_Player.isPrepared && Time.unscaledTime >= m_NextStatus)
+            if (Current != null && PlaybackReady && Time.unscaledTime >= m_NextStatus)
             {
                 m_NextStatus = Time.unscaledTime + k_StatusSeconds;
-                Debug.Log($"[Video] {(m_Player.isPlaying ? "Playing" : "Paused")} at {Clock(m_Player.time)} of {Clock(m_Player.length)}, " +
-                          $"{m_Dropped} frames dropped in the last {k_StatusSeconds:F0} s");
+                var where = $"at {Clock(PlaybackTime)} of {Clock(PlaybackLength)}";
+                // A spatial video's frames come from the plugin, so VideoPlayer's dropped count
+                // says nothing about it; whether both eyes arrived is what's worth watching there.
+                Debug.Log(OnSpatialVideo
+                    ? $"[Video] Spatial video {(PlaybackPlaying ? "playing" : "paused")} {where}, " +
+                      $"{(SpatialVideo.Stereo ? "both eyes" : "one eye shown to both")}"
+                    : $"[Video] {(PlaybackPlaying ? "Playing" : "Paused")} {where}, " +
+                      $"{m_Dropped} frames dropped in the last {k_StatusSeconds:F0} s");
                 m_Dropped = 0;
             }
         }
 
         void Refresh()
         {
+            // The list is built from scratch, so whatever is playing is found again in the new one
+            // rather than left at the index it used to be at: a file copied in or deleted meanwhile
+            // shifts everything after it, and the controls would go on describing someone else.
+            var playing = Current;
             m_Library = VideoLibrary.Find(m_Bundled, out var bundled);
+            m_Current = playing == null ? -1 : m_Library.FindIndex(entry => Same(entry, playing));
             m_Page = 0;
             Debug.Log($"[Video] {m_Library.Count} videos: {bundled} bundled, the rest from {VideoLibrary.VideoFolder}");
+        }
+
+        // What's playing, or null. The library can be rebuilt underneath it (Refresh, and the
+        // Photos question being answered after the demo has opened), so the index is never trusted
+        // to still be in range.
+        VideoEntry Current => m_Current >= 0 && m_Current < m_Library.Count ? m_Library[m_Current] : null;
+
+        // Whether two entries from different scans of the library are the same item. Nothing is
+        // shared across the three kinds, so one kind is never the same as another.
+        //   A spatial photo or video goes by its title, which is its creation date: its index is a
+        // place in a scan of the Photos library, and a scan that picks up a newly taken photo
+        // shifts every index after it. A Drive video goes by its file id, which is what it is, and
+        // a file by its path.
+        public static bool Same(VideoEntry a, VideoEntry b)
+        {
+            if (a == null || b == null)
+                return false;
+            if (a.IsSpatial || b.IsSpatial)
+                return a.IsSpatial == b.IsSpatial && a.SpatialIsVideo == b.SpatialIsVideo && a.Title == b.Title;
+            if (a.DriveId != null || b.DriveId != null)
+                return a.DriveId == b.DriveId;
+            return a.Url != null && a.Url == b.Url;
         }
 
         // Plays an entry, downloading it first if it's a Drive video not yet in the cache.
@@ -167,10 +206,17 @@ namespace CardboardXR.Demos.Video
                 PlaySpatialPhoto(entry, index);
                 return;
             }
+            if (entry.IsSpatialVideo)
+            {
+                PlaySpatialVideo(entry, index);
+                return;
+            }
 
             m_Player.Stop();
-            ReleaseSpatial();
+            // Off the screen before the pictures go: a spatial video's textures are views of the
+            // decoder's own memory, and one left on the quad would be drawn from freed buffers.
             m_Sphere.Show(null, default);
+            ReleaseSpatial();
             m_Current = index;
             m_Player.url = entry.Url;
             m_Player.Prepare();
@@ -185,8 +231,10 @@ namespace CardboardXR.Demos.Video
         void PlaySpatialPhoto(VideoEntry entry, int index)
         {
             m_Player.Stop();
-            ReleaseSpatial();
+            // Off the screen before the pictures go: a spatial video's textures are views of the
+            // decoder's own memory, and one left on the quad would be drawn from freed buffers.
             m_Sphere.Show(null, default);
+            ReleaseSpatial();
             m_Current = index;
             m_Title.text = entry.Title;
 
@@ -225,8 +273,8 @@ namespace CardboardXR.Demos.Video
                     }
                     // A picture each, so the format's halves aren't used: the eyes are whole.
                     m_Sphere.Show(m_SpatialLeft, VideoFormat.Stereo3D, m_SpatialRight);
-                    if (m_Current >= 0)
-                        m_Library[m_Current].Status = null;
+                    if (Current != null)
+                        Current.Status = null;
                     Debug.Log($"[Video] Spatial photo shown: {m_SpatialLeft.width}x{m_SpatialLeft.height} per eye");
                     HidePanel();
                     // The pictures are in textures now, so the plugin needn't keep its buffers.
@@ -238,27 +286,122 @@ namespace CardboardXR.Demos.Video
             }
         }
 
+        // A spatial video doesn't go through VideoPlayer either, and for a different reason: it
+        // would decode one of the file's two layers and play the result flat. The plugin decodes
+        // both and keeps the clock and the audio, so the controls ask it rather than VideoPlayer
+        // (see OnSpatialVideo), and Update picks up each frame's two pictures.
+        void PlaySpatialVideo(VideoEntry entry, int index)
+        {
+            m_Player.Stop();
+            // Off the screen before the pictures go: a spatial video's textures are views of the
+            // decoder's own memory, and one left on the quad would be drawn from freed buffers.
+            m_Sphere.Show(null, default);
+            ReleaseSpatial();
+            m_Current = index;
+            m_Title.text = entry.Title;
+
+            if (SpatialPhotos.Authorize() != SpatialPhotos.Access.Granted)
+            {
+                entry.Status = "Allow Photos to show this";
+                Debug.Log("[Video] The Photos library isn't allowed yet, so the spatial video stays shut");
+                return;
+            }
+            if (!SpatialVideo.Open(entry.SpatialIndex))
+            {
+                var why = SpatialVideo.Error;
+                m_Current = -1;
+                entry.Status = string.IsNullOrEmpty(why) ? "Couldn't open that spatial video" : why;
+                Debug.LogWarning($"[Video] Couldn't open {entry.Title}: {entry.Status}");
+                ShowLibrary();
+                return;
+            }
+            entry.Status = "Loading";
+            m_SpatialVideoOpen = true;
+            Debug.Log($"[Video] Opening {entry.Title} ({entry.Format})");
+        }
+
+        // Polled while a spatial video is open. The library fetch runs off the main thread, and
+        // after it every frame has two new pictures: Advance takes them and says when the textures
+        // themselves changed, which is the only time the screen has to be told again.
+        void UpdateSpatialVideo()
+        {
+            switch (SpatialVideo.PlayState)
+            {
+                case SpatialVideo.State.Loading:
+                    return;
+                case SpatialVideo.State.Ready:
+                    if (!SpatialVideo.Advance(out var changed) || !changed)
+                        return;
+                    m_Sphere.Show(SpatialVideo.Left, VideoFormat.Stereo3D, SpatialVideo.Right);
+                    if (m_SpatialVideoShown)
+                        return;
+                    m_SpatialVideoShown = true;
+                    if (Current != null)
+                        Current.Status =
+                            SpatialVideo.Stereo ? null : "One eye only: that file holds a single view";
+                    Debug.Log($"[Video] Spatial video playing: {SpatialVideo.Left.width}x{SpatialVideo.Left.height} per eye, " +
+                              $"{(SpatialVideo.Stereo ? "both eyes" : "one eye shown to both")}, {Clock(PlaybackLength)}");
+                    HidePanel();
+                    return;
+                default:
+                    FailSpatial(SpatialVideo.Error);
+                    return;
+            }
+        }
+
         void FailSpatial(string message)
         {
-            m_WaitingForSpatial = false;
-            if (m_Current >= 0)
-                m_Library[m_Current].Status = string.IsNullOrEmpty(message) ? "Couldn't show that spatial photo" : message;
-            Debug.LogWarning($"[Video] Spatial photo failed: {(string.IsNullOrEmpty(message) ? "no reason given" : message)}");
+            var kind = Current != null && Current.IsSpatialVideo ? "video" : "photo";
+            if (Current != null)
+                Current.Status = string.IsNullOrEmpty(message) ? $"Couldn't show that spatial {kind}" : message;
+            Debug.LogWarning($"[Video] Spatial {kind} failed: {(string.IsNullOrEmpty(message) ? "no reason given" : message)}");
             m_Current = -1;
-            SpatialPhotos.Close();
             m_Sphere.Show(null, default);
+            ReleaseSpatial();
             ShowLibrary();
         }
 
         void ReleaseSpatial()
         {
             m_WaitingForSpatial = false;
+            m_SpatialVideoOpen = false;
+            m_SpatialVideoShown = false;
             SpatialPhotos.Close();
+            // Closing lets go of the decoder's buffers, and with them the textures that were views
+            // of them, so nothing is left pointing into freed memory.
+            SpatialVideo.Close();
             if (m_SpatialLeft != null)
                 Destroy(m_SpatialLeft);
             if (m_SpatialRight != null)
                 Destroy(m_SpatialRight);
             m_SpatialLeft = m_SpatialRight = null;
+        }
+
+        // Whatever is playing, asked through one set of questions rather than a branch at every
+        // button. A file goes through Unity's VideoPlayer and a spatial video through the plugin;
+        // a spatial photo has no clock at all, and VideoPlayer, stopped, answers for it as a still.
+        bool OnSpatialVideo => Current is { IsSpatialVideo: true };
+
+        bool PlaybackReady => OnSpatialVideo
+            ? SpatialVideo.PlayState == SpatialVideo.State.Ready && m_SpatialVideoShown
+            : m_Player.isPrepared;
+
+        bool PlaybackPlaying => OnSpatialVideo ? SpatialVideo.Playing : m_Player.isPlaying;
+
+        bool PlaybackCanSeek => OnSpatialVideo || m_Player.canSetTime;
+
+        double PlaybackTime => OnSpatialVideo ? SpatialVideo.Time : m_Player.time;
+
+        double PlaybackLength => OnSpatialVideo ? SpatialVideo.Length : m_Player.length;
+
+        void PlaybackSetPlaying(bool playing)
+        {
+            if (OnSpatialVideo)
+                SpatialVideo.Playing = playing;
+            else if (playing)
+                m_Player.Play();
+            else
+                m_Player.Pause();
         }
 
         IEnumerator DownloadThenPlay(VideoEntry entry, int index)
@@ -272,7 +415,13 @@ namespace CardboardXR.Demos.Video
 
         void OnPrepared(VideoPlayer player)
         {
-            var entry = m_Library[m_Current];
+            var entry = Current;
+            // The library was rebuilt while this was opening and what was asked for has gone.
+            if (entry == null)
+            {
+                player.Stop();
+                return;
+            }
             var width = (int)player.width;
             var height = (int)player.height;
             if (m_Texture == null || m_Texture.width != width || m_Texture.height != height)
@@ -293,9 +442,10 @@ namespace CardboardXR.Demos.Video
 
         void OnError(VideoPlayer player, string message)
         {
-            if (m_Current >= 0)
-                m_Library[m_Current].Status = $"Couldn't play: {message}";
-            Debug.LogWarning($"[Video] Couldn't play {(m_Current >= 0 ? m_Library[m_Current].Title : player.url)}: {message}");
+            var entry = Current;
+            if (entry != null)
+                entry.Status = $"Couldn't play: {message}";
+            Debug.LogWarning($"[Video] Couldn't play {entry?.Title ?? player.url}: {message}");
             m_Current = -1;
             m_Sphere.Show(null, default);
             ShowLibrary();
@@ -305,26 +455,31 @@ namespace CardboardXR.Demos.Video
 
         void TogglePlay()
         {
-            if (m_Current < 0 || !m_Player.isPrepared)
+            if (m_Current < 0 || !PlaybackReady)
                 return;
-            if (m_Player.isPlaying)
-                m_Player.Pause();
-            else
-                m_Player.Play();
-            Debug.Log($"[Video] {(m_Player.isPlaying ? "Resumed" : "Paused")} at {Clock(m_Player.time)}");
+            PlaybackSetPlaying(!PlaybackPlaying);
+            Debug.Log($"[Video] {(PlaybackPlaying ? "Resumed" : "Paused")} at {Clock(PlaybackTime)}");
         }
 
-        void Skip(float seconds) => SeekTo(m_Player.time + seconds);
+        void Skip(float seconds) => SeekTo(PlaybackTime + seconds);
 
         void SeekTo(double seconds)
         {
-            if (m_Current < 0 || !m_Player.isPrepared || !m_Player.canSetTime)
+            if (m_Current < 0 || !PlaybackReady || !PlaybackCanSeek)
                 return;
             // The player moves there a moment later, so log the target: reading its time back here
             // still gives where it was.
-            var target = System.Math.Clamp(seconds, 0.0, System.Math.Max(0.0, m_Player.length - 0.5));
-            Debug.Log($"[Video] Seek from {Clock(m_Player.time)} to {Clock(target)}");
-            m_Player.time = target;
+            var target = System.Math.Clamp(seconds, 0.0, System.Math.Max(0.0, PlaybackLength - 0.5));
+            Debug.Log($"[Video] Seek from {Clock(PlaybackTime)} to {Clock(target)}");
+            PlaybackSeek(target);
+        }
+
+        void PlaybackSeek(double seconds)
+        {
+            if (OnSpatialVideo)
+                SpatialVideo.Seek(seconds);
+            else
+                m_Player.time = seconds;
         }
 
         void Next()
@@ -335,11 +490,11 @@ namespace CardboardXR.Demos.Video
 
         void CycleFormat()
         {
-            if (m_Current < 0)
+            var entry = Current;
+            if (entry == null)
                 return;
-            var entry = m_Library[m_Current];
-            // A spatial photo already has a picture per eye, so there's no layout to guess at.
-            if (entry.IsSpatialPhoto)
+            // A spatial photo or video already has a picture per eye, so there's no layout to guess.
+            if (entry.IsSpatial)
                 return;
             entry.Format = entry.Format.Next();
             if (m_Player.isPrepared)
@@ -408,16 +563,16 @@ namespace CardboardXR.Demos.Video
 
         void UpdateControls()
         {
-            var ready = m_Current >= 0 && m_Player.isPrepared;
-            if (m_Current >= 0)
+            var entry = Current;
+            var ready = entry != null && PlaybackReady;
+            if (entry != null)
             {
-                var entry = m_Library[m_Current];
                 m_Title.text = entry.Title;
                 m_FormatLine.text = entry.Status ?? entry.Format.ToString();
             }
-            m_Play.Icon = ready && m_Player.isPlaying ? "pause" : "play_arrow";
-            m_Time.text = ready ? $"{Clock(m_Player.time)} / {Clock(m_Player.length)}" : "";
-            m_Seek.Value = ready && m_Player.length > 0 ? (float)(m_Player.time / m_Player.length) : 0f;
+            m_Play.Icon = ready && PlaybackPlaying ? "pause" : "play_arrow";
+            m_Time.text = ready ? $"{Clock(PlaybackTime)} / {Clock(PlaybackLength)}" : "";
+            m_Seek.Value = ready && PlaybackLength > 0 ? (float)(PlaybackTime / PlaybackLength) : 0f;
         }
 
         void UpdateLibraryLabels()
@@ -437,7 +592,9 @@ namespace CardboardXR.Demos.Video
                     continue;
                 var entry = m_Library[index];
                 item.Text = entry.Title;
-                item.Icon = entry.NeedsDownload ? "cloud_download" : "movie";
+                // The library's own spatial items are marked apart from the files, since they
+                // arrive without being copied in and are the ones that are 3D.
+                item.Icon = entry.NeedsDownload ? "cloud_download" : entry.IsSpatial ? "view_in_ar" : "movie";
                 supporting.text = entry.Status ?? (entry.NeedsDownload ? "Google Drive: pinch to download" : entry.Format.ToString());
                 if (item.Selected != (index == m_Current))
                     item.Selected = index == m_Current;
@@ -489,8 +646,8 @@ namespace CardboardXR.Demos.Video
             m_Seek = M3.Slider("Seek", m_ControlsPage, new Vector2(0f, 76f), 552f);
             m_Seek.Clicked += fraction =>
             {
-                if (m_Current >= 0 && m_Player.isPrepared)
-                    SeekTo(fraction * m_Player.length);
+                if (m_Current >= 0 && PlaybackReady)
+                    SeekTo(fraction * PlaybackLength);
             };
             m_Time = M3.Text("Time", m_ControlsPage, "", M3Theme.Type.BodyMedium, new Vector2(0f, 46f), new Vector2(552f, 20f),
                 M3Theme.OnSurfaceVariant);

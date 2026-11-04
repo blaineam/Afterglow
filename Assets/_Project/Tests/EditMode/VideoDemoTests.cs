@@ -195,4 +195,114 @@ namespace CardboardXR.Stereo.Tests
             CollectionAssert.Contains(seen, VideoFormat.Stereo3D);
         }
     }
+
+    // What a library entry is, which gates every branch that opens one: a file goes through Unity's
+    // VideoPlayer, a Drive link is downloaded first, and the two spatial kinds each go to their own
+    // plugin, because only one of them has a clock.
+    public class VideoEntryKindTests
+    {
+        [Test]
+        public void ASpatialVideoIsSpatialAndIsNotAPhoto()
+        {
+            var entry = new VideoEntry { SpatialIndex = 4, SpatialIsVideo = true, Format = VideoFormat.Stereo3D };
+            Assert.IsTrue(entry.IsSpatial);
+            Assert.IsTrue(entry.IsSpatialVideo);
+            Assert.IsFalse(entry.IsSpatialPhoto);
+            Assert.IsFalse(entry.NeedsDownload, "the Photos library hands it over, there is nothing to fetch");
+            // A picture per eye on a screen ahead of the viewer, which is what the plugin decodes
+            // and what VideoSphere draws when it is given two textures.
+            Assert.AreEqual(VideoFormat.Stereo3D, entry.Format);
+            Assert.AreEqual(Projection.Flat, entry.Format.Projection);
+        }
+
+        [Test]
+        public void ASpatialPhotoIsSpatialAndIsNotAVideo()
+        {
+            var entry = new VideoEntry { SpatialIndex = 0, SpatialIsVideo = false };
+            Assert.IsTrue(entry.IsSpatial);
+            Assert.IsTrue(entry.IsSpatialPhoto);
+            Assert.IsFalse(entry.IsSpatialVideo);
+        }
+
+        [Test]
+        public void AFileIsNeitherSpatialNorADownload()
+        {
+            var entry = new VideoEntry { Url = "/videos/beach_360.mp4" };
+            Assert.IsFalse(entry.IsSpatial);
+            Assert.IsFalse(entry.IsSpatialPhoto);
+            Assert.IsFalse(entry.IsSpatialVideo);
+            Assert.IsFalse(entry.NeedsDownload);
+        }
+
+        [Test]
+        public void ADriveVideoNeedsDownloadingUntilItIsCached()
+        {
+            var entry = new VideoEntry { DriveId = "1AbC" };
+            Assert.IsTrue(entry.NeedsDownload);
+            entry.Url = "/cache/1AbC/dive.mp4";
+            Assert.IsFalse(entry.NeedsDownload);
+            Assert.IsFalse(entry.IsSpatial);
+        }
+    }
+
+    // Finding what is playing again after the library has been rebuilt. Refresh builds a new list
+    // of new objects, so without this the index kept for what is playing would point at whatever
+    // happened to land there -- or past the end.
+    public class LibraryIdentityTests
+    {
+        [Test]
+        public void AFileIsTheSameFileByItsPath()
+        {
+            var before = new VideoEntry { Title = "beach_360", Url = "/videos/beach_360.mp4" };
+            var after = new VideoEntry { Title = "beach_360", Url = "/videos/beach_360.mp4" };
+            Assert.IsTrue(VideoDemo.Same(before, after));
+            Assert.IsFalse(VideoDemo.Same(before, new VideoEntry { Url = "/videos/hike_180.mp4" }));
+        }
+
+        [Test]
+        public void ADriveVideoIsTheSameOnceItHasBeenDownloaded()
+        {
+            // The same link, but now with a cached file: the id is what it is, the path is where it
+            // happens to have landed.
+            var listed = new VideoEntry { DriveId = "1AbC" };
+            var cached = new VideoEntry { DriveId = "1AbC", Url = "/cache/1AbC/dive.mp4" };
+            Assert.IsTrue(VideoDemo.Same(listed, cached));
+            Assert.IsFalse(VideoDemo.Same(listed, new VideoEntry { DriveId = "9ZzY" }));
+        }
+
+        [Test]
+        public void ASpatialItemGoesByItsDateAndNotByItsIndex()
+        {
+            // A photo taken between the two scans pushes everything after it down one, so the index
+            // an entry carries is a place in a list rather than a name for the item.
+            var before = new VideoEntry { Title = "Spatial video, 4 Nov 2026, 14:32", SpatialIndex = 3, SpatialIsVideo = true };
+            var after = new VideoEntry { Title = "Spatial video, 4 Nov 2026, 14:32", SpatialIndex = 4, SpatialIsVideo = true };
+            Assert.IsTrue(VideoDemo.Same(before, after));
+
+            var other = new VideoEntry { Title = "Spatial video, 2 Nov 2026, 09:15", SpatialIndex = 3, SpatialIsVideo = true };
+            Assert.IsFalse(VideoDemo.Same(before, other), "the same index, a different item");
+        }
+
+        [Test]
+        public void NothingMatchesAcrossTheKinds()
+        {
+            var photo = new VideoEntry { Title = "Spatial, 4 Nov 2026, 14:32", SpatialIndex = 2, SpatialIsVideo = false };
+            var video = new VideoEntry { Title = "Spatial, 4 Nov 2026, 14:32", SpatialIndex = 2, SpatialIsVideo = true };
+            Assert.IsFalse(VideoDemo.Same(photo, video), "a photo and a video at one moment are two items");
+
+            var file = new VideoEntry { Title = "Spatial, 4 Nov 2026, 14:32", Url = "/videos/x.mp4" };
+            Assert.IsFalse(VideoDemo.Same(photo, file));
+            Assert.IsFalse(VideoDemo.Same(file, photo));
+            Assert.IsFalse(VideoDemo.Same(file, new VideoEntry { DriveId = "1AbC" }));
+        }
+
+        [Test]
+        public void NothingIsTheSameAsNothing()
+        {
+            // Refresh asks this with what was playing, which is null when nothing was.
+            Assert.IsFalse(VideoDemo.Same(null, new VideoEntry { Url = "/videos/beach.mp4" }));
+            Assert.IsFalse(VideoDemo.Same(new VideoEntry { Url = "/videos/beach.mp4" }, null));
+            Assert.IsFalse(VideoDemo.Same(null, null));
+        }
+    }
 }

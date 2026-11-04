@@ -8,7 +8,8 @@
 //
 // This file does the photos, which are self-contained: the stereo pair is found through ImageIO's
 // group metadata, each eye is drawn into a BGRA buffer, and C# uploads the two buffers as
-// textures. Videos need a decoder told to keep both layers and are in CardboardXRSpatialVideo.mm.
+// textures. The videos need a decoder told to keep both layers and are in
+// CardboardXRSpatialVideo.mm, which opens them by their index in this file's scan.
 //
 // Loading is asynchronous, with C# polling the state, because a photo is opened by a pinch while
 // the headset is drawing: a synchronous library fetch would hold up a frame, which in a viewer is
@@ -192,6 +193,15 @@ extern "C" int CardboardXR_SpatialScan()
 
     NSLog(@"[Spatial] This iOS is older than spatial photos, so there are none to list");
     return 0;
+}
+
+// One scanned item, for the sibling plugin that opens the videos: the scan and its indexes live
+// here, so a video is opened by its place in the same list the photos are.
+extern "C" PHAsset *CardboardXR_SpatialAssetAt(int index)
+{
+    if (g_Assets == nil || index < 0 || index >= (int)g_Assets.count)
+        return nil;
+    return g_Assets[index];
 }
 
 // Describes one item: whether it's a video, how long it runs, and a title for the list.
