@@ -13,6 +13,8 @@ namespace CardboardXR.Stereo
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Report()
         {
+            // What lenses are on offer, which decides whether the camera's narrow view can be widened.
+            CameraFormats.Log();
             var settings = XRGeneralSettings.Instance;
             if (settings == null)
             {

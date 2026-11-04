@@ -212,6 +212,10 @@ namespace CardboardXR.Demos
                 m_Material.mainTexture = m_Page;
 
             GazeScroll();
+            // And from a controller's stick, which is steadier than holding a gaze at an edge.
+            var stick = GamepadInput.Scroll;
+            if (stick.sqrMagnitude > 0f)
+                WebBrowser.ScrollBy(stick.x * Time.unscaledDeltaTime, -stick.y * Time.unscaledDeltaTime);
         }
 
         // Looking near the window's top or bottom edge scrolls the page, so reading needs no

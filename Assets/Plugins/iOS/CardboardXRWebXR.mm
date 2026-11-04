@@ -53,6 +53,13 @@ static CardboardXRWebHost *g_Host = nil;
     if ([event isEqualToString:@"sessionstart"]) self.pending = WebEventSessionStart;
     else if ([event isEqualToString:@"sessionend"]) self.pending = WebEventSessionEnd;
     else if ([event isEqualToString:@"close"]) self.pending = WebEventClose;
+    else if ([event isEqualToString:@"click"])
+    {
+        NSDictionary *body = message.body;
+        NSLog(@"[WebXR] click hit %@, navigated %@", body[@"hit"] ?: @"?",
+              [body[@"moved"] boolValue] ? @"yes" : @"no");
+        return;
+    }
     NSLog(@"[WebXR] page said %@", event ?: @"?");
 }
 
@@ -291,20 +298,46 @@ extern "C" int CardboardXR_WebPixels(void **bytes, int *width, int *height)
 // A click at a point on the page, given where the gaze met the window: 0-1 across and down, with
 // the origin at the top left as the page sees it.
 //
-// The click is dispatched in JavaScript rather than as a synthesised touch, because UIKit has no
-// public way to inject one. That reaches links, buttons and anything listening for a click, which
-// is most of browsing; it will not drive a page that only handles raw touch events.
+// Synthesised rather than a real touch, because UIKit has no public way to inject one. The first
+// attempt dispatched a mouse click at the deepest element under the point, which navigated
+// sometimes and did nothing other times: the deepest element is usually a span or an image inside
+// the link, pages increasingly listen for pointer events rather than mouse ones, and a synthetic
+// click carries isTrusted false, which some handlers check.
+//
+// So it finds the nearest thing that actually does something, sends the whole pointer-then-mouse
+// sequence a touch would, and -- if that was a plain link and nothing moved -- follows the href
+// itself. Links that open a new window are followed in this one, since there are no tabs here.
 extern "C" void CardboardXR_WebClickAt(float u, float v)
 {
     if (g_Host == nil || g_Host.web == nil)
         return;
     NSString *js = [NSString stringWithFormat:
-        @"(function(){var x=%f*window.innerWidth,y=%f*window.innerHeight;"
-         "var e=document.elementFromPoint(x,y);if(!e)return;"
-         "['pointerdown','mousedown','pointerup','mouseup','click'].forEach(function(t){"
-         "e.dispatchEvent(new MouseEvent(t,{bubbles:true,cancelable:true,clientX:x,clientY:y}));});"
-         "if(e.focus)e.focus();})()", u, v];
-    [g_Host.web evaluateJavaScript:js completionHandler:nil];
+        @"(function(){"
+         "var x=%f*window.innerWidth,y=%f*window.innerHeight;"
+         "var el=document.elementFromPoint(x,y);"
+         "if(!el){window.webkit.messageHandlers.cardboardxr.postMessage({event:'click',hit:'nothing'});return;}"
+         "var act=el.closest?el.closest('a[href],button,input,select,textarea,summary,[role=button],[role=link],[onclick],[tabindex]'):null;"
+         "var t=act||el;"
+         "var o={bubbles:true,cancelable:true,composed:true,clientX:x,clientY:y,view:window,button:0,buttons:1};"
+         "var po=Object.assign({pointerId:1,pointerType:'touch',isPrimary:true},o);"
+         "try{t.dispatchEvent(new PointerEvent('pointerdown',po));"
+         "t.dispatchEvent(new MouseEvent('mousedown',o));"
+         "if(t.focus)t.focus({preventScroll:true});"
+         "t.dispatchEvent(new PointerEvent('pointerup',Object.assign({},po,{buttons:0})));"
+         "t.dispatchEvent(new MouseEvent('mouseup',Object.assign({},o,{buttons:0})));"
+         "t.dispatchEvent(new MouseEvent('click',Object.assign({},o,{buttons:0})));}catch(e){}"
+         "var before=location.href;"
+         "setTimeout(function(){"
+           "var a=t.closest?t.closest('a[href]'):null;"
+           "if(a&&location.href===before&&!/^javascript:/i.test(a.getAttribute('href')||'')){location.href=a.href;}"
+           "window.webkit.messageHandlers.cardboardxr.postMessage("
+             "{event:'click',hit:(t.tagName||'?')+(a?' link':''),moved:location.href!==before});"
+         "},60);"
+         "})()", u, v];
+    [g_Host.web evaluateJavaScript:js completionHandler:^(id result, NSError *error) {
+        if (error != nil)
+            NSLog(@"[WebXR] click script failed: %@", error.localizedDescription);
+    }];
 }
 
 extern "C" void CardboardXR_WebScrollBy(float dx, float dy)

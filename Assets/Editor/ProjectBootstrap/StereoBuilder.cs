@@ -513,6 +513,14 @@ namespace ProjectBootstrap
             serializedView.FindProperty("m_Material").objectReferenceValue = CreateMaterial("Hand Joint", unlit, Color.white, null);
             serializedView.ApplyModifiedPropertiesWithoutUndo();
 
+            // A Bluetooth controller, as another way to press what the gaze is on. It goes
+            // through PinchRouter like a pinch, so nothing else has to know it exists.
+            var gamepad = origin.AddComponent<GamepadInput>();
+            var serializedGamepad = new SerializedObject(gamepad);
+            serializedGamepad.FindProperty("m_Gaze").objectReferenceValue = gaze;
+            serializedGamepad.FindProperty("m_Fusion").objectReferenceValue = fusion;
+            serializedGamepad.ApplyModifiedPropertiesWithoutUndo();
+
             // Pinch-to-click in 3DoF from a plain camera feed, which PinchInput runs whenever in 3DoF.
             var pinchSensor = origin.AddComponent<PinchSensor>();
             var serializedPinch = new SerializedObject(pinchSensor);
