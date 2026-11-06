@@ -84,6 +84,9 @@ namespace Afterglow.Hands
         const float k_CalibrationFitError = 15f;
         // Poses up to this far apart can be interpolated between, for an image with no pose of its own.
         const long k_MaxPoseGapNs = 100_000_000;
+        // How much newer than the newest pose an image may be and still take that pose.
+        const long k_PoseFallbackNs = 70_000_000;
+        int m_PosesStoodIn;
         // The joints are moved on by this share of their speed times the time since their image, for
         // up to k_MaxPredictionSeconds; less than all of it, so they don't overshoot when the hand stops.
         const float k_PredictionGain = 0.8f;
@@ -1106,6 +1109,7 @@ namespace Afterglow.Hands
             var fromVision = m_UseVision && hand.visionImageNs == imageNs;
             var useLandmarker = m_UseLandmarker || !fromVision;
             var flat = false;
+            var lifted = false;
             float presence = 0f, handedness = 0.5f;
             if (useLandmarker)
             {
@@ -1193,8 +1197,11 @@ namespace Afterglow.Hands
             }
             else
             {
-                HandGeometry.FlatShape(hand.imageLandmarks, m_PalmSize, hand.metricLandmarks);
-                flat = true;
+                // Lifted, not flat: every finger bone at its real length along its pixel's ray, so
+                // a fingertip nearer the camera isn't drawn stretched out and the fingertips' 3D
+                // distance means something for a pinch.
+                HandGeometry.LiftedShape(hand.imageLandmarks, m_PalmSize, m_FocalLength, m_PrincipalPoint, hand.metricLandmarks);
+                lifted = true;
                 m_FlatShapes++;
             }
 
@@ -1205,9 +1212,9 @@ namespace Afterglow.Hands
             // hand the way it expects (on the phone its presence stayed around 0.13 whatever the
             // crop). A flat hand facing the camera, built from Vision's landmarks at the user's palm
             // size, places the hand instead, at the depth its size in the image implies.
-            if (!flat && fromVision && fitError > k_MaxFitError)
+            if (!flat && !lifted && fromVision && fitError > k_MaxFitError)
             {
-                HandGeometry.FlatShape(hand.imageLandmarks, m_PalmSize, hand.metricLandmarks);
+                HandGeometry.LiftedShape(hand.imageLandmarks, m_PalmSize, m_FocalLength, m_PrincipalPoint, hand.metricLandmarks);
                 position = HandGeometry.FitPosition(hand.imageLandmarks, hand.metricLandmarks, HandGeometry.Palm,
                     m_FocalLength, m_PrincipalPoint, out fitError);
                 flat = true;
@@ -1226,7 +1233,7 @@ namespace Afterglow.Hands
                 // at 30 cm against a ruler. Until then this still runs, since a hand kept too close
                 // to be measured would otherwise be stuck at the typical size. A flat shape has no
                 // size of its own to teach.
-                if (fitError < k_GoodFitError && !m_PalmFromDepth && !flat)
+                if (fitError < k_GoodFitError && !m_PalmFromDepth && !flat && !lifted)
                 {
                     var learned = Mathf.Exp(Mathf.Lerp(Mathf.Log(m_PalmSize), Mathf.Log(palmSize), k_PalmSizeRate));
                     m_PalmSize = Mathf.Clamp(learned, k_MinPalmSize, k_MaxPalmSize);
@@ -1422,6 +1429,20 @@ namespace Afterglow.Hands
                     return true;
                 }
             }
+            // An image newer than every pose: the pose for its frame hasn't been recorded yet (the
+            // image is taken in the tracker's own loop, the pose in Update), so the newest pose
+            // stands in, within a camera frame or two. On the phone this dropped most results
+            // during a long WebXR session, and the hand went with them.
+            if (m_Poses.Count > 0)
+            {
+                var newest = m_Poses[^1];
+                if (timestampNs > newest.timestampNs && timestampNs - newest.timestampNs <= k_PoseFallbackNs)
+                {
+                    m_PosesStoodIn++;
+                    pose = newest;
+                    return true;
+                }
+            }
             pose = default;
             return false;
         }
@@ -1516,7 +1537,7 @@ namespace Afterglow.Hands
                           $"{m_SampleMs / m_Images:F1} ms; {(m_UseVision ? "Vision" : "detector")} {m_DetectMs / Mathf.Max(1, m_Detections):F0} ms and landmarker " +
                           $"{m_LandmarkMs / landmarkerRuns:F0} ms including waits; presence {m_PresenceSum / landmarkerRuns:F2}, " +
                           $"handedness {m_Handedness:F2}; fit error {m_FitErrorSum / Mathf.Max(1, m_Fits):F1} px, {m_RejectedFits} " +
-                          $"collapsed shapes replaced, {m_FlatShapes} flat shapes used, {m_BadFits} bad fits, {m_OutOfReach} new hands beyond reach ignored, " +
+                          $"collapsed shapes replaced, {m_FlatShapes} lifted shapes, {m_PosesStoodIn} poses stood in, {m_BadFits} bad fits, {m_OutOfReach} new hands beyond reach ignored, " +
                           $"palm {m_PalmSize * 100f:F1} cm, " +
                           $"{m_InterpolatedPoses} poses interpolated, fingertips " +
                           (float.IsPositiveInfinity(m_ClosestPinch) ? "not seen" : $"{m_ClosestPinch * 100f:F1}-{m_WidestPinch * 100f:F1} cm apart") +
@@ -1533,6 +1554,7 @@ namespace Afterglow.Hands
             m_Images = m_Results = m_Detections = m_Losses = m_WithoutPose = m_Fits = m_BadFits = m_RejectedFits = m_InterpolatedPoses = 0;
             m_OutOfReach = 0;
             m_FlatShapes = 0;
+            m_PosesStoodIn = 0;
             m_LandmarkerRuns = 0;
             m_FitErrorSum = 0f;
             m_ClosestPinch = float.PositiveInfinity;

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Afterglow.Hands;
 using NUnit.Framework;
 using UnityEngine;
@@ -224,5 +225,71 @@ namespace Afterglow.Stereo.Tests
             Assert.AreEqual((0.6f, 30), StereoRig.ThermalCaps("critical"));
             Assert.AreEqual((2f, int.MaxValue), StereoRig.ThermalCaps(""));
         }
+    }
+}
+
+namespace Afterglow.Stereo.Tests
+{
+    public class LiftedShapeTests
+    {
+        // A hand facing the camera at 40 cm with its index finger pointing straight at the camera:
+        // in the image the fingertip sits far out (perspective), on the palm plane it would be
+        // stretched, lifted it comes toward the camera at the bone lengths.
+        [Test]
+        public void LiftedShape_KeepsFingerBonesTheirLengthInsteadOfStretching()
+        {
+            var focal = new Vector2(1000f, 1000f);
+            var principal = new Vector2(500f, 400f);
+            const float palm = 0.055f, depth = 0.4f;
+            var landmarks = new Vector2[HandGeometry.JointCount];
+            // A flat palm 5.5 cm "wide": wrist below, knuckles above, around the image centre.
+            var palm3 = new Dictionary<int, Vector3>
+            {
+                [0] = new(0f, 0.04f, depth), [5] = new(-0.03f, -0.02f, depth), [9] = new(-0.01f, -0.03f, depth),
+                [13] = new(0.01f, -0.03f, depth), [17] = new(0.03f, -0.02f, depth), [1] = new(-0.03f, 0.02f, depth),
+            };
+            foreach (var (id, p) in palm3)
+                landmarks[id] = new Vector2(p.x / p.z * focal.x + principal.x, p.y / p.z * focal.y + principal.y);
+            // Every other joint: on the palm plane, a little way along its finger (not used by the check).
+            for (var i = 0; i < landmarks.Length; i++)
+                if (!palm3.ContainsKey(i)) landmarks[i] = landmarks[5] + new Vector2(0f, -10f * (i % 4));
+            // The index finger pointing at the camera: joints 6, 7, 8 nearer the camera, same x/y as the knuckle.
+            var index = palm3[5];
+            float l1 = HandGeometry.BoneOverPalm[6] * palm, l2 = HandGeometry.BoneOverPalm[7] * palm, l3 = HandGeometry.BoneOverPalm[8] * palm;
+            var j6 = new Vector3(index.x - 0.004f, index.y, depth - l1 * 0.99f);
+            var j7 = j6 + new Vector3(-0.004f, 0f, -l2 * 0.99f);
+            var j8 = j7 + new Vector3(-0.004f, 0f, -l3 * 0.99f);
+            foreach (var (id, p) in new[] { (6, j6), (7, j7), (8, j8) })
+                landmarks[id] = new Vector2(p.x / p.z * focal.x + principal.x, p.y / p.z * focal.y + principal.y);
+
+            var shape = new Vector3[HandGeometry.JointCount];
+            HandGeometry.LiftedShape(landmarks, palm, focal, principal, shape);
+
+            // Bone lengths hold, and the fingertip is nearer the camera than the knuckle.
+            Assert.AreEqual(l1, Vector3.Distance(shape[5], shape[6]), l1 * 0.05f, "knuckle to PIP");
+            Assert.AreEqual(l2, Vector3.Distance(shape[6], shape[7]), l2 * 0.05f, "PIP to DIP");
+            Assert.AreEqual(l3, Vector3.Distance(shape[7], shape[8]), l3 * 0.05f, "DIP to tip");
+            Assert.Less(shape[8].z, shape[5].z - 0.05f, "the tip comes toward the camera");
+            // The flat shape puts the finger on the palm plane, where a finger pointed at the
+            // camera is a stub a fraction of its length; lifted, it is nearly its full length.
+            var flat = new Vector3[HandGeometry.JointCount];
+            HandGeometry.FlatShape(landmarks, palm, flat);
+            var full = l1 + l2 + l3;
+            Assert.Less(Vector3.Distance(flat[5], flat[8]), full * 0.5f, "flat shortens the finger");
+            Assert.Greater(Vector3.Distance(shape[5], shape[8]), full * 0.9f, "lifted keeps its length");
+            Assert.Less(Vector3.Distance(shape[5], shape[8]), full + 0.005f, "and no more");
+        }
+
+        [Test]
+        public void HeadSmoothing_IsLightAtRestAndHeavyWhenFast()
+        {
+            Assert.AreEqual(8f, StereoRig_Smoothing(0f), 1e-4f);
+            Assert.AreEqual(8f, StereoRig_Smoothing(0.3f), 1e-4f);
+            Assert.AreEqual(2f, StereoRig_Smoothing(2f), 1e-4f);
+            Assert.AreEqual(2f, StereoRig_Smoothing(5f), 1e-4f);
+            Assert.Less(StereoRig_Smoothing(1f), 8f);
+            Assert.Greater(StereoRig_Smoothing(1f), 2f);
+        }
+        static float StereoRig_Smoothing(float speed) => HeadPoseFusion.SmoothingCutoff(speed);
     }
 }

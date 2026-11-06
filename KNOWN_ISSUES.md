@@ -56,9 +56,20 @@
   Vision's landmarks places the hand at 5–8 ms an image on the Neural Engine; the app holds
   itself to 60 fps and 80% render scale while the thermal state is serious (30 fps and 60% at
   critical) whatever is set; the camera's rate never changes while hands are on (a change
-  restarts the session); and passthrough and hands come from the ultra-wide camera, about 120°
-  across against the main camera's 70°, so the view isn't magnified twice over to fill the
-  viewer and the hands stay in the picture at the sides. To be measured on the phone.
+  restarts the session). The ultra-wide camera was meant to follow, but ARKit on the iPhone 18
+  Pro Max lists no ultra-wide format at all (22 formats, every one the main camera, read off
+  ARKit itself), so passthrough stays at 70° there and the view is still magnified to fill the
+  viewer; only a native capture outside ARKit could use the ultra-wide. To be measured on the phone.
+- **Hands stopped in a long WebXR session; fingers drawn stretched; the view shook (2026-11-06).**
+  The log showed hands found but "without a pose" by the hundred: an image newer than every
+  recorded pose got no pose (the tracker takes the image in its own loop, the pose arrives in
+  Update), and at 30 camera frames a second (ARKit drops to 30 when the phone is hot) that was
+  most images. The newest pose now stands in for an image up to 70 ms newer. The flat hand put
+  every joint on the palm's plane, so a fingertip nearer the camera than the palm, which
+  projects far out in the image, was drawn stretched; the shape is now lifted (every finger
+  bone at its real length along its pixel's ray, `HandGeometry.LiftedShape`), and a pinch is a
+  3D fingertip distance again. The shown head position is low-passed, harder the faster the head
+  moves (`headSmooth 0` off). To be confirmed on the phone.
 - **Pinches at the image's edge, and two hands together.** With fingers partly out of view the
   model guessed a pinch; no pinch starts within the edge margin now. Two hands clapped or palm
   to palm read as one or swap: Vision reports them as it can and the tracker matches regions by
@@ -221,6 +232,24 @@ The captured image arrives as `x420` (10-bit samples in 16-bit words, video rang
 non-HDR formats. Read as 8-bit full range it was yellow and blue static; the app now reads the
 planes as 16-bit textures and scales the range (`ARController.swift`, `Shaders.metal`). A phone
 that delivers `420f` takes the 8-bit full-range path, which has not been seen on this one.
+
+### The right eye was black until the layering fix
+
+Until 2026-11-06 afternoon the scene shaders wrote the eye's index to the render target array
+index and the pass's view mappings added it again, so the right eye went to a slice that does not
+exist and, as the GPU had it, onto the left slice: the left eye showed both views over each other
+and the right eye nothing. Found when the hand overlay appeared twice in an eye dump; the shaders
+now write 0 and the mappings pick the slice. `--ei dump N` writes both eyes, which is how to check
+anything stereo from the Mac.
+
+### Hands
+
+The hand's 3D shape is flat: the joints sit at the palm's depth (LiDAR's where it has one), so a
+finger pointed at the camera reads as short, and the pinch distance is the tips' distance in the
+image at that depth. Vision's chirality flips now and then on a hand seen edge-on; the blended
+handedness settles it but a hand can still change colour for a moment. Vision takes 15–20 ms an
+image on the Neural Engine at 30 images/s whether or not a hand is in view, which is the one
+steady load the phase 1 run did not have; `handHz` lowers it.
 
 ### Frames show about two frames after they are built
 

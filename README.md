@@ -171,8 +171,9 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
 | `msaa N` | Anti-aliasing samples: 1, 2, 4 or 8 (default 2) |
 | `handHz N` | Run the hand landmark model at most N times a second (default 0: every camera image) |
 | `hands3dof 0` | iPhone: in 3DoF, run the plain pinch sensor instead of full hand tracking from the rear camera feed |
+| `headSmooth 0` | No low-pass on the shown head position (on by default: light when still, harder the faster the head moves, against the shake of fast moves) |
 | `handShape 1` | iPhone: also run the MediaPipe landmarker for each hand's 3D finger shape (off by default: it cost 70–90 ms an image on the CPU; without it a flat hand from Vision's landmarks places the hand) |
-| `camUltraWide 0` | iPhone: passthrough and hands from the main camera (70° across) instead of the ultra-wide (about 120°), the default where the phone has one |
+| `camUltraWide 0` | iPhone: keep the main camera even where ARKit offers an ultra-wide format. On the iPhone 18 Pro Max it offers none (every format it lists is the main camera), so passthrough stays at the main camera's 70° there |
 | `handModel 1` | iPhone: find hands with MediaPipe's palm detector on the CPU instead of Apple's Vision hand pose on the Neural Engine (the default) |
 | `handOrientation N` | iPhone: how the camera image is turned for Vision (CGImagePropertyOrientation 1–8; default 1, upright, which it is in the viewer) |
 | `showHands 1` | Draw the tracked hand joints over the camera image too (also in Settings), to see how well the tracking follows your hands |

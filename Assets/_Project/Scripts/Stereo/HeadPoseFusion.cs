@@ -198,6 +198,7 @@ namespace Afterglow.Stereo
             m_RecenterRotation = Quaternion.identity;
             m_RecenterPivot = Vector3.zero;
             m_RecenterPending = sixDof;
+            m_HasSmoothedPosition = false;
             m_HasFloor = false;
             m_HeightOffset = 0f;
             if (!sixDof)
@@ -276,11 +277,41 @@ namespace Afterglow.Stereo
             }
 
             UpdateHeightOffset();
-            transform.SetPositionAndRotation(
-                m_RecenterRotation * (eyes - m_RecenterPivot) + Vector3.up * m_HeightOffset, m_RecenterRotation * rotation);
+            var position = m_RecenterRotation * (eyes - m_RecenterPivot) + Vector3.up * m_HeightOffset;
+            position = SmoothPosition(position, Time.unscaledDeltaTime);
+            transform.SetPositionAndRotation(position, m_RecenterRotation * rotation);
             // Kept fused while AR has lost track, so the view doesn't freeze.
             if (FollowPose != null && IsArTracking)
                 transform.SetPositionAndRotation(FollowPose.position, FollowPose.rotation);
+        }
+
+        // The view shook when the head moved fast: each position fix pulled the view a little one
+        // way then the other. The position shown is low-passed, lightly when still (8 Hz, so
+        // nothing is felt) and harder the faster the head moves (down to 2 Hz at 2 m/s), which
+        // trades a few tens of milliseconds of lag during a quick move for a steady picture.
+        // "headSmooth 0" switches it off. Pure in SmoothingCutoff, so the curve can be checked.
+        Vector3 m_SmoothedPosition;
+        bool m_HasSmoothedPosition;
+        const float k_SmoothRestHz = 8f;
+        const float k_SmoothFastHz = 2f;
+        const float k_SmoothFastSpeed = 2f;
+
+        public static float SmoothingCutoff(float speed) =>
+            Mathf.Lerp(k_SmoothRestHz, k_SmoothFastHz, Mathf.Clamp01((speed - 0.3f) / (k_SmoothFastSpeed - 0.3f)));
+
+        Vector3 SmoothPosition(Vector3 position, float deltaTime)
+        {
+            if (!m_HasSmoothedPosition || deltaTime <= 0f || deltaTime > 0.25f || Settings.Int("headSmooth", 1) == 0)
+            {
+                m_SmoothedPosition = position;
+                m_HasSmoothedPosition = true;
+                return position;
+            }
+            var speed = (position - m_SmoothedPosition).magnitude / deltaTime;
+            var tau = 1f / (2f * Mathf.PI * SmoothingCutoff(speed));
+            var alpha = 1f / (1f + tau / deltaTime);
+            m_SmoothedPosition = Vector3.Lerp(m_SmoothedPosition, position, alpha);
+            return m_SmoothedPosition;
         }
 
         // Eases toward lining the detected floor up with the virtual one. Positions carry

@@ -136,6 +136,90 @@ namespace Afterglow.Hands
             }
         }
 
+        // A hand lifted out of its image landmarks with the depth that keeps every finger bone
+        // its real length: the palm is a flat plane at the palm's depth (as FlatShape), and each
+        // finger joint is then placed on its own pixel's ray at the depth where its bone from the
+        // joint before has the length a hand of this palm size gives it. A fingertip nearer the
+        // camera than the palm projects far out in the image; put on the palm plane it would
+        // come out stretched, which is what the flat hand did. Of the two depths a bone length
+        // allows (toward the camera or away), perspective says which: a joint nearer the camera
+        // than the one before it projects farther from the image's centre, one farther away
+        // projects nearer it. A bone whose image is longer than it can be (noise, or a joint the
+        // model misplaced) is clamped to its full length along the ray.
+        public static readonly float[] BoneOverPalm = BuildBoneRatios();
+
+        static float[] BuildBoneRatios()
+        {
+            // Segment lengths over the palm size, from a typical adult hand (palm size 5.5 cm):
+            // thumb CMC-MCP, MCP-IP, IP-tip; index, middle, ring and little MCP-PIP, PIP-DIP, DIP-tip.
+            var r = new float[JointCount];
+            float[] thumb = { 0.82f, 0.58f, 0.45f }, index = { 0.73f, 0.45f, 0.36f }, middle = { 0.80f, 0.51f, 0.38f },
+                    ring = { 0.73f, 0.47f, 0.36f }, little = { 0.58f, 0.35f, 0.33f };
+            for (var k = 0; k < 3; k++)
+            {
+                r[2 + k] = thumb[k]; r[6 + k] = index[k]; r[10 + k] = middle[k]; r[14 + k] = ring[k]; r[18 + k] = little[k];
+            }
+            return r;
+        }
+
+        public static void LiftedShape(Vector2[] imageLandmarks, float palmSize, Vector2 focalLength, Vector2 principalPoint, Vector3[] shape)
+        {
+            FlatShape(imageLandmarks, palmSize, shape);
+            // The palm's depth in metres: the flat palm's size against its size in the image.
+            var span = PalmSpan(imageLandmarks);
+            if (!(span > 0f) || !(focalLength.x > 0f))
+                return;
+            var depth = focalLength.x * palmSize / span;
+            var centre = Vector2.zero;
+            foreach (var id in Palm)
+                centre += imageLandmarks[id];
+            centre /= Palm.Length;
+            // Each landmark's ray through the camera, with the palm plane at `depth`; the flat
+            // shape's coordinates are relative to the palm's centre at depth 0.
+            Vector3 Ray(int i) => new((imageLandmarks[i].x - principalPoint.x) / focalLength.x,
+                                      (imageLandmarks[i].y - principalPoint.y) / focalLength.y, 1f);
+            var centreOnPlane = new Vector3((centre.x - principalPoint.x) / focalLength.x * depth, (centre.y - principalPoint.y) / focalLength.y * depth, depth);
+            // Fingers: each joint from the one before it along its chain.
+            int[][] chains = { new[] { 1, 2, 3, 4 }, new[] { 5, 6, 7, 8 }, new[] { 9, 10, 11, 12 }, new[] { 13, 14, 15, 16 }, new[] { 17, 18, 19, 20 } };
+            foreach (var chain in chains)
+            {
+                // The chain's first joint (thumb CMC, or a knuckle) is on the palm plane already.
+                var previous = shape[chain[0]] + centreOnPlane;
+                var previousRadial = (imageLandmarks[chain[0]] - principalPoint).magnitude;
+                for (var k = 1; k < chain.Length; k++)
+                {
+                    var i = chain[k];
+                    var radial = (imageLandmarks[i] - principalPoint).magnitude;
+                    var length = BoneOverPalm[i] * palmSize;
+                    var ray = Ray(i);
+                    // |ray z - previous| = length, quadratic in z.
+                    var a = Vector3.Dot(ray, ray);
+                    var b = -2f * Vector3.Dot(ray, previous);
+                    var c = Vector3.Dot(previous, previous) - length * length;
+                    var discriminant = b * b - 4f * a * c;
+                    float z;
+                    if (discriminant >= 0f)
+                    {
+                        var root = Mathf.Sqrt(discriminant);
+                        var near = (-b - root) / (2f * a);
+                        var far = (-b + root) / (2f * a);
+                        // Farther from the image's centre than the joint before: nearer the camera.
+                        z = radial > previousRadial ? near : far;
+                    }
+                    else
+                    {
+                        // The image shows a longer bone than there is: the nearest point on the
+                        // ray to the joint before, which is the bone at full length, as near as it gets.
+                        z = Vector3.Dot(ray, previous) / a;
+                    }
+                    var placed = ray * z;
+                    previous = placed;
+                    previousRadial = radial;
+                    shape[i] = placed - centreOnPlane;
+                }
+            }
+        }
+
         // The palm's average width between its landmarks in the image, in pixels.
         public static float PalmSpan(Vector2[] imageLandmarks)
         {
