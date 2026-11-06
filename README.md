@@ -233,7 +233,9 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   hover menus open and a player's control bar stays up), the gaze at an edge scrolls, a
   Bluetooth keyboard or the on-screen keys type, and dictation fills the address. The start page
   lists your bookmarks and the pages you opened recently (with *Clear history*), and the tabs
-  come back as you left them. A page's *Enter VR* takes the whole screen in stereo through the
+  come back as you left them. *Place* lets the window follow your gaze, up and down too, until a
+  pinch or tap sets it down; the keys come up on their own when a page focuses a field. A page's
+  *Enter VR* takes the whole screen in stereo through the
   lenses; hold a finger on the screen for a second and a half to end the session, since the
   page's own buttons and the app's gear are out of reach inside the viewer. Video in a page
   always plays inside the page, never in the iPhone's own full-screen player, which would cover

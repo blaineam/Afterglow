@@ -135,3 +135,39 @@ namespace Afterglow.Stereo.Tests
         }
     }
 }
+
+namespace Afterglow.Stereo.Tests
+{
+    public class WebHandsTests
+    {
+        [Test]
+        public void HandsToPage_PacksTrackedHandsWithZTheOtherWay()
+        {
+            var left = new Afterglow.Hands.TrackedHand { isTracking = true, handednessScore = 0.1f };
+            var right = new Afterglow.Hands.TrackedHand { isTracking = true, handednessScore = 0.9f };
+            var idle = new Afterglow.Hands.TrackedHand { isTracking = false };
+            for (var i = 0; i < Afterglow.Hands.HandGeometry.JointCount; i++)
+            {
+                left.joints[i] = new UnityEngine.Vector3(i, 1f, 2f);
+                right.joints[i] = new UnityEngine.Vector3(-i, 3f, -4f);
+            }
+            var values = new float[1 + 2 * Afterglow.Stereo.WebBrowser.FloatsPerHand];
+
+            var count = Afterglow.Demos.WebBrowserSession.HandsToPage(new[] { idle, right, left }, h => h == right, values);
+
+            Assert.AreEqual(2, count);
+            Assert.AreEqual(2f, values[0]);
+            // The right hand first, pinching, its joints with z flipped.
+            Assert.AreEqual(1f, values[1]);
+            Assert.AreEqual(1f, values[2]);
+            Assert.AreEqual(-5f, values[3 + 5 * 3]);
+            Assert.AreEqual(3f, values[4 + 5 * 3]);
+            Assert.AreEqual(4f, values[5 + 5 * 3]);
+            // Then the left, not pinching.
+            var at = 1 + Afterglow.Stereo.WebBrowser.FloatsPerHand;
+            Assert.AreEqual(0f, values[at]);
+            Assert.AreEqual(0f, values[at + 1]);
+            Assert.AreEqual(-2f, values[at + 4]);
+        }
+    }
+}

@@ -169,6 +169,36 @@ static const char *kHelperSource = R"JS(
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && e.target && e.target.type === 'password') offerToSave(e.target.form || document);
   }, true);
+  // A sign-in that never submits a form: a button's click handler sends the request itself, as a
+  // single-page app's does. A click on any button-like thing while a password field holds a
+  // value is taken as the sign-in, and so is the page going away or the field being removed
+  // with a value still in it.
+  var lastLogin = null;
+  function rememberLogin() {
+    var lf = loginFields(document);
+    if (lf && lf.pass.value) lastLogin = { host: hostOf(), user: lf.user ? lf.user.value : '', pass: lf.pass.value };
+  }
+  document.addEventListener('input', function (e) {
+    if (e.target && (e.target.type === 'password' || (e.target.form && e.target.form.querySelector('input[type="password"]')))) rememberLogin();
+  }, true);
+  document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('button,[type="submit"],[role="button"],a') : null;
+    if (!t) return;
+    var lf = loginFields(document);
+    if (lf && lf.pass.value) offerToSave(lf.pass.form || document);
+  }, true);
+  function offerLast() {
+    if (!lastLogin) return;
+    var sent = lastLogin;
+    lastLogin = null;
+    post({ event: 'credentials', host: sent.host, user: sent.user, pass: sent.pass });
+  }
+  window.addEventListener('pagehide', offerLast);
+  try {
+    new MutationObserver(function () {
+      if (lastLogin && !document.querySelector('input[type="password"]')) offerLast();
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  } catch (e) { /* no observer */ }
   var announced = false;
   function announceLogin() {
     if (announced || !document.querySelector('input[type="password"]')) return;
@@ -965,6 +995,20 @@ extern "C" void Afterglow_WebPose(float px, float py, float pz, float qx, float 
     NSString *call = [NSString stringWithFormat:
         @"window.__afterglowPose&&window.__afterglowPose(%.5f,%.5f,%.5f,%.6f,%.6f,%.6f,%.6f)",
         px, py, pz, qx, qy, qz, qw];
+    [g_Host.web evaluateJavaScript:call completionHandler:nil];
+}
+
+// The app's tracked hands for the page, each frame while a session runs: see __afterglowHands in
+// the shim for the layout. One script call carrying the numbers; nothing is kept here.
+extern "C" void Afterglow_WebHands(const float *values, int count)
+{
+    if (g_Host == nil || g_Host.web == nil || values == NULL || count <= 0 || count > 256)
+        return;
+    NSMutableString *call = [NSMutableString stringWithCapacity:(NSUInteger)count * 9 + 48];
+    [call appendString:@"window.__afterglowHands&&window.__afterglowHands(["];
+    for (int i = 0; i < count; i++)
+        [call appendFormat:(i == 0 ? @"%.4f" : @",%.4f"), values[i]];
+    [call appendString:@"])"];
     [g_Host.web evaluateJavaScript:call completionHandler:nil];
 }
 

@@ -14,7 +14,7 @@
 // the Cardboard SDK (sdk/lens_distortion.cc, sdk/polynomial_radial_distortion.cc, Apache 2.0), so
 // a page here is corrected with exactly the numbers the native app corrects itself with.
 //
-// What it does not do: hit testing, anchors, planes, depth, hand input, bounded or unbounded
+// What it does not do: hit testing, anchors, planes, depth, bounded or unbounded
 // reference spaces, or anything AR. Pages built on three.js or A-Frame that ask for an
 // immersive-vr session, a local or viewer reference space and a WebGL layer will run. Pages that
 // reach past that will not, and should fail honestly rather than silently.
@@ -304,14 +304,41 @@
         }
         return new XRViewerPose(head, views);
     };
-    // Only the viewer's own spaces have a pose here: the gaze ray starts at the head, and there
-    // is nothing else being tracked. Anything else returns null, which is what a page should see
-    // for a space this cannot locate.
+    // The viewer's own spaces have the head's pose: the gaze ray starts at the head. A hand's
+    // spaces (its ray, its grip, its joints) have poses while the app tracks that hand. Anything
+    // else returns null, which is what a page should see for a space this cannot locate.
     XRFrame.prototype.getPose = function (space, base) {
-        if (!space || (space._kind !== 'viewer' && space._kind !== 'local' && space._kind !== 'local-floor'))
+        if (!space) return null;
+        if (space._kind === 'ray' || space._kind === 'grip' || space._kind === 'joint')
+            return handSpacePose(space, base);
+        if (space._kind !== 'viewer' && space._kind !== 'local' && space._kind !== 'local-floor')
             return null;
         var viewer = this.getViewerPose(base);
         return viewer ? { transform: viewer.transform, emulatedPosition: viewer.emulatedPosition } : null;
+    };
+    XRFrame.prototype.getJointPose = function (joint, base) {
+        if (!joint || joint._kind !== 'joint') return null;
+        return handSpacePose(joint, base);
+    };
+    // The batch forms: every pose as a 4x4 matrix into `out`, 16 floats each, and the radii.
+    // True only when every space had a pose, as the spec asks.
+    XRFrame.prototype.fillPoses = function (spaces, base, out) {
+        var all = true, i = 0;
+        for (var it = spaces[Symbol.iterator] ? spaces[Symbol.iterator]() : spaces.values(), r = it.next(); !r.done; r = it.next(), i++) {
+            var p = r.value._kind === 'joint' ? this.getJointPose(r.value, base) : this.getPose(r.value, base);
+            if (!p) { all = false; for (var k = 0; k < 16; k++) out[i * 16 + k] = NaN; continue; }
+            for (var k2 = 0; k2 < 16; k2++) out[i * 16 + k2] = p.transform.matrix[k2];
+        }
+        return all;
+    };
+    XRFrame.prototype.fillJointRadii = function (spaces, out) {
+        var all = true, i = 0;
+        for (var it = spaces[Symbol.iterator] ? spaces[Symbol.iterator]() : spaces.values(), r = it.next(); !r.done; r = it.next(), i++) {
+            var p = r.value._kind === 'joint' ? this.getJointPose(r.value, null) : null;
+            if (!p) { all = false; out[i] = NaN; continue; }
+            out[i] = p.radius;
+        }
+        return all;
     };
 
     function XRInputSource() {
@@ -321,7 +348,174 @@
         this.gripSpace = null;
         this.profiles = [];
         this.gamepad = null;
+        this.hand = null;
     }
+
+    // ---------------------------------------------------------------- hands
+    // The app's tracked hands as WebXR Hand Input: an input source per hand, with the 25 joint
+    // spaces the spec names, posed each frame from the 21 landmarks the app pushes
+    // (__afterglowHands) in the same space as the head pose. The landmarks have no metacarpals,
+    // so those sit midway between the wrist and the knuckle. A pinch on a hand is that source's
+    // select; the gaze source stays first, for taps.
+    var JOINT_NAMES = [
+        'wrist',
+        'thumb-metacarpal', 'thumb-phalanx-proximal', 'thumb-phalanx-distal', 'thumb-tip',
+        'index-finger-metacarpal', 'index-finger-phalanx-proximal', 'index-finger-phalanx-intermediate', 'index-finger-phalanx-distal', 'index-finger-tip',
+        'middle-finger-metacarpal', 'middle-finger-phalanx-proximal', 'middle-finger-phalanx-intermediate', 'middle-finger-phalanx-distal', 'middle-finger-tip',
+        'ring-finger-metacarpal', 'ring-finger-phalanx-proximal', 'ring-finger-phalanx-intermediate', 'ring-finger-phalanx-distal', 'ring-finger-tip',
+        'pinky-finger-metacarpal', 'pinky-finger-phalanx-proximal', 'pinky-finger-phalanx-intermediate', 'pinky-finger-phalanx-distal', 'pinky-finger-tip'
+    ];
+    // The landmark each joint comes from (MediaPipe's order); a negative value is a metacarpal,
+    // midway between the wrist and the knuckle that follows.
+    var JOINT_FROM = [0, 1, 2, 3, 4, -5, 5, 6, 7, 8, -9, 9, 10, 11, 12, -13, 13, 14, 15, 16, -17, 17, 18, 19, 20];
+    // The joint each one points toward (the next one out along its finger; the tips point on
+    // from the joint before), for the joint's orientation.
+    var JOINT_NEXT = [10, 2, 3, 4, 4, 6, 7, 8, 9, 9, 11, 12, 13, 14, 14, 16, 17, 18, 19, 19, 21, 22, 23, 24, 24];
+    var JOINT_RADIUS = [0.02, 0.012, 0.011, 0.009, 0.007, 0.012, 0.01, 0.009, 0.008, 0.007, 0.012, 0.01, 0.009, 0.008, 0.007,
+                        0.011, 0.009, 0.008, 0.007, 0.006, 0.01, 0.008, 0.007, 0.006, 0.006];
+
+    function XRJointSpace(name, source) { this.jointName = name; this._kind = 'joint'; this._source = source; }
+    function XRHandSpace(kind, source) { this._kind = kind; this._source = source; }
+    function XRHand(source) {
+        var spaces = new Map();
+        for (var i = 0; i < JOINT_NAMES.length; i++) spaces.set(JOINT_NAMES[i], new XRJointSpace(JOINT_NAMES[i], source));
+        this._spaces = spaces;
+        this.size = spaces.size;
+    }
+    XRHand.prototype.get = function (name) { return this._spaces.get(name); };
+    XRHand.prototype.has = function (name) { return this._spaces.has(name); };
+    XRHand.prototype.keys = function () { return this._spaces.keys(); };
+    XRHand.prototype.values = function () { return this._spaces.values(); };
+    XRHand.prototype.entries = function () { return this._spaces.entries(); };
+    XRHand.prototype.forEach = function (cb, thisArg) { this._spaces.forEach(cb, thisArg); };
+    XRHand.prototype[Symbol.iterator] = function () { return this._spaces.entries(); };
+
+    function handSource(handedness) {
+        var s = new XRInputSource();
+        s.handedness = handedness;
+        s.targetRayMode = 'tracked-pointer';
+        s.targetRaySpace = new XRHandSpace('ray', s);
+        s.gripSpace = new XRHandSpace('grip', s);
+        s.profiles = ['generic-hand-select', 'generic-hand'];
+        s.hand = new XRHand(s);
+        s._joints = new Float32Array(63);
+        s._present = false;
+        s._pinching = false;
+        return s;
+    }
+    var handSources = { left: null, right: null };
+
+    function landmark(src, i) { return [src._joints[i * 3], src._joints[i * 3 + 1], src._joints[i * 3 + 2]]; }
+    function jointPosition(src, j) {
+        var from = JOINT_FROM[j];
+        if (from >= 0) return landmark(src, from);
+        var w = landmark(src, 0), k = landmark(src, -from);
+        return [(w[0] + k[0]) / 2, (w[1] + k[1]) / 2, (w[2] + k[2]) / 2];
+    }
+    function sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+    function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+    function norm(v) { var l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; }
+    // A quaternion whose -Z is `forward` and whose +Y is as near `up` as it can be.
+    function quatLook(forward, up) {
+        var z = norm([-forward[0], -forward[1], -forward[2]]);
+        var x = norm(cross(up, z));
+        if (!isFinite(x[0]) || (x[0] === 0 && x[1] === 0 && x[2] === 0)) x = norm(cross([0, 1, 0], z));
+        var y = cross(z, x);
+        var t = x[0] + y[1] + z[2], q;
+        if (t > 0) { var r = Math.sqrt(t + 1) * 2; q = [(y[2] - z[1]) / r, (z[0] - x[2]) / r, (x[1] - y[0]) / r, 0.25 * r]; }
+        else if (x[0] > y[1] && x[0] > z[2]) { var r1 = Math.sqrt(1 + x[0] - y[1] - z[2]) * 2; q = [0.25 * r1, (y[0] + x[1]) / r1, (z[0] + x[2]) / r1, (y[2] - z[1]) / r1]; }
+        else if (y[1] > z[2]) { var r2 = Math.sqrt(1 + y[1] - x[0] - z[2]) * 2; q = [(y[0] + x[1]) / r2, 0.25 * r2, (z[1] + y[2]) / r2, (z[0] - x[2]) / r2]; }
+        else { var r3 = Math.sqrt(1 + z[2] - x[0] - y[1]) * 2; q = [(z[0] + x[2]) / r3, (z[1] + y[2]) / r3, 0.25 * r3, (x[1] - y[0]) / r3]; }
+        return q;
+    }
+    function palmNormal(src) {
+        // Out of the back of the hand: wrist to index knuckle crossed with wrist to pinky knuckle,
+        // the other way round for the other hand.
+        var w = landmark(src, 0), n = cross(sub(landmark(src, 5), w), sub(landmark(src, 17), w));
+        return norm(src.handedness === 'right' ? n : [-n[0], -n[1], -n[2]]);
+    }
+    function conj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
+    // A pose given in the app's space, moved into `base`: local as is, local-floor lifted as the
+    // viewer pose is, viewer relative to the head.
+    function intoBase(p, q, base) {
+        var kind = base ? base._kind : 'local';
+        if (kind === 'local-floor') p = [p[0], p[1] + (cfg.eyeHeight || 1.6), p[2]];
+        if (kind === 'viewer') {
+            var hq = pose.q, inv = conj(hq);
+            p = rotateVec(inv, sub(p, pose.p));
+            q = mulQuat(inv, q);
+        }
+        return { transform: new XRRigidTransform({ x: p[0], y: p[1], z: p[2], w: 1 }, { x: q[0], y: q[1], z: q[2], w: q[3] }), emulatedPosition: false };
+    }
+    function mulQuat(a, b) {
+        return [a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+                a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+                a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+                a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]];
+    }
+    function handSpacePose(space, base) {
+        var src = space._source;
+        if (!src || !src._present) return null;
+        var up = palmNormal(src);
+        if (space._kind === 'joint') {
+            var j = JOINT_NAMES.indexOf(space.jointName);
+            if (j < 0) return null;
+            var p = jointPosition(src, j), toward = jointPosition(src, JOINT_NEXT[j]);
+            var dir = JOINT_FROM[j] === 4 || JOINT_FROM[j] === 8 || JOINT_FROM[j] === 12 || JOINT_FROM[j] === 16 || JOINT_FROM[j] === 20
+                ? sub(p, toward) : sub(toward, p);
+            var out = intoBase(p, quatLook(dir, up), base);
+            out.radius = JOINT_RADIUS[j];
+            return out;
+        }
+        var w = landmark(src, 0), k5 = landmark(src, 5), k9 = landmark(src, 9), k13 = landmark(src, 13), k17 = landmark(src, 17);
+        var palm = [(w[0] + k5[0] + k9[0] + k13[0] + k17[0]) / 5, (w[1] + k5[1] + k9[1] + k13[1] + k17[1]) / 5, (w[2] + k5[2] + k9[2] + k13[2] + k17[2]) / 5];
+        if (space._kind === 'grip')
+            return intoBase(palm, quatLook(sub(k9, w), up), base);
+        // The pointing ray: from the index knuckle, the way the wrist-to-index-tip line goes.
+        return intoBase(k5, quatLook(sub(landmark(src, 8), w), up), base);
+    }
+
+    // The app's hands, each frame: [count, then per hand handedness (0 left, 1 right), pinching
+    // (0/1) and 21 x (x, y, z)]. Sources come and go with the hands; a pinch that closes is a
+    // selectstart on that hand, one that opens a select then a selectend.
+    window.__afterglowHands = function (a) {
+        if (!active || active._ended || !a) return;
+        var count = a[0] | 0, seen = { left: false, right: false }, added = [], removed = [];
+        for (var h = 0; h < count; h++) {
+            var at = 1 + h * 65;
+            var handed = a[at] > 0.5 ? 'right' : 'left';
+            if (seen[handed]) continue;
+            seen[handed] = true;
+            var src = handSources[handed] || (handSources[handed] = handSource(handed));
+            if (!src._present) { src._present = true; added.push(src); }
+            for (var i = 0; i < 63; i++) src._joints[i] = a[at + 2 + i];
+            src._pinchNow = a[at + 1] > 0.5;
+        }
+        for (var side in handSources) {
+            var s = handSources[side];
+            if (s && s._present && !seen[side]) { s._present = false; s._pinchNow = false; removed.push(s); }
+        }
+        if (added.length || removed.length) {
+            var sources = [active.inputSources[0] || new XRInputSource()];
+            if (handSources.left && handSources.left._present) sources.push(handSources.left);
+            if (handSources.right && handSources.right._present) sources.push(handSources.right);
+            active.inputSources = sources;
+            active._emit('inputsourceschange', { session: active, added: added, removed: removed });
+            console.log('[Afterglow] hands: ' + (sources.length - 1) + ' input source(s)' + (added.length ? ', added ' + added.map(function (x) { return x.handedness; }).join('+') : '') + (removed.length ? ', removed ' + removed.map(function (x) { return x.handedness; }).join('+') : ''));
+        }
+        for (var side2 in handSources) {
+            var hs = handSources[side2];
+            if (!hs) continue;
+            if (hs._pinchNow && !hs._pinching) {
+                hs._pinching = true;
+                active._emit('selectstart', { inputSource: hs, frame: new XRFrame(active) });
+            } else if (!hs._pinchNow && hs._pinching) {
+                hs._pinching = false;
+                active._emit('select', { inputSource: hs, frame: new XRFrame(active) });
+                active._emit('selectend', { inputSource: hs, frame: new XRFrame(active) });
+            }
+        }
+    };
 
     // ---------------------------------------------------------------- the render target
     // The page draws both eyes into one offscreen framebuffer; the distortion pass then warps each
@@ -617,6 +811,7 @@
         if (this._ended) return Promise.resolve();
         this._ended = true;
         this._callbacks = [];
+        for (var side in handSources) if (handSources[side]) { handSources[side]._present = false; handSources[side]._pinching = false; }
         var gl = this._gl;
         var was = this._canvasWas;
         if (was && gl && gl.canvas) {
@@ -720,6 +915,9 @@
     window.XRView = XRView;
     window.XRViewerPose = XRViewerPose;
     window.XRReferenceSpace = XRReferenceSpace;
+    window.XRInputSource = XRInputSource;
+    window.XRHand = XRHand;
+    window.XRJointSpace = XRJointSpace;
 
     console.log('[Afterglow] WebXR ready' + (cfg.mono ? ' (phone view: one picture, no lens correction)' : '') + ': screen ' + cfg.screen[0].toFixed(4) + ' x ' +
                 cfg.screen[1].toFixed(4) + ' m, lenses ' + (cfg.interLens * 1000).toFixed(1) + ' mm apart; native XRWebGLBinding ' +

@@ -40,6 +40,8 @@ namespace Afterglow.Stereo
         const float k_WaveSpeed = 2.5f;
         const float k_ShowSeconds = 0.3f;
         const float k_HideSeconds = 1.2f;
+        // How long a scan shows the surfaces it finds before it carries on quietly.
+        const float k_MaxShowSeconds = 12f;
         // Matches the shader: surfaces less than this above the floor count as floor.
         const float k_FloorBand = 0.1f;
         const float k_FloorCheckSeconds = 0.5f;
@@ -189,7 +191,9 @@ namespace Afterglow.Stereo
             Shader.SetGlobalMatrix(k_WorldToSessionId, transform.worldToLocalMatrix);
             // While scanning, every surface shows, so the user can see what's been found: revealed by
             // the wave, which only spreads while tracking, since nothing is found before.
-            var showScan = ShowAll || m_Scanning;
+            // For the first stretch of a scan only: a room scan can run on for a long time in a big
+            // or busy room, and the surfaces it keeps finding needn't stay in view the whole time.
+            var showScan = ShowAll || (m_Scanning && m_ScanTime < k_MaxShowSeconds);
             m_ScanShown = Mathf.MoveTowards(m_ScanShown, showScan ? 1f : 0f,
                 Time.unscaledDeltaTime / (showScan ? k_ShowSeconds : k_HideSeconds));
             Shader.SetGlobalFloat(k_ScanId, Mathf.SmoothStep(0f, 1f, m_ScanShown));

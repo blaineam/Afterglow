@@ -30,6 +30,15 @@ namespace Afterglow.Demos
         [SerializeField] HeadPoseFusion m_Fusion;
         [Tooltip("Meters. How far ahead the window hangs, and how wide it is there.")]
         [SerializeField] float m_Distance = 1.6f;
+        // Whether the window is following the gaze to a new place (BeginPlacing).
+        bool m_Placing;
+        bool m_WasTextFocused;
+        // The hands for a page in a session (HandsToPage), pushed each frame while any is up and
+        // once more when the last goes, so the page's hand input sources go with it.
+        HandTracker m_Tracker;
+        HandSubsystemFeed m_Feed;
+        readonly float[] m_HandValues = new float[1 + HandTracker.MaxHands * WebBrowser.FloatsPerHand];
+        int m_PushedHands;
         [SerializeField] float m_Width = 1.25f;
         [Tooltip("Looking within this fraction of the window's top or bottom scrolls the page.")]
         [SerializeField, Range(0.02f, 0.3f)] float m_ScrollEdge = 0.12f;
@@ -140,6 +149,9 @@ namespace Afterglow.Demos
 
             BuildWindow();
             m_Immersive = false;
+            m_Tracker = CoreServices.Instance != null ? CoreServices.Instance.HandTracker : null;
+            if (m_Feed == null)
+                m_Feed = FindAnyObjectByType<HandSubsystemFeed>();
             // PinchRouter asks the scene's handler only while the settings panel is shut, and the
             // browser is opened from that panel -- so leaving it up means every pinch goes to its
             // buttons and the page never gets one.
@@ -244,10 +256,41 @@ namespace Afterglow.Demos
 
         void ClickAtGaze()
         {
+            if (m_Placing)
+            {
+                EndPlacing();
+                return;
+            }
             if (!WebBrowser.IsOpen || m_Immersive || !TryGazePoint(out var u, out var v))
                 return;
             WebBrowser.ClickAt(u, v);
             Debug.Log($"[WebXR] Tap at {u:F2}, {v:F2} on the page");
+        }
+
+        // The tracked hands as the page takes them (WebBrowser.PushHands): count, then per hand its
+        // handedness, whether it pinches and its 21 joints in WebXR's space, which is Unity's
+        // with z the other way. Pure: the joints are read from the hands as given.
+        public static int HandsToPage(IReadOnlyList<TrackedHand> hands, Func<TrackedHand, bool> pinching, float[] values)
+        {
+            var count = 0;
+            foreach (var hand in hands)
+            {
+                if (!hand.isTracking || count >= HandTracker.MaxHands)
+                    continue;
+                var at = 1 + count * WebBrowser.FloatsPerHand;
+                values[at] = hand.handednessScore >= 0.5f ? 1f : 0f;
+                values[at + 1] = pinching(hand) ? 1f : 0f;
+                for (var i = 0; i < HandGeometry.JointCount; i++)
+                {
+                    var joint = hand.joints[i];
+                    values[at + 2 + i * 3] = joint.x;
+                    values[at + 3 + i * 3] = joint.y;
+                    values[at + 4 + i * 3] = -joint.z;
+                }
+                count++;
+            }
+            values[0] = count;
+            return count;
         }
 
         // The address, with the two ways into it beside it: the keys and the microphone. It is
@@ -573,6 +616,46 @@ namespace Afterglow.Demos
             forward.Normalize();
             m_Window.transform.position = head.position + forward * m_Distance;
             m_Window.transform.rotation = Quaternion.LookRotation(forward, Vector3.up);
+            Layout();
+        }
+
+        // Placing: the window follows the gaze wherever it points, up and down included, until a
+        // pinch or a tap sets it down. The one-shot Place put the window at the level gaze the
+        // moment its button was pressed, and that button sits just under the window, so the
+        // window could never go up or down and barely moved sideways.
+        void BeginPlacing()
+        {
+            if (m_Window == null || m_Fusion == null)
+                return;
+            m_Placing = !m_Placing;
+            Debug.Log(m_Placing ? "[WebXR] Placing: the window follows the gaze; pinch or tap to set it down" : "[WebXR] Placed");
+        }
+
+        void EndPlacing()
+        {
+            if (!m_Placing)
+                return;
+            m_Placing = false;
+            Debug.Log($"[WebXR] Placed at {m_Window.transform.position}");
+        }
+
+        void FollowGaze()
+        {
+            var head = m_Fusion.transform;
+            var forward = head.forward;
+            if (forward.sqrMagnitude < 1e-4f)
+                return;
+            forward.Normalize();
+            m_Window.transform.position = head.position + forward * m_Distance;
+            // Tipped with the gaze so the page faces the head wherever it is put, upright left to right.
+            m_Window.transform.rotation = Quaternion.LookRotation(forward, Vector3.up);
+            Layout();
+        }
+
+        // The chrome around the window: the tabs over the address over the page, the toolbar and
+        // the keys under it, wherever the window is.
+        void Layout()
+        {
             // Stacked under the window, facing the same way, far enough down to clear the page's
             // bottom edge at whatever size it is now: the address, then the toolbar, then the keys.
             var pageHeight = m_Width * WebBrowser.WindowHeight / WebBrowser.WindowWidth;
@@ -627,11 +710,30 @@ namespace Afterglow.Demos
         {
             if (!WebBrowser.IsOpen)
                 return;
+            if (m_Placing && !m_Immersive)
+                FollowGaze();
+            // The keys come up when the page focuses a field, so typing is a glance away without
+            // reaching for the keys button; they stay until closed, since focus comes and goes.
+            var focused = WebBrowser.TextFocused;
+            if (focused && !m_WasTextFocused && !m_Immersive && m_Keyboard != null && !m_Keyboard.IsOpen)
+            {
+                m_Keyboard.Open();
+                PlaceKeyboard();
+                Debug.Log("[WebXR] The page focused a field; the keys are up");
+            }
+            m_WasTextFocused = focused;
 
             if (m_Fusion != null)
             {
                 var head = m_Fusion.transform;
                 WebBrowser.PushPose(head.position, head.rotation);
+            }
+            if (m_Immersive && m_Tracker != null)
+            {
+                var count = HandsToPage(m_Tracker.Hands, hand => m_Feed != null && m_Feed.IsPinchingWith(hand), m_HandValues);
+                if (count > 0 || m_PushedHands > 0)
+                    WebBrowser.PushHands(m_HandValues, 1 + count * WebBrowser.FloatsPerHand);
+                m_PushedHands = count;
             }
 
             switch (WebBrowser.TakeEvent())
@@ -989,12 +1091,22 @@ namespace Afterglow.Demos
         {
             if (!WebBrowser.IsOpen)
                 return false;
+            // A pinch while placing sets the window down and does nothing else.
+            if (m_Placing)
+            {
+                EndPlacing();
+                return true;
+            }
             // During an immersive session the page has no window to click: a pinch is a WebXR
-            // select on its gaze input source, which is what a page waits for.
+            // select. With a hand tracked, the page already gets it on that hand's input source
+            // (HandsToPage carries the pinch); otherwise it goes on the gaze source.
             if (m_Immersive)
             {
-                WebBrowser.Select();
-                Debug.Log("[WebXR] Pinch: select to the page");
+                if (m_Tracker == null || m_Tracker.TrackedCount == 0)
+                {
+                    WebBrowser.Select();
+                    Debug.Log("[WebXR] Pinch: select to the page on the gaze source");
+                }
                 return true;
             }
             if (!TryGazePoint(out var u, out var v))
@@ -1036,7 +1148,7 @@ namespace Afterglow.Demos
             {
                 ("home", "Start page", GoStart),
                 ("aspect_ratio", "Size", CycleSize),
-                ("open_with", "Place", Place),
+                ("open_with", "Place", BeginPlacing),
                 ("close", "Close", Close),
             };
             m_Bar = M3.Canvas("Web Controls", transform,

@@ -130,8 +130,10 @@ Everything else sits on this, and three of the newest features have never run on
   to the prompt; the fill wants a real sign-in on the phone. To do: a web view per tab so a tab
   keeps its scroll and its typing (today a tab left behind reloads when returned to).
 - `immersive-ar` over the passthrough, which exists and is wasted on a browser that only does VR.
-- **Hand input sources**: the tracker's 21 joints as WebXR Hand Input, so pages see hands, not a
-  bare gaze `select`.
+- **Hand input sources** — done 2026-11-06: an input source per tracked hand with the 25 WebXR joint spaces
+  (`getJointPose`, `fillPoses`, `fillJointRadii`, `inputsourceschange`), posed every frame from the
+  tracker's 21 joints (metacarpals midway between wrist and knuckle), a pinch as that hand's select.
+  To be confirmed on the phone with a page that draws hands.
 - `local-floor` from the floor ARKit found rather than a fixed 1.6 m.
 - Measure an immersive session's frame rate honestly and say in the start page what to expect.
 

@@ -132,6 +132,17 @@ namespace Afterglow.Stereo
 #endif
         }
 
+        // The tracked hands for the page, as the shim takes them: count, then per hand its
+        // handedness (0 left, 1 right), whether it pinches (0/1) and 21 joints as x, y, z in
+        // WebXR's space, which is Unity's with z the other way (as PushPose turns the head).
+        public const int FloatsPerHand = 2 + 21 * 3;
+        public static void PushHands(float[] values, int count)
+        {
+#if UNITY_IOS && !UNITY_EDITOR
+            Afterglow_WebHands(values, count);
+#endif
+        }
+
         // A pinch in front of the camera, or a tap, as a WebXR select.
         public static void Select()
         {
@@ -500,6 +511,7 @@ namespace Afterglow.Stereo
         [DllImport("__Internal")] static extern int Afterglow_WebIsOpen();
         [DllImport("__Internal")] static extern void Afterglow_WebPose(float px, float py, float pz, float qx, float qy, float qz, float qw);
         [DllImport("__Internal")] static extern void Afterglow_WebSelect();
+        [DllImport("__Internal")] static extern void Afterglow_WebHands(float[] values, int count);
         [DllImport("__Internal")] static extern int Afterglow_WebTakeEvent();
 #endif
     }
