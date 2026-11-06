@@ -389,15 +389,19 @@ final class HandTracker: @unchecked Sendable {
             // Pinch. The tips' LiDAR depths, where there are any, say whether they really meet.
             let thumb = joints[HandGeometry.thumbTip]
             let index = joints[HandGeometry.indexTip]
+            // Each tip's depth is the nearest reading in a small window round it: the finger is the
+            // nearest thing there, and a median mixed finger and background. A tip with no reading
+            // while the palm has one is at an edge or hidden, which is no place to start a pinch
+            // (counted as level, the guard was never in the way: 2026-11-06).
             var tipDepthGap: Float?
             if useDepth, let sceneDepth = frame.sceneDepth {
                 let t = hand.landmarks[HandGeometry.thumbTip], i = hand.landmarks[HandGeometry.indexTip]
-                if let dt = Self.sampleDepth(sceneDepth, at: SIMD2(t.x / Float(width), t.y / Float(height)), radius: 1),
-                   let di = Self.sampleDepth(sceneDepth, at: SIMD2(i.x / Float(width), i.y / Float(height)), radius: 1) {
+                if let dt = Self.nearestDepth(sceneDepth, at: SIMD2(t.x / Float(width), t.y / Float(height))),
+                   let di = Self.nearestDepth(sceneDepth, at: SIMD2(i.x / Float(width), i.y / Float(height))) {
                     tipDepthGap = abs(dt - di)
                 }
             }
-            slot.tipGaps.append(tipDepthGap ?? 0)
+            slot.tipGaps.append(tipDepthGap ?? (measuredDepth != nil ? Float.infinity : 0))
             if slot.tipGaps.count > Self.levelResults { slot.tipGaps.removeFirst() }
             let tipsLevel = slot.tipGaps.allSatisfy { $0 <= Self.maxTipDepthGap }
             let margin = Self.edgeMargin * Float(width)
@@ -466,6 +470,38 @@ final class HandTracker: @unchecked Sendable {
         let image = CIImage(cvPixelBuffer: frame.capturedImage)
         let handler = VNImageRequestHandler(ciImage: image, orientation: .up, options: [:])
         try handler.perform([request])
+    }
+
+    /// The nearest confident scene depth in a 3x3 window at a fraction of the way across and down
+    /// the image; nil when none.
+    private static func nearestDepth(_ sceneDepth: ARDepthData, at uv: SIMD2<Float>) -> Float? {
+        let map = sceneDepth.depthMap
+        guard CVPixelBufferGetPixelFormatType(map) == kCVPixelFormatType_DepthFloat32 else { return nil }
+        let width = CVPixelBufferGetWidth(map), height = CVPixelBufferGetHeight(map)
+        guard uv.x >= 0, uv.x < 1, uv.y >= 0, uv.y < 1 else { return nil }
+        CVPixelBufferLockBaseAddress(map, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(map, .readOnly) }
+        guard let base = CVPixelBufferGetBaseAddress(map) else { return nil }
+        let rowBytes = CVPixelBufferGetBytesPerRow(map)
+        var confidenceBase: UnsafeMutableRawPointer?
+        var confidenceRow = 0
+        if let confidence = sceneDepth.confidenceMap {
+            CVPixelBufferLockBaseAddress(confidence, .readOnly)
+            confidenceBase = CVPixelBufferGetBaseAddress(confidence)
+            confidenceRow = CVPixelBufferGetBytesPerRow(confidence)
+        }
+        defer { if let confidence = sceneDepth.confidenceMap { CVPixelBufferUnlockBaseAddress(confidence, .readOnly) } }
+        let cx = Int(uv.x * Float(width)), cy = Int(uv.y * Float(height))
+        var nearest: Float?
+        for y in max(0, cy - 1)...min(height - 1, cy + 1) {
+            for x in max(0, cx - 1)...min(width - 1, cx + 1) {
+                let d = base.load(fromByteOffset: y * rowBytes + x * 4, as: Float.self)
+                guard d > 0.1, d.isFinite else { continue }
+                if let confidenceBase, confidenceBase.load(fromByteOffset: y * confidenceRow + x, as: UInt8.self) < 1 { continue }
+                if nearest == nil || d < nearest! { nearest = d }
+            }
+        }
+        return nearest
     }
 
     /// The median scene depth in a 5x5 window at a fraction of the way across and down the image,
