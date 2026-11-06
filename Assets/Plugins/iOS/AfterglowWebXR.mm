@@ -83,7 +83,6 @@ static const char *kHelperSource = R"JS(
     window.addEventListener('orientationchange', function () { post({ event: 'console', level: 'log', text: '[Afterglow] orientationchange: ' + sizes() }); });
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', function () { post({ event: 'console', level: 'log', text: '[Afterglow] visualViewport resize: ' + sizes() }); });
-      window.visualViewport.addEventListener('scroll', function () { post({ event: 'console', level: 'log', text: '[Afterglow] visualViewport scroll: ' + sizes() }); });
     }
     document.addEventListener('visibilitychange', function () { post({ event: 'console', level: 'log', text: '[Afterglow] visibility: ' + document.visibilityState }); });
     if (window.ResizeObserver) {

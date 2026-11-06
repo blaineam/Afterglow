@@ -547,6 +547,26 @@
 
     // ---------------------------------------------------------------- navigator.xr
     var active = null;
+
+    // WebKit fires a window resize (and may fire orientationchange) as the app takes the screen
+    // for a session, with nothing about the window changed: the same inner size, the same
+    // visual viewport. A page that rebuilds its renderer on resize (a 360 player did) would
+    // dispose the very thing it just put into the session. A browser entering immersive mode
+    // fires neither, so during a session a resize that changes nothing is not delivered. These
+    // listeners are registered before any page script and in the capture phase, so they run
+    // first and can stop the rest.
+    var lastInner = [window.innerWidth, window.innerHeight];
+    function swallowIfUnchanged(e) {
+        var w = window.innerWidth, h = window.innerHeight;
+        var changed = w !== lastInner[0] || h !== lastInner[1];
+        lastInner = [w, h];
+        if (active && !active._ended && !changed) {
+            e.stopImmediatePropagation();
+            console.log('[Afterglow] ' + e.type + ' during the session with the window unchanged (' + w + 'x' + h + '): not delivered');
+        }
+    }
+    window.addEventListener('resize', swallowIfUnchanged, true);
+    window.addEventListener('orientationchange', swallowIfUnchanged, true);
     navigator.xr = {
         isSessionSupported: function (mode) {
             return Promise.resolve(mode === 'immersive-vr' || mode === 'inline');

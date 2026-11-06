@@ -18,15 +18,14 @@
   image, the detector's input and the landmarker's crops to `HandDumps` in its Documents folder
   (Finder's Files tab, or `devicectl device copy from`), with a log line per crop.
 
-- **An immersive WebXR session ends a third of a second after it starts** (phone, 2026-11-06,
-  three.js cubes, A-Frame, a 360 player). The stack in the log names the page's resize handler
-  (a 360 player's `handleVRPlayerResize`, through `dispose()` and `reset()`), so something at
-  the start of a session reaches the page as a resize. Resizing the web view to the screen was
-  the first suspect and is gone: the screen is taken by scaling the view's veil, the web view
-  keeps its 1024x768 layout and is never moved between views. The page ended its session the
-  same way with the resize gone, so the helper script now reports every resize-like event the
-  page receives (`[Afterglow] window resize …`, `visualViewport resize …`, `body resized …`,
-  `visibility …`) with the sizes it sees; the next phone log says which one fires.
+- **An immersive WebXR session ended a third of a second after it started** (phone,
+  2026-11-06). Found with the page's events in the log: as the app takes the screen, WebKit
+  fires a window `resize` with nothing changed (the same 1024×768), and a page that rebuilds its
+  renderer on any resize (a 360 player did, through its player's `dispose()`) threw away the
+  thing it had just put into the session; the player it made next drew flat, which looked like
+  "2D on the phone screen". The shim now swallows a resize or orientationchange that changes
+  nothing while a session is up, as a browser entering immersive mode fires neither. The web
+  view also never moves or resizes any more. **To be confirmed on the phone.**
 - **A tall photo sphere is drawn on a cylinder.** A GPano crop gives a panorama's exact span and
   height, and the band is a cylinder, which is right up to about 90° tall; a sphere cropped to,
   say, 360° × 150° stretches towards its top and bottom on it. The whole sphere (or near enough,
