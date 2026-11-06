@@ -70,6 +70,34 @@ static const char *kHelperSource = R"JS(
     });
   })();
 
+  // Every resize-like event the page gets, with the sizes it sees, so a page that reacts to
+  // one at the start of a session can be told what it reacted to.
+  (function () {
+    function sizes() {
+      var vv = window.visualViewport;
+      return 'inner ' + window.innerWidth + 'x' + window.innerHeight +
+        (vv ? ', visual ' + Math.round(vv.width) + 'x' + Math.round(vv.height) + ' scale ' + vv.scale.toFixed(2) : '') +
+        ', dpr ' + (window.devicePixelRatio || 1);
+    }
+    window.addEventListener('resize', function () { post({ event: 'console', level: 'log', text: '[Afterglow] window resize: ' + sizes() }); });
+    window.addEventListener('orientationchange', function () { post({ event: 'console', level: 'log', text: '[Afterglow] orientationchange: ' + sizes() }); });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', function () { post({ event: 'console', level: 'log', text: '[Afterglow] visualViewport resize: ' + sizes() }); });
+      window.visualViewport.addEventListener('scroll', function () { post({ event: 'console', level: 'log', text: '[Afterglow] visualViewport scroll: ' + sizes() }); });
+    }
+    document.addEventListener('visibilitychange', function () { post({ event: 'console', level: 'log', text: '[Afterglow] visibility: ' + document.visibilityState }); });
+    if (window.ResizeObserver) {
+      var seen = 0;
+      try {
+        new ResizeObserver(function (entries) {
+          if (++seen > 20) return;
+          var e = entries[0];
+          post({ event: 'console', level: 'log', text: '[Afterglow] body resized to ' + Math.round(e.contentRect.width) + 'x' + Math.round(e.contentRect.height) + ', ' + sizes() });
+        }).observe(document.documentElement);
+      } catch (e) { /* no observer */ }
+    }
+  })();
+
   // Logins: a form with a password field that is submitted hands its username and password to
   // the app, which offers to keep them in the phone's Keychain; a page that shows a password
   // field is announced, so the app can offer a saved login; __afterglowFill puts one in.
@@ -1082,39 +1110,43 @@ extern "C" void Afterglow_WebSetWindowed(int windowed)
         return;
     UIViewController *root = UnityGetGLViewController();
     g_Host.windowed = windowed != 0;
+    // The web view never moves between superviews and never changes size: it lives inside its
+    // veil from the start, laid out at the page's own size, and the veil is what changes. For
+    // a session the veil is scaled onto the screen and shown; windowed, it sits at the page's
+    // size, all but invisible, and the page is snapshotted from it. Resizing the web view, or
+    // moving it to another view, reached the page as a window resize, and a page that rebuilds
+    // its renderer on resize (a 360 player did) ended its session a third of a second in.
+    const CGRect page = CGRectMake(0, 0, g_Host.pixelWidth, g_Host.pixelHeight);
+    if (g_Host.veil == nil)
+    {
+        UIView *veil = [[UIView alloc] initWithFrame:page];
+        veil.userInteractionEnabled = NO;
+        veil.backgroundColor = UIColor.blackColor;
+        g_Host.veil = veil;
+        [veil addSubview:g_Host.web];
+        [root.view addSubview:veil];
+    }
+    if (g_Host.web.superview != g_Host.veil)
+        [g_Host.veil addSubview:g_Host.web];
+    if (g_Host.veil.superview != root.view)
+        [root.view addSubview:g_Host.veil];
+    g_Host.web.frame = page;
     if (g_Host.windowed)
     {
-        g_Host.web.transform = CGAffineTransformIdentity;
-        g_Host.web.frame = CGRectMake(0, 0, g_Host.pixelWidth, g_Host.pixelHeight);
-        if (g_Host.veil == nil)
-        {
-            UIView *veil = [[UIView alloc] initWithFrame:g_Host.web.frame];
-            veil.alpha = 0.01;
-            veil.userInteractionEnabled = NO;
-            g_Host.veil = veil;
-        }
-        g_Host.veil.frame = g_Host.web.frame;
-        [g_Host.veil addSubview:g_Host.web];
-        [root.view addSubview:g_Host.veil];
+        g_Host.veil.transform = CGAffineTransformIdentity;
+        g_Host.veil.frame = page;
+        g_Host.veil.alpha = 0.01;
     }
     else
     {
-        // The screen is taken by scaling the view onto it, not by resizing it: a resize reaches
-        // the page as a window resize, and a page that rebuilds its renderer on resize (a 360
-        // player did, through a dispose() that ended the session a third of a second after it
-        // began) never gets to draw. The page keeps its 1024x768 layout, its canvas is laid out
-        // at that size times the device scale, which is more than the screen's pixels either
-        // way, and the lens meshes are placed from the screen's own size (the shim's config), so
-        // the stretch to the screen's shape is part of the picture rather than a surprise.
-        [g_Host.veil removeFromSuperview];
         const CGRect screen = root.view.bounds;
-        const CGRect frame = CGRectMake(0, 0, g_Host.pixelWidth, g_Host.pixelHeight);
-        g_Host.web.transform = CGAffineTransformIdentity;
-        g_Host.web.frame = frame;
-        g_Host.web.transform = CGAffineTransformMakeScale(screen.size.width / frame.size.width,
-                                                          screen.size.height / frame.size.height);
-        g_Host.web.center = CGPointMake(CGRectGetMidX(screen), CGRectGetMidY(screen));
-        [root.view addSubview:g_Host.web];
+        g_Host.veil.transform = CGAffineTransformIdentity;
+        g_Host.veil.frame = page;
+        g_Host.veil.transform = CGAffineTransformMakeScale(screen.size.width / page.size.width,
+                                                           screen.size.height / page.size.height);
+        g_Host.veil.center = CGPointMake(CGRectGetMidX(screen), CGRectGetMidY(screen));
+        g_Host.veil.alpha = 1.0;
+        [root.view bringSubviewToFront:g_Host.veil];
     }
-    AGLog(@"[WebXR] %@", g_Host.windowed ? @"back to a window in the scene" : @"full screen for an immersive session, the page kept at its size");
+    AGLog(@"[WebXR] %@", g_Host.windowed ? @"back to a window in the scene" : @"full screen for an immersive session, the page kept at its size and in its view");
 }
