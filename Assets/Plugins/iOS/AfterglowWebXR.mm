@@ -579,6 +579,18 @@ static AfterglowWebHost *g_Host = nil;
           webView.canGoBack ? @"yes" : @"no", webView.canGoForward ? @"yes" : @"no");
 }
 
+// A page asking for the motion sensors (a 360 player's look-around outside a session, say) is
+// allowed: WebKit asks the app and, unanswered, refuses with "Permission was denied". The
+// sensors are the phone's own, which the app already reads; nothing leaves the phone.
+- (void)webView:(WKWebView *)webView
+    requestDeviceOrientationAndMotionPermissionForOrigin:(WKSecurityOrigin *)origin
+    initiatedByFrame:(WKFrameInfo *)frame
+    decisionHandler:(void (^)(WKPermissionDecision))decisionHandler API_AVAILABLE(ios(15.0))
+{
+    AGLog(@"[WebXR] %@ asked for the motion sensors: allowed", origin.host);
+    decisionHandler(WKPermissionDecisionGrant);
+}
+
 // A link asking for a new window gets this one: there are no tabs here, and without this a
 // target=_blank link is simply dropped, which is one of the ways a page "didn't navigate".
 - (WKWebView *)webView:(WKWebView *)webView
@@ -728,7 +740,8 @@ extern "C" int Afterglow_WebOpen(const char *url, const char *configJson, const 
     WKWebView *web = [[WKWebView alloc] initWithFrame:frame configuration:configuration];
     web.navigationDelegate = host;
     web.UIDelegate = host;
-    web.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    // Never resized by its parent: the page's size is its own (see Afterglow_WebSetWindowed).
+    web.autoresizingMask = UIViewAutoresizingNone;
     web.opaque = YES;
     web.backgroundColor = UIColor.blackColor;
     web.scrollView.bounces = NO;
@@ -1071,6 +1084,7 @@ extern "C" void Afterglow_WebSetWindowed(int windowed)
     g_Host.windowed = windowed != 0;
     if (g_Host.windowed)
     {
+        g_Host.web.transform = CGAffineTransformIdentity;
         g_Host.web.frame = CGRectMake(0, 0, g_Host.pixelWidth, g_Host.pixelHeight);
         if (g_Host.veil == nil)
         {
@@ -1085,9 +1099,22 @@ extern "C" void Afterglow_WebSetWindowed(int windowed)
     }
     else
     {
+        // The screen is taken by scaling the view onto it, not by resizing it: a resize reaches
+        // the page as a window resize, and a page that rebuilds its renderer on resize (a 360
+        // player did, through a dispose() that ended the session a third of a second after it
+        // began) never gets to draw. The page keeps its 1024x768 layout, its canvas is laid out
+        // at that size times the device scale, which is more than the screen's pixels either
+        // way, and the lens meshes are placed from the screen's own size (the shim's config), so
+        // the stretch to the screen's shape is part of the picture rather than a surprise.
         [g_Host.veil removeFromSuperview];
-        g_Host.web.frame = root.view.bounds;
+        const CGRect screen = root.view.bounds;
+        const CGRect frame = CGRectMake(0, 0, g_Host.pixelWidth, g_Host.pixelHeight);
+        g_Host.web.transform = CGAffineTransformIdentity;
+        g_Host.web.frame = frame;
+        g_Host.web.transform = CGAffineTransformMakeScale(screen.size.width / frame.size.width,
+                                                          screen.size.height / frame.size.height);
+        g_Host.web.center = CGPointMake(CGRectGetMidX(screen), CGRectGetMidY(screen));
         [root.view addSubview:g_Host.web];
     }
-    AGLog(@"[WebXR] %@", g_Host.windowed ? @"back to a window in the scene" : @"full screen for an immersive session");
+    AGLog(@"[WebXR] %@", g_Host.windowed ? @"back to a window in the scene" : @"full screen for an immersive session, the page kept at its size");
 }

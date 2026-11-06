@@ -18,12 +18,12 @@
   image, the detector's input and the landmarker's crops to `HandDumps` in its Documents folder
   (Finder's Files tab, or `devicectl device copy from`), with a log line per crop.
 
-- **An immersive WebXR session ends a third of a second after it starts** (phone, 2026-11-06,
-  three.js cubes and A-Frame): the page takes the screen, then says `sessionend`. The build
-  after that one forwards the page's console and the stack of whoever called `end()` into the
-  session log (`[WebXR] page error …`, `[WebXR] session ended from …`), which is the next thing
-  to read. Until it's found, *Enter VR* flashes and returns to the window.
-
+- **An immersive WebXR session used to end a third of a second after it started** (phone,
+  2026-11-06, three.js cubes, A-Frame, a 360 player). The stack in the log named it: taking the
+  screen resized the web view, the page saw a window resize, and the player's resize handler
+  disposed its renderer, which ended the session. The screen is now taken by scaling the view
+  onto it, with the page kept at its windowed size, so no resize reaches the page. Fixed in code;
+  **the phone has yet to confirm it**, so the entry stays until it does.
 - **A tall photo sphere is drawn on a cylinder.** A GPano crop gives a panorama's exact span and
   height, and the band is a cylinder, which is right up to about 90° tall; a sphere cropped to,
   say, 360° × 150° stretches towards its top and bottom on it. The whole sphere (or near enough,

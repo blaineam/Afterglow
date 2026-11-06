@@ -154,7 +154,11 @@
         o[14] = -2 * far * near / (far - near);
         return o;
     }
+    // The screen's own shape, from its size in metres: the window's size is not it once the app
+    // scales the page onto the screen for a session (the page keeps its windowed layout, so a
+    // page that rebuilds its renderer on resize isn't thrown out of its own session).
     function screenAspect() {
+        if (cfg.screen && cfg.screen[0] > 0 && cfg.screen[1] > 0) return cfg.screen[0] / cfg.screen[1];
         var w = window.innerWidth || 1, h = window.innerHeight || 1;
         return w / h;
     }
