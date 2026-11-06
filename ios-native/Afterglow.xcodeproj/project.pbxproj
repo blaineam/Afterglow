@@ -18,11 +18,13 @@
 		8600C1861C53352DF6521570 /* PolynomialRadialDistortion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 078E21E05BF54EC00E0F4308 /* PolynomialRadialDistortion.swift */; };
 		87FA55609E5C45D423B33A4C /* ViewerParams.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1258CEE15BE1B0F0A68046 /* ViewerParams.swift */; };
 		8A26420DC8EEC87E91BE44DA /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F383C9716F8214D0A4E65E7D /* Settings.swift */; };
+		91E95FC2F446BEEE1D5D8481 /* UltraWideController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F03EB15525A4EC358532B829 /* UltraWideController.swift */; };
 		998F8E4E9A185C881C5B74DC /* SessionLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97890D6EB3536CA74C71E09 /* SessionLog.swift */; };
 		AED9AC2DB5CA264371AF1869 /* HandGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */; };
 		B11BEA3C83C4B14B3E457065 /* LensDistortion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4402EC68CCA81B671B468EE8 /* LensDistortion.swift */; };
 		BC2DD9993B328B9BFE55C0D8 /* PinchDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E2E0B57207F4DEAA2DF268C /* PinchDetector.swift */; };
 		C803CA1BEC03B79551EFB51B /* UltraWideProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */; };
+		CD88B09669D877C78226AE06 /* CameraSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D94EC27CAA1FF1943486BB0 /* CameraSource.swift */; };
 		D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */; };
 		E1F20C8F70E32B1C44AA3A59 /* ScreenMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F27D509791361AD2011E47 /* ScreenMetrics.swift */; };
 		E386311B4A1748A01C31E880 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = F3791EB1A750663D58286739 /* Shaders.metal */; };
@@ -56,6 +58,7 @@
 		67A818255D526B59948B967F /* ShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
 		7854AEB3ED92FB2970560611 /* HandOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandOverlay.swift; sourceTree = "<group>"; };
 		937E65EAEBF6C26F50ED3B34 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		9D94EC27CAA1FF1943486BB0 /* CameraSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraSource.swift; sourceTree = "<group>"; };
 		9E2E0B57207F4DEAA2DF268C /* PinchDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinchDetector.swift; sourceTree = "<group>"; };
 		A3675F8D2A8455F705C68C25 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		A7F27D509791361AD2011E47 /* ScreenMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenMetrics.swift; sourceTree = "<group>"; };
@@ -66,6 +69,7 @@
 		D97890D6EB3536CA74C71E09 /* SessionLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLog.swift; sourceTree = "<group>"; };
 		DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensDistortionTests.swift; sourceTree = "<group>"; };
 		E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UltraWideProbe.swift; sourceTree = "<group>"; };
+		F03EB15525A4EC358532B829 /* UltraWideController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UltraWideController.swift; sourceTree = "<group>"; };
 		F3791EB1A750663D58286739 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
 		F383C9716F8214D0A4E65E7D /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -93,7 +97,9 @@
 			isa = PBXGroup;
 			children = (
 				27D58785E652A50828B3FA73 /* ARController.swift */,
+				9D94EC27CAA1FF1943486BB0 /* CameraSource.swift */,
 				C9966FF18394C15E0D6C282F /* PosePredictor.swift */,
+				F03EB15525A4EC358532B829 /* UltraWideController.swift */,
 				E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */,
 			);
 			path = Tracking;
@@ -266,6 +272,7 @@
 			files = (
 				0113CE32E718FC51FC3EBD4B /* ARController.swift in Sources */,
 				E7BA05E46A062EE88CE62A42 /* AfterglowApp.swift in Sources */,
+				CD88B09669D877C78226AE06 /* CameraSource.swift in Sources */,
 				3C5D52A1580439FA628A5336 /* ContentView.swift in Sources */,
 				80531BEAA4C2E3BD43B155AB /* FrameTimingLog.swift in Sources */,
 				F0433297A0D001C5C4CA77C7 /* HandGeometry.swift in Sources */,
@@ -282,6 +289,7 @@
 				8A26420DC8EEC87E91BE44DA /* Settings.swift in Sources */,
 				E386311B4A1748A01C31E880 /* Shaders.metal in Sources */,
 				D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */,
+				91E95FC2F446BEEE1D5D8481 /* UltraWideController.swift in Sources */,
 				C803CA1BEC03B79551EFB51B /* UltraWideProbe.swift in Sources */,
 				87FA55609E5C45D423B33A4C /* ViewerParams.swift in Sources */,
 			);

@@ -17,6 +17,10 @@ final class Settings: ObservableObject {
     @Published var targetFrameRate: Int { didSet { save("fps", targetFrameRate) } }
     /// Milliseconds added to the display latency when predicting the head pose, to tune by eye.
     @Published var extraPredictionMs: Int { didSet { save("predictionMs", extraPredictionMs) } }
+    /// 6: ARKit world tracking on the wide camera. 3: the ultra-wide through AVFoundation with the
+    /// head's rotation from the motion sensors and no positional tracking (ARKit cannot run beside
+    /// the ultra-wide, and has no world-tracking format for it on the iPhone).
+    @Published var degreesOfFreedom: Int { didSet { save("dof", degreesOfFreedom) } }
     /// Prefer the ultra-wide camera's formats when ARKit lists any.
     let ultraWide: Bool
     /// Hold the render scale and frame rate down while the phone is serious or critical, as the
@@ -50,6 +54,7 @@ final class Settings: ObservableObject {
         renderScalePercent = min(max(Self.read("renderScale", options: options, default: 100), 25), 200)
         targetFrameRate = Self.read("fps", options: options, default: 60)
         extraPredictionMs = Self.read("predictionMs", options: options, default: 0)
+        degreesOfFreedom = Self.read("dof", options: options, default: 6) == 3 ? 3 : 6
         ultraWide = Self.read("camUltraWide", options: options, default: 1) != 0
         thermalCap = Self.read("thermalCap", options: options, default: 1) != 0
         cameraToEyesMm = SIMD3(Self.read("eyesX", options: options, default: 60),

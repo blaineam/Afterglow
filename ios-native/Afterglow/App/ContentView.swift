@@ -41,6 +41,10 @@ struct ContentView: View {
                     .fixedSize()
             }
             HStack(spacing: 24) {
+                Toggle("3DoF ultra-wide", isOn: Binding(get: { settings.degreesOfFreedom == 3 },
+                                                        set: { settings.degreesOfFreedom = $0 ? 3 : 6 }))
+                    .toggleStyle(.switch)
+                    .fixedSize()
                 Stepper("Predict +\(settings.extraPredictionMs) ms", value: $settings.extraPredictionMs, in: 0...60, step: 4)
                     .fixedSize()
                 Text(model.status)
@@ -54,6 +58,7 @@ struct ContentView: View {
         .onChange(of: settings.renderScalePercent) { _, _ in scheduleHide() }
         .onChange(of: settings.targetFrameRate) { _, _ in scheduleHide() }
         .onChange(of: settings.extraPredictionMs) { _, _ in scheduleHide() }
+        .onChange(of: settings.degreesOfFreedom) { _, _ in scheduleHide() }
     }
 
     private func toggleControls() {
@@ -91,12 +96,12 @@ final class StereoModel: ObservableObject {
             status = "no renderer; see the session log"
             return
         }
-        renderer.ar.start()
+        renderer.startSource()
     }
 
     func updateStatus(fps: Double) {
-        let camera = renderer?.ar.cameraName ?? "-"
-        status = String(format: "%.0f fps, %@ camera, %@", fps, camera, thermal.currentState)
+        let camera = renderer?.source.cameraName ?? "-"
+        status = String(format: "%.0f fps, %dDoF %@ camera, %@", fps, renderer?.source.degreesOfFreedom ?? 0, camera, thermal.currentState)
     }
 }
 

@@ -50,6 +50,7 @@ final class HandTracker: @unchecked Sendable {
     private static let speedBlend: Float = 0.5
     private static let edgeMargin: Float = 0.04   // of the image's width, where a pinch may not start
     private static let sureTipConfidence: Float = 0.4   // a fingertip Vision was less sure of was hidden, and guessed
+    private static let seenTipConfidence: Float = 0.15  // below this a tip was not seen at all, so no pinch starts on it
     /// A palm reading smaller than this share of the hand's own flat-on size, at the measured
     /// depth, is edge-on: the fingers are in line with the camera, which sees only the thumb and
     /// guesses the index tip beside it, which read as a pinch (owner, 2026-11-06). No pinch starts.
@@ -180,7 +181,7 @@ final class HandTracker: @unchecked Sendable {
 
     /// Offers a camera frame. Taken when the last request is done and `handHz` allows; refused
     /// otherwise, so the AR delegate never waits.
-    func submit(_ frame: ARFrame) {
+    func submit(_ frame: HandImage) {
         lock.lock()
         if busy || frame.timestamp < nextImageTime {
             lock.unlock()
@@ -198,14 +199,14 @@ final class HandTracker: @unchecked Sendable {
         }
     }
 
-    private func process(_ frame: ARFrame) {
+    private func process(_ frame: HandImage) {
         let started = CACurrentMediaTime()
-        let width = CVPixelBufferGetWidth(frame.capturedImage)
-        let height = CVPixelBufferGetHeight(frame.capturedImage)
+        let width = frame.width
+        let height = frame.height
         var observations: [VNHumanHandPoseObservation] = []
         do {
             if !useCIImage {
-                let handler = VNImageRequestHandler(cvPixelBuffer: frame.capturedImage, orientation: .up, options: [:])
+                let handler = VNImageRequestHandler(cvPixelBuffer: frame.pixelBuffer, orientation: .up, options: [:])
                 try handler.perform([request])
             } else {
                 try performThroughCoreImage(frame)
@@ -249,10 +250,10 @@ final class HandTracker: @unchecked Sendable {
             seen.append(Seen(landmarks: landmarks, confidences: confidences, confidence: observation.confidence, chirality: observation.chirality))
         }
 
-        let k = frame.camera.intrinsics
+        let k = frame.intrinsics
         let focal = SIMD2(k.columns.0.x, k.columns.1.y)
         let principal = SIMD2(k.columns.2.x, k.columns.2.y)
-        let cameraToWorld = frame.camera.transform
+        let cameraToWorld = frame.cameraTransform
         let now = frame.timestamp
 
         lock.lock()
@@ -451,17 +452,24 @@ final class HandTracker: @unchecked Sendable {
             // nearest thing there, and a median mixed finger and background. A tip with no reading
             // while the palm has one is at an edge or hidden, which is no place to start a pinch
             // (counted as level, the guard was never in the way: 2026-11-06).
+            // The tips' readings, or failing them the next joints in (wider, less often hidden);
+            // a result without either is left out, and the guard only speaks with at least two
+            // readings in its window: fingertips often have no reading, and treating that as a
+            // block stopped real pinches (log, 2026-11-06).
             var tipDepthGap: Float?
             if useDepth, let sceneDepth = frame.sceneDepth {
-                let t = hand.landmarks[HandGeometry.thumbTip], i = hand.landmarks[HandGeometry.indexTip]
-                if let dt = Self.nearestDepth(sceneDepth, at: SIMD2(t.x / Float(width), t.y / Float(height))),
-                   let di = Self.nearestDepth(sceneDepth, at: SIMD2(i.x / Float(width), i.y / Float(height))) {
-                    tipDepthGap = abs(dt - di)
+                func gap(_ a: Int, _ b: Int) -> Float? {
+                    let pa = hand.landmarks[a], pb = hand.landmarks[b]
+                    guard let da = Self.nearestDepth(sceneDepth, at: SIMD2(pa.x / Float(width), pa.y / Float(height))),
+                          let db = Self.nearestDepth(sceneDepth, at: SIMD2(pb.x / Float(width), pb.y / Float(height))) else { return nil }
+                    return abs(da - db)
                 }
+                tipDepthGap = gap(HandGeometry.thumbTip, HandGeometry.indexTip) ?? gap(3, 7)
             }
-            slot.tipGaps.append(tipDepthGap ?? (measuredDepth != nil ? Float.infinity : 0))
+            slot.tipGaps.append(tipDepthGap ?? Float.nan)
             if slot.tipGaps.count > Self.levelResults { slot.tipGaps.removeFirst() }
-            let tipsLevel = slot.tipGaps.allSatisfy { $0 <= Self.maxTipDepthGap }
+            let readings = slot.tipGaps.filter { !$0.isNaN }
+            let tipsLevel = readings.count < 2 || readings.allSatisfy { $0 <= Self.maxTipDepthGap }
             let margin = Self.edgeMargin * Float(width)
             let tipsInside = [hand.landmarks[HandGeometry.thumbTip], hand.landmarks[HandGeometry.indexTip]].allSatisfy {
                 $0.x > margin && $0.x < Float(width) - margin && $0.y > margin && $0.y < Float(height) - margin
@@ -469,23 +477,25 @@ final class HandTracker: @unchecked Sendable {
             let wasPinched = slot.pinch.isPinched
             let tipsSure = hand.confidences[HandGeometry.thumbTip] >= Self.sureTipConfidence
                 && hand.confidences[HandGeometry.indexTip] >= Self.sureTipConfidence
+            let tipsSeen = hand.confidences[HandGeometry.thumbTip] >= Self.seenTipConfidence
+                && hand.confidences[HandGeometry.indexTip] >= Self.seenTipConfidence
             let isEdgeOn = openness < Self.edgeOnOpenness
             if isEdgeOn { edgeOn += 1 }
             // Edge-on only stops a pinch starting; a held one still follows the tips, so it can end.
             let tipDistance = simd_distance(thumb, index)
-            let pinched = slot.pinch.update(tipDistance: tipDistance, allowStart: tipsInside && !isEdgeOn && tipsLevel,
+            let pinched = slot.pinch.update(tipDistance: tipDistance, allowStart: tipsInside && !isEdgeOn && tipsLevel && tipsSeen,
                                             tipsSure: tipsSure)
             // A pinch the tips are making that cannot start: say why, once a second, so a real pinch
             // that fails to register can be read off the log.
-            if !pinched && tipDistance < 0.025 && !(tipsInside && !isEdgeOn && tipsLevel && tipsSure) && now - lastBlockedLog > 1 {
+            if !pinched && tipDistance < 0.025 && !(tipsInside && !isEdgeOn && tipsLevel && tipsSeen) && now - lastBlockedLog > 1 {
                 lastBlockedLog = now
                 var reasons: [String] = []
                 if !tipsInside { reasons.append("tips at the image's edge") }
                 if isEdgeOn { reasons.append(String(format: "palm edge-on (%.0f%% open)", openness * 100)) }
                 if !tipsLevel {
-                    reasons.append("tip depths " + slot.tipGaps.map { $0.isFinite ? String(format: "%.1f", $0 * 100) : "none" }.joined(separator: "/") + " cm")
+                    reasons.append("tip depths " + slot.tipGaps.map { $0.isNaN ? "none" : String(format: "%.1f", $0 * 100) }.joined(separator: "/") + " cm")
                 }
-                if !tipsSure { reasons.append(String(format: "tips unsure (%.2f, %.2f)", hand.confidences[HandGeometry.thumbTip], hand.confidences[HandGeometry.indexTip])) }
+                if !tipsSeen { reasons.append(String(format: "a tip not seen (%.2f, %.2f)", hand.confidences[HandGeometry.thumbTip], hand.confidences[HandGeometry.indexTip])) }
                 log(String(format: "[Pinch] %@ hand's tips %.1f cm apart but no start: %@", slot.handedness >= 0.5 ? "right" : "left",
                            tipDistance * 100, reasons.joined(separator: ", ")))
             }
@@ -538,9 +548,9 @@ final class HandTracker: @unchecked Sendable {
         }
     }
 
-    private func performThroughCoreImage(_ frame: ARFrame) throws {
+    private func performThroughCoreImage(_ frame: HandImage) throws {
         if ciContext == nil { ciContext = CIContext(options: [.useSoftwareRenderer: false]) }
-        let image = CIImage(cvPixelBuffer: frame.capturedImage)
+        let image = CIImage(cvPixelBuffer: frame.pixelBuffer)
         let handler = VNImageRequestHandler(ciImage: image, orientation: .up, options: [:])
         try handler.perform([request])
     }

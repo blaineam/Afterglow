@@ -27,8 +27,10 @@ struct PinchDetector {
     /// really seen, so nothing changes.
     @discardableResult
     mutating func update(tipDistance: Float, allowStart: Bool = true, tipsSure: Bool = true) -> Bool {
-        guard tipsSure else { return isPinched }
+        // A guessed tip holds a pinch as it is; a start is governed by allowStart alone, since in
+        // a real pinch the index tip hides behind the thumb and Vision rates it low.
         if isPinched {
+            guard tipsSure else { return isPinched }
             if tipDistance > openDistance {
                 openRun += 1
                 if openRun >= releaseResults {

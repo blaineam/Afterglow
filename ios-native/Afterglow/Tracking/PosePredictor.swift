@@ -48,6 +48,40 @@ final class PosePredictor: @unchecked Sendable {
 
     var isRunning: Bool { motion.isDeviceMotionActive }
 
+    // The 3DoF world: CoreMotion's reference frame (z up, x arbitrary) turned to y up, with the
+    // heading at the first reading taken as straight ahead (-z), as ARKit's gravity alignment does.
+    private let worldFromReference = simd_quatd(angle: -.pi / 2, axis: SIMD3(1, 0, 0))
+    private var headingCorrection: simd_quatd?
+
+    func stop() {
+        motion.stopDeviceMotionUpdates()
+        lock.lock()
+        samples.removeAll()
+        latest = nil
+        previous = nil
+        headingCorrection = nil
+        lock.unlock()
+    }
+
+    /// The camera's rotation in a y-up world at `time`, from the attitude alone (3DoF): the
+    /// camera stays at the origin. Nil before the first motion sample.
+    func attitudeCameraTransform(at time: Double) -> simd_float4x4? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let attitude = attitudeLocked(at: time) else { return nil }
+        // reference-from-camera = reference-from-device * device-from-camera.
+        var worldFromCamera = worldFromReference * attitude * cameraFromDevice.inverse
+        if headingCorrection == nil {
+            // Turn the world so the camera's forward (-z) at the start points along -z.
+            let forward = worldFromCamera.act(SIMD3(0, 0, -1))
+            let yaw = atan2(forward.x, -forward.z)
+            headingCorrection = simd_quatd(angle: -yaw, axis: SIMD3(0, 1, 0))
+        }
+        worldFromCamera = headingCorrection! * worldFromCamera
+        let q = simd_quatf(vector: SIMD4<Float>(simd_normalize(worldFromCamera).vector))
+        return simd_float4x4(q)
+    }
+
     func start() {
         guard motion.isDeviceMotionAvailable else {
             log("[Pose] No device motion: head pose is not predicted ahead")

@@ -26,7 +26,9 @@ struct CapturedFrame: @unchecked Sendable {
 /// Runs ARKit world tracking: picks the camera format (the ultra-wide at 60 fps where the phone
 /// offers it), hands each frame's pose to the predictor and its image to the renderer, and logs
 /// tracking as the Unity app does under [AR], [Camera] and [Passthrough].
-final class ARController: NSObject, ARSessionDelegate, @unchecked Sendable {
+final class ARController: NSObject, ARSessionDelegate, CameraSource, @unchecked Sendable {
+    let degreesOfFreedom = 6
+
     let session = ARSession()
     let predictor = PosePredictor()
     private let device: MTLDevice
@@ -86,7 +88,16 @@ final class ARController: NSObject, ARSessionDelegate, @unchecked Sendable {
         log("[AR] World tracking started, format \(chosenFormatText), \(cameraName) camera")
     }
 
-    func pause() { session.pause() }
+    func stop() {
+        session.pause()
+        predictor.stop()
+        log("[AR] World tracking stopped")
+    }
+
+    func predictedCameraTransform(at time: Double) -> simd_float4x4? {
+        guard let frame = latestFrame else { return nil }
+        return predictor.predict(frame.pose, to: time)
+    }
 
     // The format: the ultra-wide at 60 fps if the phone lists one (about 120 degrees across, so
     // the view is not magnified to fill the viewer), else the wide camera's 1920x1440 at 60.
@@ -133,7 +144,9 @@ final class ARController: NSObject, ARSessionDelegate, @unchecked Sendable {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         let pose = PoseSample(timestamp: frame.timestamp, transform: frame.camera.transform)
         predictor.arrived(pose)
-        hands?.submit(frame)
+        hands?.submit(HandImage(pixelBuffer: frame.capturedImage, timestamp: frame.timestamp, intrinsics: frame.camera.intrinsics,
+                                width: CVPixelBufferGetWidth(frame.capturedImage), height: CVPixelBufferGetHeight(frame.capturedImage),
+                                cameraTransform: frame.camera.transform, sceneDepth: frame.sceneDepth))
 
         var captured: CapturedFrame?
         // The iPhone 18 Pro Max delivers x420, 10-bit video-range samples left-justified in 16-bit

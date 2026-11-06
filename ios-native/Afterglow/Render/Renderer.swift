@@ -49,7 +49,9 @@ final class Renderer {
     private var dumped = false
     private let amplifies: Bool
 
-    let ar: ARController
+    /// The camera and head pose source in use; swapped when the degrees of freedom change.
+    private(set) var source: CameraSource
+    private var sourceDof = 0
     let settings: Settings
     let thermal: ThermalLog
 
@@ -79,7 +81,8 @@ final class Renderer {
                                    screenHeightMeters: screen.heightMeters)
         self.cameraToEyes = SIMD3<Float>(settings.cameraToEyesMm) / 1000
         let hands = settings.hands ? HandTracker(hertz: settings.handHz, useDepth: settings.handDepth) : nil
-        self.ar = ARController(device: device, preferUltraWide: settings.ultraWide, hands: hands, wantsDepth: settings.handDepth)
+        self.source = Self.makeSource(dof: settings.degreesOfFreedom, device: device, hands: hands, settings: settings)
+        self.sourceDof = settings.degreesOfFreedom
 
         // The simulator's Metal has no vertex amplification: there each eye gets its own pass
         // into its slice (drawEyes), which is the same picture at twice the draw calls.
@@ -93,6 +96,25 @@ final class Renderer {
         buildDistortionMesh()
         FrameTimingLog.screenMaximum = uiScreen.maximumFramesPerSecond
         logSetup()
+    }
+
+    private static func makeSource(dof: Int, device: MTLDevice, hands: HandTracker?, settings: Settings) -> CameraSource {
+        if dof == 3 {
+            return UltraWideController(device: device, hands: hands)
+        }
+        return ARController(device: device, preferUltraWide: settings.ultraWide, hands: hands, wantsDepth: settings.handDepth)
+    }
+
+    /// Starts the source; also swaps it when the setting changed (the strip's switch).
+    func startSource() {
+        if sourceDof != settings.degreesOfFreedom {
+            source.stop()
+            let hands = source.hands
+            source = Self.makeSource(dof: settings.degreesOfFreedom, device: device, hands: hands, settings: settings)
+            sourceDof = settings.degreesOfFreedom
+            log("[Pose] Switched to \(sourceDof)DoF (\(source.cameraName) camera)")
+        }
+        source.start()
     }
 
     private func logSetup() {
@@ -211,15 +233,16 @@ final class Renderer {
             return
         }
 
-        // The head: the latest ARKit pose predicted ahead to the display time.
-        let frame = ar.latestFrame
+        // The head: the latest pose predicted ahead to the display time.
+        if sourceDof != settings.degreesOfFreedom { startSource() }
+        let frame = source.latestFrame
         let measuredLag = presentLagMs.value
         let predictTo = targetTimestamp + (measuredLag + Double(settings.extraPredictionMs)) / 1000
         var cameraInWorld = matrix_identity_float4x4
         var horizonMs = 0.0
-        if let frame {
-            cameraInWorld = ar.predictor.predict(frame.pose, to: predictTo)
-            horizonMs = (predictTo - frame.pose.timestamp) * 1000
+        if let predicted = source.predictedCameraTransform(at: predictTo) {
+            cameraInWorld = predicted
+            if let frame { horizonMs = (predictTo - frame.pose.timestamp) * 1000 }
         }
         let step = Float(min(max(t2 - lastDrawTime, 0), 0.1)) / 0.5
         lastDrawTime = t2
@@ -257,7 +280,7 @@ final class Renderer {
 
         // The hands as of this frame, and the grab demo they drive.
         overlay.clear()
-        if let hands = ar.hands {
+        if let hands = source.hands {
             let tracked = hands.hands(at: predictTo)
             grabDemo.update(hands: tracked, time: predictTo)
             let eyeMid = headInWorld.columns.3.xyz
@@ -379,8 +402,8 @@ final class Renderer {
         if t2 - lastPoseLog >= 5 {
             lastPoseLog = t2
             let p = headInWorld.columns.3
-            log(String(format: "[Pose] 6DoF: head (%.2f, %.2f, %.2f), predicted %.0f ms ahead of the camera image (display %.0f ms + presented %.1f ms after target + %d ms), camera frame age %.0f ms",
-                       p.x, p.y, p.z, horizonMs, (targetTimestamp - timestamp) * 1000, measuredLag, settings.extraPredictionMs,
+            log(String(format: "[Pose] %dDoF: head (%.2f, %.2f, %.2f), predicted %.0f ms ahead of the camera image (display %.0f ms + presented %.1f ms after target + %d ms), camera frame age %.0f ms",
+                       source.degreesOfFreedom, p.x, p.y, p.z, horizonMs, (targetTimestamp - timestamp) * 1000, measuredLag, settings.extraPredictionMs,
                        frame.map { (t2 - $0.pose.timestamp) * 1000 } ?? 0))
         }
     }

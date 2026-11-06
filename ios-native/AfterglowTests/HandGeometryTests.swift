@@ -77,9 +77,8 @@ final class HandGeometryTests: XCTestCase {
         XCTAssertTrue(pinch.update(tipDistance: 0.05))
         XCTAssertFalse(pinch.update(tipDistance: 0.05))     // three in a row is
         XCTAssertFalse(pinch.update(tipDistance: 0.01, allowStart: false))
-        XCTAssertFalse(pinch.update(tipDistance: 0.01, tipsSure: false))
+        XCTAssertFalse(pinch.update(tipDistance: 0.01, tipsSure: false))   // counts towards a start (the tip hides behind the thumb)
         // A start blocked midway (tips at different depths) begins the count again.
-        XCTAssertFalse(pinch.update(tipDistance: 0.01))
         XCTAssertFalse(pinch.update(tipDistance: 0.01, allowStart: false))
         XCTAssertFalse(pinch.update(tipDistance: 0.01))
         XCTAssertFalse(pinch.update(tipDistance: 0.01))

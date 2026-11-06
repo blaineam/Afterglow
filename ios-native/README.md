@@ -82,6 +82,19 @@ to "fair" at 1:43 after launch (the phase 1 run, without hands, stayed nominal).
 steady load the hands add, whether or not a hand is in view, so the default rate is 20 images/s
 (the Unity app ran 15); `handHz 30` brings the smoother tracking back.
 
+## 3DoF on the ultra-wide
+
+ARKit's world tracking has no ultra-wide format on the iPhone and stops the moment another
+session opens that camera (measured, see `KNOWN_ISSUES.md`), so the ultra-wide's view comes in a
+mode of its own: `dof 3` (or the strip's "3DoF ultra-wide" switch, which swaps the source live).
+`UltraWideController.swift` runs the ultra-wide through AVFoundation at 1920×1440 and 60 fps,
+8-bit full range (a 102° × 86° window in the eye's view against the wide camera's 69° × 55°),
+with the intrinsics the capture connection delivers; the head's rotation comes from the motion
+sensors (the same attitude the predictor reads, extrapolated to the display time, the first
+heading taken as straight ahead), the camera sits at the origin, and the hands run as in 6DoF
+but without LiDAR, so they are placed by the flat fit at the learned palm size and the depth
+guards on the pinch are off. The 6DoF wide mode (`dof 6`, the default) is unchanged.
+
 ## Build and run
 
 ```sh
@@ -113,6 +126,7 @@ screen shows a control strip for the first four, whose values are kept between r
 | Option | Default | Meaning |
 |---|---|---|
 | `passthrough` | 0 | 1 shows the camera, 0 the synthwave surroundings |
+| `dof` | 6 | 6: ARKit on the wide camera; 3: the ultra-wide with rotation-only tracking |
 | `renderScale` | 100 | eye texture size relative to half the screen, percent (25–200) |
 | `fps` | 60 | the display link's rate (30, 60, 90, 120) |
 | `predictionMs` | 0 | milliseconds added to the display latency when predicting the head |
@@ -163,7 +177,7 @@ ios-native/
   Afterglow/App/              AfterglowApp, ContentView (MetalView + control strip), Settings
   Afterglow/Stereo/           ViewerParams, PolynomialRadialDistortion, LensDistortion, ScreenMetrics
   Afterglow/Render/           Renderer, Shaders.metal, ShaderTypes.h
-  Afterglow/Tracking/         ARController (session, formats, camera textures), PosePredictor
+  Afterglow/Tracking/         CameraSource, ARController (6DoF), UltraWideController (3DoF), PosePredictor
   Afterglow/Hands/            HandTracker (Vision), HandGeometry, OneEuroFilter, PinchDetector, HandOverlay + GrabDemo
   Afterglow/Log/              SessionLog, FrameTimingLog, ThermalLog
   AfterglowTests/             the optics against the Unity app's numbers
