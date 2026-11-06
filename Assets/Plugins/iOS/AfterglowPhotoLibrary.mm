@@ -10,7 +10,7 @@
 // throws the other away, so the pair is found through ImageIO's group metadata and each eye is
 // drawn into its own buffer. A spatial video is an MV-HEVC file whose two views are layers of one
 // track, decoded in AfterglowSpatialVideo.mm, which opens it by its index in this file's scan; an
-// ordinary video from the library is handed to Unity's player as a file path.
+// ordinary video from the library plays through the same plugin, one view wide.
 //
 // Everything that reads a file is asynchronous, with C# polling, because a picture is opened by a
 // pinch while the headset is drawing: a synchronous library fetch would hold up a frame, which in
@@ -24,6 +24,9 @@
 #import <AVFoundation/AVFoundation.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include <atomic>
+
+// Logs to the system and to the session log through Unity (AfterglowNativeLog.mm).
+void AGLog(NSString *format, ...) NS_FORMAT_FUNCTION(1, 2);
 #include <mutex>
 #include <unordered_map>
 
@@ -72,6 +75,9 @@ namespace
     // doesn't show the older one.
     std::atomic<int> g_Request{0};
     NSString *g_Error = nil;
+    // How far the open has got, 0 to 1: an asset in iCloud downloads first, and that can take a
+    // while on a 20 MB panorama, which the player shows rather than seeming stuck.
+    std::atomic<float> g_Progress{0.0f};
 
     // Thumbnails in flight and delivered, by request number, until C# takes or drops them.
     struct Thumbnail
@@ -82,11 +88,6 @@ namespace
     std::mutex g_ThumbnailLock;
     std::unordered_map<int, Thumbnail> g_ThumbnailsByRequest;
     std::atomic<int> g_ThumbnailRequest{0};
-
-    // A library video's file, fetched for Unity's player.
-    std::mutex g_VideoLock;
-    std::unordered_map<int, std::pair<int, NSString *>> g_VideoPaths;
-    std::atomic<int> g_VideoRequest{0};
 
     // Draws a CGImage into a tightly packed BGRA buffer, which is what Unity's BGRA32 expects.
     bool CopyImage(CGImageRef image, Picture &picture)
@@ -194,7 +195,7 @@ namespace
         ReleaseEyes();
         g_Error = why;
         g_State = LoadStateFailed;
-        NSLog(@"[Photos] %@", why);
+        AGLog(@"[Photos] %@", why);
     }
 
     PHAsset *AssetAt(int index)
@@ -210,6 +211,7 @@ namespace
         const int request = g_Request.fetch_add(1) + 1;
         ReleaseEyes();
         g_Error = nil;
+        g_Progress = 0.0f;
         g_State = LoadStateLoading;
 
         PHImageRequestOptions *options = [PHImageRequestOptions new];
@@ -217,6 +219,10 @@ namespace
         options.version = PHImageRequestOptionsVersionCurrent;
         options.networkAccessAllowed = YES;
         options.synchronous = NO;
+        options.progressHandler = ^(double progress, NSError *error, BOOL *stop, NSDictionary *info) {
+            if (g_Request.load() == request)
+                g_Progress = (float)progress;
+        };
         [PHImageManager.defaultManager requestImageDataAndOrientationForAsset:asset options:options
             resultHandler:^(NSData *data, NSString *dataUTI, CGImagePropertyOrientation orientation, NSDictionary *info) {
                 // A newer request has started, so this one's picture is no longer wanted.
@@ -265,7 +271,7 @@ extern "C" int Afterglow_LibraryScan()
     g_Assets = [PHAsset fetchAssetsWithOptions:options];
     if (g_Thumbnails == nil)
         g_Thumbnails = [PHCachingImageManager new];
-    NSLog(@"[Photos] %lu photos and videos in the library", (unsigned long)g_Assets.count);
+    AGLog(@"[Photos] %lu photos and videos in the library", (unsigned long)g_Assets.count);
     return (int)g_Assets.count;
 }
 
@@ -427,7 +433,7 @@ namespace
             ReleaseEyes();
             return;
         }
-        NSLog(@"[Photos] Picture ready: %d x %d (limit %d)%@", g_Eyes[0].width, g_Eyes[0].height, limit,
+        AGLog(@"[Photos] Picture ready: %d x %d (limit %d)%@", g_Eyes[0].width, g_Eyes[0].height, limit,
               eyes == 2 ? @", a stereo pair" : @"");
         g_State = LoadStateReady;
     }
@@ -597,7 +603,7 @@ extern "C" int Afterglow_SpatialOpenPhoto(int index)
             ReleaseEyes();
             return;
         }
-        NSLog(@"[Photos] Spatial photo ready: %d x %d per eye, pair %zu/%zu",
+        AGLog(@"[Photos] Spatial photo ready: %d x %d per eye, pair %zu/%zu",
               g_Eyes[0].width, g_Eyes[0].height, left, right);
         g_State = LoadStateReady;
     });
@@ -605,6 +611,9 @@ extern "C" int Afterglow_SpatialOpenPhoto(int index)
 
 // 0 nothing asked for, 1 loading, 2 ready, 3 failed.
 extern "C" int Afterglow_SpatialPhotoState() { return g_State.load(); }
+
+// How far a download from iCloud has got, 0 to 1, while loading.
+extern "C" float Afterglow_SpatialPhotoProgress() { return g_Progress.load(); }
 
 extern "C" const char *Afterglow_SpatialPhotoError()
 {
@@ -633,56 +642,4 @@ extern "C" void Afterglow_SpatialClosePhoto()
     ReleaseEyes();
     g_Error = nil;
     g_State = LoadStateIdle;
-}
-
-// Asks for a library video's file, for Unity's player, which plays from a path. Returns the
-// request to poll with, or 0 if the item isn't a video.
-extern "C" int Afterglow_LibraryRequestVideoPath(int index)
-{
-    PHAsset *asset = AssetAt(index);
-    if (asset == nil || asset.mediaType != PHAssetMediaTypeVideo)
-        return 0;
-    const int request = g_VideoRequest.fetch_add(1) + 1;
-    {
-        std::lock_guard<std::mutex> lock(g_VideoLock);
-        g_VideoPaths[request] = { LoadStateLoading, nil };
-    }
-    PHVideoRequestOptions *options = [PHVideoRequestOptions new];
-    options.version = PHVideoRequestOptionsVersionCurrent;
-    options.deliveryMode = PHVideoRequestOptionsDeliveryModeHighQualityFormat;
-    options.networkAccessAllowed = YES;
-    [PHImageManager.defaultManager requestAVAssetForVideo:asset options:options
-        resultHandler:^(AVAsset *avAsset, AVAudioMix *audioMix, NSDictionary *info) {
-            NSString *path = nil;
-            if ([avAsset isKindOfClass:AVURLAsset.class])
-                path = ((AVURLAsset *)avAsset).URL.path;
-            std::lock_guard<std::mutex> lock(g_VideoLock);
-            auto found = g_VideoPaths.find(request);
-            if (found == g_VideoPaths.end())
-                return;
-            found->second = { path != nil ? LoadStateReady : LoadStateFailed, path };
-            if (path == nil)
-                NSLog(@"[Photos] The video has no file to play (a composition, or not downloaded)");
-        }];
-    return request;
-}
-
-// The video's path once it's known: 1 and the path copied into the buffer, 0 while loading, -1 if
-// there is none. Done with after the first 1 or -1.
-extern "C" int Afterglow_LibraryVideoPath(int request, char *path, int pathLength)
-{
-    std::lock_guard<std::mutex> lock(g_VideoLock);
-    auto found = g_VideoPaths.find(request);
-    if (found == g_VideoPaths.end() || found->second.first == LoadStateFailed)
-    {
-        if (found != g_VideoPaths.end())
-            g_VideoPaths.erase(found);
-        return -1;
-    }
-    if (found->second.first != LoadStateReady)
-        return 0;
-    if (path != nullptr && pathLength > 0)
-        strlcpy(path, found->second.second.UTF8String, (size_t)pathLength);
-    g_VideoPaths.erase(found);
-    return 1;
 }

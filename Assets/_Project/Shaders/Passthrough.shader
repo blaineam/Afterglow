@@ -33,6 +33,7 @@ Shader "Afterglow/Passthrough"
             Cull Off
             ZWrite Off
             ZTest Always
+            Blend SrcAlpha OneMinusSrcAlpha
 
             HLSLPROGRAM
             #pragma vertex Vert
@@ -85,9 +86,12 @@ Shader "Afterglow/Passthrough"
                 float2 uv = (inCamera.xy / inCamera.z - _CaptureFrustum.xy) / size + 0.5;
                 // Outside what the camera saw. The camera sees less than a Cardboard eye, so the
                 // picture is a window: dropping these pixels leaves the view's own background around
-                // it, which is the dark border the smaller quad used to leave.
-                clip(min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y)));
-                return half4(SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, uv).rgb, 1.0);
+                // it. The last few percent of the image fade out, so the rim is soft rather than a
+                // hard edge sweeping through the view as the head moves.
+                float edge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+                clip(edge);
+                half alpha = smoothstep(0.0, 0.04, edge);
+                return half4(SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, uv).rgb, alpha);
             }
             ENDHLSL
         }

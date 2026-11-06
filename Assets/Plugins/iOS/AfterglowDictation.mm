@@ -17,6 +17,9 @@
 #import <AVFoundation/AVFoundation.h>
 #import <Speech/Speech.h>
 
+// Logs to the system and to the session log through Unity (AfterglowNativeLog.mm).
+void AGLog(NSString *format, ...) NS_FORMAT_FUNCTION(1, 2);
+
 // Kept in step with Dictation.State in C#.
 enum DictationState
 {
@@ -61,7 +64,7 @@ static AfterglowDictation *g_Dictation = nil;
 
 - (void)fail:(NSString *)why asState:(int)state
 {
-    NSLog(@"[Speech] %@", why);
+    AGLog(@"[Speech] %@", why);
     self.state = state;
     [self teardown];
 }
@@ -168,7 +171,7 @@ static AfterglowDictation *g_Dictation = nil;
         if (result.isFinal || taskError != nil)
         {
             if (taskError != nil)
-                NSLog(@"[Speech] stopped: %@", taskError.localizedDescription);
+                AGLog(@"[Speech] stopped: %@", taskError.localizedDescription);
             me.finished = YES;
             me.state = DictationIdle;
             // Back to the main thread: the engine and the audio session are not safe to take
@@ -176,7 +179,7 @@ static AfterglowDictation *g_Dictation = nil;
             dispatch_async(dispatch_get_main_queue(), ^{ [me teardown]; });
         }
     }];
-    NSLog(@"[Speech] listening, on device, %@", recognizer.locale.localeIdentifier);
+    AGLog(@"[Speech] listening, on device, %@", recognizer.locale.localeIdentifier);
 }
 
 @end
@@ -213,7 +216,7 @@ extern "C" void Afterglow_DictationStart()
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (status != SFSpeechRecognizerAuthorizationStatusAuthorized)
                 {
-                    NSLog(@"[Speech] speech recognition not allowed");
+                    AGLog(@"[Speech] speech recognition not allowed");
                     g_Dictation.state = DictationDenied;
                     return;
                 }
@@ -224,7 +227,7 @@ extern "C" void Afterglow_DictationStart()
     }
     if (speech != SFSpeechRecognizerAuthorizationStatusAuthorized)
     {
-        NSLog(@"[Speech] speech recognition is off for this app; turn it on in Settings");
+        AGLog(@"[Speech] speech recognition is off for this app; turn it on in Settings");
         g_Dictation.state = DictationDenied;
         return;
     }
@@ -239,7 +242,7 @@ extern "C" void Afterglow_DictationStart()
                 dispatch_async(dispatch_get_main_queue(), ^{
                     if (!granted)
                     {
-                        NSLog(@"[Speech] the microphone is not allowed");
+                        AGLog(@"[Speech] the microphone is not allowed");
                         g_Dictation.state = DictationDenied;
                         return;
                     }
@@ -250,7 +253,7 @@ extern "C" void Afterglow_DictationStart()
         }
         if (mic != AVAudioApplicationRecordPermissionGranted)
         {
-            NSLog(@"[Speech] the microphone is off for this app; turn it on in Settings");
+            AGLog(@"[Speech] the microphone is off for this app; turn it on in Settings");
             g_Dictation.state = DictationDenied;
             return;
         }

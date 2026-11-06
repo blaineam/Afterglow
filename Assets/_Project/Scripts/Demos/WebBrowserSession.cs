@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
 using Afterglow.Hands;
 using Afterglow.Interaction;
 using Afterglow.Stereo;
@@ -60,6 +61,19 @@ namespace Afterglow.Demos
         string m_SpokenOnto;
         string m_UrlShown = "";
         float m_NextUrlPoll;
+        // Tabs, as a list of addresses with one web view: switching tabs loads the other's
+        // address, so a tab left behind reloads when it's returned to, and keeps nothing
+        // scrolled or typed. The chips show the pages' titles.
+        class Tab
+        {
+            public string Url;
+            public string Title;
+        }
+
+        readonly List<Tab> m_Tabs = new();
+        int m_Tab = -1;
+        RectTransform m_TabBar;
+        const int k_MaxTabs = 6;
         float m_NextHeardPoll;
 
         public bool IsOpen => WebBrowser.IsOpen;
@@ -165,11 +179,30 @@ namespace Afterglow.Demos
                 m_Material.mainTextureOffset = new Vector2(0f, 1f);
             }
             m_Renderer.sharedMaterial = m_Material;
+            // A screen tap clicks the page where the gaze is, as a pinch does (TryBeginPinch): the
+            // quad's collider is what the gaze pointer hits.
+            m_Window.AddComponent<GazeClick>().Clicked += ClickAtGaze;
             m_Width = k_Widths[m_WidthStep];
             ApplySize();
             BuildAddressBar();
+            BuildTabBar();
             BuildControls();
+            if (m_Tabs.Count == 0)
+                m_Tabs.Add(new Tab { Url = StartPage, Title = "Start" });
+            if (m_Tab < 0)
+                m_Tab = 0;
+            RebuildTabs();
             Place();
+        }
+
+        string StartPage => "file://" + Path.Combine(Application.streamingAssetsPath, m_HomePage);
+
+        void ClickAtGaze()
+        {
+            if (!WebBrowser.IsOpen || m_Immersive || !TryGazePoint(out var u, out var v))
+                return;
+            WebBrowser.ClickAt(u, v);
+            Debug.Log($"[WebXR] Tap at {u:F2}, {v:F2} on the page");
         }
 
         // The address, with the two ways into it beside it: the keys and the microphone. It is
@@ -179,23 +212,117 @@ namespace Afterglow.Demos
         {
             if (m_Address != null)
                 return;
-            const float width = 628f, height = 72f;
+            const float width = 800f, height = 72f;
             m_Address = M3.Canvas("Web Address", transform, new Vector2(width, height),
                 M3Theme.k_OverlayDistance, M3Theme.SurfaceContainerHigh, M3Theme.k_ShapeFull);
             m_Address.gameObject.AddComponent<GazeCanvas>();
+            // Back, forward and reload on the left, as a browser has them.
+            M3.IconButton("Back", m_Address, "chevron_left", M3Button.Variant.Text,
+                new Vector2(-width / 2f + 36f, 0f), WebBrowser.GoBack, 48f);
+            M3.IconButton("Forward", m_Address, "chevron_right", M3Button.Variant.Text,
+                new Vector2(-width / 2f + 84f, 0f), WebBrowser.GoForward, 48f);
+            M3.IconButton("Reload", m_Address, "refresh", M3Button.Variant.Text,
+                new Vector2(-width / 2f + 132f, 0f), WebBrowser.Reload, 48f);
             M3.IconButton("Keys", m_Address, "keyboard", M3Button.Variant.Tonal,
                 new Vector2(width / 2f - 44f, 0f), ToggleKeys);
             M3.IconButton("Dictate", m_Address, "mic", M3Button.Variant.Tonal,
                 new Vector2(width / 2f - 104f, 0f), OnDictate);
-            m_AddressText = M3.Text("Address", m_Address, "", M3Theme.Type.BodyLarge,
-                new Vector2(-66f, 0f), new Vector2(width - 160f, height - 16f),
+            // The field: a lighter pill with the address, which typing and dictation fill.
+            var fieldLeft = -width / 2f + 164f;
+            var fieldRight = width / 2f - 140f;
+            var field = M3.Surface("Field", m_Address, new Vector2((fieldLeft + fieldRight) / 2f, 0f),
+                new Vector2(fieldRight - fieldLeft, height - 20f), M3Theme.SurfaceContainerHighest, M3Theme.k_ShapeFull);
+            m_AddressText = M3.Text("Address", field.rectTransform, "", M3Theme.Type.BodyLarge,
+                new Vector2(8f, 0f), new Vector2(fieldRight - fieldLeft - 32f, height - 20f),
                 M3Theme.OnSurface, TextAlignmentOptions.Left);
         }
 
-        void GoHome()
+        // The tabs, above the address: a chip per tab with the page's title, the current one
+        // selected, then New and Close for tabs.
+        void BuildTabBar()
         {
-            Close();
-            Open();
+            if (m_TabBar != null)
+                return;
+            m_TabBar = M3.Canvas("Web Tabs", transform, new Vector2(800f, 56f),
+                M3Theme.k_OverlayDistance, M3Theme.SurfaceContainer, M3Theme.k_ShapeFull);
+            m_TabBar.gameObject.AddComponent<GazeCanvas>();
+        }
+
+        void RebuildTabs()
+        {
+            if (m_TabBar == null)
+                return;
+            for (var i = m_TabBar.childCount - 1; i >= 0; i--)
+                Destroy(m_TabBar.GetChild(i).gameObject);
+            const float width = 800f, chip = 108f, gap = 6f;
+            var x = -width / 2f + 16f + chip / 2f;
+            for (var i = 0; i < m_Tabs.Count; i++)
+            {
+                var index = i;
+                var button = M3.Button($"Tab {i}", m_TabBar, TabLabel(m_Tabs[i].Title, m_Tabs[i].Url), M3Button.Variant.Tonal,
+                    new Vector2(x, 0f), () => SelectTab(index), null, chip);
+                button.Selected = i == m_Tab;
+                x += chip + gap;
+            }
+            M3.IconButton("New Tab", m_TabBar, "add", M3Button.Variant.Text, new Vector2(width / 2f - 84f, 0f), NewTab, 44f)
+                .Interactable = m_Tabs.Count < k_MaxTabs;
+            M3.IconButton("Close Tab", m_TabBar, "close", M3Button.Variant.Text, new Vector2(width / 2f - 36f, 0f), CloseTab, 44f);
+        }
+
+        // What a tab's chip says: the page's title, else its host, cut to fit the chip.
+        public static string TabLabel(string title, string url, int limit = 12)
+        {
+            var text = !string.IsNullOrWhiteSpace(title) ? title.Trim() : ShortenUrl(url, 24);
+            if (string.IsNullOrEmpty(text))
+                text = "New tab";
+            var slash = text.IndexOf('/');
+            if (string.IsNullOrWhiteSpace(title) && slash > 0)
+                text = text.Substring(0, slash);
+            return text.Length <= limit ? text : text.Substring(0, limit - 1) + "…";
+        }
+
+        void NewTab()
+        {
+            if (m_Tabs.Count >= k_MaxTabs)
+                return;
+            m_Tabs.Add(new Tab { Url = StartPage, Title = "Start" });
+            SelectTab(m_Tabs.Count - 1);
+            Debug.Log($"[WebXR] New tab, {m_Tabs.Count} open");
+        }
+
+        void SelectTab(int index)
+        {
+            if (index < 0 || index >= m_Tabs.Count)
+                return;
+            if (index != m_Tab)
+            {
+                m_Tab = index;
+                m_Typed = null;
+                WebBrowser.LoadUrl(m_Tabs[index].Url);
+                Debug.Log($"[WebXR] Tab {index + 1}: {ShortenUrl(m_Tabs[index].Url)}");
+            }
+            RebuildTabs();
+        }
+
+        void CloseTab()
+        {
+            if (m_Tabs.Count <= 1)
+            {
+                Close();
+                return;
+            }
+            m_Tabs.RemoveAt(m_Tab);
+            var next = Mathf.Clamp(m_Tab, 0, m_Tabs.Count - 1);
+            m_Tab = -1;
+            SelectTab(next);
+            Debug.Log($"[WebXR] Tab closed, {m_Tabs.Count} open");
+        }
+
+        // The start page, in this tab.
+        void GoStart()
+        {
+            m_Typed = null;
+            WebBrowser.LoadUrl(StartPage);
         }
 
         void TearDownWindow()
@@ -207,6 +334,9 @@ namespace Afterglow.Demos
                 Destroy(m_Address.gameObject);
             m_Address = null;
             m_AddressText = null;
+            if (m_TabBar != null)
+                Destroy(m_TabBar.gameObject);
+            m_TabBar = null;
             if (m_Window != null)
                 Destroy(m_Window);
             if (m_Material != null)
@@ -234,15 +364,24 @@ namespace Afterglow.Demos
             // Stacked under the window, facing the same way, far enough down to clear the page's
             // bottom edge at whatever size it is now: the address, then the toolbar, then the keys.
             var pageHeight = m_Width * WebBrowser.WindowHeight / WebBrowser.WindowWidth;
-            var below = m_Window.transform.position - m_Window.transform.up * (pageHeight / 2f);
+            var up = m_Window.transform.up;
+            var above = m_Window.transform.position + up * (pageHeight / 2f);
+            var below = m_Window.transform.position - up * (pageHeight / 2f);
+            // The chrome a browser has at the top: the tabs over the address over the page; what
+            // the window itself does, below it.
             if (m_Address != null)
             {
-                m_Address.position = below - m_Window.transform.up * 0.07f;
+                m_Address.position = above + up * 0.07f;
                 m_Address.rotation = m_Window.transform.rotation;
+            }
+            if (m_TabBar != null)
+            {
+                m_TabBar.position = above + up * 0.17f;
+                m_TabBar.rotation = m_Window.transform.rotation;
             }
             if (m_Bar != null)
             {
-                m_Bar.position = below - m_Window.transform.up * 0.20f;
+                m_Bar.position = below - up * 0.09f;
                 m_Bar.rotation = m_Window.transform.rotation;
             }
             PlaceKeyboard();
@@ -288,6 +427,10 @@ namespace Afterglow.Demos
                         m_Window.SetActive(false);
                     if (m_Bar != null)
                         m_Bar.gameObject.SetActive(false);
+                    if (m_Address != null)
+                        m_Address.gameObject.SetActive(false);
+                    if (m_TabBar != null)
+                        m_TabBar.gameObject.SetActive(false);
                     Debug.Log("[WebXR] Immersive session: the page has the screen");
                     break;
                 case WebBrowser.Event.SessionEnd:
@@ -297,6 +440,10 @@ namespace Afterglow.Demos
                         m_Window.SetActive(true);
                     if (m_Bar != null)
                         m_Bar.gameObject.SetActive(true);
+                    if (m_Address != null)
+                        m_Address.gameObject.SetActive(true);
+                    if (m_TabBar != null)
+                        m_TabBar.gameObject.SetActive(true);
                     Place();
                     Debug.Log("[WebXR] Session ended: back to a window in the scene");
                     break;
@@ -480,6 +627,17 @@ namespace Afterglow.Demos
                 // Twice a second: it crosses into Objective-C and the address rarely changes.
                 m_NextUrlPoll = Time.unscaledTime + 0.5f;
                 m_UrlShown = WebBrowser.CurrentUrl;
+                if (m_Tab >= 0 && m_Tab < m_Tabs.Count && !string.IsNullOrEmpty(m_UrlShown))
+                {
+                    var tab = m_Tabs[m_Tab];
+                    var title = WebBrowser.CurrentTitle;
+                    if (tab.Url != m_UrlShown || tab.Title != title)
+                    {
+                        tab.Url = m_UrlShown;
+                        tab.Title = title;
+                        RebuildTabs();
+                    }
+                }
             }
             m_AddressText.text = m_Heard != null ? m_Heard + " ..."
                                : m_Typed != null ? m_Typed + "|"
@@ -612,10 +770,7 @@ namespace Afterglow.Demos
             const float width = 92f, padding = 12f;
             var labels = new (string icon, string label, UnityEngine.Events.UnityAction action)[]
             {
-                ("chevron_left", "Back", WebBrowser.GoBack),
-                ("chevron_right", "Forward", WebBrowser.GoForward),
-                ("home", "Home", GoHome),
-                ("refresh", "Reload", WebBrowser.Reload),
+                ("home", "Start page", GoStart),
                 ("aspect_ratio", "Size", CycleSize),
                 ("open_with", "Place", Place),
                 ("close", "Close", Close),
@@ -631,8 +786,8 @@ namespace Afterglow.Demos
             {
                 var (icon, label, action) = labels[i];
                 items[i] = (RectTransform)M3.ToolbarItem(label, m_Bar, icon, label, Vector2.zero, width, action).transform;
-                // Where you go on the left, what the window does on the right.
-                groups[i] = i < 4 ? 0 : 1;
+                // The start page apart from what the window does.
+                groups[i] = i < 1 ? 0 : 1;
             }
             m_Bar.gameObject.AddComponent<M3Toolbar>()
                 .Initialize(items, groups, new Image[2], new RectTransform[0], width, padding, 0f);

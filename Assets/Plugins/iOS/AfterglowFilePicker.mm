@@ -16,6 +16,9 @@
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include <atomic>
 
+// Logs to the system and to the session log through Unity (AfterglowNativeLog.mm).
+void AGLog(NSString *format, ...) NS_FORMAT_FUNCTION(1, 2);
+
 extern "C" UIViewController *UnityGetGLViewController();
 
 @interface AfterglowFilePickerDelegate : NSObject <UIDocumentPickerDelegate>
@@ -71,10 +74,10 @@ namespace
             [url stopAccessingSecurityScopedResource];
         if (!ok)
         {
-            NSLog(@"[Files] Couldn't import %@: %@", url.lastPathComponent, error.localizedDescription);
+            AGLog(@"[Files] Couldn't import %@: %@", url.lastPathComponent, error.localizedDescription);
             continue;
         }
-        NSLog(@"[Files] Imported %@", destination.lastPathComponent);
+        AGLog(@"[Files] Imported %@", destination.lastPathComponent);
         [g_Lock lock];
         [g_Imported addObject:destination];
         [g_Lock unlock];
@@ -85,7 +88,7 @@ namespace
 {
     g_Open = false;
     g_Cancelled.fetch_add(1);
-    NSLog(@"[Files] Picker cancelled");
+    AGLog(@"[Files] Picker cancelled");
 }
 
 @end
@@ -114,7 +117,7 @@ extern "C" int Afterglow_FilePickerPresent(const char *folder)
         picker.delegate = g_Delegate;
         [root presentViewController:picker animated:YES completion:nil];
     });
-    NSLog(@"[Files] Picker opened");
+    AGLog(@"[Files] Picker opened");
     return 1;
 }
 

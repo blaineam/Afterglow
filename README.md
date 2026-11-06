@@ -169,16 +169,19 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
 - **The home screen** is what the app opens on, above the settings panel: *Media*, *Web*, *Files*,
   *Play* and *Settings*. Look at one to see what it is, and pinch or tap to open it, from anywhere,
   so you can go straight from one app to another; a dot marks the one running, and *Leave* in the
-  header goes back to Home. *Play* turns the page to the games (Cube Sandbox, Air Paint, Orb Rush,
+  header goes back to Home. Picking an app closes the browser if it was open, so one experience is
+  up at a time; *Web* opens the browser over whatever is up. *Play* turns the page to the games (Cube Sandbox, Air Paint, Orb Rush,
   Portal) and *The Room*, a checkerboard room with colored markers for looking around and checking
   the lenses. *Home* on the settings panel shows and hides the screen. The app starts in 6DoF
   passthrough with the screen open in front of you; nothing waits on a room scan. Each app switches
-  on what it needs (6DoF, passthrough, hands) and leaving puts back what you had.
+  on what it needs (6DoF, passthrough, hands) and leaving puts back what you had. From anywhere, a
+  round *Home* button floats low in the view: look down at it and tap or pinch to get the home
+  screen back, with no hand in the camera's view and no phone in hand needed.
 - **The settings screen**, from the panel's *Settings* button or the home screen's *Settings* tile,
   stands where the home screen does and has the knobs that used to need a launch from the Mac: frame
   rate, render scale, anti-aliasing, the focus wheel's offset, screen brightness, UI size, hand
-  tracking rate, whether to start in 3DoF or 6DoF, whether apps scan the room, and the boundary
-  warning. Look at the minus or plus beside a value and pinch or tap. Most apply at once; UI size
+  tracking rate, whether to start in 3DoF or 6DoF, whether apps scan the room, the boundary
+  warning, and whether passthrough fills the view or shows the camera at true size. Look at the minus or plus beside a value and pinch or tap. Most apply at once; UI size
   and the start mode wait for the next launch, and the note at the bottom says so. *Defaults* puts
   everything back.
 - **Input is gaze and pinch everywhere**: look at something and pinch in front of the camera to
@@ -196,8 +199,8 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   on a cylinder as wide as it was swept (about 240° for a 4:1 one), a **2:1 still** all the way
   round, a plain photo or film on the screen, and a 360 or VR180 video on the sphere. The kind is
   read from the library and the picture's shape; the controls' *Format* button changes it when
-  that guess is wrong. Pinch on the picture for the controls. Allow Photos the first time Media
-  opens. **Files** is the same browser listing only the photos and videos you brought in yourself,
+  that guess is wrong. Pinch on the picture for the controls; they appear as something opens, too,
+  with how far a download from iCloud has got. Allow Photos the first time Media opens. **Files** is the same browser listing only the photos and videos you brought in yourself,
   and never asks about Photos: the browser's *Import* button (iPhone) opens the Files picker, with
   the phone out of the viewer, and copies what you pick into the app's `Media` folder, which
   Finder's Files tab for the phone and the Files app can also drop things into (Afterglow > Media;

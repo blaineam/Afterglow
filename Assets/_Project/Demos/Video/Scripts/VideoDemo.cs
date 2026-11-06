@@ -68,7 +68,6 @@ namespace Afterglow.Demos.Video
         int m_Current = -1;
         int m_Wanted = -1;
         Coroutine m_Download;
-        Coroutine m_VideoPath;
         int m_Dropped;
         float m_NextStatus;
         // The opened picture's eyes (the right one only for a spatial photo).
@@ -161,8 +160,6 @@ namespace Afterglow.Demos.Video
         {
             if (m_Download != null)
                 StopCoroutine(m_Download);
-            if (m_VideoPath != null)
-                StopCoroutine(m_VideoPath);
             if (m_FileImage != null)
                 StopCoroutine(m_FileImage);
             m_Player.prepareCompleted -= OnPrepared;
@@ -288,6 +285,13 @@ namespace Afterglow.Demos.Video
             if (index < 0 || index >= m_Library.Count)
                 return;
             var entry = m_Library[index];
+            // Picked again while it loads: a big asset in iCloud takes a while, and starting over
+            // on every tap meant it never arrived.
+            if (index == m_Current && Loading)
+            {
+                Debug.Log($"[Video] {entry.Title} is still loading{(Progress > 0f ? $" ({Progress:P0})" : "")}");
+                return;
+            }
             m_Wanted = index;
             if (entry.NeedsDownload)
             {
@@ -305,16 +309,19 @@ namespace Afterglow.Demos.Video
                     OpenPicture(entry, index);
                     return;
                 case MediaKind.SpatialVideo:
-                    PlaySpatialVideo(entry, index);
-                    return;
-                case MediaKind.LibraryVideo when entry.Url == null:
-                    if (m_VideoPath != null)
-                        StopCoroutine(m_VideoPath);
-                    m_VideoPath = StartCoroutine(FetchThenPlay(entry, index));
+                case MediaKind.LibraryVideo:
+                    PlayLibraryVideo(entry, index);
                     return;
             }
             PlayFile(entry, index);
         }
+
+        // Whether the item picked is still on its way: decoding, downloading or preparing.
+        bool Loading => m_WaitingForPicture || (m_SpatialVideoOpen && !m_SpatialVideoShown) || m_FileImage != null ||
+                        (Current != null && Current.Status == "Loading" && !m_Player.isPrepared);
+
+        // How far a download from iCloud has got, 0 to 1, for what's loading.
+        float Progress => m_WaitingForPicture ? PhotoLibrary.Progress : m_SpatialVideoOpen ? SpatialVideo.Progress : 0f;
 
         // Stops whatever was showing, so nothing is drawn from buffers about to go.
         void StopShowing()
@@ -335,6 +342,7 @@ namespace Afterglow.Demos.Video
             m_Title.text = entry.Title;
             entry.Status = "Loading";
             Debug.Log($"[Video] Opening {entry.Title} ({entry.Format})");
+            ShowControls();
         }
 
         // A picture is decoded by the plugin off the main thread, and Update picks it up when it's
@@ -391,6 +399,7 @@ namespace Afterglow.Demos.Video
             entry.Status = "Loading";
             m_WaitingForPicture = true;
             Debug.Log($"[Video] Opening {entry.Title} ({entry.Width}x{entry.Height})");
+            ShowControls();
         }
 
         // Polled while a picture loads.
@@ -541,11 +550,12 @@ namespace Afterglow.Demos.Video
             VideoLibrary.PanoramaDegrees(m_PictureLeft != null ? m_PictureLeft.width : entry.Width,
                 m_PictureLeft != null ? m_PictureLeft.height : entry.Height);
 
-        // A spatial video doesn't go through VideoPlayer, and for a different reason than a photo:
-        // it would decode one of the file's two layers and play the result flat. The plugin
-        // decodes both and keeps the clock and the audio, so the controls ask it rather than
-        // VideoPlayer (see OnSpatialVideo), and Update picks up each frame's two pictures.
-        void PlaySpatialVideo(VideoEntry entry, int index)
+        // A library video doesn't go through VideoPlayer: Unity's player can't open a file in
+        // the Photos library, and a spatial one it would decode flat, one of the file's two layers.
+        // The plugin plays it with AVFoundation, both views when there are two, and keeps the clock
+        // and the audio, so the controls ask it rather than VideoPlayer (see OnPluginVideo), and
+        // Update picks up each frame's picture or pictures. iOS 18 and later.
+        void PlayLibraryVideo(VideoEntry entry, int index)
         {
             StopShowing();
             m_Current = index;
@@ -554,14 +564,22 @@ namespace Afterglow.Demos.Video
             if (PhotoLibrary.Authorize() != PhotoLibrary.Access.Granted)
             {
                 entry.Status = "Allow Photos to show this";
-                Debug.Log("[Video] The Photos library isn't allowed yet, so the spatial video stays shut");
+                Debug.Log("[Video] The Photos library isn't allowed yet, so the video stays shut");
+                return;
+            }
+            if (!SpatialVideo.Supported)
+            {
+                entry.Status = "Library videos need iOS 18";
+                Debug.LogWarning($"[Video] Couldn't open {entry.Title}: {entry.Status}");
+                m_Current = -1;
+                ShowLibrary();
                 return;
             }
             if (!SpatialVideo.Open(entry.LibraryIndex))
             {
                 var why = SpatialVideo.Error;
                 m_Current = -1;
-                entry.Status = string.IsNullOrEmpty(why) ? "Couldn't open that spatial video" : why;
+                entry.Status = string.IsNullOrEmpty(why) ? "Couldn't open that video" : why;
                 Debug.LogWarning($"[Video] Couldn't open {entry.Title}: {entry.Status}");
                 ShowLibrary();
                 return;
@@ -569,6 +587,7 @@ namespace Afterglow.Demos.Video
             entry.Status = "Loading";
             m_SpatialVideoOpen = true;
             Debug.Log($"[Video] Opening {entry.Title} ({entry.Format})");
+            ShowControls();
         }
 
         // Polled while a spatial video is open. The library fetch runs off the main thread, and
@@ -583,15 +602,21 @@ namespace Afterglow.Demos.Video
                 case SpatialVideo.State.Ready:
                     if (!SpatialVideo.Advance(out var changed) || !changed)
                         return;
-                    m_Sphere.Show(SpatialVideo.Left, VideoFormat.Stereo3D, SpatialVideo.Right);
+                    var entry = Current;
+                    // Two views are a spatial video on the screen, one view is drawn the way the
+                    // entry's format says (flat, or 360 for a 2:1 one).
+                    if (SpatialVideo.Stereo)
+                        m_Sphere.Show(SpatialVideo.Left, VideoFormat.Stereo3D, SpatialVideo.Right);
+                    else
+                        m_Sphere.Show(SpatialVideo.Left, entry != null ? entry.Format : new VideoFormat(Projection.Flat, StereoLayout.Mono));
                     if (m_SpatialVideoShown)
                         return;
                     m_SpatialVideoShown = true;
-                    if (Current != null)
-                        Current.Status =
-                            SpatialVideo.Stereo ? null : "One eye only: that file holds a single view";
-                    Debug.Log($"[Video] Spatial video playing: {SpatialVideo.Left.width}x{SpatialVideo.Left.height} per eye, " +
-                              $"{(SpatialVideo.Stereo ? "both eyes" : "one eye shown to both")}, {Clock(PlaybackLength)}");
+                    if (entry != null)
+                        entry.Status = SpatialVideo.Stereo || entry.Kind != MediaKind.SpatialVideo
+                            ? null : "One eye only: that file holds a single view";
+                    Debug.Log($"[Video] Library video playing: {SpatialVideo.Left.width}x{SpatialVideo.Left.height}" +
+                              $"{(SpatialVideo.Stereo ? " per eye, both eyes" : ", one view")}, {Clock(PlaybackLength)}");
                     HidePanel();
                     return;
                 default:
@@ -628,39 +653,10 @@ namespace Afterglow.Demos.Video
             m_PictureLeft = m_PictureRight = null;
         }
 
-        // A library video's file is fetched by Photos, which may have to download it.
-        IEnumerator FetchThenPlay(VideoEntry entry, int index)
-        {
-            m_Current = index;
-            m_Title.text = entry.Title;
-            entry.Status = "Fetching";
-            var request = PhotoLibrary.RequestVideoPath(entry.LibraryIndex);
-            var state = request == 0 ? PhotoLibrary.State.Failed : PhotoLibrary.State.Loading;
-            while (state == PhotoLibrary.State.Loading)
-            {
-                yield return null;
-                state = PhotoLibrary.TryGetVideoPath(request, out var path);
-                if (state == PhotoLibrary.State.Ready)
-                    entry.Url = path;
-            }
-            m_VideoPath = null;
-            if (m_Wanted != index)
-                yield break;
-            if (entry.Url == null)
-            {
-                entry.Status = "That video isn't on the phone";
-                Debug.LogWarning($"[Video] No file for {entry.Title}");
-                m_Current = -1;
-                ShowLibrary();
-                yield break;
-            }
-            PlayFile(entry, index);
-        }
-
         // Whatever is playing, asked through one set of questions rather than a branch at every
         // button. A file goes through Unity's VideoPlayer and a spatial video through the plugin;
         // a picture has no clock at all, and VideoPlayer, stopped, answers for it as a still.
-        bool OnSpatialVideo => Current is { IsSpatialVideo: true };
+        bool OnSpatialVideo => Current is { IsSpatialVideo: true } or { Kind: MediaKind.LibraryVideo };
 
         bool PlaybackReady => OnSpatialVideo
             ? SpatialVideo.PlayState == SpatialVideo.State.Ready && m_SpatialVideoShown
@@ -867,7 +863,7 @@ namespace Afterglow.Demos.Video
         // and shape.
         static string Describe(VideoEntry entry)
         {
-            if (entry.Status != null)
+            if (entry.Status != null && entry.Status != "Loading")
                 return entry.Status;
             return entry.Kind switch
             {
@@ -890,8 +886,11 @@ namespace Afterglow.Demos.Video
                 m_FormatLine.text = Describe(entry);
             }
             m_Play.Icon = ready && PlaybackPlaying ? "pause" : "play_arrow";
-            m_Time.text = ready ? $"{Clock(PlaybackTime)} / {Clock(PlaybackLength)}" : "";
-            m_Seek.Value = ready && PlaybackLength > 0 ? (float)(PlaybackTime / PlaybackLength) : 0f;
+            var progress = Progress;
+            m_Time.text = ready ? $"{Clock(PlaybackTime)} / {Clock(PlaybackLength)}"
+                : Loading ? (progress > 0f ? $"Downloading from iCloud, {progress:P0}" : "Loading…") : "";
+            // The seek bar stands in for a progress bar until there is something to seek.
+            m_Seek.Value = ready && PlaybackLength > 0 ? (float)(PlaybackTime / PlaybackLength) : Loading ? progress : 0f;
         }
 
         // The icon on a tile, for what the thumbnail doesn't show.

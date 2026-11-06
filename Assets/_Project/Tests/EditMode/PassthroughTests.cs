@@ -37,6 +37,50 @@ namespace Afterglow.Stereo.Tests
             Assert.AreEqual(4, corners.Count, "each screen corner lands on a different image corner");
         }
 
+        [Test]
+        public void WholeImageTransform_MapsTheScreenOntoTheWholeImage()
+        {
+            // The way the iPhone showed it: screen u along the image's width, screen v down it.
+            var whole = PassthroughController.WholeImageTransform();
+            AssertClose(new Vector2(0f, 1f), Apply(whole, new Vector2(0f, 0f)));
+            AssertClose(new Vector2(1f, 0f), Apply(whole, new Vector2(1f, 1f)));
+            AssertClose(new Vector2(0.5f, 0.5f), Apply(whole, new Vector2(0.5f, 0.5f)));
+            var flipped = PassthroughController.WholeImageTransform(flipped: true);
+            AssertClose(new Vector2(1f, 0f), Apply(flipped, new Vector2(0f, 0f)));
+            AssertClose(new Vector2(0f, 1f), Apply(flipped, new Vector2(1f, 1f)));
+        }
+
+        [Test]
+        public void WholeImageFrustum_HasTheImagesShapeAndTheProjectionsWidth()
+        {
+            // The iPhone 18 Pro Max's projection (2026-11-05): 73 degrees across for the screen's
+            // full width, which is the image's full width; the image is 1920x1440.
+            var projection = Matrix4x4.identity;
+            projection.m00 = 1.3614f;
+            projection.m11 = 2.9579f;
+            projection.m02 = 0.0057f;
+            projection.m12 = 0.0061f;
+            var (size, center) = PassthroughController.WholeImageFrustum(projection, 1920f / 1440f);
+            Assert.AreEqual(73f, 2f * Mathf.Atan(size.x / 2f) * Mathf.Rad2Deg, 0.5f);
+            Assert.AreEqual(57.7f, 2f * Mathf.Atan(size.y / 2f) * Mathf.Rad2Deg, 0.5f, "the image's own shape, not the screen's 88");
+            Assert.AreEqual(size.x / size.y, 4f / 3f, 1e-3f);
+            Assert.AreEqual(0.0057f / 1.3614f, center.x, 1e-5f);
+            Assert.AreEqual(0.0061f / 2.9579f, center.y, 1e-5f);
+        }
+
+        [Test]
+        public void FillZoom_MagnifiesToTheViewAndNoMore()
+        {
+            var image = new Vector2(1.469f, 1.102f);
+            Assert.AreEqual(1f, PassthroughController.FillZoom(image, new Vector2(0.5f, 0.5f)), "a view smaller than the image stays at true scale");
+            // A 100 degree view (tan 50 = 1.19) over a 73 x 58 image: the taller axis decides,
+            // and the cap holds it to twice life size.
+            Assert.AreEqual(1.19f / 0.551f, PassthroughController.FillZoom(image, new Vector2(1.19f, 1.19f), 3f), 0.01f);
+            Assert.AreEqual(2f, PassthroughController.FillZoom(image, new Vector2(1.19f, 1.19f)), 1e-6f, "capped");
+            Assert.AreEqual(1.2f, PassthroughController.FillZoom(image, new Vector2(0.88f, 0.4f)), 0.01f, "the wider axis decides here");
+            Assert.AreEqual(1f, PassthroughController.FillZoom(Vector2.zero, Vector2.one), "no image yet");
+        }
+
         // The ARCore shader's convention: tex = u * (m00, m01) + v * (m10, m11) + (m20, m21).
         static Matrix4x4 Transform(Vector2 perU, Vector2 perV, Vector2 offset)
         {

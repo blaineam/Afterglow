@@ -64,6 +64,14 @@ namespace Afterglow.Demos.Video
             State.Idle;
 #endif
 
+        // How far an iCloud download has got, 0 to 1, while loading.
+        public static float Progress =>
+#if UNITY_IOS && !UNITY_EDITOR
+            Afterglow_SpatialVideoProgress();
+#else
+            0f;
+#endif
+
         public static string Error =>
 #if UNITY_IOS && !UNITY_EDITOR
             Marshal.PtrToStringUTF8(Afterglow_SpatialVideoError()) ?? "";
@@ -216,6 +224,7 @@ namespace Afterglow.Demos.Video
         [DllImport("__Internal")] static extern int Afterglow_SpatialOpenVideo(int index);
         [DllImport("__Internal")] static extern int Afterglow_SpatialVideoState();
         [DllImport("__Internal")] static extern IntPtr Afterglow_SpatialVideoError();
+        [DllImport("__Internal")] static extern float Afterglow_SpatialVideoProgress();
         [DllImport("__Internal")] static extern int Afterglow_SpatialVideoFrame(out IntPtr left, out IntPtr right, out int width, out int height, out int stereo);
         [DllImport("__Internal")] static extern void Afterglow_SpatialVideoSetPlaying(int playing);
         [DllImport("__Internal")] static extern int Afterglow_SpatialVideoPlaying();

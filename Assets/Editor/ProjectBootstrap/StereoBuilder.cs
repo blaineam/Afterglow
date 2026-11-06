@@ -247,6 +247,8 @@ namespace ProjectBootstrap
             head.AddComponent<DeskHeadLook>();
             head.AddComponent<FrameTimingLog>();
             head.AddComponent<PerformanceLog>();
+            // What the iOS plugins log, into the session log.
+            head.AddComponent<NativeLog>();
             var (poseSource, origin, arCamera, arViewOnly) = BuildViewerSetup(rig);
             var fusion = head.AddComponent<HeadPoseFusion>();
             var passthrough = origin.AddComponent<PassthroughController>();
@@ -390,6 +392,13 @@ namespace ProjectBootstrap
             serializedDemos.FindProperty("m_Catalog").objectReferenceValue = catalog;
             serializedDemos.FindProperty("m_Core").objectReferenceValue = core;
             serializedDemos.ApplyModifiedPropertiesWithoutUndo();
+
+            // The way home from anywhere: a Home button floating low in the view.
+            var anchor = demosObject.AddComponent<HomeAnchor>();
+            var serializedAnchor = new SerializedObject(anchor);
+            serializedAnchor.FindProperty("m_Fusion").objectReferenceValue = fusion;
+            serializedAnchor.FindProperty("m_Home").objectReferenceValue = demosObject.GetComponent<HomeScreen>();
+            serializedAnchor.ApplyModifiedPropertiesWithoutUndo();
 
             // The room scan's panel, over an app that scans the room as it opens.
             var prompt = demosObject.AddComponent<RoomScanPrompt>();

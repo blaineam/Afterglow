@@ -266,6 +266,7 @@ namespace Afterglow.Demos
                     Debug.Log($"[Home] Picked {section}");
                     if (m_Settings != null)
                         m_Settings.Close();
+                    CloseBrowser();
                     var player = MediaEntry();
                     if (player == null)
                     {
@@ -283,6 +284,7 @@ namespace Afterglow.Demos
                 return;
             if (m_Settings != null)
                 m_Settings.Close();
+            CloseBrowser();
             if (entry == m_Demos.Current)
             {
                 Debug.Log($"[Home] Picked {entry.Title}: already running");
@@ -290,6 +292,17 @@ namespace Afterglow.Demos
             }
             Debug.Log($"[Home] Picked {entry.Title}");
             m_Demos.Enter(entry);
+        }
+
+        // The browser floats in Core, over whatever scene is up, so picking an app from here would
+        // otherwise leave its window hanging in the new one: one experience at a time.
+        void CloseBrowser()
+        {
+            if (m_Browser != null && m_Browser.IsOpen)
+            {
+                Debug.Log("[Home] Closing the browser for the pick");
+                m_Browser.Close();
+            }
         }
 
         // Leave, in the header: out of the running app and back to the Home scene, where the screen

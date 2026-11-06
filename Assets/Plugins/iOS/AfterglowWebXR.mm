@@ -18,6 +18,9 @@
 #import <UIKit/UIKit.h>
 #import <WebKit/WebKit.h>
 
+// Logs to the system and to the session log through Unity (AfterglowNativeLog.mm).
+void AGLog(NSString *format, ...) NS_FORMAT_FUNCTION(1, 2);
+
 extern "C" UIViewController *UnityGetGLViewController();
 
 // What the page has told us, picked up by C# on its own thread.
@@ -390,7 +393,7 @@ static AfterglowWebHost *g_Host = nil;
     else if ([event isEqualToString:@"click"])
     {
         NSDictionary *body = message.body;
-        NSLog(@"[WebXR] clicked %@: %@ (%@)", body[@"hit"] ?: @"?",
+        AGLog(@"[WebXR] clicked %@: %@ (%@)", body[@"hit"] ?: @"?",
               [body[@"moved"] boolValue] ? @"went somewhere" : @"stayed put",
               body[@"note"] ?: @"");
         return;
@@ -400,7 +403,7 @@ static AfterglowWebHost *g_Host = nil;
         NSDictionary *body = message.body;
         int has = [body[@"has"] intValue];
         if (has != self.focusHas)
-            NSLog(@"[WebXR] %@", has ? [NSString stringWithFormat:@"typing goes to the page's %@",
+            AGLog(@"[WebXR] %@", has ? [NSString stringWithFormat:@"typing goes to the page's %@",
                                         body[@"kind"] ?: @"field"]
                                     : @"no field focused; typing goes to the address bar");
         self.focusHas = has;
@@ -410,30 +413,30 @@ static AfterglowWebHost *g_Host = nil;
     {
         NSDictionary *body = message.body;
         if (![body[@"ok"] boolValue] || body[@"note"] != nil)
-            NSLog(@"[WebXR] %@ %@: %@", event, body[@"which"] ?: @"", body[@"note"] ?: @"refused");
+            AGLog(@"[WebXR] %@ %@: %@", event, body[@"which"] ?: @"", body[@"note"] ?: @"refused");
         return;
     }
-    NSLog(@"[WebXR] page said %@", event ?: @"?");
+    AGLog(@"[WebXR] page said %@", event ?: @"?");
 }
 
 - (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(WKNavigation *)nav withError:(NSError *)error
 {
-    NSLog(@"[WebXR] couldn't start loading: %@", error.localizedDescription);
+    AGLog(@"[WebXR] couldn't start loading: %@", error.localizedDescription);
 }
 
 - (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)nav withError:(NSError *)error
 {
-    NSLog(@"[WebXR] load failed partway: %@", error.localizedDescription);
+    AGLog(@"[WebXR] load failed partway: %@", error.localizedDescription);
 }
 
 - (void)webView:(WKWebView *)webView didStartProvisionalNavigation:(WKNavigation *)nav
 {
-    NSLog(@"[WebXR] loading %@", webView.URL.absoluteString);
+    AGLog(@"[WebXR] loading %@", webView.URL.absoluteString);
 }
 
 - (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)nav
 {
-    NSLog(@"[WebXR] loaded %@ (back %@, forward %@)", webView.URL.absoluteString,
+    AGLog(@"[WebXR] loaded %@ (back %@, forward %@)", webView.URL.absoluteString,
           webView.canGoBack ? @"yes" : @"no", webView.canGoForward ? @"yes" : @"no");
 }
 
@@ -446,7 +449,7 @@ static AfterglowWebHost *g_Host = nil;
 {
     if (action.targetFrame == nil || !action.targetFrame.isMainFrame)
     {
-        NSLog(@"[WebXR] a link wanted a new window; following it here: %@",
+        AGLog(@"[WebXR] a link wanted a new window; following it here: %@",
               action.request.URL.absoluteString);
         [webView loadRequest:action.request];
     }
@@ -458,14 +461,14 @@ static AfterglowWebHost *g_Host = nil;
 - (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message
     initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(void))completionHandler
 {
-    NSLog(@"[WebXR] page alert, dismissed: %@", message);
+    AGLog(@"[WebXR] page alert, dismissed: %@", message);
     completionHandler();
 }
 
 - (void)webView:(WKWebView *)webView runJavaScriptConfirmPanelWithMessage:(NSString *)message
     initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(BOOL))completionHandler
 {
-    NSLog(@"[WebXR] page confirm, accepted: %@", message);
+    AGLog(@"[WebXR] page confirm, accepted: %@", message);
     completionHandler(YES);
 }
 
@@ -475,7 +478,7 @@ static AfterglowWebHost *g_Host = nil;
                          initiatedByFrame:(WKFrameInfo *)frame
                         completionHandler:(void (^)(NSString *))completionHandler
 {
-    NSLog(@"[WebXR] page prompt, cancelled: %@", prompt);
+    AGLog(@"[WebXR] page prompt, cancelled: %@", prompt);
     completionHandler(nil);
 }
 
@@ -522,7 +525,7 @@ static AfterglowWebHost *g_Host = nil;
         size_t looked = 0;
         for (size_t i = 0; i < w * h; i += step, looked++)
             if (px[i * 4] || px[i * 4 + 1] || px[i * 4 + 2]) lit++;
-        NSLog(@"[WebXR] Snapshot %zux%zu: %lu of %zu sampled pixels have colour", w, h, lit, looked);
+        AGLog(@"[WebXR] Snapshot %zux%zu: %lu of %zu sampled pixels have colour", w, h, lit, looked);
     }
 }
 
@@ -541,14 +544,14 @@ extern "C" int Afterglow_WebOpen(const char *url, const char *configJson, const 
     UIViewController *root = UnityGetGLViewController();
     if (root == nil)
     {
-        NSLog(@"[WebXR] no view controller to attach to");
+        AGLog(@"[WebXR] no view controller to attach to");
         return 0;
     }
 
     NSURL *target = [NSURL URLWithString:[NSString stringWithUTF8String:url]];
     if (target == nil)
     {
-        NSLog(@"[WebXR] not a URL: %s", url);
+        AGLog(@"[WebXR] not a URL: %s", url);
         return 0;
     }
 
@@ -622,12 +625,12 @@ extern "C" int Afterglow_WebOpen(const char *url, const char *configJson, const 
         [root.view addSubview:veil];
         host.shots = [NSTimer scheduledTimerWithTimeInterval:1.0 / 12.0 repeats:YES
                                                      block:^(NSTimer *t) { [host capture]; }];
-        NSLog(@"[WebXR] Windowed: page %dx%d behind a veil, snapshotting at 12 Hz", pixelWidth, pixelHeight);
+        AGLog(@"[WebXR] Windowed: page %dx%d behind a veil, snapshotting at 12 Hz", pixelWidth, pixelHeight);
     }
     else
     {
         [root.view addSubview:web];
-        NSLog(@"[WebXR] Full screen over the app");
+        AGLog(@"[WebXR] Full screen over the app");
     }
     if (target.isFileURL)
     {
@@ -639,7 +642,7 @@ extern "C" int Afterglow_WebOpen(const char *url, const char *configJson, const 
     {
         [web loadRequest:[NSURLRequest requestWithURL:target]];
     }
-    NSLog(@"[WebXR] opened %@", target.absoluteString);
+    AGLog(@"[WebXR] opened %@", target.absoluteString);
     return 1;
 }
 
@@ -662,7 +665,7 @@ extern "C" void Afterglow_WebClose()
     g_Host.veil = nil;
     g_Host.web = nil;
     g_Host = nil;
-    NSLog(@"[WebXR] closed");
+    AGLog(@"[WebXR] closed");
 }
 
 extern "C" int Afterglow_WebIsOpen() { return g_Host != nil ? 1 : 0; }
@@ -722,7 +725,7 @@ extern "C" void Afterglow_WebClickAt(float u, float v)
     NSString *js = [NSString stringWithFormat:@"window.__afterglowClick&&window.__afterglowClick(%.5f,%.5f)", u, v];
     [g_Host.web evaluateJavaScript:js completionHandler:^(id result, NSError *error) {
         if (error != nil)
-            NSLog(@"[WebXR] click script failed: %@", error.localizedDescription);
+            AGLog(@"[WebXR] click script failed: %@", error.localizedDescription);
     }];
 }
 
@@ -813,12 +816,12 @@ extern "C" void Afterglow_WebLoadUrl(const char *url)
     NSURL *target = [NSURL URLWithString:[NSString stringWithUTF8String:url]];
     if (target == nil)
     {
-        NSLog(@"[WebXR] not a URL: %s", url);
+        AGLog(@"[WebXR] not a URL: %s", url);
         return;
     }
     g_Host.focusHas = 0;
     [g_Host.web loadRequest:[NSURLRequest requestWithURL:target]];
-    NSLog(@"[WebXR] going to %@", target.absoluteString);
+    AGLog(@"[WebXR] going to %@", target.absoluteString);
 }
 
 // The current address, for the bar to show. Returns the length written, or what it would have
@@ -829,6 +832,25 @@ extern "C" int Afterglow_WebCopyUrl(char *buffer, int capacity)
         return 0;
     NSString *url = g_Host.web.URL.absoluteString ?: @"";
     const char *utf8 = url.UTF8String;
+    if (utf8 == NULL)
+        return 0;
+    const int length = (int)strlen(utf8);
+    if (buffer != nullptr && capacity > 0)
+    {
+        const int room = length < capacity - 1 ? length : capacity - 1;
+        memcpy(buffer, utf8, (size_t)room);
+        buffer[room] = '\0';
+    }
+    return length;
+}
+
+// The page's title, for its tab, the same way.
+extern "C" int Afterglow_WebCopyTitle(char *buffer, int capacity)
+{
+    if (g_Host == nil || g_Host.web == nil)
+        return 0;
+    NSString *title = g_Host.web.title ?: @"";
+    const char *utf8 = title.UTF8String;
     if (utf8 == NULL)
         return 0;
     const int length = (int)strlen(utf8);
@@ -869,5 +891,5 @@ extern "C" void Afterglow_WebSetWindowed(int windowed)
         g_Host.web.frame = root.view.bounds;
         [root.view addSubview:g_Host.web];
     }
-    NSLog(@"[WebXR] %@", g_Host.windowed ? @"back to a window in the scene" : @"full screen for an immersive session");
+    AGLog(@"[WebXR] %@", g_Host.windowed ? @"back to a window in the scene" : @"full screen for an immersive session");
 }

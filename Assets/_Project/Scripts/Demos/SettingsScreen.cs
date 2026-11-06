@@ -207,6 +207,13 @@ namespace Afterglow.Demos
                 Key = "boundaryCm", Label = "Boundary warning", Choices = new[] { 0, 30, 50, 80 }, Fallback = 0,
                 Show = v => v <= 0 ? "Off" : $"Within {v} cm",
             });
+            // The camera sees less than the lenses show: magnified, the room fills the view and
+            // looks nearer than life; at true scale it is a window with a border.
+            m_Rows.Add(new Setting
+            {
+                Key = "ptFill", Label = "Passthrough", Choices = new[] { 0, 1 }, Fallback = 1,
+                Show = v => v != 0 ? "Fills the view" : "True size, a window",
+            });
         }
 
         int Pages => (m_Rows.Count + k_RowsPerPage - 1) / k_RowsPerPage;

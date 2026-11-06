@@ -29,6 +29,9 @@
 #import <CoreVideo/CoreVideo.h>
 #import <Metal/Metal.h>
 #include <atomic>
+
+// Logs to the system and to the session log through Unity (AfterglowNativeLog.mm).
+void AGLog(NSString *format, ...) NS_FORMAT_FUNCTION(1, 2);
 #include <math.h>
 
 // Unity's own Metal device, from its trampoline (Classes/UnityAppController+Rendering.mm). Declared
@@ -70,6 +73,8 @@ namespace
     // The frame now in g_Held[.][g_Slot], so a pull that lands on the same one does no work.
     CMTime g_Shown = kCMTimeInvalid;
 
+    // How far an iCloud download has got, 0 to 1, while loading.
+    std::atomic<float> g_Progress{0.0f};
     std::atomic<int> g_State{LoadStateIdle};
     // Which open the player belongs to, so a video opened while another is still being fetched
     // doesn't start playing the older one.
@@ -119,7 +124,7 @@ namespace
         Teardown();
         g_Error = why;
         g_State = LoadStateFailed;
-        NSLog(@"[Spatial] %@", why);
+        AGLog(@"[Spatial] %@", why);
     }
 
     // The stereo views the decoder should hand back, in the order the player should try them: both
@@ -188,6 +193,11 @@ namespace
         // plays in full.
         options.version = PHVideoRequestOptionsVersionOriginal;
         options.networkAccessAllowed = YES;
+        g_Progress = 0.0f;
+        options.progressHandler = ^(double progress, NSError *error, BOOL *stop, NSDictionary *info) {
+            if (g_Request.load() == request)
+                g_Progress = (float)progress;
+        };
 
         [PHImageManager.defaultManager requestAVAssetForVideo:asset options:options
             resultHandler:^(AVAsset *video, AVAudioMix *audioMix, NSDictionary *info) {
@@ -246,7 +256,7 @@ namespace
                     [g_Player play];
 
                     g_State = LoadStateReady;
-                    NSLog(@"[Spatial] Spatial video opened, %.1f s", CMTimeGetSeconds(video.duration));
+                    AGLog(@"[Spatial] Spatial video opened, %.1f s", CMTimeGetSeconds(video.duration));
                 });
             }];
         return request;
@@ -312,6 +322,8 @@ extern "C" int Afterglow_SpatialOpenVideo(int index)
 }
 
 // 0 nothing asked for, 1 loading, 2 ready, 3 failed.
+extern "C" float Afterglow_SpatialVideoProgress() { return g_Progress.load(); }
+
 extern "C" int Afterglow_SpatialVideoState() { return g_State.load(); }
 
 extern "C" const char *Afterglow_SpatialVideoError()

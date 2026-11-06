@@ -10,7 +10,8 @@ namespace Afterglow.Stereo
     // background material into a texture, with its display transform widened so the texture holds
     // the whole camera image instead of the screen-shaped crop ARCore shows. A screen quad in front
     // of the eyes shows it at the angle the camera saw it, so the room appears at true scale. The
-    // camera sees less than a Cardboard eye, so the image is a window with a dark border.
+    // camera sees less than a Cardboard eye, so at true scale the image is a window with a dark
+    // border; by default it is magnified, uniformly, to fill the view (the "ptFill" setting).
     // Passthrough needs 6DoF, since ARCore must run, and hides the virtual environment (every
     // VirtualEnvironment, in whichever scene).
     //
@@ -68,6 +69,8 @@ namespace Afterglow.Stereo
         // numbers say, and never under this, which covers the phone view's own 60 degrees.
         const float k_ViewMargin = 1.15f;
         const float k_MinViewExtent = 1.2f;
+        // The most the image is magnified to fill the view (the "ptFill" setting).
+        public const float k_MaxFill = 2f;
 
         [SerializeField] HeadPoseFusion m_Fusion;
         [Tooltip("The stereo rig: its eyes move together while passthrough is on, so nothing drawn has " +
@@ -95,6 +98,8 @@ namespace Afterglow.Stereo
         CommandBuffer m_Commands;
         RenderTexture m_Texture;
         bool m_On;
+        float m_LoggedZoom;
+        bool m_LoggedConfigurations;
         // 3DoF turned passthrough off, so it comes back with 6DoF.
         bool m_ResumeWithSixDof;
         // ArDebugView drives the AR camera itself.
@@ -208,12 +213,11 @@ namespace Afterglow.Stereo
             // Always the whole camera image, in both views. Mono once cropped it to ARCore's
             // screen-shaped rectangle so it filled the screen, as an ordinary AR app does, but seeing
             // everything the camera saw was better even at the price of a border around it.
-            // Turned a quarter first, where the platform's matrix disagrees with the screen.
+            // Where the platform's matrix disagrees with the screen's shape, the matrix is set aside
+            // and the whole image mapped directly (below).
             var display = args.displayMatrix.Value;
             var turn = LaunchOptions.GetInt("camTurn", -1);
             var turning = turn < 0 ? NeedsQuarterTurn(display, Screen.width, Screen.height) : turn != 0;
-            if (turning)
-                display = QuarterTurn(display, turn >= 2 ? turn : 1);
             if (turning != m_Turned)
             {
                 m_Turned = turning;
@@ -221,8 +225,32 @@ namespace Afterglow.Stereo
                           (turn < 0 ? " (decided from the display matrix)" : " (from camTurn)"));
             }
 
-            if (!TryWidenDisplayTransform(display, out var widened, out var min, out var max))
-                return;
+            // The whole camera image, and its true shape. ARCore's matrix is right for the screen,
+            // so widening it uncovers the rest of the image (TryWidenDisplayTransform). ARKit's is
+            // built for a portrait interface on this landscape screen, and no quarter turn of a
+            // crop made for the wrong shape gives a uniform scale: turned one way it stretched the
+            // picture 1.75 times taller than wide, and the stretch turned with the head, which is
+            // what made tilting the head sickening. So that case drops the crop altogether and
+            // maps the screen onto the whole image (WholeImageTransform), with the frustum from the
+            // projection's width and the image's own shape (WholeImageFrustum).
+            Matrix4x4 widened;
+            Vector2 min, max;
+            float imageAspect;
+            var image = args.textures[0];
+            if (turning)
+            {
+                widened = WholeImageTransform(turn >= 2);
+                min = Vector2.zero;
+                max = Vector2.one;
+                imageAspect = image != null && image.height > 0 ? (float)image.width / image.height : 4f / 3f;
+            }
+            else
+            {
+                if (!TryWidenDisplayTransform(display, out widened, out min, out max))
+                    return;
+                var covered = max - min;
+                imageAspect = Screen.width * covered.x / (Screen.height * covered.y);
+            }
 
             if (m_CameraMaterial == null)
             {
@@ -234,16 +262,23 @@ namespace Afterglow.Stereo
             m_CameraMaterial.SetMatrix(k_DisplayTransformId, widened);
 
             var size = max - min;
-            EnsureTexture(Screen.width * size.x / (Screen.height * size.y));
+            EnsureTexture(imageAspect);
             DrawCameraImage();
 
             // Screen UV maps to NDC as 2uv - 1, which ARCore's projection maps to camera space at unit
             // distance as (ndc + p02) / p00 across and (ndc + p12) / p11 up.
             var projection = args.projectionMatrix.Value;
-            m_FrustumSize = new Vector2(2f * size.x / projection.m00, 2f * size.y / projection.m11);
-            m_FrustumCenter = new Vector2(
-                (min.x + max.x - 1f + projection.m02) / projection.m00,
-                (min.y + max.y - 1f + projection.m12) / projection.m11);
+            if (turning)
+            {
+                (m_FrustumSize, m_FrustumCenter) = WholeImageFrustum(projection, imageAspect);
+            }
+            else
+            {
+                m_FrustumSize = new Vector2(2f * size.x / projection.m00, 2f * size.y / projection.m11);
+                m_FrustumCenter = new Vector2(
+                    (min.x + max.x - 1f + projection.m02) / projection.m00,
+                    (min.y + max.y - 1f + projection.m12) / projection.m11);
+            }
             // The pose this image was taken from, which is what the shader reprojects out of. The AR
             // camera's transform carries the pose of the frame being delivered. Kept in the session's
             // own space -- this component sits on the XR Origin, so its transform is where that space
@@ -276,6 +311,7 @@ namespace Afterglow.Stereo
 
             m_HasImage = true;
             m_Screen.enabled = m_On;
+            LogCameraConfigurations();
             Debug.Log($"[Passthrough] Camera image {m_Texture.width}x{m_Texture.height}, " +
                       $"{2f * Mathf.Atan(m_FrustumSize.x / 2f) * Mathf.Rad2Deg:F0} x " +
                       $"{2f * Mathf.Atan(m_FrustumSize.y / 2f) * Mathf.Rad2Deg:F0} deg; " +
@@ -306,30 +342,51 @@ namespace Afterglow.Stereo
             return landscape == uDrivesVertical;
         }
 
-        // Turns the screen's UV a quarter before the display matrix is applied.
-        //
-        // Swapping the two axes alone is not a turn: (u,v) -> (v,u) is a reflection across the
-        // diagonal, which is a quarter turn *and* a mirror, and it shows up as a picture the right
-        // way up but flipped left to right. One axis has to be negated as well. `way` picks which,
-        // since the two differ by a 180-degree turn and only the phone can say which is right.
-        public static Matrix4x4 QuarterTurn(Matrix4x4 display, int way = 1)
+        // Screen UV onto the whole camera image, for a landscape screen whose platform matrix was
+        // built for portrait: screen u runs along the image's long axis and screen v down its
+        // short one, which is the way up the iPhone 18 Pro Max showed it (measured 2026-11-05;
+        // `camTurn 2` flips both for a phone that shows it the other way). The crop the matrix
+        // carried is left out on purpose: see OnCameraFrame.
+        public static Matrix4x4 WholeImageTransform(bool flipped = false)
         {
-            var turn = Matrix4x4.identity;
-            if (way >= 2)
+            var transform = Matrix4x4.identity;
+            if (flipped)
             {
-                // (u,v) -> (v, 1-u)
-                turn.m00 = 0f;  turn.m01 = -1f;
-                turn.m10 = 1f;  turn.m11 = 0f;
-                turn.m20 = 0f;  turn.m21 = 1f;
+                transform.m00 = -1f; transform.m01 = 0f;
+                transform.m10 = 0f;  transform.m11 = 1f;
+                transform.m20 = 1f;  transform.m21 = 0f;
             }
             else
             {
-                // (u,v) -> (1-v, u)
-                turn.m00 = 0f;  turn.m01 = 1f;
-                turn.m10 = -1f; turn.m11 = 0f;
-                turn.m20 = 1f;  turn.m21 = 0f;
+                transform.m00 = 1f;  transform.m01 = 0f;
+                transform.m10 = 0f;  transform.m11 = -1f;
+                transform.m20 = 0f;  transform.m21 = 1f;
             }
-            return display * turn;
+            return transform;
+        }
+
+        // What the whole image covers, at unit distance, from a projection built for a landscape
+        // screen: that screen shows the image's full width, so the projection's width is the
+        // image's, and the height follows the image's shape rather than the screen's crop. The
+        // center is the projection's principal point.
+        public static (Vector2 size, Vector2 center) WholeImageFrustum(Matrix4x4 projection, float imageAspect)
+        {
+            var width = 2f / projection.m00;
+            var size = new Vector2(width, width / Mathf.Max(imageAspect, 1e-3f));
+            var center = new Vector2(projection.m02 / projection.m00, projection.m12 / projection.m11);
+            return (size, center);
+        }
+
+        // How much to magnify the image so it reaches the edges of the view: the view's half-angles
+        // over the image's, the larger axis, and no more than k_MaxFill. 1 leaves it at true scale,
+        // a window with a border; the magnified picture is uniform, so it stays the right shape as
+        // the head turns and tilts, only nearer-looking than life.
+        public static float FillZoom(Vector2 imageSize, Vector2 viewHalfTangents, float maxFill = k_MaxFill)
+        {
+            if (imageSize.x <= 1e-6f || imageSize.y <= 1e-6f)
+                return 1f;
+            var zoom = Mathf.Max(viewHalfTangents.x / (imageSize.x / 2f), viewHalfTangents.y / (imageSize.y / 2f));
+            return Mathf.Clamp(zoom, 1f, maxFill);
         }
 
         // ARCore's background shader maps screen UV to camera-texture UV as
@@ -538,8 +595,18 @@ namespace Afterglow.Stereo
             // After RoomBoundary's Update, which places the session in the world this frame.
             m_ScreenMaterial.SetMatrix(k_CaptureFromWorldId,
                 (transform.localToWorldMatrix * m_CaptureInSession).inverse);
+            // Fill the view (the setting, on by default) by magnifying the image uniformly, or show
+            // it at true scale as a window.
+            var zoom = Settings.Int("ptFill", 1) != 0 ? FillZoom(m_FrustumSize, ViewHalfTangents()) : 1f;
+            if (!Mathf.Approximately(zoom, m_LoggedZoom))
+            {
+                m_LoggedZoom = zoom;
+                Debug.Log($"[Passthrough] Image {2f * Mathf.Atan(m_FrustumSize.x / 2f) * Mathf.Rad2Deg:F0} x " +
+                          $"{2f * Mathf.Atan(m_FrustumSize.y / 2f) * Mathf.Rad2Deg:F0} deg shown " +
+                          (zoom > 1f ? $"magnified {zoom:F2}x to fill the view" : "at true scale, as a window"));
+            }
             m_ScreenMaterial.SetVector(k_CaptureFrustumId,
-                new Vector4(m_FrustumCenter.x, m_FrustumCenter.y, m_FrustumSize.x, m_FrustumSize.y));
+                new Vector4(m_FrustumCenter.x, m_FrustumCenter.y, m_FrustumSize.x / zoom, m_FrustumSize.y / zoom));
 
             var d = m_ShownDistance;
             // Square to the view and centered on it, rather than on the camera's frustum: the shader
@@ -551,23 +618,62 @@ namespace Afterglow.Stereo
             screen.localScale = new Vector3(across, across, 1f);
         }
 
-        // The tangent of the widest half-angle either eye sees. A square quad of this half-extent
-        // covers a frustum whose own corner is at (tan right, tan top), so the corners are in.
-        float ViewExtent()
+        // The tangents of the widest half-angles either eye sees, across and up.
+        Vector2 ViewHalfTangents()
         {
-            var extent = k_MinViewExtent;
+            var tangents = new Vector2(k_MinViewExtent, k_MinViewExtent);
             var lens = m_Rig != null ? m_Rig.Lens : null;
             if (lens != null)
             {
-                extent = Mathf.Max(extent, Widest(lens.GetFieldOfView(Eye.Left)));
-                extent = Mathf.Max(extent, Widest(lens.GetFieldOfView(Eye.Right)));
+                foreach (var eye in new[] { Eye.Left, Eye.Right })
+                {
+                    // Left, right, bottom and top half-angles, in radians.
+                    var fov = lens.GetFieldOfView(eye);
+                    tangents.x = Mathf.Max(tangents.x, Mathf.Max(Mathf.Tan(fov.x), Mathf.Tan(fov.y)));
+                    tangents.y = Mathf.Max(tangents.y, Mathf.Max(Mathf.Tan(fov.z), Mathf.Tan(fov.w)));
+                }
             }
-            return extent * k_ViewMargin;
+            return tangents;
+        }
 
-            // Left, right, bottom and top half-angles, in radians.
-            static float Widest(Vector4 fov) => Mathf.Max(
-                Mathf.Max(Mathf.Tan(fov.x), Mathf.Tan(fov.y)),
-                Mathf.Max(Mathf.Tan(fov.z), Mathf.Tan(fov.w)));
+        // The half-extent of the square quad, as a tangent: the view's own corner, so that the
+        // corners are in whichever way the head is tilted. A square the width of the view alone
+        // left its corners bare the moment the head rolled.
+        float ViewExtent() => ViewHalfTangents().magnitude * k_ViewMargin;
+
+        // The camera configurations ARKit or ARCore offer, logged once, and the "camConfig N"
+        // launch option to pick one: a wider format, if a phone has one, would fill the view at true
+        // scale instead of by magnifying. AR Foundation shows only size and rate, so which is which
+        // is a thing to read off the phone.
+        void LogCameraConfigurations()
+        {
+            if (m_CameraManager == null || m_LoggedConfigurations)
+                return;
+            m_LoggedConfigurations = true;
+            try
+            {
+                using var configurations = m_CameraManager.GetConfigurations(Unity.Collections.Allocator.Temp);
+                var current = m_CameraManager.currentConfiguration;
+                var lines = new System.Text.StringBuilder();
+                for (var i = 0; i < configurations.Length; i++)
+                {
+                    var c = configurations[i];
+                    var isCurrent = current.HasValue && current.Value.Equals(c);
+                    lines.Append(i == 0 ? "" : ", ").Append(i).Append(": ").Append(c.width).Append('x').Append(c.height)
+                        .Append('@').Append(c.framerate ?? 0).Append(isCurrent ? " (current)" : "");
+                }
+                Debug.Log($"[Passthrough] Camera configurations: {(configurations.Length == 0 ? "none listed" : lines.ToString())}");
+                var wanted = LaunchOptions.GetInt("camConfig", -1);
+                if (wanted >= 0 && wanted < configurations.Length)
+                {
+                    m_CameraManager.currentConfiguration = configurations[wanted];
+                    Debug.Log($"[Passthrough] Camera configuration {wanted} asked for");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.Log($"[Passthrough] Camera configurations couldn't be read: {e.Message}");
+            }
         }
 
         // Where a point the eye is looking at falls in the passthrough texture, from 0 to 1 on each

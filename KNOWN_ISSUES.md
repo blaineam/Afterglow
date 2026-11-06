@@ -105,6 +105,13 @@ drawn with depth: a scene object nearer than that, such as the Room's floating c
 them. Seen in the Simulator on 2026-11-05 with the Room's white cube over the settings screen's
 title. The fix is to draw the panels last, over everything, as the gaze reticle already is.
 
+### Big iCloud assets take a while, and library videos need iOS 18
+
+A photo or video kept only in iCloud downloads before it shows; an 11 K panorama is 20 MB. The
+controls show the download's progress, and tapping the item again while it loads no longer
+starts it over (which is why nothing opened on 2026-11-05). Library videos play through the
+AVFoundation plugin, which needs iOS 18; before that they say so.
+
 ### A panorama's height is a guess
 
 A panorama is drawn on a cylinder 60° tall, so its width in degrees is its aspect times 60 (a 4:1

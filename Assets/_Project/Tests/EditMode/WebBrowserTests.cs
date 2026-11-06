@@ -129,5 +129,14 @@ namespace Afterglow.Stereo.Tests
             Assert.That(shown, Does.EndWith("page.html"), shown);
             Assert.That(shown, Does.Contain("…"), shown);
         }
+
+        [Test]
+        public void TabChipsSayTheTitleOrTheHost()
+        {
+            Assert.AreEqual("three.js", Afterglow.Demos.WebBrowserSession.TabLabel("three.js", "https://threejs.org/examples/"));
+            Assert.AreEqual("threejs.org", Afterglow.Demos.WebBrowserSession.TabLabel("", "https://threejs.org/examples/webxr_vr_cubes.html"));
+            Assert.AreEqual("A rather lo…", Afterglow.Demos.WebBrowserSession.TabLabel("A rather long page title", "https://x.y"));
+            Assert.AreEqual("New tab", Afterglow.Demos.WebBrowserSession.TabLabel(null, ""));
+        }
     }
 }

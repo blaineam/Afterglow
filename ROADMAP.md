@@ -25,6 +25,7 @@ and the gap between them is most of the work.
 | **Two hands** | Done (`723c064`, `aede100`): detector keeps both palms, two `TrackedHand` slots, XR Hands fed left and right. **Never run on the phone**; the last device log predates both commits. |
 | **UX** | A **home screen** since 2026-11-05: Media, Web, Files, Play and Settings above the settings panel, open as the app starts, with a Play page for the games and the old checkerboard lobby kept as *The Room*. The room scan no longer blocks the cold start: it runs, with its panel, when an app that places things opens. Still a prototype's inside Media: five text rows a page in the one player, which Files reuses filtered to the copied-in videos. |
 | **Performance** | Last device log (iPhone 18 Pro Max, 2026-11-03): 55–77 fps against a 120 target, 13–26 % late frames, steady ~50 ms "present wait" hitches with the browser window up. Visible judder in a headset. |
+| **Passthrough** | Fixed 2026-11-06 from the phone's log: ARKit hands a display transform built for portrait, and turning its crop gave a picture 1.75× taller than wide that stretched as the head tilted. The whole image is now mapped from first principles (73° × 58° at true size) and, by default, magnified uniformly to fill the view, with a soft rim; a setting shows it at true size instead. **Unverified on the phone** — the first run says, in `[Passthrough] Image … shown …`. The camera configurations are logged for picking a wider one (`camConfig N`). |
 | **Optics** | Until 2026-11-05 the rig defaulted to **Cardboard v1** — the wrong lenses for every viewer this project knows — unless a QR code had been scanned. The printed viewer's profile is now the default, and the scan screen offers the built-ins. |
 | **Desk testing** | New: the Editor runs 6DoF in AR Foundation's XR Simulation (a synthetic room), and both the Editor without it and the iOS Simulator run 3DoF with drag-to-look (`DeskHeadLook`). `Tools/ios_sim_build_and_run.sh` builds and launches on a simulator — **verified 2026-11-05**: the app runs on an iPhone 18 Pro Max simulator, defaults to the printed viewer's optics and falls back to 3DoF. |
 | **Distribution** | Its own repository since 2026-11-05: [blaineam/Afterglow](https://github.com/blaineam/Afterglow), public (renamed from CardboardXR the same day; the old address redirects). CI runs the script and workflow checks on every push; the EditMode tests and the tag-triggered Android APK + unsigned iOS IPA builds are written but **wait on a Unity licence in the secrets**, so neither has run yet. Until then, Android via `Tools/release_android.sh` and iOS from source. |
@@ -38,7 +39,8 @@ Unity 6000.6.0f1 is installed; the C# compiles and all 297 EditMode tests pass (
 Everything else sits on this, and three of the newest features have never run on the device.
 
 - **Verify on the phone**: two hands, spatial photo and video playback, the media browser and a
-  real panorama, an immersive WebXR session. Each gets a session-log line that proves it, and a
+  real panorama, library videos, the passthrough's shape and fill, the browser's taps and tabs, an
+  immersive WebXR session. Each gets a session-log line that proves it, and a
   KNOWN_ISSUES entry for what it does badly. The current build was installed on the iPhone 18 Pro
   Max on 2026-11-05 but not launched: the phone was locked (`zsh Tools/ios_launch.sh` once it
   isn't).
@@ -106,7 +108,11 @@ Everything else sits on this, and three of the newest features have never run on
 
 ## Phase 4 — Web
 
-- Tabs, bookmarks, history; a start page of WebXR-capable sites.
+- A browser's chrome — done 2026-11-06: the address bar at the top with back, forward and reload,
+  a tab strip above it (one web view, so a tab left behind reloads when returned to), the window's
+  own controls below, and a screen tap clicks the page where the gaze is, as a pinch does (taps
+  did nothing before, which is why the start page's links went nowhere on the phone). To do:
+  bookmarks, history, tabs that keep their state.
 - `immersive-ar` over the passthrough, which exists and is wasted on a browser that only does VR.
 - **Hand input sources**: the tracker's 21 joints as WebXR Hand Input, so pages see hands, not a
   bare gaze `select`.
@@ -121,6 +127,13 @@ Everything else sits on this, and three of the newest features have never run on
   the risk is reviewers' view of an app that is a window onto arbitrary content.
 
 ## Later
+
+- **More games**, since the hands, the room and the passthrough are the point: a rhythm game
+  with hits on incoming neon shapes to the beat (Apple Music streams can't be analysed, so the
+  beat maps come from bundled synthwave tracks or the user's own files, with MusicKit for
+  playback of their library later), a skyline drive along the neon grid with the head steering,
+  a tower-stacking game on a real table, an orbital pong between two hands, and a "glow garden"
+  that grows where you point. Each is a catalog entry and a scene, like the four here.
 
 - Gamepad support for the games (a Bluetooth controller already scrolls the browser).
 - SteamVR streaming as an ALVR client: seated and gamepad games only, since there are no

@@ -70,7 +70,6 @@ namespace Afterglow.Demos.Video
         }
 
         const int k_TitleLength = 64;
-        const int k_PathLength = 1024;
 
         public static bool Supported =>
 #if UNITY_IOS && !UNITY_EDITOR
@@ -161,6 +160,14 @@ namespace Afterglow.Demos.Video
             State.Idle;
 #endif
 
+        // How far an iCloud download has got, 0 to 1, while a picture loads.
+        public static float Progress =>
+#if UNITY_IOS && !UNITY_EDITOR
+            Afterglow_SpatialPhotoProgress();
+#else
+            0f;
+#endif
+
         public static string PhotoError =>
 #if UNITY_IOS && !UNITY_EDITOR
             Marshal.PtrToStringUTF8(Afterglow_SpatialPhotoError()) ?? "";
@@ -246,35 +253,6 @@ namespace Afterglow.Demos.Video
 #endif
         }
 
-        // Asks for a library video's file, for the player; 0 if the item isn't a video.
-        public static int RequestVideoPath(int index)
-        {
-#if UNITY_IOS && !UNITY_EDITOR
-            return Afterglow_LibraryRequestVideoPath(index);
-#else
-            return 0;
-#endif
-        }
-
-        // The video's path once it's known: Ready with it, Loading while not yet, Failed if there
-        // is none (a composition, or one not downloaded from iCloud).
-        public static State TryGetVideoPath(int request, out string path)
-        {
-            path = null;
-#if UNITY_IOS && !UNITY_EDITOR
-            var buffer = new StringBuilder(k_PathLength);
-            var state = Afterglow_LibraryVideoPath(request, buffer, buffer.Capacity);
-            if (state == 0)
-                return State.Loading;
-            if (state < 0)
-                return State.Failed;
-            path = buffer.ToString();
-            return State.Ready;
-#else
-            return State.Failed;
-#endif
-        }
-
 #if UNITY_IOS && !UNITY_EDITOR
         static Texture2D UploadEye(int eye)
         {
@@ -311,8 +289,7 @@ namespace Afterglow.Demos.Video
         [DllImport("__Internal")] static extern IntPtr Afterglow_SpatialPhotoError();
         [DllImport("__Internal")] static extern int Afterglow_SpatialPhotoEye(int eye, out IntPtr bytes, out int width, out int height);
         [DllImport("__Internal")] static extern void Afterglow_SpatialClosePhoto();
-        [DllImport("__Internal")] static extern int Afterglow_LibraryRequestVideoPath(int index);
-        [DllImport("__Internal")] static extern int Afterglow_LibraryVideoPath(int request, StringBuilder path, int pathLength);
+        [DllImport("__Internal")] static extern float Afterglow_SpatialPhotoProgress();
         [DllImport("__Internal")] static extern int Afterglow_FileOpenImage(string path, int maxPixels);
         [DllImport("__Internal")] static extern int Afterglow_FileImageSize(string path, out int width, out int height);
         [DllImport("__Internal")] static extern int Afterglow_FileRequestThumbnail(string path, int pixels);

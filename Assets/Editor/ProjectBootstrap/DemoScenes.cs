@@ -141,8 +141,10 @@ namespace ProjectBootstrap
         }
 
         // Home: where the app starts and comes back to, with the home screen open in front of the
-        // user. In passthrough it's the user's own room; without it, a dark floor with a faint grid,
-        // so there's a sense of space and scale, and the hint about the palm.
+        // user. In passthrough it's the user's own room; without it, a synthwave sunset: a sky
+        // grading from deep violet to hot pink at the horizon, a striped sun sinking behind dark
+        // mountains, stars overhead, and a neon grid running to the horizon, all from textures drawn
+        // here, so the scene is a dome, a floor and a hint.
         static void EnsureHome()
         {
             if (AssetDatabase.LoadAssetAtPath<SceneAsset>(HomeScene) != null)
@@ -153,10 +155,21 @@ namespace ProjectBootstrap
 
             var environment = new GameObject("Environment");
             environment.AddComponent<VirtualEnvironment>();
-            var grid = StereoBuilder.SaveAsset(CreateGridTexture(), $"{HomeFolder}/Grid.asset");
-            const float floorSize = 30f;
+
+            // The sky on the inside of a sphere: the primitive's UV is equirectangular, and the
+            // material is double-sided, so a big one textured from inside is a dome. Far enough that
+            // nothing in a game reaches it, within the eye cameras' far plane.
+            var sky = StereoBuilder.SaveAsset(CreateSynthSkyTexture(), $"{HomeFolder}/Synth Sky.asset");
+            var dome = StereoBuilder.CreatePrimitive(PrimitiveType.Sphere, "Sky", environment.transform,
+                StereoBuilder.CreateMaterial("Synth Sky", unlit, Color.white, sky, 1f, HomeFolder));
+            dome.transform.localScale = Vector3.one * 160f;
+
+            // The grid: one-meter cells of neon on near-black, fading to the horizon's glow in the
+            // texture's own mip levels.
+            var grid = StereoBuilder.SaveAsset(CreateNeonGridTexture(), $"{HomeFolder}/Neon Grid.asset");
+            const float floorSize = 120f;
             var floor = StereoBuilder.CreatePrimitive(PrimitiveType.Quad, "Floor", environment.transform,
-                StereoBuilder.CreateMaterial("Home Floor", unlit, Color.white, grid, floorSize / 0.5f, HomeFolder), keepCollider: true);
+                StereoBuilder.CreateMaterial("Neon Floor", unlit, Color.white, grid, floorSize / 1f, HomeFolder), keepCollider: true);
             floor.transform.SetLocalPositionAndRotation(new Vector3(0f, -k_EyeHeight, 0f), Quaternion.Euler(90f, 0f, 0f));
             floor.transform.localScale = new Vector3(floorSize, floorSize, 1f);
 
@@ -165,6 +178,118 @@ namespace ProjectBootstrap
 
             EditorSceneManager.SaveScene(scene, HomeScene);
             Debug.Log($"[DemoScenes] Made {HomeScene}");
+        }
+
+        // The sky, as an equirectangular picture: across is longitude, with the sun straight ahead
+        // (the middle); up is latitude, with the horizon at the middle row. Below the horizon is
+        // the floor's own colour, since the floor covers it.
+        static Texture2D CreateSynthSkyTexture()
+        {
+            const int width = 2048;
+            const int height = 1024;
+            var zenith = new Color(0.07f, 0.01f, 0.20f);
+            var upper = new Color(0.30f, 0.05f, 0.45f);
+            var horizon = new Color(1.00f, 0.25f, 0.55f);
+            var glow = new Color(1.00f, 0.55f, 0.30f);
+            var ground = new Color(0.05f, 0.01f, 0.12f);
+            var sunTop = new Color(1.00f, 0.85f, 0.35f);
+            var sunBottom = new Color(1.00f, 0.20f, 0.60f);
+            var mountain = new Color(0.12f, 0.02f, 0.22f);
+            var pixels = new Color[width * height];
+            var random = new System.Random(1980);
+            var ridge = new float[width];
+            var ridgeFar = new float[width];
+            // Two ridges of mountains, a jagged near one and a lower far one, as fractions of the
+            // half-height above the horizon.
+            for (var x = 0; x < width; x++)
+            {
+                var t = x / (float)width * Mathf.PI * 2f;
+                ridgeFar[x] = 0.05f + 0.025f * Mathf.Sin(7f * t + 1f) + 0.02f * Mathf.Sin(13f * t) + 0.01f * Mathf.Sin(29f * t + 2f);
+                ridge[x] = 0.03f + 0.035f * Mathf.Abs(Mathf.Sin(5f * t)) + 0.03f * Mathf.Sin(11f * t + 0.5f) + 0.012f * Mathf.Sin(37f * t);
+            }
+            for (var y = 0; y < height; y++)
+            {
+                // -1 at the bottom, 0 at the horizon, 1 at the zenith.
+                var latitude = (y / (float)(height - 1)) * 2f - 1f;
+                for (var x = 0; x < width; x++)
+                {
+                    Color color;
+                    if (latitude < 0f)
+                    {
+                        color = ground;
+                    }
+                    else
+                    {
+                        var up = Mathf.Pow(latitude, 0.75f);
+                        color = up < 0.12f ? Color.Lerp(glow, horizon, up / 0.12f)
+                            : up < 0.5f ? Color.Lerp(horizon, upper, (up - 0.12f) / 0.38f)
+                            : Color.Lerp(upper, zenith, (up - 0.5f) / 0.5f);
+                        // The sun: a disc ahead, sitting on the horizon, cut by dark bands in its lower
+                        // half that thin toward the top.
+                        var dx = (x / (float)width - 0.5f) * 2f * (width / (float)height);
+                        var dy = latitude - 0.10f;
+                        const float radius = 0.26f;
+                        var r = Mathf.Sqrt(dx * dx + dy * dy) / radius;
+                        if (r < 1f)
+                        {
+                            var inSun = (dy + radius) / (2f * radius);
+                            var sun = Color.Lerp(sunBottom, sunTop, inSun);
+                            var band = inSun < 0.55f && Mathf.Repeat(inSun * 14f, 1f) < 0.45f * (1f - inSun / 0.55f);
+                            if (!band)
+                                color = Color.Lerp(sun, color, Mathf.SmoothStep(0f, 1f, (r - 0.9f) / 0.1f));
+                        }
+                        // Stars, more of them higher up, none near the bright horizon.
+                        if (latitude > 0.25f && random.NextDouble() < 0.0012 * latitude)
+                            color = Color.Lerp(color, Color.white, 0.5f + 0.5f * (float)random.NextDouble());
+                        // Mountains over everything, the near ridge darker.
+                        if (latitude < ridgeFar[x])
+                            color = Color.Lerp(mountain, upper, 0.35f);
+                        if (latitude < ridge[x])
+                            color = mountain;
+                    }
+                    pixels[y * width + x] = color;
+                }
+            }
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, true)
+            {
+                name = "Synth Sky",
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Trilinear,
+            };
+            texture.SetPixels(pixels);
+            texture.Apply(true);
+            return texture;
+        }
+
+        // One cell of the neon grid: a magenta line along two edges with a soft glow, on near-black.
+        static Texture2D CreateNeonGridTexture()
+        {
+            const int size = 256;
+            var background = new Color(0.04f, 0.01f, 0.10f);
+            var line = new Color(1.00f, 0.20f, 0.85f);
+            var glowColor = new Color(0.55f, 0.10f, 0.60f);
+            var pixels = new Color[size * size];
+            for (var y = 0; y < size; y++)
+            {
+                for (var x = 0; x < size; x++)
+                {
+                    var toEdge = Mathf.Min(Mathf.Min(x, size - 1 - x), Mathf.Min(y, size - 1 - y));
+                    var color = toEdge <= 2 ? line
+                        : toEdge <= 14 ? Color.Lerp(glowColor, background, (toEdge - 2) / 12f)
+                        : background;
+                    pixels[y * size + x] = color;
+                }
+            }
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, true)
+            {
+                name = "Neon Grid",
+                wrapMode = TextureWrapMode.Repeat,
+                filterMode = FilterMode.Trilinear,
+                anisoLevel = 8,
+            };
+            texture.SetPixels(pixels);
+            texture.Apply(true);
+            return texture;
         }
 
         // The Room: the checkerboard room with its colored markers, which passthrough hides.

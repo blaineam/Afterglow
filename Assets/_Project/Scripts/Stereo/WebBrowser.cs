@@ -281,6 +281,24 @@ namespace Afterglow.Stereo
             }
         }
 
+        // The page's title, for its tab.
+        public static string CurrentTitle
+        {
+            get
+            {
+#if UNITY_IOS && !UNITY_EDITOR
+                var needed = Afterglow_WebCopyTitle(null, 0);
+                if (needed <= 0)
+                    return string.Empty;
+                var buffer = new byte[needed + 1];
+                Afterglow_WebCopyTitle(buffer, buffer.Length);
+                return Encoding.UTF8.GetString(buffer, 0, needed);
+#else
+                return string.Empty;
+#endif
+            }
+        }
+
         // Where typed text should take you. A scheme is obeyed; something shaped like a host
         // gets https; anything else was meant as a search, which is the common case and the one
         // a browser gets wrong most visibly.
@@ -395,6 +413,7 @@ namespace Afterglow.Stereo
         [DllImport("__Internal")] static extern int Afterglow_WebTextFocused();
         [DllImport("__Internal")] static extern void Afterglow_WebLoadUrl(string url);
         [DllImport("__Internal")] static extern int Afterglow_WebCopyUrl(byte[] buffer, int capacity);
+        [DllImport("__Internal")] static extern int Afterglow_WebCopyTitle(byte[] buffer, int capacity);
         [DllImport("__Internal")] static extern void Afterglow_WebSetWindowed(int windowed);
         [DllImport("__Internal")] static extern void Afterglow_WebClose();
         [DllImport("__Internal")] static extern int Afterglow_WebIsOpen();
