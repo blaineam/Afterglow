@@ -69,6 +69,8 @@ namespace Afterglow.UI
             ["add"] = 0xe145,
             // The home screen: its sections, the Play page's back arrow, and the Room.
             ["photo_library"] = 0xe413,
+            ["star"] = 0xe838,
+            ["star_border"] = 0xe83a,
             ["folder"] = 0xe2c7,
             ["sports_esports"] = 0xea28,
             ["arrow_back"] = 0xe5c4,

@@ -154,6 +154,8 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
 | `nativeImu 0` | Android: read the sensors through the Input System instead of the native plugin |
 | `imuPosition 0` | Leave the accelerometer out of 6DoF position, for comparison |
 | `handAxes 1..8` | Override how the camera image's axes lie on screen, for hand tracking |
+| `keychainTest 1` | Store, read back and delete a throwaway secret in the Keychain at start and log how it went (`[Keychain] Self-test`), for a build whose entitlement is in doubt |
+| `handDump N` | Write the next N landmarker crops, with the detector input and the camera image, to `HandDumps` in the app's Documents folder, for checking what the hand models see |
 | `pinchStudy 1` | A prompted run that logs pinch measurements, for tuning pinch detection |
 | `uiScale N` | Size of the Material UI in percent of Android XR's dp sizes (default 160, for phone viewers' lower resolution) |
 | `brightness N` | Screen brightness while the app is in front, in percent (default 90; 0 leaves it alone) |
@@ -177,7 +179,8 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   passthrough with the screen open in front of you; nothing waits on a room scan. Each app switches
   on what it needs (6DoF, passthrough, hands) and leaving puts back what you had. From anywhere, a
   round *Home* button floats low in the view: look down at it and tap or pinch to get the home
-  screen back, with no hand in the camera's view and no phone in hand needed.
+  screen back, with no hand in the camera's view and no phone in hand needed. While an app is
+  running a *Close* button sits beside it, which leaves the app for Home.
 - **The settings screen**, from the panel's *Settings* button or the home screen's *Settings* tile,
   stands where the home screen does and has the knobs that used to need a launch from the Mac: frame
   rate, render scale, anti-aliasing, the focus wheel's offset, screen brightness, UI size, hand
@@ -219,6 +222,19 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   `_180`, `_flat`, `_sbs`, `_tb`, `_mono`); `_flat` (or `_screen`, `_cinema`) is a film on a screen
   rather than anything wrapped around you, which is what a 3D film wants. For Google Drive, put
   share links in `videos.txt` in that folder, one per line; each downloads on first play.
+- **Web** is a browser for WebXR pages, which Safari on the iPhone can't show in a viewer: the
+  page sits on a window ahead of you, with an address bar above it (back, forward, reload, a
+  star that keeps the page as a bookmark, the keys and the microphone) and a strip of tabs above
+  that; a tap on the screen or a pinch clicks what the gaze is on, the gaze at an edge scrolls, a
+  Bluetooth keyboard or the on-screen keys type, and dictation fills the address. The start page
+  lists your bookmarks and the pages you opened recently (with *Clear history*), and the tabs
+  come back as you left them. A page's *Enter VR* takes the whole screen in stereo through the
+  lenses. **Logins**: when you sign in to a site the browser offers to keep the password in the
+  phone's Keychain (this phone only, readable only while it's unlocked, never in a backup), and on
+  that site's login page next time it offers to fill it; nothing is kept unless you say *Save*.
+  Bookmarks, history and the tabs live in a file in the app's own folder. iPhone only. (The
+  Simulator build is signed ad hoc so the Keychain's entitlement is embedded; an unsigned build
+  gets `-34018` from the Keychain and the login can't be kept.)
 - **Air Paint** paints strokes in the air with your hand, like Tilt Brush, starting in passthrough
   so you paint in your own room: pinch to paint, and look at the tool panel on your left and pinch
   to pick a color, brush (Ink, Tube, Glow) and size, or to undo, reset (press twice), or switch
@@ -359,6 +375,9 @@ processed on the phone and never stored or sent anywhere. It goes online only wh
 - **Scanning a viewer's QR code**: short links on the code are followed over HTTPS, at most five
   redirects, until they reach a Cardboard viewer URL, as Google's Cardboard apps do.
 - **Google Drive videos** listed in `videos.txt`: each downloads from Google Drive on first play.
+- **The browser**, for the pages you open; the search field goes to a search engine that keeps no
+  account. Bookmarks, history and open tabs stay in `browser.json` in the app's folder; saved
+  logins stay in the phone's Keychain, and only when you ask.
 
 Unity's analytics, crash reporting and engine diagnostics are off. The session log stays on the
 phone (in the app's own storage) and holds tracking and performance figures, nothing personal.

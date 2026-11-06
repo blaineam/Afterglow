@@ -381,6 +381,13 @@ namespace Afterglow.Stereo
         // over the image's, the larger axis, and no more than k_MaxFill. 1 leaves it at true scale,
         // a window with a border; the magnified picture is uniform, so it stays the right shape as
         // the head turns and tilts, only nearer-looking than life.
+        // What the shader maps the image onto: its centre and the tangent-space size it is drawn
+        // over. Magnifying draws the same image over a *larger* span, so the span is the image's
+        // size times the zoom (dividing, as the first phone build did, shrank the picture into a
+        // small square with gray round it). Pure, for testing.
+        public static Vector4 CaptureFrustum(Vector2 center, Vector2 imageSize, float zoom) =>
+            new(center.x, center.y, imageSize.x * zoom, imageSize.y * zoom);
+
         public static float FillZoom(Vector2 imageSize, Vector2 viewHalfTangents, float maxFill = k_MaxFill)
         {
             if (imageSize.x <= 1e-6f || imageSize.y <= 1e-6f)
@@ -605,8 +612,7 @@ namespace Afterglow.Stereo
                           $"{2f * Mathf.Atan(m_FrustumSize.y / 2f) * Mathf.Rad2Deg:F0} deg shown " +
                           (zoom > 1f ? $"magnified {zoom:F2}x to fill the view" : "at true scale, as a window"));
             }
-            m_ScreenMaterial.SetVector(k_CaptureFrustumId,
-                new Vector4(m_FrustumCenter.x, m_FrustumCenter.y, m_FrustumSize.x / zoom, m_FrustumSize.y / zoom));
+            m_ScreenMaterial.SetVector(k_CaptureFrustumId, CaptureFrustum(m_FrustumCenter, m_FrustumSize, zoom));
 
             var d = m_ShownDistance;
             // Square to the view and centered on it, rather than on the camera's frustum: the shader

@@ -398,6 +398,7 @@ namespace ProjectBootstrap
             var serializedAnchor = new SerializedObject(anchor);
             serializedAnchor.FindProperty("m_Fusion").objectReferenceValue = fusion;
             serializedAnchor.FindProperty("m_Home").objectReferenceValue = demosObject.GetComponent<HomeScreen>();
+            serializedAnchor.FindProperty("m_Demos").objectReferenceValue = demos;
             serializedAnchor.ApplyModifiedPropertiesWithoutUndo();
 
             // The room scan's panel, over an app that scans the room as it opens.

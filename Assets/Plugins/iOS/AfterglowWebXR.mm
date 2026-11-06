@@ -24,7 +24,7 @@ void AGLog(NSString *format, ...) NS_FORMAT_FUNCTION(1, 2);
 extern "C" UIViewController *UnityGetGLViewController();
 
 // What the page has told us, picked up by C# on its own thread.
-enum WebEvent { WebEventNone = 0, WebEventSessionStart = 1, WebEventSessionEnd = 2, WebEventClose = 3 };
+enum WebEvent { WebEventNone = 0, WebEventSessionStart = 1, WebEventSessionEnd = 2, WebEventClose = 3, WebEventClearHistory = 4, WebEventStartPage = 5 };
 
 // Injected into every page at document start, so pointing, clicking and scrolling are three small
 // calls rather than three long strings re-parsed on every use.
@@ -38,6 +38,89 @@ enum WebEvent { WebEventNone = 0, WebEventSessionStart = 1, WebEventSessionEnd =
 static const char *kHelperSource = R"JS(
 (function () {
   'use strict';
+  function post(body) {
+    try { window.webkit.messageHandlers.afterglow.postMessage(body); } catch (e) { /* nothing to report to */ }
+  }
+  // The page's errors and warnings reach the app's log, which is the only way to see why a page
+  // did what it did from the phone's log file.
+  (function () {
+    var native = { error: console.error, warn: console.warn, log: console.log };
+    function forward(level) {
+      return function () {
+        var parts = [];
+        for (var i = 0; i < arguments.length; i++) {
+          var a = arguments[i];
+          parts.push(a && a.stack ? String(a.stack) : (typeof a === 'object' ? (function () { try { return JSON.stringify(a); } catch (e) { return String(a); } })() : String(a)));
+        }
+        var text = parts.join(' ');
+        try { native[level].apply(console, arguments); } catch (e) { /* no console */ }
+        if (level !== 'log' || text.indexOf('[Afterglow]') === 0)
+          post({ event: 'console', level: level, text: text.slice(0, 600) });
+      };
+    }
+    console.error = forward('error');
+    console.warn = forward('warn');
+    console.log = forward('log');
+    window.addEventListener('error', function (e) {
+      post({ event: 'console', level: 'error', text: 'uncaught: ' + (e.message || '') + ' at ' + (e.filename || '') + ':' + (e.lineno || 0) });
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      var r = e.reason;
+      post({ event: 'console', level: 'error', text: 'unhandled rejection: ' + (r && r.stack ? r.stack : String(r)).slice(0, 400) });
+    });
+  })();
+
+  // Logins: a form with a password field that is submitted hands its username and password to
+  // the app, which offers to keep them in the phone's Keychain; a page that shows a password
+  // field is announced, so the app can offer a saved login; __afterglowFill puts one in.
+  function hostOf() { try { return location.host || ''; } catch (e) { return ''; } }
+  function loginFields(root) {
+    var pass = root.querySelector ? root.querySelector('input[type="password"]') : null;
+    if (!pass) return null;
+    var user = null;
+    var inputs = (pass.form || root).querySelectorAll ? (pass.form || root).querySelectorAll('input') : [];
+    for (var i = 0; i < inputs.length; i++) {
+      if (inputs[i] === pass) break;
+      var ty = (inputs[i].type || 'text').toLowerCase();
+      if (ty === 'text' || ty === 'email' || ty === 'tel' || ty === 'username') user = inputs[i];
+    }
+    return { user: user, pass: pass };
+  }
+  function offerToSave(form) {
+    var lf = loginFields(form);
+    if (!lf || !lf.pass.value) return;
+    post({ event: 'credentials', host: hostOf(), user: lf.user ? lf.user.value : '', pass: lf.pass.value });
+  }
+  document.addEventListener('submit', function (e) {
+    if (e.target && e.target.querySelector) offerToSave(e.target);
+  }, true);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target && e.target.type === 'password') offerToSave(e.target.form || document);
+  }, true);
+  var announced = false;
+  function announceLogin() {
+    if (announced || !document.querySelector('input[type="password"]')) return;
+    announced = true;
+    post({ event: 'login', host: hostOf() });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', announceLogin);
+  else announceLogin();
+  try { new MutationObserver(announceLogin).observe(document.documentElement, { childList: true, subtree: true }); } catch (e) { /* no observer */ }
+  window.__afterglowFill = function (user, pass) {
+    var lf = loginFields(document);
+    if (!lf) return false;
+    function set(el, v) {
+      if (!el) return;
+      var proto = Object.getPrototypeOf(el);
+      var d = proto ? Object.getOwnPropertyDescriptor(proto, 'value') : null;
+      if (d && d.set) d.set.call(el, v); else el.value = v;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    set(lf.user, user);
+    set(lf.pass, pass);
+    return true;
+  };
   var SEL = 'a[href],button,input,select,textarea,summary,label,[role="button"],[role="link"],' +
             '[role="menuitem"],[role="tab"],[onclick],[contenteditable="true"],' +
             '[tabindex]:not([tabindex="-1"])';
@@ -359,6 +442,12 @@ static const char *kHelperSource = R"JS(
 @interface AfterglowWebHost : NSObject <WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate>
 @property (nonatomic, strong) WKWebView *web;
 @property (nonatomic, assign) int pending;
+// A submitted login waiting for the app to offer to keep it, and a page with a login form
+// waiting for the app to offer a saved one. Read once each.
+@property (nonatomic, strong) NSString *credentialHost;
+@property (nonatomic, strong) NSString *credentialUser;
+@property (nonatomic, strong) NSString *credentialPass;
+@property (nonatomic, strong) NSString *loginHost;
 // Windowed: the view lives behind Unity's, where it still renders but is never seen, and is
 // snapshotted into a buffer the scene draws on a quad. Only an immersive session brings it to
 // the front, because only that needs the frame rate.
@@ -388,7 +477,40 @@ static AfterglowWebHost *g_Host = nil;
 {
     NSString *event = [message.body isKindOfClass:NSDictionary.class] ? message.body[@"event"] : nil;
     if ([event isEqualToString:@"sessionstart"]) self.pending = WebEventSessionStart;
-    else if ([event isEqualToString:@"sessionend"]) self.pending = WebEventSessionEnd;
+    else if ([event isEqualToString:@"sessionend"])
+    {
+        self.pending = WebEventSessionEnd;
+        NSString *why = [message.body isKindOfClass:NSDictionary.class] ? message.body[@"why"] : nil;
+        if (why.length > 0)
+            AGLog(@"[WebXR] session ended from: %@", why);
+    }
+    else if ([event isEqualToString:@"startpage"])
+    {
+        self.pending = WebEventStartPage;
+        return;
+    }
+    else if ([event isEqualToString:@"console"])
+    {
+        NSDictionary *body = message.body;
+        AGLog(@"[WebXR] page %@: %@", body[@"level"] ?: @"log", body[@"text"] ?: @"");
+        return;
+    }
+    else if ([event isEqualToString:@"credentials"])
+    {
+        NSDictionary *body = message.body;
+        self.credentialHost = body[@"host"];
+        self.credentialUser = body[@"user"];
+        self.credentialPass = body[@"pass"];
+        AGLog(@"[WebXR] a login was submitted on %@", self.credentialHost ?: @"?");
+        return;
+    }
+    else if ([event isEqualToString:@"login"])
+    {
+        NSDictionary *body = message.body;
+        self.loginHost = body[@"host"];
+        AGLog(@"[WebXR] login form on %@", self.loginHost ?: @"?");
+        return;
+    }
     else if ([event isEqualToString:@"close"]) self.pending = WebEventClose;
     else if ([event isEqualToString:@"click"])
     {
@@ -427,6 +549,23 @@ static AfterglowWebHost *g_Host = nil;
 - (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)nav withError:(NSError *)error
 {
     AGLog(@"[WebXR] load failed partway: %@", error.localizedDescription);
+}
+
+// The app's own links on the start page (afterglow://clear-history) are commands for the app,
+// not pages: they become events and never load.
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)action
+        decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
+{
+    NSURL *url = action.request.URL;
+    if ([url.scheme isEqualToString:@"afterglow"])
+    {
+        if ([url.host isEqualToString:@"clear-history"])
+            self.pending = WebEventClearHistory;
+        AGLog(@"[WebXR] command %@", url.absoluteString);
+        decisionHandler(WKNavigationActionPolicyCancel);
+        return;
+    }
+    decisionHandler(WKNavigationActionPolicyAllow);
 }
 
 - (void)webView:(WKWebView *)webView didStartProvisionalNavigation:(WKNavigation *)nav
@@ -807,6 +946,65 @@ extern "C" void Afterglow_WebKey(const char *key)
 extern "C" int Afterglow_WebTextFocused()
 {
     return g_Host != nil ? g_Host.focusHas : 0;
+}
+
+namespace
+{
+    // Copies a string into a buffer, emptying it when there's nothing.
+    void CopyOut(NSString *value, char *buffer, int capacity)
+    {
+        if (buffer == nullptr || capacity <= 0)
+            return;
+        strlcpy(buffer, value != nil ? value.UTF8String : "", (size_t)capacity);
+    }
+}
+
+// A login the page just submitted, once: 1 with the host, username and password, 0 if none.
+extern "C" int Afterglow_WebTakeCredential(char *host, int hostLength, char *user, int userLength, char *pass, int passLength)
+{
+    if (g_Host == nil || g_Host.credentialHost == nil)
+        return 0;
+    CopyOut(g_Host.credentialHost, host, hostLength);
+    CopyOut(g_Host.credentialUser, user, userLength);
+    CopyOut(g_Host.credentialPass, pass, passLength);
+    g_Host.credentialHost = nil;
+    g_Host.credentialUser = nil;
+    g_Host.credentialPass = nil;
+    return 1;
+}
+
+// The host of a page that showed a login form, once: 1 with it, 0 if none.
+extern "C" int Afterglow_WebTakeLoginHost(char *host, int hostLength)
+{
+    if (g_Host == nil || g_Host.loginHost == nil)
+        return 0;
+    CopyOut(g_Host.loginHost, host, hostLength);
+    g_Host.loginHost = nil;
+    return 1;
+}
+
+// Puts a saved login into the page's form.
+extern "C" void Afterglow_WebFill(const char *user, const char *pass)
+{
+    if (g_Host == nil || g_Host.web == nil || user == nullptr || pass == nullptr)
+        return;
+    NSString *js = [NSString stringWithFormat:@"window.__afterglowFill&&window.__afterglowFill(%@,%@)",
+                    JsString([NSString stringWithUTF8String:user]), JsString([NSString stringWithUTF8String:pass])];
+    [g_Host.web evaluateJavaScript:js completionHandler:nil];
+}
+
+// Runs a script in the page (the start page takes its bookmarks and history this way).
+extern "C" void Afterglow_WebRunScript(const char *script)
+{
+    if (g_Host == nil || g_Host.web == nil || script == nullptr)
+        return;
+    NSString *js = [NSString stringWithUTF8String:script];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [g_Host.web evaluateJavaScript:js completionHandler:^(id result, NSError *error) {
+            if (error != nil)
+                AGLog(@"[WebXR] script failed: %@", error.localizedDescription);
+        }];
+    });
 }
 
 extern "C" void Afterglow_WebLoadUrl(const char *url)

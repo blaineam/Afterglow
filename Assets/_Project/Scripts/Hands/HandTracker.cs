@@ -236,6 +236,8 @@ namespace Afterglow.Hands
         Tensor<float> m_LandmarkerInput;
         float[] m_DetectorPixels;
         float[] m_LandmarkerPixels;
+        int m_DumpsLeft;
+        int m_Dumped;
         float[] m_Boxes;
         float[] m_Scores;
         // Scratch for decoding more than one palm out of a detector result: the palms
@@ -347,6 +349,11 @@ namespace Afterglow.Hands
         void OnEnable()
         {
             m_AxesVariant = LaunchOptions.GetInt("handAxes", 0);
+            // "handDump N" writes the next N landmarker crops, with the detector input and the
+            // camera image they came from, to HandDumps in the app's folder (HandDump).
+            m_DumpsLeft = LaunchOptions.GetInt("handDump", 0);
+            if (m_DumpsLeft > 0)
+                Debug.Log($"[Hands] Will dump the next {m_DumpsLeft} crops to {HandDump.Folder}");
             // The models are the largest part of the app's heat, so their rate is a setting (and a
             // launch option): "handHz 10" runs the landmarker at most ten times a second, 0 on every image.
             ApplyRate(Settings.Int("handHz", 0));
@@ -757,6 +764,15 @@ namespace Afterglow.Hands
                 return;
             }
 
+            if (m_DumpsLeft > 0)
+            {
+                var detectorPath = HandDump.SaveInput(m_DetectorPixels, PalmDecoder.InputSize, $"{m_Dumped}-detector");
+                var imagePath = HandDump.SaveImage(m_Image, m_ImageWidth, m_ImageHeight, 2, $"{m_Dumped}-image");
+                var palms = new System.Text.StringBuilder();
+                for (var i = 0; i < found; i++)
+                    palms.Append($" palm {i}: score {m_Palms[i].score:F2} at ({m_Palms[i].center.x:F0}, {m_Palms[i].center.y:F0}) size {m_Palms[i].size.x:F0}x{m_Palms[i].size.y:F0} in the {PalmDecoder.InputSize} input;");
+                Debug.Log($"[Hands] Dumped the detector input to {detectorPath} and the {m_ImageWidth}x{m_ImageHeight} image (halved) to {imagePath};{palms}");
+            }
             for (var i = 0; i < found; i++)
             {
                 var region = HandRegion.FromPalm(m_Palms[i], letterbox);
@@ -827,6 +843,15 @@ namespace Afterglow.Hands
             if (presence < 0f || presence > 1f)
                 presence = PalmDecoder.Sigmoid(presence);
             m_PresenceSum += presence;
+            if (m_DumpsLeft > 0)
+            {
+                m_DumpsLeft--;
+                var cropPath = HandDump.SaveInput(m_LandmarkerPixels, k_LandmarkerSize, $"{m_Dumped}-crop");
+                Debug.Log($"[Hands] Dumped crop {m_Dumped} to {cropPath}: presence {presence:F2}, handedness {handedness:F2}, " +
+                          $"region centre ({region.center.x:F0}, {region.center.y:F0}) size {region.size:F0} px rotation {region.rotation * Mathf.Rad2Deg:F0} deg " +
+                          $"in the {m_ImageWidth}x{m_ImageHeight} image");
+                m_Dumped++;
+            }
             m_Handedness = handedness;
             if (presence < m_MinHandPresence)
             {

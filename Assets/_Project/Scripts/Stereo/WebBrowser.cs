@@ -28,6 +28,10 @@ namespace Afterglow.Stereo
             SessionStart = 1,
             SessionEnd = 2,
             Close = 3,
+            // The start page's "Clear history" link (afterglow://clear-history).
+            ClearHistory = 4,
+            // The start page is up and can take its bookmarks and history.
+            StartPage = 5,
         }
 
         // How rarely Unity draws while the browser is in front. It still updates every frame.
@@ -254,6 +258,62 @@ namespace Afterglow.Stereo
             }
         }
 
+        const int k_HostLength = 256;
+        const int k_CredentialLength = 1024;
+
+        // A login the page just submitted, once, so the app can offer to keep it. The password
+        // passes through here and nowhere else: never log it.
+        public static bool TryTakeCredential(out string host, out string user, out string password)
+        {
+            host = user = password = null;
+#if UNITY_IOS && !UNITY_EDITOR
+            var hostBuffer = new StringBuilder(k_HostLength);
+            var userBuffer = new StringBuilder(k_CredentialLength);
+            var passBuffer = new StringBuilder(k_CredentialLength);
+            if (Afterglow_WebTakeCredential(hostBuffer, hostBuffer.Capacity, userBuffer, userBuffer.Capacity, passBuffer, passBuffer.Capacity) == 0)
+                return false;
+            host = hostBuffer.ToString();
+            user = userBuffer.ToString();
+            password = passBuffer.ToString();
+            return host.Length > 0;
+#else
+            return false;
+#endif
+        }
+
+        // The host of a page that showed a login form, once, so the app can offer a saved login.
+        public static bool TryTakeLoginHost(out string host)
+        {
+            host = null;
+#if UNITY_IOS && !UNITY_EDITOR
+            var buffer = new StringBuilder(k_HostLength);
+            if (Afterglow_WebTakeLoginHost(buffer, buffer.Capacity) == 0)
+                return false;
+            host = buffer.ToString();
+            return host.Length > 0;
+#else
+            return false;
+#endif
+        }
+
+        // Puts a saved login into the page's form.
+        public static void Fill(string user, string password)
+        {
+#if UNITY_IOS && !UNITY_EDITOR
+            Afterglow_WebFill(user ?? "", password ?? "");
+#endif
+        }
+
+        // Runs a script in the page: how the app hands the start page its lists.
+        public static void RunScript(string script)
+        {
+            if (string.IsNullOrEmpty(script))
+                return;
+#if UNITY_IOS && !UNITY_EDITOR
+            Afterglow_WebRunScript(script);
+#endif
+        }
+
         public static void LoadUrl(string url)
         {
             if (string.IsNullOrEmpty(url))
@@ -412,6 +472,10 @@ namespace Afterglow.Stereo
         [DllImport("__Internal")] static extern void Afterglow_WebKey(string key);
         [DllImport("__Internal")] static extern int Afterglow_WebTextFocused();
         [DllImport("__Internal")] static extern void Afterglow_WebLoadUrl(string url);
+        [DllImport("__Internal")] static extern void Afterglow_WebRunScript(string script);
+        [DllImport("__Internal")] static extern int Afterglow_WebTakeCredential(StringBuilder host, int hostLength, StringBuilder user, int userLength, StringBuilder pass, int passLength);
+        [DllImport("__Internal")] static extern int Afterglow_WebTakeLoginHost(StringBuilder host, int hostLength);
+        [DllImport("__Internal")] static extern void Afterglow_WebFill(string user, string pass);
         [DllImport("__Internal")] static extern int Afterglow_WebCopyUrl(byte[] buffer, int capacity);
         [DllImport("__Internal")] static extern int Afterglow_WebCopyTitle(byte[] buffer, int capacity);
         [DllImport("__Internal")] static extern void Afterglow_WebSetWindowed(int windowed);

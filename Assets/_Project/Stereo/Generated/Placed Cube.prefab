@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &7357472561998139532
+--- !u!1 &232377059906204378
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,17 +8,17 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1664926730464848834}
-  - component: {fileID: 8913033374886402603}
-  - component: {fileID: 6524117008415561650}
-  - component: {fileID: 2834441579088788506}
-  - component: {fileID: 5342308216178258933}
-  - component: {fileID: 1802958755981252025}
-  - component: {fileID: 8434533409934677309}
-  - component: {fileID: 8344675764615704888}
-  - component: {fileID: 5040310657406785960}
-  - component: {fileID: 1614505626088042645}
-  - component: {fileID: 5280268730155158902}
+  - component: {fileID: 8197010433502998557}
+  - component: {fileID: 785452877965435103}
+  - component: {fileID: 6791763417128943130}
+  - component: {fileID: 5566460179342769573}
+  - component: {fileID: 4144858912576934012}
+  - component: {fileID: 3864041357825814055}
+  - component: {fileID: 6975763510162841313}
+  - component: {fileID: 5124705758146745198}
+  - component: {fileID: 2556574877213000086}
+  - component: {fileID: 482026899690853490}
+  - component: {fileID: 2734926886440613914}
   m_Layer: 0
   m_Name: Placed Cube
   m_TagString: Untagged
@@ -26,13 +26,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &1664926730464848834
+--- !u!4 &8197010433502998557
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7357472561998139532}
+  m_GameObject: {fileID: 232377059906204378}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -41,21 +41,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &8913033374886402603
+--- !u!33 &785452877965435103
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7357472561998139532}
+  m_GameObject: {fileID: 232377059906204378}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!65 &6524117008415561650
+--- !u!65 &6791763417128943130
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7357472561998139532}
+  m_GameObject: {fileID: 232377059906204378}
   m_Material: {fileID: 13400000, guid: 5930230e159744d4980ec114ed62f7db, type: 2}
   m_IncludeLayers:
     serializedVersion: 2
@@ -70,13 +70,13 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!23 &2834441579088788506
+--- !u!23 &5566460179342769573
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7357472561998139532}
+  m_GameObject: {fileID: 232377059906204378}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -119,37 +119,37 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &5342308216178258933
+--- !u!114 &4144858912576934012
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7357472561998139532}
+  m_GameObject: {fileID: 232377059906204378}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c5f94c6205da9422a940c55a7fa29086, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Afterglow.Interaction::Afterglow.Interaction.GazeHighlight
---- !u!114 &1802958755981252025
+--- !u!114 &3864041357825814055
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7357472561998139532}
+  m_GameObject: {fileID: 232377059906204378}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9b0412d3634f54359a833c4ba1d0d45a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Afterglow.Stereo::Afterglow.Stereo.PlacedObject
---- !u!54 &8434533409934677309
+--- !u!54 &6975763510162841313
 Rigidbody:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7357472561998139532}
+  m_GameObject: {fileID: 232377059906204378}
   serializedVersion: 5
   m_Mass: 0.3
   m_LinearDamping: 0
@@ -170,13 +170,13 @@ Rigidbody:
   m_Interpolate: 1
   m_Constraints: 0
   m_CollisionDetection: 3
---- !u!114 &8344675764615704888
+--- !u!114 &5124705758146745198
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7357472561998139532}
+  m_GameObject: {fileID: 232377059906204378}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0ad34abafad169848a38072baa96cdb2, type: 3}
@@ -300,37 +300,37 @@ MonoBehaviour:
   m_LimitAngularVelocity: 0
   m_MaxLinearVelocityDelta: 10
   m_MaxAngularVelocityDelta: 20
---- !u!114 &5040310657406785960
+--- !u!114 &2556574877213000086
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7357472561998139532}
+  m_GameObject: {fileID: 232377059906204378}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3b9e4c225f6d4416c9e8d91e93954bcb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Afterglow.Hands::Afterglow.Hands.CubePhysics
---- !u!114 &1614505626088042645
+--- !u!114 &482026899690853490
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7357472561998139532}
+  m_GameObject: {fileID: 232377059906204378}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3f4772e921e8e43c9b4e5bf9d6769021, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Afterglow.Hands::Afterglow.Hands.RotateWithHand
---- !u!114 &5280268730155158902
+--- !u!114 &2734926886440613914
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7357472561998139532}
+  m_GameObject: {fileID: 232377059906204378}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 27c6feaeecc274bcfb74789d9e8b0d9e, type: 3}

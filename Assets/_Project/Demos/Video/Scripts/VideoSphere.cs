@@ -162,13 +162,18 @@ namespace Afterglow.Demos.Video
         }
 
         // Shows the texture in the format, or hides the surface for null.
-        public void Show(Texture texture, VideoFormat format) => Show(texture, format, null);
+        public void Show(Texture texture, VideoFormat format) => Show(texture, format, null, false);
 
         // One picture per eye, for a source that decodes a texture for each (a spatial photo or
         // video, whose two views are separate layers of one file) rather than one frame holding
         // both. With no right texture the format's halves of the left one are used, which is how
         // side-by-side and top/bottom files are drawn.
-        public void Show(Texture leftTexture, VideoFormat format, Texture rightTexture)
+        public void Show(Texture leftTexture, VideoFormat format, Texture rightTexture) => Show(leftTexture, format, rightTexture, false);
+
+        // flipVertically for a texture whose first row is the picture's top, which is what the
+        // spatial-video plugin's Metal textures are: Unity reads a texture's first row as the
+        // bottom, so without the flip a library video plays upside down.
+        public void Show(Texture leftTexture, VideoFormat format, Texture rightTexture, bool flipVertically)
         {
             var showing = leftTexture != null;
             // Two textures are stereo whatever the layout says, since each eye has its own picture.
@@ -194,8 +199,8 @@ namespace Afterglow.Demos.Video
                 var texture = eye == 0 ? leftTexture : rightTexture ?? leftTexture;
                 var rect = rightTexture != null ? new Rect(0f, 0f, 1f, 1f) : format.EyeRect(eye);
                 m_Materials[eye].mainTexture = texture;
-                m_Materials[eye].mainTextureScale = rect.size;
-                m_Materials[eye].mainTextureOffset = rect.position;
+                m_Materials[eye].mainTextureScale = flipVertically ? new Vector2(rect.width, -rect.height) : rect.size;
+                m_Materials[eye].mainTextureOffset = flipVertically ? new Vector2(rect.x, rect.y + rect.height) : rect.position;
 
                 // The spheres are already the right size; a flat screen is a unit quad, sized here
                 // so it spans m_FlatWidthDegrees and keeps the picture's own shape.

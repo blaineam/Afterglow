@@ -53,6 +53,24 @@ namespace Afterglow.Demos
         WebKeyboard m_Keyboard;
         RectTransform m_Address;
         TMP_Text m_AddressText;
+        M3Button m_Star;
+        bool m_StarFilled;
+        // The login prompt: "Save the password?" after a form is submitted, "Fill the saved
+        // login?" on a page with one. One small bar above the tabs, with its two buttons.
+        RectTransform m_Prompt;
+        TMP_Text m_PromptText;
+        M3Button m_PromptYes;
+        string m_PromptHost;
+        string m_PromptUser;
+        string m_PromptSecret;
+        bool m_PromptIsSave;
+        // Bookmarks, history and the tabs, kept in the app's folder (BrowserStore).
+        BrowserStore m_Store;
+        float m_NextStoreSave;
+        // The start page is handed its lists once its address shows, and once more a moment
+        // later in case the first came before its script was ready.
+        float m_FeedStartPageAt = -1f;
+        bool m_OnStartPage;
         // What is being typed into the address bar, or null while the typing is going to a field
         // on the page. Which of the two it is is the page's business, not a mode the user sets.
         string m_Typed;
@@ -78,6 +96,12 @@ namespace Afterglow.Demos
 
         public bool IsOpen => WebBrowser.IsOpen;
 
+        void Start()
+        {
+            if (LaunchOptions.GetInt("keychainTest", 0) == 1)
+                Keychain.SelfTest();
+        }
+
         public void Toggle()
         {
             if (WebBrowser.IsOpen)
@@ -93,8 +117,20 @@ namespace Afterglow.Demos
                 Debug.Log("[WebXR] The browser is iOS only; nothing to open here.");
                 return;
             }
-            var page = Path.Combine(Application.streamingAssetsPath, m_HomePage);
-            if (!WebBrowser.Open("file://" + page, m_Rig, m_Fusion != null && m_Fusion.IsArTracking))
+            m_Store ??= BrowserStore.Load(BrowserStore.DefaultPath);
+            // The tabs come back as they were left, the selected one first on screen.
+            if (m_Tabs.Count == 0 && m_Store.Tabs.Count > 0)
+            {
+                // The start page is kept by name: its file path changes with every install.
+                foreach (var tab in m_Store.Tabs)
+                    m_Tabs.Add(IsStartPage(tab.Url) || tab.Url == k_StartPageName
+                        ? new Tab { Url = StartPage, Title = "Start" }
+                        : new Tab { Url = tab.Url, Title = tab.Title });
+                m_Tab = Mathf.Clamp(m_Store.SelectedTab, 0, m_Tabs.Count - 1);
+                Debug.Log($"[WebXR] {m_Tabs.Count} tabs restored, tab {m_Tab + 1} first");
+            }
+            var first = m_Tab >= 0 && m_Tab < m_Tabs.Count ? m_Tabs[m_Tab].Url : StartPage;
+            if (!WebBrowser.Open(first, m_Rig, m_Fusion != null && m_Fusion.IsArTracking))
                 return;
 
             BuildWindow();
@@ -141,6 +177,8 @@ namespace Afterglow.Demos
             m_Heard = null;
             m_SpokenOnto = null;
 
+            if (m_Store != null && m_Store.Dirty)
+                m_Store.Save(BrowserStore.DefaultPath);
             if (!WebBrowser.IsOpen)
                 return;
             WebBrowser.Close();
@@ -196,6 +234,8 @@ namespace Afterglow.Demos
         }
 
         string StartPage => "file://" + Path.Combine(Application.streamingAssetsPath, m_HomePage);
+        // How the store names the start page, since its path is the install's.
+        const string k_StartPageName = "afterglow://start";
 
         void ClickAtGaze()
         {
@@ -227,18 +267,99 @@ namespace Afterglow.Demos
                 new Vector2(width / 2f - 44f, 0f), ToggleKeys);
             M3.IconButton("Dictate", m_Address, "mic", M3Button.Variant.Tonal,
                 new Vector2(width / 2f - 104f, 0f), OnDictate);
+            // The star keeps the page as a bookmark, filled while it is one.
+            m_Star = M3.IconButton("Bookmark", m_Address, "star_border", M3Button.Variant.Text,
+                new Vector2(width / 2f - 164f, 0f), ToggleBookmark, 48f);
             // The field: a lighter pill with the address, which typing and dictation fill.
             var fieldLeft = -width / 2f + 164f;
-            var fieldRight = width / 2f - 140f;
+            var fieldRight = width / 2f - 196f;
             var field = M3.Surface("Field", m_Address, new Vector2((fieldLeft + fieldRight) / 2f, 0f),
                 new Vector2(fieldRight - fieldLeft, height - 20f), M3Theme.SurfaceContainerHighest, M3Theme.k_ShapeFull);
             m_AddressText = M3.Text("Address", field.rectTransform, "", M3Theme.Type.BodyLarge,
                 new Vector2(8f, 0f), new Vector2(fieldRight - fieldLeft - 32f, height - 20f),
                 M3Theme.OnSurface, TextAlignmentOptions.Left);
+            m_AddressText.textWrappingMode = TextWrappingModes.NoWrap;
+            m_AddressText.overflowMode = TextOverflowModes.Ellipsis;
         }
 
         // The tabs, above the address: a chip per tab with the page's title, the current one
         // selected, then New and Close for tabs.
+        // The login prompt, built once and shown when there is something to ask.
+        void BuildPrompt()
+        {
+            if (m_Prompt != null)
+                return;
+            const float width = 800f, height = 64f;
+            m_Prompt = M3.Canvas("Web Login", transform, new Vector2(width, height),
+                M3Theme.k_OverlayDistance, M3Theme.SurfaceContainerHighest, M3Theme.k_ShapeFull);
+            m_Prompt.gameObject.AddComponent<GazeCanvas>();
+            m_PromptText = M3.Text("Question", m_Prompt, "", M3Theme.Type.BodyLarge, new Vector2(-96f, 0f), new Vector2(width - 256f, height),
+                M3Theme.OnSurface, TextAlignmentOptions.Left);
+            m_PromptText.textWrappingMode = TextWrappingModes.NoWrap;
+            m_PromptText.overflowMode = TextOverflowModes.Ellipsis;
+            m_PromptYes = M3.Button("Yes", m_Prompt, "Save", M3Button.Variant.Filled, new Vector2(width / 2f - 148f, 0f), AnswerPrompt, null, 112f);
+            M3.IconButton("Not now", m_Prompt, "close", M3Button.Variant.Text, new Vector2(width / 2f - 56f, 0f), HidePrompt, 48f);
+            m_Prompt.gameObject.SetActive(false);
+        }
+
+        void ShowPrompt(string text, string yes, bool save, string host, string user, string secret)
+        {
+            BuildPrompt();
+            m_PromptText.text = text;
+            m_PromptYes.Text = yes;
+            m_PromptIsSave = save;
+            m_PromptHost = host;
+            m_PromptUser = user;
+            m_PromptSecret = secret;
+            m_Prompt.gameObject.SetActive(true);
+            Place();
+        }
+
+        void HidePrompt()
+        {
+            if (m_Prompt != null)
+                m_Prompt.gameObject.SetActive(false);
+            m_PromptSecret = null;
+        }
+
+        void AnswerPrompt()
+        {
+            if (m_PromptIsSave)
+            {
+                var ok = Keychain.Store(m_PromptHost, m_PromptUser, m_PromptSecret);
+                Debug.Log($"[WebXR] Password for {m_PromptHost} ({m_PromptUser}) {(ok ? "saved in the Keychain" : "could not be saved")}");
+            }
+            else if (Keychain.TryLoad(m_PromptHost, m_PromptUser, out var secret))
+            {
+                WebBrowser.Fill(m_PromptUser, secret);
+                Debug.Log($"[WebXR] Filled the saved login for {m_PromptHost} ({m_PromptUser})");
+            }
+            HidePrompt();
+        }
+
+        // What the page says about logins: a submitted one to offer to keep, a form to offer a
+        // saved login for. The password is held only until the prompt is answered or dismissed.
+        void UpdateLogins()
+        {
+            if (!Keychain.Supported)
+                return;
+            if (WebBrowser.TryTakeCredential(out var host, out var user, out var password))
+            {
+                if (string.IsNullOrEmpty(user))
+                    Debug.Log($"[WebXR] A password without a username on {host}: nothing to keep it under");
+                else if (Keychain.TryLoad(host, user, out var known) && known == password)
+                    Debug.Log($"[WebXR] The login for {host} ({user}) is already saved");
+                else
+                    ShowPrompt($"Save the password for {host} ({user})?", "Save", true, host, user, password);
+            }
+            if (WebBrowser.TryTakeLoginHost(out var loginHost))
+            {
+                var accounts = Keychain.Accounts(loginHost);
+                if (accounts.Length > 0)
+                    ShowPrompt($"Fill the saved login for {loginHost} ({accounts[0]})?", "Fill", false, loginHost, accounts[0], null);
+            }
+        }
+
         void BuildTabBar()
         {
             if (m_TabBar != null)
@@ -290,6 +411,55 @@ namespace Afterglow.Demos
             Debug.Log($"[WebXR] New tab, {m_Tabs.Count} open");
         }
 
+        // The tabs as they are now, for the store; written out with the next save.
+        void RememberTabs()
+        {
+            if (m_Store == null)
+                return;
+            var tabs = new List<(string url, string title)>();
+            foreach (var tab in m_Tabs)
+                tabs.Add(IsStartPage(tab.Url) ? (k_StartPageName, "Start") : (tab.Url, tab.Title));
+            m_Store.RememberTabs(tabs, m_Tab);
+        }
+
+        // Keeps or drops the bookmark for the page showing, and redraws the start page if that
+        // is what's showing.
+        void ToggleBookmark()
+        {
+            if (m_Store == null || !BrowserStore.IsRememberable(m_UrlShown))
+            {
+                Debug.Log("[WebXR] Nothing to bookmark here");
+                return;
+            }
+            var kept = m_Store.ToggleBookmark(m_UrlShown, WebBrowser.CurrentTitle, BrowserStore.Now);
+            Debug.Log($"[WebXR] Bookmark {(kept ? "kept" : "dropped")}: {ShortenUrl(m_UrlShown)}");
+            UpdateStar();
+        }
+
+        void UpdateStar()
+        {
+            if (m_Star == null)
+                return;
+            var kept = m_Store != null && m_Store.IsBookmarked(m_UrlShown);
+            if (kept != m_StarFilled)
+            {
+                m_StarFilled = kept;
+                m_Star.Icon = kept ? "star" : "star_border";
+            }
+            m_Star.Interactable = BrowserStore.IsRememberable(m_UrlShown);
+        }
+
+        // Hands the start page its bookmarks and recent pages.
+        void FeedStartPage()
+        {
+            if (m_Store == null)
+                return;
+            Debug.Log($"[WebXR] Start page given {m_Store.Bookmarks.Count} bookmarks and {Mathf.Min(m_Store.History.Count, BrowserStore.k_StartPageHistory)} recent pages");
+            WebBrowser.RunScript("window.__afterglowLists&&window.__afterglowLists(" + m_Store.StartPageJson(BrowserStore.Now) + ")");
+        }
+
+        bool IsStartPage(string url) => !string.IsNullOrEmpty(url) && url.StartsWith("file://", System.StringComparison.Ordinal);
+
         void SelectTab(int index)
         {
             if (index < 0 || index >= m_Tabs.Count)
@@ -302,6 +472,7 @@ namespace Afterglow.Demos
                 Debug.Log($"[WebXR] Tab {index + 1}: {ShortenUrl(m_Tabs[index].Url)}");
             }
             RebuildTabs();
+            RememberTabs();
         }
 
         void CloseTab()
@@ -334,6 +505,12 @@ namespace Afterglow.Demos
                 Destroy(m_Address.gameObject);
             m_Address = null;
             m_AddressText = null;
+            m_Star = null;
+            m_StarFilled = false;
+            if (m_Prompt != null)
+                Destroy(m_Prompt.gameObject);
+            m_Prompt = null;
+            m_PromptSecret = null;
             if (m_TabBar != null)
                 Destroy(m_TabBar.gameObject);
             m_TabBar = null;
@@ -373,6 +550,11 @@ namespace Afterglow.Demos
             {
                 m_Address.position = above + up * 0.07f;
                 m_Address.rotation = m_Window.transform.rotation;
+            }
+            if (m_Prompt != null)
+            {
+                m_Prompt.position = above + up * 0.27f;
+                m_Prompt.rotation = m_Window.transform.rotation;
             }
             if (m_TabBar != null)
             {
@@ -431,6 +613,7 @@ namespace Afterglow.Demos
                         m_Address.gameObject.SetActive(false);
                     if (m_TabBar != null)
                         m_TabBar.gameObject.SetActive(false);
+                    HidePrompt();
                     Debug.Log("[WebXR] Immersive session: the page has the screen");
                     break;
                 case WebBrowser.Event.SessionEnd:
@@ -450,6 +633,17 @@ namespace Afterglow.Demos
                 case WebBrowser.Event.Close:
                     Close();
                     return;
+                case WebBrowser.Event.StartPage:
+                    FeedStartPage();
+                    break;
+                case WebBrowser.Event.ClearHistory:
+                    if (m_Store != null)
+                    {
+                        m_Store.ClearHistory();
+                        Debug.Log("[WebXR] History cleared");
+                        FeedStartPage();
+                    }
+                    break;
             }
 
             if (m_Immersive)
@@ -463,6 +657,7 @@ namespace Afterglow.Demos
             KeyboardInput.Poll();
             UpdateDictation();
             UpdateAddress();
+            UpdateLogins();
 
             var aimed = TryGazePoint(out var u, out var v);
             ShowAim(aimed, u, v);
@@ -636,8 +831,31 @@ namespace Afterglow.Demos
                         tab.Url = m_UrlShown;
                         tab.Title = title;
                         RebuildTabs();
+                        RememberTabs();
+                        if (m_Store != null && m_Store.Visit(m_UrlShown, title, BrowserStore.Now))
+                            Debug.Log($"[WebXR] Remembered {ShortenUrl(m_UrlShown)}");
                     }
                 }
+                var onStart = IsStartPage(m_UrlShown);
+                if (onStart && !m_OnStartPage)
+                {
+                    FeedStartPage();
+                    m_FeedStartPageAt = Time.unscaledTime + 1f;
+                }
+                m_OnStartPage = onStart;
+                UpdateStar();
+                // The store is written a little after it changes, not on every visit.
+                if (m_Store != null && m_Store.Dirty && Time.unscaledTime >= m_NextStoreSave)
+                {
+                    m_NextStoreSave = Time.unscaledTime + 5f;
+                    m_Store.Save(BrowserStore.DefaultPath);
+                }
+            }
+            if (m_FeedStartPageAt > 0f && Time.unscaledTime >= m_FeedStartPageAt)
+            {
+                m_FeedStartPageAt = -1f;
+                if (m_OnStartPage)
+                    FeedStartPage();
             }
             m_AddressText.text = m_Heard != null ? m_Heard + " ..."
                                : m_Typed != null ? m_Typed + "|"

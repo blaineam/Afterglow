@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &7453209136556299182
+--- !u!1 &5070091865966750760
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,14 +8,14 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 7054955476399542775}
-  - component: {fileID: 1980600383094656620}
-  - component: {fileID: 2625949856562749547}
-  - component: {fileID: 3559718209029271543}
-  - component: {fileID: 8685922912733464028}
-  - component: {fileID: 8918194448851746881}
-  - component: {fileID: 7911554345995455938}
-  - component: {fileID: 5454788860192077294}
+  - component: {fileID: 4314588430732311511}
+  - component: {fileID: 5700663000267152876}
+  - component: {fileID: 2522054474873546010}
+  - component: {fileID: 2172621488466083886}
+  - component: {fileID: 3593195476937786987}
+  - component: {fileID: 70372962460025943}
+  - component: {fileID: 8717206013647610949}
+  - component: {fileID: 6190535837945454365}
   m_Layer: 30
   m_Name: Boundary Plane
   m_TagString: Untagged
@@ -23,13 +23,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &7054955476399542775
+--- !u!4 &4314588430732311511
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7453209136556299182}
+  m_GameObject: {fileID: 5070091865966750760}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -38,13 +38,13 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1980600383094656620
+--- !u!114 &5700663000267152876
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7453209136556299182}
+  m_GameObject: {fileID: 5070091865966750760}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f66da7470dce8f4d821d71dd2b1d4ac, type: 3}
@@ -52,21 +52,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.XR.ARFoundation::UnityEngine.XR.ARFoundation.ARPlane
   m_DestroyOnRemoval: 1
   m_VertexChangedThreshold: 0.01
---- !u!33 &2625949856562749547
+--- !u!33 &2522054474873546010
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7453209136556299182}
+  m_GameObject: {fileID: 5070091865966750760}
   m_Mesh: {fileID: 0}
---- !u!23 &3559718209029271543
+--- !u!23 &2172621488466083886
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7453209136556299182}
+  m_GameObject: {fileID: 5070091865966750760}
   m_Enabled: 1
   m_CastShadows: 0
   m_ReceiveShadows: 0
@@ -110,26 +110,26 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &8685922912733464028
+--- !u!114 &3593195476937786987
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7453209136556299182}
+  m_GameObject: {fileID: 5070091865966750760}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7cdc16622b450490d8bdde8f3104675d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Afterglow.Stereo::Afterglow.Stereo.SurfaceMesh
   m_Feather: 0.15
---- !u!65 &8918194448851746881
+--- !u!65 &70372962460025943
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7453209136556299182}
+  m_GameObject: {fileID: 5070091865966750760}
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -144,26 +144,26 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &7911554345995455938
+--- !u!114 &8717206013647610949
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7453209136556299182}
+  m_GameObject: {fileID: 5070091865966750760}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5c4c7dad3acd449eaa451d7883607fbd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Afterglow.Stereo::Afterglow.Stereo.PlaneCollider
   m_MinArea: 0.2
---- !u!114 &5454788860192077294
+--- !u!114 &6190535837945454365
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7453209136556299182}
+  m_GameObject: {fileID: 5070091865966750760}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b3588dfbea90e4efd8b16ce17dd06431, type: 3}

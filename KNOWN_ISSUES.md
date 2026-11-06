@@ -2,6 +2,28 @@
 
 ## Both platforms
 
+- **The browser's two crosshairs disagree.** The gaze reticle (the ring the app draws at the
+  centre of each eye) and the page's own crosshair (the dot the helper script draws where the
+  app says the gaze is) sit a little apart on the window, the page's higher, and a tap lands
+  where the page's dot is. Seen in the Simulator 2026-11-06 (desk mode, 3DoF); the mapping from
+  the gaze hit on the quad to page coordinates (`TryGazePoint`, `PageV`) is where to look. Aim by
+  the page's dot until then.
+
+- **Hands aren't found on the phone (2026-11-06).** The first device run since the two-hands
+  change (2026-11-03) shows the palm detector finding a hand only now and then and the landmarker
+  scoring it 0.13 presence, under the 0.5 it needs, so every hand is dropped at once and no pinch
+  is ever seen; taps and the floating buttons still work. The crop the landmarker sees is the
+  suspect (its orientation or its content), and the next run says: launch with
+  `zsh Tools/ios_launch.sh --ei handDump 6` with a hand in view, and the app writes the camera
+  image, the detector's input and the landmarker's crops to `HandDumps` in its Documents folder
+  (Finder's Files tab, or `devicectl device copy from`), with a log line per crop.
+
+- **An immersive WebXR session ends a third of a second after it starts** (phone, 2026-11-06,
+  three.js cubes and A-Frame): the page takes the screen, then says `sessionend`. The build
+  after that one forwards the page's console and the stack of whoever called `end()` into the
+  session log (`[WebXR] page error …`, `[WebXR] session ended from …`), which is the next thing
+  to read. Until it's found, *Enter VR* flashes and returns to the window.
+
 - **A tall photo sphere is drawn on a cylinder.** A GPano crop gives a panorama's exact span and
   height, and the band is a cylinder, which is right up to about 90° tall; a sphere cropped to,
   say, 360° × 150° stretches towards its top and bottom on it. The whole sphere (or near enough,

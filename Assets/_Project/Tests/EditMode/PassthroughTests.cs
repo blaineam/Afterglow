@@ -274,5 +274,17 @@ namespace Afterglow.Stereo.Tests
 
         static void AssertClose(Vector2 expected, Vector2 actual) =>
             Assert.That((actual - expected).magnitude, Is.LessThan(1e-5f), $"expected {expected}, got {actual}");
-    }
+    
+        [Test]
+        public void MagnifyingDrawsTheImageOverAWiderSpan()
+        {
+            var size = new Vector2(1.373f, 1.03f);
+            var frustum = PassthroughController.CaptureFrustum(new Vector2(0.01f, -0.02f), size, 2f);
+            Assert.AreEqual(0.01f, frustum.x, 1e-6f);
+            Assert.AreEqual(-0.02f, frustum.y, 1e-6f);
+            Assert.AreEqual(2.746f, frustum.z, 1e-4f, "twice the tangent width: the picture fills, it doesn't shrink");
+            Assert.AreEqual(2.06f, frustum.w, 1e-4f);
+            Assert.AreEqual(size.x, PassthroughController.CaptureFrustum(Vector2.zero, size, 1f).z, 1e-6f, "true size");
+        }
+}
 }

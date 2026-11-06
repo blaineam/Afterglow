@@ -63,12 +63,14 @@ if [ -z "$UDID" ]; then
     exit 1
 fi
 echo "== simulator $SIMULATOR $UDID"
+# Signed ad hoc rather than not at all: the app's entitlements (the Keychain's access group, for
+# the browser's saved logins) only take effect when they are embedded by a signature.
 
 if [ $STAGE != launch ]; then
     echo "== Xcode build for the Simulator"
     xcodebuild -project $XCODE_PROJECT -scheme Unity-iPhone -configuration Debug \
         -sdk iphonesimulator -destination "platform=iOS Simulator,id=$UDID" -derivedDataPath $DERIVED \
-        CODE_SIGNING_ALLOWED=NO build > $LOGS/xcode-sim.log 2>&1
+        CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO build > $LOGS/xcode-sim.log 2>&1
     XCODE_STATUS=$?
     tail -5 $LOGS/xcode-sim.log
     if [ $XCODE_STATUS -ne 0 ]; then

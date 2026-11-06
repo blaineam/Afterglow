@@ -8,6 +8,9 @@ namespace Afterglow.Demos
     // The way home from anywhere: a round Home button that floats low in the view, below whatever
     // an app shows, following the head's heading lazily. Look down at it and tap or pinch and the
     // settings panel opens with the home screen, from a game, the player or the browser alike.
+    // Beside it, while an app is running, a Close button leaves the app for the Home scene: the
+    // apps have no chrome of their own to close them with, and the browser's Close only closes
+    // the browser.
     // The palm gear does the same but needs a hand in the camera's view, and the corner gear
     // needs the phone in hand; this needs neither, which is what a viewer wants. Hidden while
     // the panel is open, since the panel is then the way everywhere. Lives in Core. Logs [Home].
@@ -21,18 +24,31 @@ namespace Afterglow.Demos
 
         [SerializeField] HeadPoseFusion m_Fusion;
         [SerializeField] HomeScreen m_Home;
+        [SerializeField] DemoManager m_Demos;
 
         RectTransform m_Canvas;
+        M3Button m_Close;
         float m_Yaw;
         bool m_Following;
         float m_YawSpeed;
 
         void Start()
         {
-            m_Canvas = M3.Canvas("Home Anchor", transform, new Vector2(56f, 56f), k_Distance);
+            m_Canvas = M3.Canvas("Home Anchor", transform, new Vector2(128f, 56f), k_Distance);
             m_Canvas.gameObject.AddComponent<Interaction.GazeCanvas>();
-            M3.IconButton("Home", m_Canvas, "home", M3Button.Variant.Filled, Vector2.zero, GoHome, 56f);
+            M3.IconButton("Home", m_Canvas, "home", M3Button.Variant.Filled, new Vector2(-36f, 0f), GoHome, 56f);
+            m_Close = M3.IconButton("Close App", m_Canvas, "close", M3Button.Variant.Tonal, new Vector2(36f, 0f), CloseApp, 56f);
+            m_Close.gameObject.SetActive(false);
             m_Yaw = HeadYaw();
+        }
+
+        // Leaves the running app for Home, where the home screen opens again.
+        void CloseApp()
+        {
+            if (m_Demos == null || m_Demos.Current == null)
+                return;
+            Debug.Log($"[Home] Closing {m_Demos.Current.Title} from the anchor");
+            m_Demos.ExitToHome();
         }
 
         void GoHome()
@@ -51,6 +67,9 @@ namespace Afterglow.Demos
                 m_Canvas.gameObject.SetActive(shown);
             if (!shown)
                 return;
+            var running = m_Demos != null && m_Demos.Current != null;
+            if (m_Close != null && m_Close.gameObject.activeSelf != running)
+                m_Close.gameObject.SetActive(running);
             m_Yaw = SettingsSummoner.FollowYaw(m_Yaw, HeadYaw(), k_DeadZone, ref m_Following, ref m_YawSpeed, Time.unscaledDeltaTime);
             var head = m_Fusion.transform.position;
             var direction = Quaternion.Euler(-k_Pitch, m_Yaw, 0f) * Vector3.forward;

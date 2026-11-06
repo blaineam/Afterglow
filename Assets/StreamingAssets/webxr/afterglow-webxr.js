@@ -523,9 +523,12 @@
             if (this._depth) gl.deleteRenderbuffer(this._depth);
         }
         this._emit('end');
-        // Lets the app put its own view back.
+        // Lets the app put its own view back, and says who asked, since a session that ends a
+        // moment after it started is a page's decision the app can't otherwise see.
+        var why = '';
+        try { why = String((new Error('end')).stack || '').split('\n').slice(1, 7).join(' | '); } catch (e) { why = ''; }
         if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.afterglow)
-            window.webkit.messageHandlers.afterglow.postMessage({ event: 'sessionend' });
+            window.webkit.messageHandlers.afterglow.postMessage({ event: 'sessionend', why: why });
         return Promise.resolve();
     };
 

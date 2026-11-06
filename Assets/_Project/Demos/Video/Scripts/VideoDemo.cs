@@ -695,9 +695,9 @@ namespace Afterglow.Demos.Video
                     // Two views are a spatial video on the screen, one view is drawn the way the
                     // entry's format says (flat, or 360 for a 2:1 one).
                     if (SpatialVideo.Stereo)
-                        m_Sphere.Show(SpatialVideo.Left, VideoFormat.Stereo3D, SpatialVideo.Right);
+                        m_Sphere.Show(SpatialVideo.Left, VideoFormat.Stereo3D, SpatialVideo.Right, true);
                     else
-                        m_Sphere.Show(SpatialVideo.Left, entry != null ? entry.Format : new VideoFormat(Projection.Flat, StereoLayout.Mono));
+                        m_Sphere.Show(SpatialVideo.Left, entry != null ? entry.Format : new VideoFormat(Projection.Flat, StereoLayout.Mono), null, true);
                     if (m_SpatialVideoShown)
                         return;
                     m_SpatialVideoShown = true;
