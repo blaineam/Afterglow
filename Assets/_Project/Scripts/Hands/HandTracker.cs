@@ -270,12 +270,15 @@ namespace Afterglow.Hands
         int m_VisionOrientation = 1;
         int m_VisionOrientationOverride;
         bool m_LoggedVisionFailure;
+        int m_FlatShapes;
+        int m_LandmarkerRuns;
         float m_LastTrackedTime = float.NegativeInfinity;
         const float k_HandGraceSeconds = 3f;
         // Vision's mean joint confidence below which what it saw isn't a hand, and a joint's
         // confidence below which the landmarker's own landmark is kept instead of Vision's.
         const float k_MinVisionConfidence = 0.3f;
         const float k_MinJointConfidence = 0.1f;
+        const float k_SureJointConfidence = 0.5f;
         // Per hand; the detector's m_NextSearch is shared.
 
         // Whether tracking is paused while the room is scanned, leaving the CPU to plane detection
@@ -420,9 +423,12 @@ namespace Afterglow.Hands
             else
                 HandGeometry.ImageAxesOnScreen(m_DisplayMatrix, out m_ImageXOnScreen, out m_ImageYOnScreen);
             m_HasAxes = true;
-            m_VisionOrientation = m_VisionOrientationOverride is >= 1 and <= 8
-                ? m_VisionOrientationOverride
-                : HandGeometry.ImageOrientation(m_ImageXOnScreen, m_ImageYOnScreen);
+            // The camera image is upright in the viewer's landscape as it comes; the axes from the
+            // display matrix say how it lies on a portrait screen, which Vision has no use for.
+            // (Told to turn the image, Vision found the hand mirrored across the image, the crop
+            // showed the room beside it, and the hand was placed where it wasn't.) Only the
+            // "handOrientation N" option turns it.
+            m_VisionOrientation = m_VisionOrientationOverride is >= 1 and <= 8 ? m_VisionOrientationOverride : 1;
         }
 
         void Update()
@@ -845,7 +851,7 @@ namespace Afterglow.Hands
                 return;   // the last request is still running; this image is skipped
             var count = 0;
             var ms = 0f;
-            while (m_Running && !VisionHandPose.TryTake(m_VisionHands, out count, out _, out ms))
+            while (m_Running && !VisionHandPose.TryTake(m_VisionHands, m_ImageWidth, m_ImageHeight, m_VisionOrientation, out count, out _, out ms))
                 await Awaitable.NextFrameAsync();
             if (!m_Running)
                 return;
@@ -960,6 +966,7 @@ namespace Afterglow.Hands
             using (var metric = (m_LandmarkerWorker.PeekOutput(m_MetricIndex) as Tensor<float>).ReadbackAndClone())
                 CopyTo(metric, m_MetricValues);
             m_LandmarkMs += stopwatch.Elapsed.TotalMilliseconds;
+            m_LandmarkerRuns++;
             if (!m_Running)
                 return;
 
@@ -1023,6 +1030,23 @@ namespace Afterglow.Hands
             // The palm places the hand: the model's fingers bend and are less sure.
             var position = HandGeometry.FitPosition(hand.imageLandmarks, hand.metricLandmarks, HandGeometry.Palm,
                 m_FocalLength, m_PrincipalPoint, out var fitError);
+            // The landmarker's shape doesn't fit Vision's landmarks: its crop may not have had the
+            // hand the way it expects (on the phone its presence stayed around 0.13 whatever the
+            // crop). A flat hand facing the camera, built from Vision's landmarks at the user's palm
+            // size, places the hand instead, at the depth its size in the image implies.
+            var flat = false;
+            if (fromVision && fitError > k_MaxFitError)
+            {
+                HandGeometry.FlatShape(hand.imageLandmarks, m_PalmSize, hand.metricLandmarks);
+                position = HandGeometry.FitPosition(hand.imageLandmarks, hand.metricLandmarks, HandGeometry.Palm,
+                    m_FocalLength, m_PrincipalPoint, out fitError);
+                flat = true;
+                m_FlatShapes++;
+            }
+            hand.flatShape = flat;
+            // A pinch is only read off fingertips Vision was sure of: an unsure one is put anywhere.
+            hand.tipsUnsure = fromVision && (hand.visionConfidences[HandGeometry.ThumbTip] < k_SureJointConfidence ||
+                                             hand.visionConfidences[HandGeometry.IndexTip] < k_SureJointConfidence);
             float depth;
             hand.shapeFits = fitError <= k_MaxFitError;
             if (hand.shapeFits)
@@ -1030,8 +1054,9 @@ namespace Afterglow.Hands
                 // Once measured depth has taught the palm size, it alone does: against LiDAR, the size
                 // learned from the model's own estimates wandered 10% in 20 s, and left depth 8% short
                 // at 30 cm against a ruler. Until then this still runs, since a hand kept too close
-                // to be measured would otherwise be stuck at the typical size.
-                if (fitError < k_GoodFitError && !m_PalmFromDepth)
+                // to be measured would otherwise be stuck at the typical size. A flat shape has no
+                // size of its own to teach.
+                if (fitError < k_GoodFitError && !m_PalmFromDepth && !flat)
                 {
                     var learned = Mathf.Exp(Mathf.Lerp(Mathf.Log(m_PalmSize), Mathf.Log(palmSize), k_PalmSizeRate));
                     m_PalmSize = Mathf.Clamp(learned, k_MinPalmSize, k_MaxPalmSize);
@@ -1294,7 +1319,7 @@ namespace Afterglow.Hands
                 return;
             if (m_Images > 0)
             {
-                var landmarkerRuns = Mathf.Max(1, m_Images - (m_Detections - (m_Images - m_Results - m_WithoutPose)));
+                var landmarkerRuns = Mathf.Max(1, m_LandmarkerRuns);
                 var distance = float.IsPositiveInfinity(m_NearestHand) ? "no hand" : $"hand {m_NearestHand:F2}-{m_FarthestHand:F2} m away";
                 // How often each hand was up over the window, which is the only way to tell a
                 // second hand that is being found from one that is being found and lost again.
@@ -1304,7 +1329,7 @@ namespace Afterglow.Hands
                           $"{m_SampleMs / m_Images:F1} ms; {(m_UseVision ? "Vision" : "detector")} {m_DetectMs / Mathf.Max(1, m_Detections):F0} ms and landmarker " +
                           $"{m_LandmarkMs / landmarkerRuns:F0} ms including waits; presence {m_PresenceSum / landmarkerRuns:F2}, " +
                           $"handedness {m_Handedness:F2}; fit error {m_FitErrorSum / Mathf.Max(1, m_Fits):F1} px, {m_RejectedFits} " +
-                          $"collapsed shapes replaced, {m_BadFits} bad fits, {m_OutOfReach} new hands beyond reach ignored, " +
+                          $"collapsed shapes replaced, {m_FlatShapes} flat shapes used, {m_BadFits} bad fits, {m_OutOfReach} new hands beyond reach ignored, " +
                           $"palm {m_PalmSize * 100f:F1} cm, " +
                           $"{m_InterpolatedPoses} poses interpolated, fingertips " +
                           (float.IsPositiveInfinity(m_ClosestPinch) ? "not seen" : $"{m_ClosestPinch * 100f:F1}-{m_WidestPinch * 100f:F1} cm apart") +
@@ -1320,6 +1345,8 @@ namespace Afterglow.Hands
             m_DepthSampler.ClearCounts();
             m_Images = m_Results = m_Detections = m_Losses = m_WithoutPose = m_Fits = m_BadFits = m_RejectedFits = m_InterpolatedPoses = 0;
             m_OutOfReach = 0;
+            m_FlatShapes = 0;
+            m_LandmarkerRuns = 0;
             m_FitErrorSum = 0f;
             m_ClosestPinch = float.PositiveInfinity;
             m_WidestPinch = 0f;

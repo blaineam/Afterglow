@@ -9,7 +9,9 @@
 // The result is a flat float array, in the landmark order the app uses everywhere (MediaPipe's):
 //   [0] hands found (0..2)
 //   then per hand: chirality (0 unknown, 1 left, 2 right), the hand's own confidence,
-//   and 21 x (x, y, confidence) with x and y in image pixels, y down.
+//   and 21 x (x, y, confidence) with x and y as Vision gives them: normalized 0..1 with the
+//   origin at the bottom left of the image AS ORIENTED for the request (VisionHandPose.ToImage
+//   turns them back into pixels of the image as given).
 #import <Foundation/Foundation.h>
 #import <Vision/Vision.h>
 #import <CoreVideo/CoreVideo.h>
@@ -80,7 +82,7 @@ static BOOL AfterglowHandPoseBuffer(int width, int height)
     return YES;
 }
 
-static void AfterglowHandPoseRead(VNHumanHandPoseObservation *hand, float *out, int width, int height)
+static void AfterglowHandPoseRead(VNHumanHandPoseObservation *hand, float *out)
 {
     NSError *error = nil;
     NSDictionary<VNHumanHandPoseObservationJointName, VNRecognizedPoint *> *points =
@@ -96,10 +98,8 @@ static void AfterglowHandPoseRead(VNHumanHandPoseObservation *hand, float *out, 
             joint[0] = joint[1] = joint[2] = 0.0f;
             continue;
         }
-        // Vision's points are normalized with the origin at the bottom left; the app's images
-        // have their first row at the top.
-        joint[0] = (float)(point.location.x * width);
-        joint[1] = (float)((1.0 - point.location.y) * height);
+        joint[0] = (float)point.location.x;
+        joint[1] = (float)point.location.y;
         joint[2] = point.confidence;
     }
 }
@@ -163,7 +163,7 @@ extern "C" int Afterglow_HandPoseSubmit(const unsigned char *rgba, int width, in
                 {
                     if (count >= AFTERGLOW_MAX_HANDS)
                         break;
-                    AfterglowHandPoseRead(hand, result + 1 + count * AFTERGLOW_HAND_FLOATS, width, height);
+                    AfterglowHandPoseRead(hand, result + 1 + count * AFTERGLOW_HAND_FLOATS);
                     count++;
                 }
                 result[0] = (float)count;

@@ -43,6 +43,10 @@ namespace Afterglow.Hands
 
         // One per hand the tracker follows, in the same order as its own.
         Skeleton[] m_Skeletons;
+        // The "showHands" setting: draw the skeleton over the camera image too, to see how well
+        // the tracking follows the real hand. Off by default, since the one flat image and the
+        // 3D skeleton don't fuse.
+        bool m_ShowOverPassthrough;
 
         // The parts of one hand's skeleton, and whether they are currently drawn.
         class Skeleton
@@ -50,6 +54,20 @@ namespace Afterglow.Hands
             public Transform[] joints;
             public Transform[] bones;
             public bool shown = true;
+        }
+
+        void OnEnable()
+        {
+            Settings.Changed += OnSetting;
+            m_ShowOverPassthrough = Settings.Int("showHands", 0) == 1;
+        }
+
+        void OnDisable() => Settings.Changed -= OnSetting;
+
+        void OnSetting(string name)
+        {
+            if (name == "showHands")
+                m_ShowOverPassthrough = Settings.Saved("showHands", 0) == 1;
         }
 
         void Start()
@@ -105,7 +123,7 @@ namespace Afterglow.Hands
 
         void LateUpdate()
         {
-            var hidden = m_Passthrough != null && m_Passthrough.IsOn;
+            var hidden = m_Passthrough != null && m_Passthrough.IsOn && !m_ShowOverPassthrough;
             var hands = m_Tracker.Hands;
             for (var h = 0; h < m_Skeletons.Length && h < hands.Count; h++)
                 Draw(m_Skeletons[h], hands[h], hidden);

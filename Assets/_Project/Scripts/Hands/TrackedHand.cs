@@ -81,6 +81,11 @@ namespace Afterglow.Hands
         public VisionHandPose.Chirality visionChirality;
         public readonly Vector2[] visionLandmarks = new Vector2[HandGeometry.JointCount];
         public readonly float[] visionConfidences = new float[HandGeometry.JointCount];
+        // Whether the latest shape is a flat one built from the landmarks (no depth of its own), so
+        // a pinch is read off the landmarks' gap in the image rather than a 3D distance; and
+        // whether the fingertips were unsure, so no pinch is read at all.
+        public bool flatShape;
+        public bool tipsUnsure;
         public float presence;
         public bool shapeFits;
         // The landmarker's handedness, as the chance that this is a right hand.
@@ -103,6 +108,8 @@ namespace Afterglow.Hands
             hasGoodShape = false;
             seenByVision = false;
             visionImageNs = 0;
+            flatShape = false;
+            tipsUnsure = false;
         }
     }
 }

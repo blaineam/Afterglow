@@ -187,6 +187,12 @@ namespace Afterglow.Demos
             });
             m_Rows.Add(new Setting
             {
+                Key = "showHands", Label = "Show tracked hands", Choices = new[] { 0, 1 }, Fallback = 0,
+                Show = v => v == 1 ? "On, over the camera image" : "Off",
+                Note = "Draws the tracked joints over your real hands, to see how well the tracking follows them.",
+            });
+            m_Rows.Add(new Setting
+            {
                 Key = "handHz", Label = "Hand tracking rate", Choices = new[] { 0, 10, 15, 20, 30 }, Fallback = 0,
                 Show = v => v <= 0 ? "Every image" : $"{v} a second",
             });

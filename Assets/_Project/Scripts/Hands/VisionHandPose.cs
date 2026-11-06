@@ -73,10 +73,11 @@ namespace Afterglow.Hands
 #endif
         }
 
-        // The result waiting, if any: fills `hands` (which has MaxHands entries) and says how many
-        // were found, -1 if the request failed, or returns false when nothing is ready. `ms` is
-        // how long the request took.
-        public static bool TryTake(Hand[] hands, out int count, out int sequence, out float ms)
+        // The result waiting, if any: fills `hands` (which has MaxHands entries) with landmarks in
+        // pixels of the image as given (first row the top), and says how many hands were found,
+        // -1 if the request failed, or returns false when nothing is ready. `ms` is how long the
+        // request took. width, height and orientation are the submitted image's.
+        public static bool TryTake(Hand[] hands, int width, int height, int orientation, out int count, out int sequence, out float ms)
         {
             count = 0;
             sequence = 0;
@@ -86,15 +87,16 @@ namespace Afterglow.Hands
             if (sequence == 0)
                 return false;
             Pending = 0;
-            count = Parse(s_Result, hands);
+            count = Parse(s_Result, hands, width, height, orientation);
             return true;
 #else
             return false;
 #endif
         }
 
-        // Reads the plugin's flat result into hands; pure so it can be tested.
-        public static int Parse(float[] result, Hand[] hands)
+        // Reads the plugin's flat result into hands, with the landmarks turned into pixels of the
+        // image as given; pure so it can be tested.
+        public static int Parse(float[] result, Hand[] hands, int width, int height, int orientation)
         {
             var count = Mathf.RoundToInt(result[0]);
             if (count < 0)
@@ -109,11 +111,36 @@ namespace Afterglow.Hands
                 for (var i = 0; i < HandGeometry.JointCount; i++)
                 {
                     var j = at + 2 + i * 3;
-                    hand.landmarks[i] = new Vector2(result[j], result[j + 1]);
+                    hand.landmarks[i] = ToImage(result[j], result[j + 1], width, height, orientation);
                     hand.confidences[i] = result[j + 2];
                 }
             }
             return count;
+        }
+
+        // A point Vision gives (normalized, origin bottom left, in the image as oriented for the
+        // request) as pixels of the image as given, first row the top, width x height. The
+        // orientation is the CGImagePropertyOrientation the request was told: how the given image
+        // has to be turned to be upright, so a result in the upright image is turned back. 1 is
+        // upright already; 3 upside down; 6 needs a quarter turn clockwise, 8 anticlockwise; 2, 4,
+        // 5 and 7 are those with a mirror.
+        public static Vector2 ToImage(float nx, float ny, int width, int height, int orientation)
+        {
+            float x, y;
+            switch (orientation)
+            {
+                case 2: x = (1f - nx) * width; y = (1f - ny) * height; break;
+                case 3: x = (1f - nx) * width; y = ny * height; break;
+                case 4: x = nx * width; y = ny * height; break;
+                // Turned a quarter: the upright image is height wide and width tall, and a point's
+                // place along its width is a place along the given image's height.
+                case 5: x = (1f - ny) * width; y = nx * height; break;
+                case 6: x = (1f - ny) * width; y = (1f - nx) * height; break;
+                case 7: x = ny * width; y = (1f - nx) * height; break;
+                case 8: x = ny * width; y = nx * height; break;
+                default: x = nx * width; y = (1f - ny) * height; break;
+            }
+            return new Vector2(x, y);
         }
 
 #if UNITY_IOS && !UNITY_EDITOR

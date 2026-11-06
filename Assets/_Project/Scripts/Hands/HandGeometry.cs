@@ -115,6 +115,27 @@ namespace Afterglow.Hands
             return sum / pairs;
         }
 
+        // A flat hand facing the camera, as a 3D shape in meters built from its landmarks in the
+        // image at the given palm size: each landmark where it is in the image relative to the
+        // palm's centre, at the scale that makes the palm palmSize across, and no depth. For a hand
+        // whose landmarks come from a model that gives no shape (Vision), or when the shape given
+        // doesn't fit the landmarks. FitPosition then places it at the depth the palm's size in
+        // the image implies, as it does the real shape.
+        public static void FlatShape(Vector2[] imageLandmarks, float palmSize, Vector3[] shape)
+        {
+            var centre = Vector2.zero;
+            foreach (var id in Palm)
+                centre += imageLandmarks[id];
+            centre /= Palm.Length;
+            var span = PalmSpan(imageLandmarks);
+            var metersPerPixel = span > 0f ? palmSize / span : 0f;
+            for (var i = 0; i < JointCount; i++)
+            {
+                var across = (imageLandmarks[i] - centre) * metersPerPixel;
+                shape[i] = new Vector3(across.x, across.y, 0f);
+            }
+        }
+
         // The palm's average width between its landmarks in the image, in pixels.
         public static float PalmSpan(Vector2[] imageLandmarks)
         {

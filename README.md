@@ -151,7 +151,8 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
 | `msaa N` | Anti-aliasing samples: 1, 2, 4 or 8 (default 2) |
 | `handHz N` | Run the hand landmark model at most N times a second (default 0: every camera image) |
 | `handModel 1` | iPhone: find hands with MediaPipe's palm detector on the CPU instead of Apple's Vision hand pose on the Neural Engine (the default) |
-| `handOrientation N` | iPhone: how the camera image is turned for Vision (CGImagePropertyOrientation 1–8), instead of working it out from the image axes |
+| `handOrientation N` | iPhone: how the camera image is turned for Vision (CGImagePropertyOrientation 1–8; default 1, upright, which it is in the viewer) |
+| `showHands 1` | Draw the tracked hand joints over the camera image too (also in Settings), to see how well the tracking follows your hands |
 | `predictionMs N` | How far ahead head rotation is predicted, in ms (default 30) |
 | `tracker 1` | Head rotation from Android's game rotation vector instead of the app's own sensor fusion |
 | `nativeImu 0` | Android: read the sensors through the Input System instead of the native plugin |

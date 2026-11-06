@@ -20,8 +20,10 @@ namespace Afterglow.Stereo.Tests
                 result[at + 1] = 0.9f;
                 for (var i = 0; i < HandGeometry.JointCount; i++)
                 {
-                    result[at + 2 + i * 3] = (h == 0 ? 100f : 300f) + i;
-                    result[at + 3 + i * 3] = (h == 0 ? 200f : 400f) + i;
+                    // Normalized, origin bottom left: a 640x480 upright image puts hand 0's wrist
+                    // at (100, 200) and hand 1's at (300, 400) in pixels from the top left.
+                    result[at + 2 + i * 3] = ((h == 0 ? 100f : 300f) + i) / 640f;
+                    result[at + 3 + i * 3] = 1f - ((h == 0 ? 200f : 400f) + i) / 480f;
                     result[at + 4 + i * 3] = h == 1 && i == HandGeometry.ThumbTip ? 0.05f : 0.8f;
                 }
             }
@@ -33,13 +35,15 @@ namespace Afterglow.Stereo.Tests
         {
             var hands = new VisionHandPose.Hand[VisionHandPose.MaxHands];
 
-            var count = VisionHandPose.Parse(TwoHands(), hands);
+            var count = VisionHandPose.Parse(TwoHands(), hands, 640, 480, 1);
 
             Assert.AreEqual(2, count);
             Assert.AreEqual(VisionHandPose.Chirality.Left, hands[0].chirality);
             Assert.AreEqual(VisionHandPose.Chirality.Right, hands[1].chirality);
-            Assert.AreEqual(new Vector2(100f, 200f), hands[0].landmarks[0]);
-            Assert.AreEqual(new Vector2(300f + HandGeometry.IndexTip, 400f + HandGeometry.IndexTip), hands[1].landmarks[HandGeometry.IndexTip]);
+            Assert.AreEqual(100f, hands[0].landmarks[0].x, 1e-3f);
+            Assert.AreEqual(200f, hands[0].landmarks[0].y, 1e-3f);
+            Assert.AreEqual(300f + HandGeometry.IndexTip, hands[1].landmarks[HandGeometry.IndexTip].x, 1e-3f);
+            Assert.AreEqual(400f + HandGeometry.IndexTip, hands[1].landmarks[HandGeometry.IndexTip].y, 1e-3f);
             Assert.AreEqual(0.8f, hands[0].MeanConfidence, 1e-5f);
             Assert.AreEqual(0.05f, hands[1].confidences[HandGeometry.ThumbTip], 1e-6f);
             Assert.Less(hands[1].MeanConfidence, 0.8f);
@@ -49,18 +53,39 @@ namespace Afterglow.Stereo.Tests
         public void Parse_ReportsAFailedRequestAsMinusOne()
         {
             var hands = new VisionHandPose.Hand[VisionHandPose.MaxHands];
-            Assert.AreEqual(-1, VisionHandPose.Parse(new[] { -1f }, hands));
-            Assert.AreEqual(0, VisionHandPose.Parse(new[] { 0f }, hands));
+            Assert.AreEqual(-1, VisionHandPose.Parse(new[] { -1f }, hands, 640, 480, 1));
+            Assert.AreEqual(0, VisionHandPose.Parse(new[] { 0f }, hands, 640, 480, 1));
         }
 
         [Test]
         public void Parse_ReusesTheHandObjectsItIsGiven()
         {
             var hands = new VisionHandPose.Hand[VisionHandPose.MaxHands];
-            VisionHandPose.Parse(TwoHands(), hands);
+            VisionHandPose.Parse(TwoHands(), hands, 640, 480, 1);
             var first = hands[0];
-            VisionHandPose.Parse(TwoHands(), hands);
+            VisionHandPose.Parse(TwoHands(), hands, 640, 480, 1);
             Assert.AreSame(first, hands[0]);
+        }
+
+        // A point in the image as Vision would report it after each orientation, and back. The
+        // given image is 640x480 with a mark at (600, 440) from the top left: near the bottom
+        // right. Turned a quarter clockwise to be upright (6), a stored pixel (x, y) lands at
+        // (H-1-y, x) in the upright image, so the mark is near its bottom left and Vision reports
+        // it as about (0, 0); anticlockwise (8) sends (x, y) to (y, W-1-x); 5 is the transpose and
+        // 7 the anti-transpose.
+        [TestCase(1, 600f / 640f, 1f - 440f / 480f, TestName = "Upright: as given")]
+        [TestCase(3, 1f - 600f / 640f, 440f / 480f, TestName = "Upside down")]
+        [TestCase(6, 1f - 440f / 480f, 1f - 600f / 640f, TestName = "Quarter turn clockwise")]
+        [TestCase(8, 440f / 480f, 600f / 640f, TestName = "Quarter turn anticlockwise")]
+        [TestCase(2, 1f - 600f / 640f, 1f - 440f / 480f, TestName = "Mirrored upright")]
+        [TestCase(4, 600f / 640f, 440f / 480f, TestName = "Mirrored upside down")]
+        [TestCase(5, 440f / 480f, 1f - 600f / 640f, TestName = "Mirrored, quarter turn (5)")]
+        [TestCase(7, 1f - 440f / 480f, 600f / 640f, TestName = "Mirrored, quarter turn (7)")]
+        public void ToImage_TurnsVisionsPointBackIntoTheGivenImage(int orientation, float nx, float ny)
+        {
+            var p = VisionHandPose.ToImage(nx, ny, 640, 480, orientation);
+            Assert.AreEqual(600f, p.x, 1e-3f, "x");
+            Assert.AreEqual(440f, p.y, 1e-3f, "y");
         }
 
         // The eight ways the image can lie on the screen, as Vision names them.
@@ -93,6 +118,33 @@ namespace Afterglow.Stereo.Tests
             Assert.AreEqual(8, seen.Count);
             HandGeometry.ImageAxesVariant(1, out var upX, out var upY);
             Assert.AreEqual(1, HandGeometry.ImageOrientation(upX, upY));
+        }
+
+        [Test]
+        public void FlatShape_PlacesTheHandAtTheDepthItsPalmSizeImplies()
+        {
+            // A palm 100 px across at a focal length of 1000 px, with a 5.5 cm palm: 55 cm away.
+            var focal = new Vector2(1000f, 1000f);
+            var principal = new Vector2(320f, 240f);
+            var landmarks = new Vector2[HandGeometry.JointCount];
+            for (var i = 0; i < landmarks.Length; i++)
+                landmarks[i] = principal + new Vector2(10f * i, 7f * i);
+            landmarks[0] = principal + new Vector2(0f, 60f);
+            landmarks[5] = principal + new Vector2(-45f, -20f);
+            landmarks[9] = principal + new Vector2(-15f, -40f);
+            landmarks[13] = principal + new Vector2(15f, -40f);
+            landmarks[17] = principal + new Vector2(45f, -20f);
+            var shape = new Vector3[HandGeometry.JointCount];
+
+            HandGeometry.FlatShape(landmarks, 0.055f, shape);
+            var position = HandGeometry.FitPosition(landmarks, shape, HandGeometry.Palm, focal, principal, out var error);
+
+            Assert.AreEqual(0.055f, HandGeometry.PalmSize(shape), 1e-4f);
+            Assert.Less(error, 0.01f);
+            var expectedDepth = focal.x * 0.055f / HandGeometry.PalmSpan(landmarks);
+            Assert.AreEqual(expectedDepth, position.z, expectedDepth * 0.01f);
+            foreach (var id in HandGeometry.Palm)
+                Assert.AreEqual(0f, shape[id].z);
         }
 
         [Test]

@@ -43,6 +43,8 @@ namespace Afterglow.Hands
                  "whatever the hand's 3D shape says. The pinch study measured about 0.23 pinched and " +
                  "1.8 to 2.1 open.")]
         [SerializeField] float m_OpenRatio = 1f;
+        [Tooltip("A flat shape (one with no depth of its own) pinches when the fingertips are closer than this share of the palm's width in the image.")]
+        [SerializeField] float m_CloseRatio = 0.4f;
 
         // Frames where the image gap read open while the fitting 3D shape held the pinch, for the
         // status line.
@@ -283,12 +285,17 @@ namespace Afterglow.Hands
             var hand = feed.hand;
             var newResult = hand.results != feed.pinchResult;
             feed.pinchResult = hand.results;
+            // Fingertips the model wasn't sure of say nothing about a pinch; the state holds.
+            if (hand.tipsUnsure)
+                return;
             if (!feed.pinch.IsPinched)
             {
                 feed.openResults = 0;
                 if (!hand.shapeFits)
                     return;
-                var wouldClose = hand.pinchDistance < m_PinchDistance;
+                // A flat shape has no depth to measure the gap by: the image's gap over the palm's
+                // width is what it has, which is what the 3DoF pinch sensor reads too.
+                var wouldClose = hand.flatShape ? hand.pinchRatio < m_CloseRatio : hand.pinchDistance < m_PinchDistance;
                 if (wouldClose && feed.turn.IsTurning)
                 {
                     if (!feed.loggedTurn)
@@ -298,7 +305,7 @@ namespace Afterglow.Hands
                 }
                 else
                 {
-                    feed.pinch.Update(hand.pinchDistance);
+                    feed.pinch.Update(hand.flatShape ? (wouldClose ? 0f : float.MaxValue) : hand.pinchDistance);
                 }
                 if (!feed.turn.IsTurning)
                     feed.loggedTurn = false;
@@ -307,8 +314,9 @@ namespace Afterglow.Hands
 
             // Pinched: whether this result says the fingers have opened, by the 3D shape while it fits,
             // by the image's gap once it has collapsed.
-            var opens = hand.shapeFits ? hand.pinchDistance > m_ReleaseDistance : hand.pinchRatio > m_OpenRatio;
-            if (hand.shapeFits && !opens && hand.pinchRatio > m_OpenRatio)
+            var byShape = hand.shapeFits && !hand.flatShape;
+            var opens = byShape ? hand.pinchDistance > m_ReleaseDistance : hand.pinchRatio > m_OpenRatio;
+            if (byShape && !opens && hand.pinchRatio > m_OpenRatio)
                 m_IgnoredOpens++;
             if (!opens)
             {
