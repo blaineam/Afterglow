@@ -77,13 +77,15 @@ namespace Afterglow.Demos.Video
         public float Aspect => Width > 0 && Height > 0 ? (float)Width / Height : 0f;
     }
 
-    // Finds the media to offer: the videos bundled with the app, files the user copied into the
-    // Videos folder, Google Drive links listed in videos.txt in that folder, and, on an iPhone,
-    // the photos and videos already in the user's Photos library.
-    //   Android: /storage/emulated/0/Android/data/com.wemiller.afterglow/files/Videos
+    // Finds the media to offer: the videos bundled with the app, the photos and videos the user
+    // copied or imported into the Media folder (or the older Videos folder), Google Drive links
+    // listed in videos.txt in either, and, on an iPhone, the photos and videos already in the
+    // user's Photos library.
+    //   Android: /storage/emulated/0/Android/data/com.wemiller.afterglow/files/Media
     //            (adb push beach_360.mp4 there; no storage permission needed)
-    //   iPhone:  the app's Documents/Videos, which Finder (the phone's Files tab) and the Files app
-    //            can copy into, since the app shares its Documents folder
+    //   iPhone:  the app's Documents/Media, which Finder (the phone's Files tab), the Files app and
+    //            the browser's Import button (FilePicker) can copy into, since the app shares its
+    //            Documents folder
     // videos.txt takes one link per line, optionally followed by a name, whose tags say the format
     // (see VideoFormat.FromFileName). Lines starting with # are skipped. A downloaded video is kept
     // in the cache, named by its Drive id, so it only downloads once.
@@ -91,7 +93,11 @@ namespace Afterglow.Demos.Video
     {
         public const string ListFileName = "videos.txt";
         static readonly string[] k_Extensions = { ".mp4", ".mov", ".m4v", ".webm" };
+        static readonly string[] k_ImageExtensions = { ".jpg", ".jpeg", ".png", ".heic", ".heif" };
 
+        // Where the Files picker imports to and what the user copies into: Media, and the older
+        // Videos folder, which is still read.
+        public static string MediaFolder => Path.Combine(Application.persistentDataPath, "Media");
         public static string VideoFolder => Path.Combine(Application.persistentDataPath, "Videos");
         public static string CacheFolder => Path.Combine(Application.temporaryCachePath, "DriveVideos");
 
@@ -111,31 +117,40 @@ namespace Afterglow.Demos.Video
                 });
             }
 
-            try
+            foreach (var folder in new[] { MediaFolder, VideoFolder })
             {
-                // Made even when empty, so there's somewhere visible to copy videos into.
-                Directory.CreateDirectory(VideoFolder);
-                var files = new List<string>(Directory.GetFiles(VideoFolder));
-                files.Sort(StringComparer.OrdinalIgnoreCase);
-                foreach (var file in files)
+                try
                 {
-                    if (!IsVideo(file))
-                        continue;
-                    entries.Add(new VideoEntry
+                    // Made even when empty, so there's somewhere visible to copy media into.
+                    Directory.CreateDirectory(folder);
+                    var files = new List<string>(Directory.GetFiles(folder));
+                    files.Sort(StringComparer.OrdinalIgnoreCase);
+                    foreach (var file in files)
                     {
-                        Title = Path.GetFileNameWithoutExtension(file),
-                        Format = VideoFormat.FromFileName(file),
-                        Url = file,
-                    });
-                }
+                        if (IsVideo(file))
+                        {
+                            entries.Add(new VideoEntry
+                            {
+                                Title = Path.GetFileNameWithoutExtension(file),
+                                Format = VideoFormat.FromFileName(file),
+                                Url = file,
+                            });
+                        }
+                        else if (IsImage(file))
+                        {
+                            PhotoLibrary.TryGetFileImageSize(file, out var width, out var height);
+                            entries.Add(FileImageEntry(file, width, height));
+                        }
+                    }
 
-                var list = Path.Combine(VideoFolder, ListFileName);
-                if (File.Exists(list))
-                    entries.AddRange(ParseList(File.ReadAllLines(list)));
-            }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-            {
-                Debug.LogWarning($"[Video] Couldn't read {VideoFolder}: {e.Message}");
+                    var list = Path.Combine(folder, ListFileName);
+                    if (File.Exists(list))
+                        entries.AddRange(ParseList(File.ReadAllLines(list)));
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    Debug.LogWarning($"[Video] Couldn't read {folder}: {e.Message}");
+                }
             }
 
             entries.AddRange(LibraryEntries());
@@ -275,7 +290,26 @@ namespace Afterglow.Demos.Video
             return found;
         }
 
-        static bool IsVideo(string path) => Array.IndexOf(k_Extensions, Path.GetExtension(path).ToLowerInvariant()) >= 0;
+        public static bool IsVideo(string path) => Array.IndexOf(k_Extensions, Path.GetExtension(path).ToLowerInvariant()) >= 0;
+
+        public static bool IsImage(string path) => Array.IndexOf(k_ImageExtensions, Path.GetExtension(path).ToLowerInvariant()) >= 0;
+
+        // A picture file: its kind from its shape when the size is known (iOS reads the header),
+        // else a photo until it's opened, when the player sizes and sorts it. A spatial HEIC among
+        // them is found when it's opened, from the pair inside it. Pure, for testing.
+        public static VideoEntry FileImageEntry(string path, int width, int height)
+        {
+            var kind = Classify(false, false, false, width, height);
+            return new VideoEntry
+            {
+                Title = Path.GetFileNameWithoutExtension(path),
+                Format = DefaultFormat(kind, width, height),
+                Url = path,
+                Kind = kind,
+                Width = width,
+                Height = height,
+            };
+        }
 
         // The video files among present: your own first, by name, then the placeholders that are there,
         // in their order. Pure, for testing.

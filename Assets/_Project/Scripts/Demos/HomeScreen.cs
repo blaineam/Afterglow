@@ -109,7 +109,7 @@ namespace Afterglow.Demos
             new Tile
             {
                 Section = Section.Files, Title = "Files", Icon = "folder", Tint = new Color(0.78f, 0.49f, 0.12f), Enabled = true,
-                Tagline = "Videos copied to the phone, and links to download",
+                Tagline = "Photos and videos imported or copied to the phone, and links to download",
             },
             new Tile
             {

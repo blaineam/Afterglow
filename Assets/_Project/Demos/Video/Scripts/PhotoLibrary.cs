@@ -213,6 +213,39 @@ namespace Afterglow.Demos.Video
 #endif
         }
 
+        // The same for a picture file of the app's own: a JPEG, PNG or HEIC, a spatial HEIC
+        // included. False where the plugin isn't there; the Editor decodes JPEG and PNG itself.
+        public static bool OpenFile(string path, int maxPixels)
+        {
+#if UNITY_IOS && !UNITY_EDITOR
+            return Afterglow_FileOpenImage(path, maxPixels) != 0;
+#else
+            return false;
+#endif
+        }
+
+        // A picture file's size, the way up it's meant to be seen, from its header; false where
+        // it can't be read, which is everywhere but iOS.
+        public static bool TryGetFileImageSize(string path, out int width, out int height)
+        {
+            width = height = 0;
+#if UNITY_IOS && !UNITY_EDITOR
+            return Afterglow_FileImageSize(path, out width, out height) != 0;
+#else
+            return false;
+#endif
+        }
+
+        // A thumbnail of a picture or video file of the app's own, polled with TryTakeThumbnail.
+        public static int RequestFileThumbnail(string path, int pixels)
+        {
+#if UNITY_IOS && !UNITY_EDITOR
+            return Afterglow_FileRequestThumbnail(path, pixels);
+#else
+            return 0;
+#endif
+        }
+
         // Asks for a library video's file, for the player; 0 if the item isn't a video.
         public static int RequestVideoPath(int index)
         {
@@ -280,6 +313,9 @@ namespace Afterglow.Demos.Video
         [DllImport("__Internal")] static extern void Afterglow_SpatialClosePhoto();
         [DllImport("__Internal")] static extern int Afterglow_LibraryRequestVideoPath(int index);
         [DllImport("__Internal")] static extern int Afterglow_LibraryVideoPath(int request, StringBuilder path, int pathLength);
+        [DllImport("__Internal")] static extern int Afterglow_FileOpenImage(string path, int maxPixels);
+        [DllImport("__Internal")] static extern int Afterglow_FileImageSize(string path, out int width, out int height);
+        [DllImport("__Internal")] static extern int Afterglow_FileRequestThumbnail(string path, int pixels);
 #endif
     }
 }

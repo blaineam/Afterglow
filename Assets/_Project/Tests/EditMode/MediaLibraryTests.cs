@@ -118,6 +118,43 @@ namespace Afterglow.Stereo.Tests
             }
         }
 
+        [TestCase("/Media/beach.jpg", true)]
+        [TestCase("/Media/BEACH.JPEG", true)]
+        [TestCase("/Media/still.png", true)]
+        [TestCase("/Media/spatial.heic", true)]
+        [TestCase("/Media/clip.mp4", false)]
+        [TestCase("/Media/videos.txt", false)]
+        public void PicturesAreKnownByTheirExtension(string path, bool image)
+        {
+            Assert.AreEqual(image, VideoLibrary.IsImage(path));
+            Assert.AreEqual(!image && path.EndsWith(".mp4"), VideoLibrary.IsVideo(path));
+        }
+
+        [Test]
+        public void AFolderPictureIsSortedByItsShape()
+        {
+            var pano = VideoLibrary.FileImageEntry("/Media/wide.jpg", 4096, 1024);
+            Assert.AreEqual(MediaKind.Panorama, pano.Kind);
+            Assert.AreEqual("wide", pano.Title);
+            Assert.AreEqual("/Media/wide.jpg", pano.Url);
+            Assert.IsFalse(pano.IsLibrary);
+            Assert.IsTrue(pano.IsPicture);
+            Assert.AreEqual(MediaKind.Still360, VideoLibrary.FileImageEntry("/Media/sky.png", 2048, 1024).Kind);
+            // No size known (no plugin to read the header): a photo until it's opened.
+            var unknown = VideoLibrary.FileImageEntry("/Media/x.heic", 0, 0);
+            Assert.AreEqual(MediaKind.Photo, unknown.Kind);
+            Assert.AreEqual(0f, unknown.Aspect);
+        }
+
+        [Test]
+        public void ThumbnailKeysTellItemsApart()
+        {
+            Assert.AreEqual("library:3", VideoDemo.Key(new VideoEntry { Kind = MediaKind.Photo, LibraryIndex = 3 }));
+            Assert.AreEqual("file:/Media/a.jpg", VideoDemo.Key(new VideoEntry { Url = "/Media/a.jpg" }));
+            Assert.AreNotEqual(VideoDemo.Key(new VideoEntry { Url = "/Media/a.jpg" }), VideoDemo.Key(new VideoEntry { Url = "/Media/b.jpg" }));
+            Assert.IsNull(VideoDemo.Key(new VideoEntry { Kind = MediaKind.Drive, DriveId = "1AbC" }), "nothing to draw until it's downloaded");
+        }
+
         [Test]
         public void LibraryEntryIsNamedByWhatAndWhen()
         {

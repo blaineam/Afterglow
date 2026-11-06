@@ -84,8 +84,8 @@ Everything else sits on this, and three of the newest features have never run on
   2.4:1; a **cylindrical band** (`VideoSphere.ShowPanorama`) whose width follows the picture's
   aspect at 60° of height, so a 4:1 panorama spans 240°. The 60° wants checking against a real
   iPhone panorama on the phone.
-- **360 stills** — done for the library by a 2:1 shape (3 % tolerance). To do: `GPano` XMP, and
-  JPEG, HEIC and PNG in the Files folder.
+- **360 stills** — done for the library and the Media folder by a 2:1 shape (3 % tolerance). To
+  do: `GPano` XMP.
 - **One player**: format from **metadata** — MV-HEVC layers (done), the spherical-video v2 boxes
   (`st3d`, `sv3d`), GPano — before falling back to filename tags. Library videos go by shape (2:1
   is 360) and files by their name tags; the boxes are still to do.
@@ -93,9 +93,16 @@ Everything else sits on this, and three of the newest features have never run on
 
 ## Phase 3 — Files
 
-- iOS document picker (`UIDocumentPickerViewController`) and the app's own Documents folder, which
-  Finder and the Files app can already copy into; Android's SAF picker.
-- Images and videos both, into the same player.
+- iOS document picker (`UIDocumentPickerViewController`) — done 2026-11-05: the browser's *Import*
+  button (`FilePicker`, `AfterglowFilePicker.mm`) copies picks into the app's `Media` folder, which
+  Finder and the Files app can already copy into. Android's SAF picker: not until there is an
+  Android device to test on.
+- Images and videos both, into the same player — done 2026-11-05: JPEG, PNG and HEIC in the folder
+  are listed with thumbnails, sized from their headers on iOS and sorted by shape (a 2:1 still, a
+  panorama, a photo), and a spatial HEIC shows per eye. Off iOS, Unity reads JPEG and PNG itself
+  and a HEIC waits for the phone. Verified in the Simulator with the drawn fixtures copied into the
+  folder; the picker itself opens there but its native sheet takes no injected taps, so a real pick
+  waits for the phone.
 
 ## Phase 4 — Web
 

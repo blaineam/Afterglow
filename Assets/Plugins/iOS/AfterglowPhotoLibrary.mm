@@ -21,6 +21,8 @@
 #import <ImageIO/ImageIO.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <UIKit/UIKit.h>
+#import <AVFoundation/AVFoundation.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #include <atomic>
 #include <mutex>
 #include <unordered_map>
@@ -375,16 +377,14 @@ extern "C" void Afterglow_LibraryReleaseThumbnail(int request)
     g_ThumbnailsByRequest.erase(found);
 }
 
-// Starts loading one picture, the way up its file says and no more than maxPixels on its longer
-// side. Returns the request number, or 0 if the item isn't a photo.
-extern "C" int Afterglow_LibraryOpenImage(int index, int maxPixels)
+namespace
 {
-    PHAsset *asset = AssetAt(index);
-    if (asset == nil || asset.mediaType != PHAssetMediaTypeImage)
-        return 0;
-    const int limit = maxPixels > 0 ? maxPixels : 4096;
-    return BeginOpen(asset, ^(NSData *data, int request) {
-        CGImageSourceRef source = CGImageSourceCreateWithData((__bridge CFDataRef)data, nullptr);
+    // Decodes a source into g_Eyes: one picture, the way up its file says and no more than limit
+    // pixels on its longer side, or both eyes if the file holds a stereo pair the library didn't
+    // mark (one made elsewhere, or imported), so the player shows it in 3D. Publishes Ready, or
+    // fails, for the request given.
+    void DecodeSource(CGImageSourceRef source, int limit, int request)
+    {
         if (source == nullptr)
         {
             Fail(@"The picture's file couldn't be read");
@@ -399,8 +399,6 @@ extern "C" int Afterglow_LibraryOpenImage(int index, int maxPixels)
             (__bridge NSString *)kCGImageSourceThumbnailMaxPixelSize: @(limit),
             (__bridge NSString *)kCGImageSourceShouldCache: @NO,
         };
-        // A file the library didn't mark as spatial can still hold a stereo pair (one made
-        // elsewhere, or imported); then both eyes are decoded and the player shows it in 3D.
         size_t indexes[2] = { 0, 0 };
         int eyes = 1;
         size_t left = 0, right = 0;
@@ -432,7 +430,127 @@ extern "C" int Afterglow_LibraryOpenImage(int index, int maxPixels)
         NSLog(@"[Photos] Picture ready: %d x %d (limit %d)%@", g_Eyes[0].width, g_Eyes[0].height, limit,
               eyes == 2 ? @", a stereo pair" : @"");
         g_State = LoadStateReady;
+    }
+}
+
+// Starts loading one picture from the library, the way up its file says and no more than
+// maxPixels on its longer side. Returns the request number, or 0 if the item isn't a photo.
+extern "C" int Afterglow_LibraryOpenImage(int index, int maxPixels)
+{
+    PHAsset *asset = AssetAt(index);
+    if (asset == nil || asset.mediaType != PHAssetMediaTypeImage)
+        return 0;
+    const int limit = maxPixels > 0 ? maxPixels : 4096;
+    return BeginOpen(asset, ^(NSData *data, int request) {
+        DecodeSource(CGImageSourceCreateWithData((__bridge CFDataRef)data, nullptr), limit, request);
     });
+}
+
+// The same for a picture file of the app's own (an import, or one copied in): a JPEG, PNG or
+// HEIC, including a spatial HEIC. Returns the request number, or 0 for no path.
+extern "C" int Afterglow_FileOpenImage(const char *path, int maxPixels)
+{
+    if (path == nullptr)
+        return 0;
+    NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:path]];
+    const int limit = maxPixels > 0 ? maxPixels : 4096;
+    const int request = g_Request.fetch_add(1) + 1;
+    ReleaseEyes();
+    g_Error = nil;
+    g_State = LoadStateLoading;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        if (g_Request.load() != request)
+            return;
+        DecodeSource(CGImageSourceCreateWithURL((__bridge CFURLRef)url, nullptr), limit, request);
+    });
+    return request;
+}
+
+// A picture file's size in pixels, the way up it's meant to be seen, from its header alone; 0 if
+// it can't be read.
+extern "C" int Afterglow_FileImageSize(const char *path, int *width, int *height)
+{
+    if (path == nullptr)
+        return 0;
+    NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:path]];
+    CGImageSourceRef source = CGImageSourceCreateWithURL((__bridge CFURLRef)url, nullptr);
+    if (source == nullptr)
+        return 0;
+    NSDictionary *properties = (__bridge_transfer NSDictionary *)CGImageSourceCopyPropertiesAtIndex(source, 0, nullptr);
+    CFRelease(source);
+    NSNumber *w = properties[(__bridge NSString *)kCGImagePropertyPixelWidth];
+    NSNumber *h = properties[(__bridge NSString *)kCGImagePropertyPixelHeight];
+    NSNumber *orientation = properties[(__bridge NSString *)kCGImagePropertyOrientation];
+    if (w == nil || h == nil)
+        return 0;
+    // Orientations 5 to 8 turn the picture on its side.
+    const bool sideways = orientation != nil && orientation.intValue >= 5;
+    if (width != nullptr)
+        *width = sideways ? h.intValue : w.intValue;
+    if (height != nullptr)
+        *height = sideways ? w.intValue : h.intValue;
+    return 1;
+}
+
+// Asks for a thumbnail of a file of the app's own, a picture or a video, at most `pixels`
+// across; polled and released like the library's. 0 if it can't be asked for.
+extern "C" int Afterglow_FileRequestThumbnail(const char *path, int pixels)
+{
+    if (path == nullptr || pixels <= 0)
+        return 0;
+    NSString *file = [NSString stringWithUTF8String:path];
+    NSURL *url = [NSURL fileURLWithPath:file];
+    const int request = g_ThumbnailRequest.fetch_add(1) + 1;
+    {
+        std::lock_guard<std::mutex> lock(g_ThumbnailLock);
+        g_ThumbnailsByRequest[request] = Thumbnail();
+    }
+    void (^deliver)(CGImageRef) = ^(CGImageRef image) {
+        Picture picture;
+        const bool ok = CopyImage(image, picture);
+        std::lock_guard<std::mutex> lock(g_ThumbnailLock);
+        auto found = g_ThumbnailsByRequest.find(request);
+        if (found == g_ThumbnailsByRequest.end())
+        {
+            picture.Release();
+            return;
+        }
+        found->second.picture = picture;
+        found->second.state = ok ? LoadStateReady : LoadStateFailed;
+    };
+    UTType *type = [UTType typeWithFilenameExtension:file.pathExtension];
+    if (type != nil && [type conformsToType:UTTypeMovie])
+    {
+        // A frame a second in, which is past any black lead-in, no bigger than the cell.
+        AVURLAsset *asset = [AVURLAsset URLAssetWithURL:url options:nil];
+        AVAssetImageGenerator *generator = [[AVAssetImageGenerator alloc] initWithAsset:asset];
+        generator.appliesPreferredTrackTransform = YES;
+        generator.maximumSize = CGSizeMake(pixels, pixels);
+        [generator generateCGImagesAsynchronouslyForTimes:@[[NSValue valueWithCMTime:CMTimeMake(1, 1)]]
+            completionHandler:^(CMTime requested, CGImageRef image, CMTime actual, AVAssetImageGeneratorResult result, NSError *error) {
+                deliver(result == AVAssetImageGeneratorSucceeded ? image : nullptr);
+            }];
+        return request;
+    }
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+        CGImageSourceRef source = CGImageSourceCreateWithURL((__bridge CFURLRef)url, nullptr);
+        CGImageRef image = nullptr;
+        if (source != nullptr)
+        {
+            NSDictionary *options = @{
+                (__bridge NSString *)kCGImageSourceCreateThumbnailFromImageAlways: @YES,
+                (__bridge NSString *)kCGImageSourceCreateThumbnailWithTransform: @YES,
+                (__bridge NSString *)kCGImageSourceThumbnailMaxPixelSize: @(pixels),
+                (__bridge NSString *)kCGImageSourceShouldCache: @NO,
+            };
+            image = CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)options);
+            CFRelease(source);
+        }
+        deliver(image);
+        if (image != nullptr)
+            CGImageRelease(image);
+    });
+    return request;
 }
 
 // Starts loading one spatial photo's two pictures. Returns the request number, or 0 if the item

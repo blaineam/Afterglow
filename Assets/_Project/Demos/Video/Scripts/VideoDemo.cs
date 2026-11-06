@@ -83,7 +83,7 @@ namespace Afterglow.Demos.Video
         // Opened as Files: only what the user copied in or linked, and no Photos question.
         bool m_FilesOnly;
 
-        // Thumbnails by library index: the request while it loads, then the texture.
+        // Thumbnails by item (Key): the request while it loads, then the texture.
         class Thumbnail
         {
             public int Request;
@@ -92,13 +92,15 @@ namespace Afterglow.Demos.Video
             public int LastShown;
         }
 
-        readonly Dictionary<int, Thumbnail> m_Thumbnails = new();
+        readonly Dictionary<string, Thumbnail> m_Thumbnails = new();
+        Coroutine m_FileImage;
         int m_PageShows;
 
         RectTransform m_Panel;
         RectTransform m_LibraryPage;
         RectTransform m_ControlsPage;
         TMP_Text m_Header;
+        M3Button m_Import;
         M3Button[] m_Chips;
         TMP_Text m_Title;
         TMP_Text m_FormatLine;
@@ -146,6 +148,7 @@ namespace Afterglow.Demos.Video
             m_Header.text = m_FilesOnly ? "Files" : "Media";
             foreach (var chip in m_Chips)
                 chip.gameObject.SetActive(!m_FilesOnly);
+            m_Import.gameObject.SetActive(FilePicker.Supported);
             // Put iOS's Photos question up as the demo opens rather than when a photo is picked, so
             // the library can list the user's photos alongside the files straight away.
             m_SpatialSettled = m_FilesOnly || !PhotoLibrary.Supported ||
@@ -160,6 +163,8 @@ namespace Afterglow.Demos.Video
                 StopCoroutine(m_Download);
             if (m_VideoPath != null)
                 StopCoroutine(m_VideoPath);
+            if (m_FileImage != null)
+                StopCoroutine(m_FileImage);
             m_Player.prepareCompleted -= OnPrepared;
             m_Player.errorReceived -= OnError;
             m_Player.frameDropped -= OnFrameDropped;
@@ -200,6 +205,7 @@ namespace Afterglow.Demos.Video
                 UpdateThumbnails();
             else if (m_ControlsShown)
                 UpdateControls();
+            UpdateImports();
 
             if (Current != null && PlaybackReady && Time.unscaledTime >= m_NextStatus)
             {
@@ -339,15 +345,41 @@ namespace Afterglow.Demos.Video
             m_Current = index;
             m_Title.text = entry.Title;
 
-            if (PhotoLibrary.Authorize() != PhotoLibrary.Access.Granted)
+            if (entry.IsLibrary && PhotoLibrary.Authorize() != PhotoLibrary.Access.Granted)
             {
                 entry.Status = "Allow Photos to show this";
                 Debug.Log("[Video] The Photos library isn't allowed yet, so the picture stays shut");
                 return;
             }
-            var ok = entry.Kind == MediaKind.SpatialPhoto
-                ? PhotoLibrary.OpenSpatialPhoto(entry.LibraryIndex)
-                : PhotoLibrary.OpenImage(entry.LibraryIndex, entry.Kind == MediaKind.Panorama ? k_PanoramaPixels : k_PhotoPixels);
+            var pixels = entry.Kind == MediaKind.Panorama ? k_PanoramaPixels : k_PhotoPixels;
+            bool ok;
+            if (!entry.IsLibrary)
+            {
+                // A file of the app's own: the plugin decodes it on iOS; elsewhere Unity reads a
+                // JPEG or PNG itself, and a HEIC has to wait for the phone.
+                ok = PhotoLibrary.OpenFile(entry.Url, pixels);
+                if (!ok && !PhotoLibrary.Supported && IsUnityDecodable(entry.Url))
+                {
+                    if (m_FileImage != null)
+                        StopCoroutine(m_FileImage);
+                    m_FileImage = StartCoroutine(LoadFileImage(entry, index));
+                    return;
+                }
+                if (!ok)
+                {
+                    m_Current = -1;
+                    entry.Status = PhotoLibrary.Supported ? "Couldn't open that picture" : "HEIC pictures need the phone";
+                    Debug.LogWarning($"[Video] Couldn't open {entry.Title}: {entry.Status}");
+                    ShowLibrary();
+                    return;
+                }
+            }
+            else
+            {
+                ok = entry.Kind == MediaKind.SpatialPhoto
+                    ? PhotoLibrary.OpenSpatialPhoto(entry.LibraryIndex)
+                    : PhotoLibrary.OpenImage(entry.LibraryIndex, pixels);
+            }
             if (!ok)
             {
                 m_Current = -1;
@@ -392,6 +424,7 @@ namespace Afterglow.Demos.Video
                         entry.Kind = MediaKind.SpatialPhoto;
                         entry.Format = VideoFormat.Stereo3D;
                     }
+                    SizeFromPicture(entry);
                     ShowPicture(entry);
                     entry.Status = null;
                     Debug.Log($"[Video] {VideoLibrary.Describe(entry.Kind)} shown: {m_PictureLeft.width}x{m_PictureLeft.height}" +
@@ -405,6 +438,90 @@ namespace Afterglow.Demos.Video
                     FailPicture(PhotoLibrary.PhotoError);
                     return;
             }
+        }
+
+        // A file whose size wasn't known until it was decoded: now it is, and so is its kind.
+        void SizeFromPicture(VideoEntry entry)
+        {
+            if (m_PictureLeft == null || (entry.Width > 0 && entry.Height > 0))
+                return;
+            entry.Width = m_PictureLeft.width;
+            entry.Height = m_PictureLeft.height;
+            if (entry.IsSpatial)
+                return;
+            entry.Kind = VideoLibrary.Classify(false, false, false, entry.Width, entry.Height);
+            entry.Format = VideoLibrary.DefaultFormat(entry.Kind, entry.Width, entry.Height);
+        }
+
+        // Unity's own decoder reads JPEG and PNG, for the Editor and Android.
+        static bool IsUnityDecodable(string path)
+        {
+            var extension = System.IO.Path.GetExtension(path ?? "").ToLowerInvariant();
+            return extension == ".jpg" || extension == ".jpeg" || extension == ".png";
+        }
+
+        // A JPEG or PNG file read by Unity, where the plugin isn't there. The read is on the main
+        // thread, which is a stall for a big file, but that's the Editor and Android for now.
+        IEnumerator LoadFileImage(VideoEntry entry, int index)
+        {
+            entry.Status = "Loading";
+            yield return null;
+            m_FileImage = null;
+            if (m_Wanted != index)
+                yield break;
+            Texture2D texture = null;
+            try
+            {
+                var bytes = System.IO.File.ReadAllBytes(entry.Url);
+                texture = new Texture2D(2, 2, TextureFormat.RGBA32, false) { name = "Photo File", wrapMode = TextureWrapMode.Clamp };
+                if (!texture.LoadImage(bytes, true))
+                {
+                    Destroy(texture);
+                    texture = null;
+                }
+            }
+            catch (System.Exception e) when (e is System.IO.IOException or System.UnauthorizedAccessException)
+            {
+                Debug.LogWarning($"[Video] Couldn't read {entry.Url}: {e.Message}");
+            }
+            if (texture == null)
+            {
+                FailPicture("That picture couldn't be read");
+                yield break;
+            }
+            ReleasePicture();
+            m_PictureLeft = texture;
+            SizeFromPicture(entry);
+            ShowPicture(entry);
+            entry.Status = null;
+            Debug.Log($"[Video] {VideoLibrary.Describe(entry.Kind)} shown: {texture.width}x{texture.height}, read by Unity");
+            HidePanel();
+        }
+
+        // Opens iOS's picker; what it imports shows up in the grid as it lands (UpdateImports).
+        void Import()
+        {
+            if (!FilePicker.Present(VideoLibrary.MediaFolder))
+            {
+                Debug.Log("[Video] The picker couldn't open");
+                return;
+            }
+            Debug.Log("[Video] Importing from Files");
+        }
+
+        void UpdateImports()
+        {
+            var imported = 0;
+            while (FilePicker.TryTake(out var path) == FilePicker.Result.Imported)
+            {
+                imported++;
+                Debug.Log($"[Video] Imported {System.IO.Path.GetFileName(path)}");
+            }
+            if (imported == 0)
+                return;
+            Refresh();
+            if (m_ShowingLibrary)
+                UpdateGrid();
         }
 
         // Draws the opened picture the way its kind says, and again when the user changes the kind.
@@ -817,7 +934,7 @@ namespace Afterglow.Demos.Video
                 tile.BadgePill.SetActive(entry.IsLibrary);
                 tile.Badge.text = video ? Clock(entry.Seconds) : M3Icons.Glyph(Icon(entry));
                 tile.Badge.font = video ? M3Assets.Instance.Medium : M3Assets.Instance.Icons;
-                SetThumbnail(tile, entry.IsLibrary ? Thumb(entry.LibraryIndex) : null);
+                SetThumbnail(tile, Thumb(entry));
             }
             TrimThumbnails();
         }
@@ -827,10 +944,10 @@ namespace Afterglow.Demos.Video
             if (m_FilesOnly || m_All.Count == 0)
             {
                 var folder = Application.platform == RuntimePlatform.IPhonePlayer
-                    ? "On a Mac, open the iPhone in Finder, then Files > Afterglow > Videos, and drag videos in."
-                    : $"Copy videos with: adb push video.mp4 {VideoLibrary.VideoFolder}";
-                return "No videos yet.\n\n" + folder +
-                       "\n\nName tags set the format: _360, _180, _sbs, _tb. For Google Drive, list share links in videos.txt in that folder.";
+                    ? "Import brings photos and videos in from Files. Or, on a Mac, open the iPhone in Finder, then Files > Afterglow > Media, and drag them in."
+                    : $"Copy photos and videos with: adb push video.mp4 {VideoLibrary.MediaFolder}";
+                return "No files yet.\n\n" + folder +
+                       "\n\nName tags set a video's format: _360, _180, _sbs, _tb. For Google Drive, list share links in videos.txt in that folder.";
             }
             if (PhotoLibrary.Supported && PhotoLibrary.Authorize() != PhotoLibrary.Access.Granted)
                 return "Allow Photos in Settings to see your photos and videos here.";
@@ -844,14 +961,32 @@ namespace Afterglow.Demos.Video
             };
         }
 
-        // The thumbnail for a library item, asking for it the first time.
-        Thumbnail Thumb(int libraryIndex)
+        // What a thumbnail is filed under: the library index, or the file's path. Null for an
+        // entry that has no picture to ask for (a Drive link not yet downloaded).
+        public static string Key(VideoEntry entry)
         {
-            if (!m_Thumbnails.TryGetValue(libraryIndex, out var thumb))
+            if (entry.IsLibrary)
+                return $"library:{entry.LibraryIndex}";
+            return entry.Url != null ? $"file:{entry.Url}" : null;
+        }
+
+        // The thumbnail for an item, asking for it the first time: the library's for a library
+        // item, the plugin's for a file.
+        Thumbnail Thumb(VideoEntry entry)
+        {
+            var key = Key(entry);
+            if (key == null)
+                return null;
+            if (!m_Thumbnails.TryGetValue(key, out var thumb))
             {
-                thumb = new Thumbnail { Request = PhotoLibrary.RequestThumbnail(libraryIndex, k_ThumbnailPixels) };
+                thumb = new Thumbnail
+                {
+                    Request = entry.IsLibrary
+                        ? PhotoLibrary.RequestThumbnail(entry.LibraryIndex, k_ThumbnailPixels)
+                        : PhotoLibrary.RequestFileThumbnail(entry.Url, k_ThumbnailPixels),
+                };
                 thumb.Failed = thumb.Request == 0;
-                m_Thumbnails[libraryIndex] = thumb;
+                m_Thumbnails[key] = thumb;
             }
             thumb.LastShown = m_PageShows;
             return thumb;
@@ -888,7 +1023,7 @@ namespace Afterglow.Demos.Video
         // Collects thumbnails that have arrived and puts them on the tiles showing them.
         void UpdateThumbnails()
         {
-            foreach (var (libraryIndex, thumb) in m_Thumbnails)
+            foreach (var (key, thumb) in m_Thumbnails)
             {
                 if (thumb.Texture != null || thumb.Failed || thumb.Request == 0)
                     continue;
@@ -905,7 +1040,7 @@ namespace Afterglow.Demos.Video
                 for (var i = 0; i < m_Tiles.Count; i++)
                 {
                     var index = m_Page * k_EntriesPerPage + i;
-                    if (index < m_Library.Count && m_Library[index].LibraryIndex == libraryIndex)
+                    if (index < m_Library.Count && Key(m_Library[index]) == key)
                         SetThumbnail(m_Tiles[i], thumb);
                 }
             }
@@ -916,11 +1051,11 @@ namespace Afterglow.Demos.Video
         {
             if (m_Thumbnails.Count <= k_ThumbnailCache)
                 return;
-            var stale = new List<int>();
-            foreach (var (libraryIndex, thumb) in m_Thumbnails)
+            var stale = new List<string>();
+            foreach (var (key, thumb) in m_Thumbnails)
             {
                 if (thumb.LastShown != m_PageShows)
-                    stale.Add(libraryIndex);
+                    stale.Add(key);
             }
             stale.Sort((a, b) => m_Thumbnails[a].LastShown.CompareTo(m_Thumbnails[b].LastShown));
             for (var i = 0; i < stale.Count && m_Thumbnails.Count > k_ThumbnailCache; i++)
@@ -960,8 +1095,10 @@ namespace Afterglow.Demos.Video
 
             // The browser: a header, the filter chips, a grid of thumbnails, and the page controls.
             m_LibraryPage = WorldUi.CreateGroup("Library", m_Panel);
-            m_Header = M3.Text("Header", m_LibraryPage, "Media", M3Theme.Type.TitleLarge, new Vector2(-60f, top - 16f), new Vector2(432f, 32f),
+            m_Header = M3.Text("Header", m_LibraryPage, "Media", M3Theme.Type.TitleLarge, new Vector2(-130f, top - 16f), new Vector2(292f, 32f),
                 alignment: TextAlignmentOptions.Left);
+            // Import opens iOS's Files picker; hidden where there is none.
+            m_Import = M3.Button("Import", m_LibraryPage, "Import", M3Button.Variant.Tonal, new Vector2(150f, top - 16f), Import, "add", 124f);
             M3.IconButton("Refresh", m_LibraryPage, "refresh", M3Button.Variant.Text, new Vector2(248f, top - 16f), () =>
             {
                 Refresh();

@@ -197,17 +197,18 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   round, a plain photo or film on the screen, and a 360 or VR180 video on the sphere. The kind is
   read from the library and the picture's shape; the controls' *Format* button changes it when
   that guess is wrong. Pinch on the picture for the controls. Allow Photos the first time Media
-  opens. **Files** is the same browser listing only the video files you copied in or linked, and
-  never asks about Photos. Two small test clips are bundled; to bundle your own in local builds,
-  put them in a `360` folder beside the project (or set `AFTERGLOW_VIDEOS`): the build scripts
-  copy them into `Assets/StreamingAssets`, which git ignores apart from the test clips. Or add
-  your own to the app's `Videos` folder on the phone: on Android
-  `adb push video.mp4 /storage/emulated/0/Android/data/com.wemiller.afterglow/files/Videos`; on
-  iPhone, Finder's Files tab for the phone, then Afterglow > Videos. Tags in the name set the
-  format (`_360`, `_180`, `_flat`, `_sbs`, `_tb`, `_mono`); `_flat` (or `_screen`, `_cinema`) is a
-  film on a screen rather than anything wrapped around you, which is what a 3D film wants. For
-  Google Drive, put share links in `videos.txt` in that folder, one per line; each downloads on
-  first play.
+  opens. **Files** is the same browser listing only the photos and videos you brought in yourself,
+  and never asks about Photos: the browser's *Import* button (iPhone) opens the Files picker, with
+  the phone out of the viewer, and copies what you pick into the app's `Media` folder, which
+  Finder's Files tab for the phone and the Files app can also drop things into (Afterglow > Media;
+  on Android `adb push video.mp4 /storage/emulated/0/Android/data/com.wemiller.afterglow/files/Media`).
+  Photos there, a spatial HEIC included, are sorted by their shape like the library's. Two small
+  test clips are bundled; to bundle your own in local builds, put them in a `360` folder beside the
+  project (or set `AFTERGLOW_VIDEOS`): the build scripts copy them into `Assets/StreamingAssets`,
+  which git ignores apart from the test clips. Tags in a video's name set the format (`_360`,
+  `_180`, `_flat`, `_sbs`, `_tb`, `_mono`); `_flat` (or `_screen`, `_cinema`) is a film on a screen
+  rather than anything wrapped around you, which is what a 3D film wants. For Google Drive, put
+  share links in `videos.txt` in that folder, one per line; each downloads on first play.
 - **Air Paint** paints strokes in the air with your hand, like Tilt Brush, starting in passthrough
   so you paint in your own room: pinch to paint, and look at the tool panel on your left and pinch
   to pick a color, brush (Ink, Tube, Glow) and size, or to undo, reset (press twice), or switch
