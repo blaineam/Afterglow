@@ -272,7 +272,8 @@ namespace Afterglow.Demos
         // The tracked hands as the page takes them (WebBrowser.PushHands): count, then per hand its
         // handedness, whether it pinches and its 21 joints in WebXR's space, which is Unity's
         // with z the other way. Pure: the joints are read from the hands as given.
-        public static int HandsToPage(IReadOnlyList<TrackedHand> hands, Func<TrackedHand, bool> pinching, float[] values)
+        public static int HandsToPage(IReadOnlyList<TrackedHand> hands, Func<TrackedHand, bool> pinching,
+            Func<TrackedHand, bool> isRight, float[] values)
         {
             var count = 0;
             foreach (var hand in hands)
@@ -280,7 +281,8 @@ namespace Afterglow.Demos
                 if (!hand.isTracking || count >= HandTracker.MaxHands)
                     continue;
                 var at = 1 + count * WebBrowser.FloatsPerHand;
-                values[at] = hand.handednessScore >= 0.5f ? 1f : 0f;
+                // The side as the feed settles it, so a reading that wavers doesn't swap the page's controllers.
+                values[at] = isRight(hand) ? 1f : 0f;
                 values[at + 1] = pinching(hand) ? 1f : 0f;
                 for (var i = 0; i < HandGeometry.JointCount; i++)
                 {
@@ -738,7 +740,8 @@ namespace Afterglow.Demos
             }
             if (m_Immersive && m_Tracker != null)
             {
-                var count = HandsToPage(m_Tracker.Hands, hand => m_Feed != null && m_Feed.IsPinchingWith(hand), m_HandValues);
+                var count = HandsToPage(m_Tracker.Hands, hand => m_Feed != null && m_Feed.IsPinchingWith(hand),
+                    hand => m_Feed != null && m_Feed.TryGetSide(hand, out var right) ? right : hand.handednessScore >= 0.5f, m_HandValues);
                 if (count > 0 || m_PushedHands > 0)
                     WebBrowser.PushHands(m_HandValues, 1 + count * WebBrowser.FloatsPerHand);
                 m_PushedHands = count;

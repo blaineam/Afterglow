@@ -154,7 +154,7 @@ namespace Afterglow.Stereo.Tests
             }
             var values = new float[1 + 2 * Afterglow.Stereo.WebBrowser.FloatsPerHand];
 
-            var count = Afterglow.Demos.WebBrowserSession.HandsToPage(new[] { idle, right, left }, h => h == right, values);
+            var count = Afterglow.Demos.WebBrowserSession.HandsToPage(new[] { idle, right, left }, h => h == right, h => h.handednessScore >= 0.5f, values);
 
             Assert.AreEqual(2, count);
             Assert.AreEqual(2f, values[0]);

@@ -440,8 +440,12 @@
         s._ray = null;
         s._present = false;
         s._pinching = false;
+        s._lastSent = 0;
         return s;
     }
+    // A source the app stops sending stays for this long, at its last pose, so a hand missed
+    // for a frame or two doesn't come and go for the page.
+    var SOURCE_GRACE_SECONDS = 0.35;
     function resetSource(s) {
         for (var i = 0; i < s._jointFilters.length; i++) s._jointFilters[i].reset();
         s._rayOrigin.reset(); s._rayDir.reset(); s._ray = null;
@@ -558,9 +562,12 @@
             updateRay(src, now);
             src._pinchNow = a[at + 1] > 0.5;
         }
+        var tNow = performance.now() / 1000;
         for (var side in handSources) {
             var s = handSources[side];
-            if (s && s._present && !seen[side]) { s._present = false; s._pinchNow = false; removed.push(s); }
+            if (!s) continue;
+            if (seen[side]) { s._lastSent = tNow; continue; }
+            if (s._present && tNow - s._lastSent > SOURCE_GRACE_SECONDS) { s._present = false; s._pinchNow = false; removed.push(s); }
         }
         if (added.length || removed.length) {
             var sources = [active.inputSources[0] || new XRInputSource()];

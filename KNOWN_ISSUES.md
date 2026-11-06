@@ -26,7 +26,11 @@
   shape fitting at 11–18 px, the hand placed 0.26–0.41 m away, pinches reaching the Home panel.
   `handOrientation N` turns the image if a phone ever needs it, `handDump N` still writes the
   image and the crops, and *Show tracked hands* in Settings draws the joints over the camera
-  image to see how the tracking follows. That overlay showed the joints turned a quarter from
+  image to see how the tracking follows. In a WebXR page the hand came and went about once a
+  second (107 input-source changes in a session) and its handedness swapped 21 times, which a
+  page saw as two controllers jumping about and a pinch that never ended: the tracker now
+  keeps a hand Vision misses for up to 0.3 s, blends handedness over results, and the page
+  keeps a source for 0.35 s after the app stops sending it (2026-11-06, to be confirmed). That overlay showed the joints turned a quarter from
   the real hand: the joints were placed along image axes read off the same portrait-built
   matrix. They now follow passthrough's own rule (the image as it comes when the matrix is
   portrait-built on a landscape screen, `camTurn` respected); the overlay then sat on the real hand (confirmed 2026-11-06). Results still arrive ~165 ms behind the camera image

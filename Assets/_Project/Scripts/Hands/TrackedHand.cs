@@ -77,6 +77,9 @@ namespace Afterglow.Hands
         // its landmarks and their confidences, its mean confidence and which hand it is.
         public bool seenByVision;
         public long visionImageNs;
+        // When Vision last saw this hand (Time.unscaledTime), so a missed image or two doesn't
+        // lose it: the joints run on from the last result meanwhile.
+        public float visionLastSeen;
         public float visionConfidence;
         public VisionHandPose.Chirality visionChirality;
         public readonly Vector2[] visionLandmarks = new Vector2[HandGeometry.JointCount];

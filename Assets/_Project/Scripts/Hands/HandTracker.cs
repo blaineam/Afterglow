@@ -297,6 +297,13 @@ namespace Afterglow.Hands
         // confidence below which the landmarker's own landmark is kept instead of Vision's.
         const float k_MinVisionConfidence = 0.3f;
         const float k_MinJointConfidence = 0.1f;
+        // A hand Vision misses for less than this, in seconds, is kept (its joints predicted on
+        // from the last result); losing it on every missed image made the hand come and go
+        // about once a second on the phone, which a page saw as a controller flickering.
+        const float k_VisionGraceSeconds = 0.3f;
+        // How much of each result's chirality goes into the hand's handedness: a single image
+        // that reads the other hand doesn't swap it.
+        const float k_HandednessBlend = 0.2f;
         const float k_SureJointConfidence = 0.5f;
         // Per hand; the detector's m_NextSearch is shared.
 
@@ -1014,6 +1021,7 @@ namespace Afterglow.Hands
                 slot.region = region;
                 slot.seenByVision = true;
                 slot.visionImageNs = imageNs;
+                slot.visionLastSeen = Time.unscaledTime;
                 slot.visionConfidence = confidence;
                 slot.visionChirality = seen.chirality;
                 Array.Copy(seen.landmarks, slot.visionLandmarks, HandGeometry.JointCount);
@@ -1022,7 +1030,7 @@ namespace Afterglow.Hands
             }
             foreach (var hand in m_Hands)
             {
-                if (!hand.seenByVision && hand.region != null)
+                if (!hand.seenByVision && hand.region != null && Time.unscaledTime - hand.visionLastSeen > k_VisionGraceSeconds)
                     Lose(hand);
             }
             if (m_DumpsLeft > 0 && count > 0)
@@ -1111,7 +1119,11 @@ namespace Afterglow.Hands
             {
                 presence = hand.visionConfidence;
                 if (hand.visionChirality != VisionHandPose.Chirality.Unknown)
-                    handedness = hand.visionChirality == VisionHandPose.Chirality.Right ? 1f : 0f;
+                {
+                    var seen = hand.visionChirality == VisionHandPose.Chirality.Right ? 1f : 0f;
+                    // Blended over results once the hand is followed; a new hand takes the first reading.
+                    handedness = hand.acquiring || !hand.isTracking ? seen : Mathf.Lerp(hand.handednessScore, seen, k_HandednessBlend);
+                }
             }
             m_PresenceSum += presence;
             if (m_DumpsLeft > 0)

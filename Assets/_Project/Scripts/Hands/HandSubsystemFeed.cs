@@ -102,6 +102,22 @@ namespace Afterglow.Hands
         // Whether that particular hand is pinching. What a caller drawing one hand wants: with
         // two up, "is anything pinching" would swell the fingertips of a hand resting at your side
         // because the other one pinched.
+        // Which side a tracked hand is taken for, with this feed's hysteresis (a wavering reading
+        // doesn't swap it). False when the hand isn't fed.
+        public bool TryGetSide(TrackedHand hand, out bool isRight)
+        {
+            foreach (var feed in m_Feeds)
+            {
+                if (feed.hand == hand && feed.hasHand)
+                {
+                    isRight = feed.isRight;
+                    return true;
+                }
+            }
+            isRight = false;
+            return false;
+        }
+
         public bool IsPinchingWith(TrackedHand hand)
         {
             foreach (var feed in m_Feeds)
