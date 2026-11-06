@@ -164,6 +164,24 @@ namespace Afterglow.Hands
             imageY = RoundToAxis(new Vector2(-display.m10, display.m00) / determinant);
         }
 
+        // Where the image's axes lie on the screen, from the platform's display matrix -- unless
+        // that matrix was built for a portrait screen on a landscape one (PassthroughController.
+        // NeedsQuarterTurn; the iPhone 18 Pro Max does this), in which case the image is drawn as
+        // it comes, x along the screen and y down it, and the hands follow the same rule, or the
+        // joints come out turned a quarter from the real hand. camTurn, as passthrough takes it:
+        // -1 decides from the matrix, 0 never turns, 1 turns, 2 turns and flips both axes.
+        public static void ImageAxesForScreen(Matrix4x4 display, int screenWidth, int screenHeight, int camTurn,
+            out Vector2 imageX, out Vector2 imageY)
+        {
+            var turned = camTurn < 0 ? Stereo.PassthroughController.NeedsQuarterTurn(display, screenWidth, screenHeight) : camTurn != 0;
+            if (!turned)
+            {
+                ImageAxesOnScreen(display, out imageX, out imageY);
+                return;
+            }
+            ImageAxesVariant(camTurn == 2 ? 5 : 1, out imageX, out imageY);
+        }
+
         // The eight ways the image axes can lie on the screen, numbered from 1, for the "handAxes"
         // launch option.
         public static void ImageAxesVariant(int variant, out Vector2 imageX, out Vector2 imageY)

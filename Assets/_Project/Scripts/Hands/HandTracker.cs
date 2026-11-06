@@ -421,7 +421,8 @@ namespace Afterglow.Hands
             if (m_AxesVariant is >= 1 and <= 8)
                 HandGeometry.ImageAxesVariant(m_AxesVariant, out m_ImageXOnScreen, out m_ImageYOnScreen);
             else
-                HandGeometry.ImageAxesOnScreen(m_DisplayMatrix, out m_ImageXOnScreen, out m_ImageYOnScreen);
+                HandGeometry.ImageAxesForScreen(m_DisplayMatrix, Screen.width, Screen.height, LaunchOptions.GetInt("camTurn", -1),
+                    out m_ImageXOnScreen, out m_ImageYOnScreen);
             m_HasAxes = true;
             // The camera image is upright in the viewer's landscape as it comes; the axes from the
             // display matrix say how it lies on a portrait screen, which Vision has no use for.

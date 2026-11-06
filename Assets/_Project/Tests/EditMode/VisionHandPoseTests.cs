@@ -147,6 +147,37 @@ namespace Afterglow.Stereo.Tests
                 Assert.AreEqual(0f, shape[id].z);
         }
 
+        // The iPhone 18 Pro Max's display matrix: built for portrait (screen u drives the texture's
+        // vertical axis) on a landscape screen. Passthrough draws the image as it comes, and so
+        // must the hands: image x along the screen, y down it.
+        [Test]
+        public void ImageAxes_FollowPassthroughWhenTheMatrixIsPortraitOnALandscapeScreen()
+        {
+            var portraitBuilt = Matrix4x4.identity;
+            portraitBuilt.m00 = 0f; portraitBuilt.m01 = -1f;
+            portraitBuilt.m10 = -0.35f; portraitBuilt.m11 = 0f;
+            portraitBuilt.m20 = 0.67f; portraitBuilt.m21 = 1f;
+
+            HandGeometry.ImageAxesForScreen(portraitBuilt, 2868, 1320, -1, out var x, out var y);
+            Assert.AreEqual(Vector2.right, x);
+            Assert.AreEqual(Vector2.down, y);
+
+            // camTurn 2: both axes flipped, as passthrough flips the picture.
+            HandGeometry.ImageAxesForScreen(portraitBuilt, 2868, 1320, 2, out x, out y);
+            Assert.AreEqual(Vector2.left, x);
+            Assert.AreEqual(Vector2.up, y);
+
+            // On a portrait screen the same matrix is right as it is, and the axes come from it.
+            HandGeometry.ImageAxesForScreen(portraitBuilt, 1320, 2868, -1, out x, out y);
+            HandGeometry.ImageAxesOnScreen(portraitBuilt, out var fromMatrix, out var fromMatrixY);
+            Assert.AreEqual(fromMatrix, x);
+            Assert.AreEqual(fromMatrixY, y);
+
+            // camTurn 0 never turns, whatever the screen.
+            HandGeometry.ImageAxesForScreen(portraitBuilt, 2868, 1320, 0, out x, out y);
+            Assert.AreEqual(fromMatrix, x);
+        }
+
         [Test]
         public void CameraRate_IsFullOnlyForAHandOrPassthroughThatShows()
         {

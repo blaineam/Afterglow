@@ -26,7 +26,10 @@
   shape fitting at 11–18 px, the hand placed 0.26–0.41 m away, pinches reaching the Home panel.
   `handOrientation N` turns the image if a phone ever needs it, `handDump N` still writes the
   image and the crops, and *Show tracked hands* in Settings draws the joints over the camera
-  image to see how the tracking follows. Results still arrive ~165 ms behind the camera image
+  image to see how the tracking follows. That overlay showed the joints turned a quarter from
+  the real hand: the joints were placed along image axes read off the same portrait-built
+  matrix. They now follow passthrough's own rule (the image as it comes when the matrix is
+  portrait-built on a landscape screen, `camTurn` respected), to be confirmed with the overlay. Results still arrive ~165 ms behind the camera image
   (sampling the crop takes 13 ms on the main thread), which the prediction covers for ~120 ms.
 
 - **A WebXR page drew wrong from its second session frame** (fixed 2026-11-06, Simulator-verified;
