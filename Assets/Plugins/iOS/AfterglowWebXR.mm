@@ -1033,6 +1033,15 @@ extern "C" void Afterglow_WebFill(const char *user, const char *pass)
     [g_Host.web evaluateJavaScript:js completionHandler:nil];
 }
 
+// Ends the page's immersive session from the app: a long press on the screen, since the
+// page's own controls are out of reach from inside the viewer.
+extern "C" void Afterglow_WebEndSession()
+{
+    if (g_Host == nil || g_Host.web == nil)
+        return;
+    [g_Host.web evaluateJavaScript:@"window.__afterglowEndSession&&window.__afterglowEndSession()" completionHandler:nil];
+}
+
 // Runs a script in the page (the start page takes its bookmarks and history this way).
 extern "C" void Afterglow_WebRunScript(const char *script)
 {

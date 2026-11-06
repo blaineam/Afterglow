@@ -229,7 +229,8 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   Bluetooth keyboard or the on-screen keys type, and dictation fills the address. The start page
   lists your bookmarks and the pages you opened recently (with *Clear history*), and the tabs
   come back as you left them. A page's *Enter VR* takes the whole screen in stereo through the
-  lenses. **Logins**: when you sign in to a site the browser offers to keep the password in the
+  lenses; hold a finger on the screen for a second and a half to end the session, since the
+  page's own buttons and the app's gear are out of reach inside the viewer. **Logins**: when you sign in to a site the browser offers to keep the password in the
   phone's Keychain (this phone only, readable only while it's unlocked, never in a backup), and on
   that site's login page next time it offers to fill it; nothing is kept unless you say *Save*.
   Bookmarks, history and the tabs live in a file in the app's own folder. iPhone only. (The

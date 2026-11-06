@@ -71,6 +71,11 @@ namespace Afterglow.Demos
         // later in case the first came before its script was ready.
         float m_FeedStartPageAt = -1f;
         bool m_OnStartPage;
+        // A long press on the screen during an immersive session ends it: the page's own Exit
+        // button and the app's corner gear are both out of reach from inside the viewer.
+        const float k_EndPressSeconds = 1.5f;
+        float m_PressedSince = -1f;
+        bool m_EndRequested;
         // What is being typed into the address bar, or null while the typing is going to a field
         // on the page. Which of the two it is is the page's business, not a mode the user sets.
         string m_Typed;
@@ -284,6 +289,27 @@ namespace Afterglow.Demos
 
         // The tabs, above the address: a chip per tab with the page's title, the current one
         // selected, then New and Close for tabs.
+        // A finger held on the screen for k_EndPressSeconds ends the session.
+        void UpdateLongPress()
+        {
+            var touch = UnityEngine.InputSystem.Touchscreen.current;
+            var pressed = touch != null && touch.primaryTouch.press.isPressed;
+            if (!pressed)
+            {
+                m_PressedSince = -1f;
+                m_EndRequested = false;
+                return;
+            }
+            if (m_PressedSince < 0f)
+                m_PressedSince = Time.unscaledTime;
+            if (!m_EndRequested && Time.unscaledTime - m_PressedSince >= k_EndPressSeconds)
+            {
+                m_EndRequested = true;
+                Debug.Log("[WebXR] Long press: ending the session");
+                WebBrowser.EndSession();
+            }
+        }
+
         // The login prompt, built once and shown when there is something to ask.
         void BuildPrompt()
         {
@@ -647,7 +673,10 @@ namespace Afterglow.Demos
             }
 
             if (m_Immersive)
+            {
+                UpdateLongPress();
                 return;
+            }
 
             if (WebBrowser.TryUpdateTexture(ref m_Page) && m_Material != null)
                 m_Material.mainTexture = m_Page;

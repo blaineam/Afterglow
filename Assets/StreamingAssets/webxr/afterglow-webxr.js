@@ -281,6 +281,7 @@
         this.predictedDisplayTime = performance.now();
     }
     XRFrame.prototype.getViewerPose = function (space) {
+        this._poseSeen = true;
         var q = pose.q;
         // A floor-relative space puts the origin under the user rather than at the head.
         var lift = space && space._kind === 'local-floor' ? (cfg.eyeHeight || 1.6) : 0;
@@ -407,6 +408,8 @@
     // ---------------------------------------------------------------- session lifecycle
     XRSession.prototype._attachLayer = function (layer, gl) {
         this._gl = gl;
+        console.log('[Afterglow] layer attached: canvas ' + gl.canvas.width + 'x' + gl.canvas.height + ' css ' +
+            gl.canvas.clientWidth + 'x' + gl.canvas.clientHeight + ', ' + (gl instanceof WebGL2RenderingContext ? 'webgl2' : 'webgl'));
         var dpr = window.devicePixelRatio || 1;
         var canvas = gl.canvas;
         var w = Math.max(2, Math.floor(window.innerWidth * dpr));
@@ -426,6 +429,7 @@
         if (target) { this._fbo = target.fbo; this._tex = target.tex; this._depth = target.depth; }
         this._distort = createDistortion(gl);
         this.renderState.baseLayer = layer;
+        console.log('[Afterglow] eye buffer ' + w + 'x' + h + (target ? ' ready' : ' FAILED') + ', distortion ' + (this._distort ? 'ready' : 'missing'));
     };
 
     XRSession.prototype.updateRenderState = function (state) {
@@ -467,9 +471,14 @@
         var frame = new XRFrame(this);
         for (var i = 0; i < due.length; i++) {
             try { due[i].cb(time, frame); }
-            catch (e) { console.error('[Afterglow] frame callback: ' + (e && e.message)); }
+            catch (e) { console.error('[Afterglow] frame callback: ' + (e && e.message) + ' ' + (e && e.stack ? String(e.stack).split('\n').slice(0, 3).join(' | ') : '')); }
         }
+        this._frames = (this._frames || 0) + 1;
         if (gl && this._fbo) this._composite();
+        // The first frames, and then one in a hundred, say whether the page is drawing at all.
+        if (this._frames <= 3 || this._frames % 100 === 0)
+            console.log('[Afterglow] frame ' + this._frames + ': ' + due.length + ' callback(s), layer ' + (this._fbo ? 'bound' : 'none') +
+                ', pose ' + (frame._poseSeen ? 'given' : 'not asked') + ', next ' + this._callbacks.length);
         if (this._callbacks.length) this._schedule();
     };
 
@@ -536,6 +545,15 @@
         return Promise.resolve();
     };
 
+    // The app ends the session: a long press on the screen, since the page's own controls
+    // can't be reached from inside the viewer.
+    window.__afterglowEndSession = function () {
+        if (!active || active._ended) return false;
+        console.log('[Afterglow] session ended by the app');
+        active.end();
+        return true;
+    };
+
     // A pinch in front of the camera, or a tap, arrives here from the app.
     window.__afterglowSelect = function () {
         if (!active || active._ended) return;
@@ -600,5 +618,6 @@
     window.XRReferenceSpace = XRReferenceSpace;
 
     console.log('[Afterglow] WebXR ready' + (cfg.mono ? ' (phone view: one picture, no lens correction)' : '') + ': screen ' + cfg.screen[0].toFixed(4) + ' x ' +
-                cfg.screen[1].toFixed(4) + ' m, lenses ' + (cfg.interLens * 1000).toFixed(1) + ' mm apart');
+                cfg.screen[1].toFixed(4) + ' m, lenses ' + (cfg.interLens * 1000).toFixed(1) + ' mm apart; native XRWebGLBinding ' +
+                (typeof window.XRWebGLBinding !== 'undefined' ? 'present' : 'absent') + ', native XRSystem ' + (typeof window.XRSystem !== 'undefined' ? 'present' : 'absent'));
 })();

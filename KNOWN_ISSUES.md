@@ -18,14 +18,15 @@
   image, the detector's input and the landmarker's crops to `HandDumps` in its Documents folder
   (Finder's Files tab, or `devicectl device copy from`), with a log line per crop.
 
-- **An immersive WebXR session ended a third of a second after it started** (phone,
-  2026-11-06). Found with the page's events in the log: as the app takes the screen, WebKit
-  fires a window `resize` with nothing changed (the same 1024×768), and a page that rebuilds its
-  renderer on any resize (a 360 player did, through its player's `dispose()`) threw away the
-  thing it had just put into the session; the player it made next drew flat, which looked like
-  "2D on the phone screen". The shim now swallows a resize or orientationchange that changes
-  nothing while a session is up, as a browser entering immersive mode fires neither. The web
-  view also never moves or resizes any more. **To be confirmed on the phone.**
+- **An immersive WebXR session now holds on the phone but draws flat** (2026-11-06). The
+  session no longer ends (WebKit's no-change window resize at the start of a session is
+  swallowed by the shim; the web view is never moved or resized), yet a 360 player drew its
+  video flat onto the screen, with the page's own buttons visible, and the app's gear is covered
+  while the page has the screen. The player's code is right (three.js's own loop on the shim's
+  session frames, rendering through the layer's framebuffer), so the shim now reports its first
+  frames (layer attached, eye buffer size, pose asked for, callbacks run) and whether WebKit
+  exposes native `XRWebGLBinding`/`XRSystem` objects that three.js would prefer. Until it is
+  found: a long press on the screen (a second and a half) ends the session.
 - **A tall photo sphere is drawn on a cylinder.** A GPano crop gives a panorama's exact span and
   height, and the band is a cylinder, which is right up to about 90° tall; a sphere cropped to,
   say, 360° × 150° stretches towards its top and bottom on it. The whole sphere (or near enough,

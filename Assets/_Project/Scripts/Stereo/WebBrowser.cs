@@ -304,6 +304,14 @@ namespace Afterglow.Stereo
 #endif
         }
 
+        // Ends the page's immersive session, as the page's own Exit VR button would.
+        public static void EndSession()
+        {
+#if UNITY_IOS && !UNITY_EDITOR
+            Afterglow_WebEndSession();
+#endif
+        }
+
         // Runs a script in the page: how the app hands the start page its lists.
         public static void RunScript(string script)
         {
@@ -473,6 +481,7 @@ namespace Afterglow.Stereo
         [DllImport("__Internal")] static extern int Afterglow_WebTextFocused();
         [DllImport("__Internal")] static extern void Afterglow_WebLoadUrl(string url);
         [DllImport("__Internal")] static extern void Afterglow_WebRunScript(string script);
+        [DllImport("__Internal")] static extern void Afterglow_WebEndSession();
         [DllImport("__Internal")] static extern int Afterglow_WebTakeCredential(StringBuilder host, int hostLength, StringBuilder user, int userLength, StringBuilder pass, int passLength);
         [DllImport("__Internal")] static extern int Afterglow_WebTakeLoginHost(StringBuilder host, int hostLength);
         [DllImport("__Internal")] static extern void Afterglow_WebFill(string user, string pass);
