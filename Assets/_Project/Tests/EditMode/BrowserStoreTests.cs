@@ -1,6 +1,7 @@
 using System.IO;
 using Afterglow.Demos;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace Afterglow.Stereo.Tests
 {
@@ -168,6 +169,90 @@ namespace Afterglow.Stereo.Tests
             Assert.AreEqual(0f, values[at]);
             Assert.AreEqual(0f, values[at + 1]);
             Assert.AreEqual(-2f, values[at + 4]);
+        }
+    }
+}
+
+namespace Afterglow.Stereo.Tests
+{
+    public class PanoramaEnvironmentTests
+    {
+        [Test]
+        public void BuildSphere_FacesInwardWithEquirectangularCoordinates()
+        {
+            var mesh = Afterglow.Demos.PanoramaEnvironment.BuildSphere(10f, 8, 4);
+            var vertices = mesh.vertices;
+            var uvs = mesh.uv;
+            var triangles = mesh.triangles;
+
+            Assert.AreEqual(9 * 5, vertices.Length);
+            Assert.AreEqual(8 * 4 * 6, triangles.Length);
+            foreach (var v in vertices)
+                Assert.AreEqual(10f, v.magnitude, 1e-3f);
+            // The picture's middle (u 0.5) is straight ahead, its bottom (v 0) at the bottom.
+            var ahead = System.Array.FindIndex(uvs, uv => Mathf.Abs(uv.x - 0.5f) < 1e-4f && Mathf.Abs(uv.y - 0.5f) < 1e-4f);
+            Assert.GreaterOrEqual(ahead, 0);
+            Assert.Greater(vertices[ahead].z, 9.9f);
+            var bottom = System.Array.FindIndex(uvs, uv => uv.y < 1e-4f);
+            Assert.Less(vertices[bottom].y, -9.9f);
+            // Every triangle's normal points at the centre: seen from inside.
+            for (var t = 0; t < triangles.Length; t += 3)
+            {
+                var a = vertices[triangles[t]]; var b = vertices[triangles[t + 1]]; var c = vertices[triangles[t + 2]];
+                var normal = Vector3.Cross(b - a, c - a);
+                if (normal.sqrMagnitude < 1e-6f) continue;
+                Assert.Less(Vector3.Dot(normal, (a + b + c) / 3f), 0f, "a triangle faces outward");
+            }
+        }
+
+        [Test]
+        public void Describe_NamesTheBuiltInOrThePhoto()
+        {
+            var files = new[] { "/x/Beach.jpg", "/x/Moon.png" };
+            Assert.AreEqual("Synthwave", Afterglow.Demos.PanoramaEnvironment.Describe(0, files));
+            Assert.AreEqual("Beach", Afterglow.Demos.PanoramaEnvironment.Describe(1, files));
+            Assert.AreEqual("Moon", Afterglow.Demos.PanoramaEnvironment.Describe(2, files));
+            Assert.AreEqual("Synthwave", Afterglow.Demos.PanoramaEnvironment.Describe(3, files));
+        }
+
+        [Test]
+        public void Environments_ShowOneOrTheOther_AndNeitherInPassthrough()
+        {
+            Assert.IsTrue(VirtualEnvironment.Shows(isReplacement: false, hidden: false, replaced: false));
+            Assert.IsFalse(VirtualEnvironment.Shows(isReplacement: true, hidden: false, replaced: false));
+            Assert.IsFalse(VirtualEnvironment.Shows(isReplacement: false, hidden: false, replaced: true));
+            Assert.IsTrue(VirtualEnvironment.Shows(isReplacement: true, hidden: false, replaced: true));
+            Assert.IsFalse(VirtualEnvironment.Shows(isReplacement: true, hidden: true, replaced: true));
+            Assert.IsFalse(VirtualEnvironment.Shows(isReplacement: false, hidden: true, replaced: false));
+        }
+    }
+}
+
+namespace Afterglow.Stereo.Tests
+{
+    public class AppLockTests
+    {
+        [Test]
+        public void Record_MatchesOnlyItsOwnPin()
+        {
+            var record = Afterglow.Demos.AppLock.NewRecord("123456");
+            Assert.IsTrue(Afterglow.Demos.AppLock.Matches(record, "123456"));
+            Assert.IsFalse(Afterglow.Demos.AppLock.Matches(record, "123457"));
+            Assert.IsFalse(Afterglow.Demos.AppLock.Matches(record, ""));
+            Assert.IsFalse(Afterglow.Demos.AppLock.Matches("", "123456"));
+            Assert.IsFalse(Afterglow.Demos.AppLock.Matches("nosalt", "123456"));
+            // The record never holds the PIN, and two records for one PIN differ by their salt.
+            Assert.IsFalse(record.Contains("123456"));
+            Assert.AreNotEqual(record, Afterglow.Demos.AppLock.NewRecord("123456"));
+        }
+
+        [Test]
+        public void IsPin_IsSixDigits()
+        {
+            Assert.IsTrue(Afterglow.Demos.AppLock.IsPin("000000"));
+            Assert.IsFalse(Afterglow.Demos.AppLock.IsPin("12345"));
+            Assert.IsFalse(Afterglow.Demos.AppLock.IsPin("12345a"));
+            Assert.IsFalse(Afterglow.Demos.AppLock.IsPin(null));
         }
     }
 }

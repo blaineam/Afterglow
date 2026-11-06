@@ -224,7 +224,7 @@ namespace Afterglow.Demos
                 Open();
                 // The "web 1" launch option: straight into the browser, with its tabs as they were
                 // left, for working on a page from the Mac without aiming at the Web button first.
-                if (!m_WebOpenedAtStart && m_Browser != null && LaunchOptions.GetInt("web", 0) == 1)
+                if (!m_WebOpenedAtStart && m_Browser != null && LaunchOptions.GetInt("web", 0) == 1 && !AppLock.IsLocked)
                 {
                     m_WebOpenedAtStart = true;
                     Debug.Log("[Home] Opening the browser from the launch option");

@@ -11,13 +11,17 @@ namespace Afterglow.Stereo
     {
         static readonly List<VirtualEnvironment> s_All = new();
         static bool s_Hidden;
+        static bool s_Replaced;
+
+        // A replacement for the built-in surroundings (a 360 photo of the user's): shown instead
+        // of them while one is chosen, hidden with them by passthrough.
+        public bool IsReplacement;
 
         // Awake and OnDestroy rather than OnEnable and OnDisable, since hiding deactivates it.
         void Awake()
         {
             s_All.Add(this);
-            if (s_Hidden)
-                gameObject.SetActive(false);
+            Refresh(this);
         }
 
         void OnDestroy() => s_All.Remove(this);
@@ -26,7 +30,22 @@ namespace Afterglow.Stereo
         {
             s_Hidden = hidden;
             foreach (var environment in s_All)
-                environment.gameObject.SetActive(!hidden);
+                Refresh(environment);
         }
+
+        // Whether a replacement stands in for the built-in surroundings.
+        public static void SetReplaced(bool replaced)
+        {
+            s_Replaced = replaced;
+            foreach (var environment in s_All)
+                Refresh(environment);
+        }
+
+        // Pure: whether an environment shows, given what's hiding or replacing it.
+        public static bool Shows(bool isReplacement, bool hidden, bool replaced) =>
+            !hidden && isReplacement == replaced;
+
+        static void Refresh(VirtualEnvironment environment) =>
+            environment.gameObject.SetActive(Shows(environment.IsReplacement, s_Hidden, s_Replaced));
     }
 }

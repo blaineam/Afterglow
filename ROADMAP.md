@@ -146,6 +146,17 @@ Everything else sits on this, and three of the newest features have never run on
 
 ## Later
 
+- **Environments** (asked for 2026-11-06): the synthwave home is fun; wanted alongside it, each
+  detailed, by day and by night, and animated where it can be: a forest, a desert, a tropical
+  beach, an ancient ruin, a cyberpunk cityscape, and the surface of the Moon and of Mars. Built
+  as scenes with the same `VirtualEnvironment` root as the synthwave one, chosen from the
+  Environment setting, which today offers the built-in one and the user's own 360 photos
+  (`PanoramaEnvironment`, done 2026-11-06).
+- **Vacuum the room** (game idea, 2026-11-06): the scan's surface markers stay on the floor until
+  a vacuum cleaner has been run over them, so the whole floor of a room reads as cleaned when the
+  last marker goes. Needs the floor mesh kept per room and the hand or the phone as the vacuum.
+- **App PIN** — done 2026-11-06 (`AppLock`): six digits, asked for at launch and after a minute
+  away, a salted hash in the Keychain; on and off from Settings. To be confirmed on the phone.
 - **More games**, since the hands, the room and the passthrough are the point: a rhythm game
   with hits on incoming neon shapes to the beat (Apple Music streams can't be analysed, so the
   beat maps come from bundled synthwave tracks or the user's own files, with MusicKit for

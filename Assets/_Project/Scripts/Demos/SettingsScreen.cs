@@ -185,6 +185,28 @@ namespace Afterglow.Demos
                 Key = "uiScale", Label = "UI size", Choices = Range(100, 220, 10), Fallback = 160,
                 Show = v => $"{v} %", Note = k_NextLaunch,
             });
+            // The surroundings: the built-in environment, or any 360 photo in the app's
+            // Environments folder (PanoramaEnvironment). The list is read when the rows are built,
+            // so a photo added while the app runs shows up next time the panel opens.
+            var photos = PanoramaEnvironment.Files();
+            m_Rows.Add(new Setting
+            {
+                Key = PanoramaEnvironment.SettingKey, Label = "Environment", Choices = Range(0, photos.Length, 1), Fallback = 0,
+                Show = v => PanoramaEnvironment.Describe(v, photos),
+                Note = "Your own 360 photos: copy equirectangular images into the app's Environments folder (the Files app, or Finder's Files tab).",
+            });
+            // The PIN lives in the Keychain, not in the settings; the row reads whether one is set and
+            // turning it on or off opens the keypad (AppLock).
+            m_Rows.Add(new Setting
+            {
+                Key = "appPin", Label = "App PIN", Choices = new[] { 0, 1 }, Fallback = 0,
+                Read = () => AppLock.HasPin ? 1 : 0,
+                Write = v => { if (v == 1) AppLock.BeginSet(); else AppLock.BeginClear(); },
+                Show = v => v == 1 ? "On, six digits" : "Off",
+                Note = Afterglow.Stereo.Keychain.Supported
+                    ? "Asked for when the app opens and after a minute away. Kept as a salted hash in this phone's Keychain."
+                    : "iPhone only: it needs the Keychain.",
+            });
             m_Rows.Add(new Setting
             {
                 Key = "showHands", Label = "Show tracked hands", Choices = new[] { 0, 1 }, Fallback = 0,

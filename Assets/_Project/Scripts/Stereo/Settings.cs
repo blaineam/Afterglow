@@ -17,6 +17,9 @@ namespace Afterglow.Stereo
         // Raised with the name of a setting that changed, for whatever applies it live.
         public static event Action<string> Changed;
 
+        // For a setting kept elsewhere than PlayerPrefs (the app PIN), so its row refreshes.
+        public static void Notify(string name) => Changed?.Invoke(name);
+
         public static bool IsSaved(string name) => PlayerPrefs.HasKey(k_Prefix + name);
 
         // What the user saved, or the default: what the settings screen shows.

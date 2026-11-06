@@ -242,8 +242,12 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   always plays inside the page, never in the iPhone's own full-screen player, which would cover
   the viewer. During a session only the page's WebXR layer shows, as on a headset: its other
   elements, a player's toolbar say, are not drawn over it. A pinch in front of the camera, or a
-  short tap on the screen (a viewer's button), reaches the page as a WebXR *select* on a gaze
-  input source; hand joints are not yet passed on. **Logins**: when you sign in to a site the browser offers to keep the password in the
+  short tap on the screen (a viewer's button), reaches the page as a WebXR *select*. Your tracked
+  hands reach the page as WebXR Hand Input: an input source per hand with its 25 joint spaces,
+  posed every frame and smoothed, a pointing ray from the shoulder through the palm so a wand
+  holds steady, and a pinch as that hand's *select*; with no hand in view, a tap is a select on
+  the gaze source. **Logins**: when you sign in to a site (a form, or a button that signs you in
+  itself, with or without a username field) the browser offers to keep the password in the
   phone's Keychain (this phone only, readable only while it's unlocked, never in a backup), and on
   that site's login page next time it offers to fill it; nothing is kept unless you say *Save*.
   Bookmarks, history and the tabs live in a file in the app's own folder. iPhone only. (The
@@ -277,6 +281,19 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   cubes aside; open your fingers to let go or throw it. Free cubes have physics: they fall, bounce
   off each other and land on detected surfaces. If the camera loses your hand while you hold one,
   it stays where it was rather than dropping.
+
+### Surroundings and the lock
+
+- **Environment**: the home scene's synthwave surroundings, or any 360 photo of your own. Copy
+  equirectangular images (JPEG or PNG) into the app's *Environments* folder — the Files app, or
+  Finder's Files tab for the phone — and pick one under *Environment* in Settings; the sphere
+  follows your head so you can walk without reaching its wall. Passthrough hides both, as it
+  hides any virtual surroundings. (On the roadmap: built-in forests, deserts, beaches, ruins, a
+  cityscape at night, the Moon and Mars, animated.)
+- **App PIN** (iPhone): a six-digit PIN asked for when the app opens and after a minute away,
+  turned on and off in Settings. What's kept is a salted hash in the phone's Keychain, never the
+  PIN; five wrong tries mean a thirty-second wait. While the keypad shows, nothing behind it can
+  be reached.
 
 ## Logs
 
