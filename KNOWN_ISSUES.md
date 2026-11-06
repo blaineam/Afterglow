@@ -29,7 +29,7 @@
   image to see how the tracking follows. That overlay showed the joints turned a quarter from
   the real hand: the joints were placed along image axes read off the same portrait-built
   matrix. They now follow passthrough's own rule (the image as it comes when the matrix is
-  portrait-built on a landscape screen, `camTurn` respected), to be confirmed with the overlay. Results still arrive ~165 ms behind the camera image
+  portrait-built on a landscape screen, `camTurn` respected); the overlay then sat on the real hand (confirmed 2026-11-06). Results still arrive ~165 ms behind the camera image
   (sampling the crop takes 13 ms on the main thread), which the prediction covers for ~120 ms.
 
 - **A WebXR page drew wrong from its second session frame** (fixed 2026-11-06, Simulator-verified;
