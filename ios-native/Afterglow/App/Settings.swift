@@ -25,6 +25,8 @@ final class Settings: ObservableObject {
     /// Where the eyes' midpoint sits relative to the camera, in camera axes (x right, y up, z back),
     /// in millimetres; a launch option per axis.
     let cameraToEyesMm: SIMD3<Int>
+    /// Save the left eye's texture to Documents/eye-left.png this many seconds after launch (0: never).
+    let dumpAfterSeconds: Int
 
     private var loading = true
     private var options: [String: String] = [:]
@@ -42,6 +44,7 @@ final class Settings: ObservableObject {
         cameraToEyesMm = SIMD3(Self.read("eyesX", options: options, default: 60),
                                Self.read("eyesY", options: options, default: -10),
                                Self.read("eyesZ", options: options, default: 66))
+        dumpAfterSeconds = Self.read("dump", options: options, default: 0)
         loading = false
         let given = options.keys.sorted().map { "\($0) \(options[$0]!)" }.joined(separator: ", ")
         log("[Stereo] Launch options: \(given.isEmpty ? "none" : given)")

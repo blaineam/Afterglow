@@ -10,40 +10,45 @@ struct ContentView: View {
     @State private var hideTask: Task<Void, Never>?
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            MetalView(model: model)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture { toggleControls() }
-            if controlsShown {
-                controls
-                    .padding(16)
-                    .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 16))
-                    .padding(.bottom, 24)
-                    .transition(.opacity)
+        // The strip is an overlay, so its size never changes the Metal view's: as a sibling in a
+        // stack it stretched the view past the screen and SwiftUI animated the drawable's width.
+        MetalView(model: model)
+            .ignoresSafeArea()
+            .contentShape(Rectangle())
+            .onTapGesture { toggleControls() }
+            .overlay(alignment: .bottom) {
+                if controlsShown {
+                    controls
+                        .padding(14)
+                        .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 16))
+                        .padding(.bottom, 24)
+                        .transition(.opacity)
+                }
             }
-        }
-        .background(Color.black)
-        .onAppear { scheduleHide() }
+            .background(Color.black)
+            .onAppear { scheduleHide() }
     }
 
     private var controls: some View {
-        HStack(spacing: 28) {
-            Toggle("Passthrough", isOn: $settings.passthrough)
-                .toggleStyle(.switch)
-                .fixedSize()
-            Stepper("Render scale \(settings.renderScalePercent)%", value: $settings.renderScalePercent, in: 25...200, step: 10)
-                .fixedSize()
-            Stepper("\(settings.targetFrameRate) fps", value: $settings.targetFrameRate, in: 30...120, step: 30)
-                .fixedSize()
-            Stepper("Predict +\(settings.extraPredictionMs) ms", value: $settings.extraPredictionMs, in: 0...60, step: 4)
-                .fixedSize()
-            Text(model.status)
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .frame(minWidth: 140, alignment: .leading)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 24) {
+                Toggle("Passthrough", isOn: $settings.passthrough)
+                    .toggleStyle(.switch)
+                    .fixedSize()
+                Stepper("Render scale \(settings.renderScalePercent)%", value: $settings.renderScalePercent, in: 25...200, step: 10)
+                    .fixedSize()
+                Stepper("\(settings.targetFrameRate) fps", value: $settings.targetFrameRate, in: 30...120, step: 30)
+                    .fixedSize()
+            }
+            HStack(spacing: 24) {
+                Stepper("Predict +\(settings.extraPredictionMs) ms", value: $settings.extraPredictionMs, in: 0...60, step: 4)
+                    .fixedSize()
+                Text(model.status)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
         }
-        .font(.body)
+        .font(.callout)
         .foregroundStyle(.white)
         .onChange(of: settings.passthrough) { _, _ in scheduleHide() }
         .onChange(of: settings.renderScalePercent) { _, _ in scheduleHide() }
@@ -115,6 +120,7 @@ final class MetalLayerView: UIView {
     private var frameRate = 0
     private var fpsFrames = 0
     private var fpsSince: Double = 0
+    private var lastSizeLog: Double = 0
 
     override class var layerClass: AnyClass { CAMetalLayer.self }
     var metalLayer: CAMetalLayer { layer as! CAMetalLayer }
@@ -125,6 +131,10 @@ final class MetalLayerView: UIView {
         backgroundColor = .black
         metalLayer.pixelFormat = .bgra8Unorm
         metalLayer.framebufferOnly = true
+        // Three drawables. With two the loop blocked a whole frame on every drawable and the rate
+        // halved to 30 fps (measured 2026-11-06); with three it runs up to two frames ahead of the
+        // display, and the renderer measures how late each frame really appears and predicts the
+        // head pose to that moment instead.
         metalLayer.maximumDrawableCount = 3
         metalLayer.presentsWithTransaction = false
         metalLayer.device = MTLCreateSystemDefaultDevice()
@@ -156,7 +166,11 @@ final class MetalLayerView: UIView {
         let size = CGSize(width: bounds.width * scale, height: bounds.height * scale)
         if size.width > 0 && size.height > 0 && metalLayer.drawableSize != size {
             metalLayer.drawableSize = size
-            log("[Stereo] Drawable \(Int(size.width))x\(Int(size.height)) px (scale \(scale))")
+            let now = CACurrentMediaTime()
+            if now - lastSizeLog > 1 {
+                lastSizeLog = now
+                log("[Stereo] Drawable \(Int(size.width))x\(Int(size.height)) px (scale \(scale))")
+            }
         }
     }
 

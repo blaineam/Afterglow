@@ -170,6 +170,12 @@ foundation at all. The honest picture:
   work, phased so the Unity app stays usable until the native one reaches it: (1) stereo rig,
   head tracking and passthrough; (2) hands and pinch; (3) the browser and WebXR; (4) media;
   (5) Home, settings, the lock and the environments; (6) games.
+- **Phase 1 started 2026-11-06** in [`ios-native/`](ios-native/) (Swift, SwiftUI, Metal, ARKit;
+  `Tools/native_build_and_run.sh`): both eyes in one pass by vertex amplification, the lens warp
+  ported from `LensDistortion.cs` and unit-tested against this app's logged field of view, ARKit
+  world tracking with the head predicted ahead by the gyroscope, passthrough at the camera's true
+  field of view, a procedural synthwave surrounding, and this app's `[Frames]`/`[Thermal]` log
+  lines for comparison. Its README carries the five-minute run next to this app's numbers.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

@@ -39,7 +39,15 @@ zsh Tools/native_build_and_run.sh --ei passthrough 1       # with launch options
 zsh Tools/native_build_and_run.sh --launch                 # relaunch what is installed
 zsh Tools/native_build_and_run.sh --log                    # copy the session log back
 zsh Tools/native_build_and_run.sh --test                   # the unit tests, on a simulator
+zsh Tools/native_build_and_run.sh --sim --ei dump 4        # run in the iOS Simulator; eye-left.png copied back
+AFTERGLOW_DEVICE=iPhone18,2 zsh Tools/native_build_and_run.sh   # a particular phone (here a 17 Pro Max)
 ```
+
+The Simulator has no ARKit, so there the head stays still and passthrough has no image, but the
+stereo rig, the lens warp and the surroundings all draw (one pass per eye, since the Simulator's
+Metal has no vertex amplification), and `--ei dump N` saves the left eye's texture N seconds in so
+the picture can be checked from the Mac. That, and a second phone named by `AFTERGLOW_DEVICE`,
+keep the iPhone 18 Pro Max free for the runs that matter.
 
 The project is generated from `project.yml` by [xcodegen](https://github.com/yonaskolb/XcodeGen)
 (`brew install xcodegen`); the script regenerates it when the spec is newer. Signing uses the same
@@ -60,6 +68,7 @@ screen shows a control strip for the first four, whose values are kept between r
 | `camUltraWide` | 1 | prefer the ultra-wide camera's format when ARKit lists one |
 | `thermalCap` | 1 | hold render scale to 80 % at "serious" and 60 %/30 fps at "critical", as the Unity app does |
 | `eyesX`, `eyesY`, `eyesZ` | 60, -10, 66 | the eyes' midpoint relative to the camera, mm, camera axes (x right, y up, z back) |
+| `dump` | 0 | save the left eye's texture to `Documents/eye-left.png` this many seconds after launch |
 
 ## Phase 1 run (iPhone 18 Pro Max)
 

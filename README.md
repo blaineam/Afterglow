@@ -85,7 +85,14 @@ zsh Tools/ios_build_and_run.sh                               # iOS
 zsh Tools/ios_build_and_run.sh --xcode                       # iOS, reusing the last Unity export
 zsh Tools/ios_launch.sh                                      # iOS, relaunch without rebuilding
 zsh Tools/ios_sim_build_and_run.sh                           # iOS Simulator, for work that needs no phone
+zsh Tools/native_build_and_run.sh                            # the native Swift/Metal port in ios-native/ (see below)
 ```
+
+**The native port.** [`ios-native/`](ios-native/) is a Swift, Metal and ARKit rewrite of the app
+for the iPhone, started 2026-11-06 because Unity's overhead ran the phone hot (see "A native
+port?" in [ROADMAP.md](ROADMAP.md)). Phase 1, the stereo rig, head tracking and passthrough, is
+there with its own [README](ios-native/README.md), build script and the heat and frame numbers
+against this app's. The Unity app stays the one with every feature until the port reaches them.
 
 ### Without a phone
 

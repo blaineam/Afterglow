@@ -16,6 +16,9 @@ struct CapturedFrame: @unchecked Sendable {
     // cache entries are retained, so they travel with the frame.
     let lumaRef: CVMetalTexture
     let chromaRef: CVMetalTexture
+    // And the pixel buffer itself: ARKit recycles it for a new capture once its frame is released,
+    // which showed as coloured static in passthrough (2026-11-06).
+    let pixelBuffer: CVPixelBuffer
 }
 
 /// Runs ARKit world tracking: picks the camera format (the ultra-wide at 60 fps where the phone
@@ -127,8 +130,10 @@ final class ARController: NSObject, ARSessionDelegate, @unchecked Sendable {
                                      imageWidth: CVPixelBufferGetWidth(frame.capturedImage),
                                      imageHeight: CVPixelBufferGetHeight(frame.capturedImage),
                                      luma: luma.texture, chroma: chroma.texture,
-                                     lumaRef: luma.ref, chromaRef: chroma.ref)
+                                     lumaRef: luma.ref, chromaRef: chroma.ref, pixelBuffer: frame.capturedImage)
         }
+        // Entries the renderer no longer holds go back to the pool.
+        if let textureCache { CVMetalTextureCacheFlush(textureCache, 0) }
         lock.lock()
         if let captured { latest = captured }
         frameCount += 1
@@ -148,8 +153,10 @@ final class ARController: NSObject, ARSessionDelegate, @unchecked Sendable {
             let degrees = 180 / Float.pi
             let h = 2 * atan(Float(captured.imageWidth) / (2 * fx)) * degrees
             let v = 2 * atan(Float(captured.imageHeight) / (2 * fy)) * degrees
-            log(String(format: "[Passthrough] Camera image %dx%d, %.0f x %.0f deg (%@ camera), intrinsics fx %.1f fy %.1f cx %.1f cy %.1f",
-                       captured.imageWidth, captured.imageHeight, h, v, cameraName, fx, fy,
+            let format = CVPixelBufferGetPixelFormatType(captured.pixelBuffer)
+            let fourcc = String(bytes: [UInt8(format >> 24 & 0xff), UInt8(format >> 16 & 0xff), UInt8(format >> 8 & 0xff), UInt8(format & 0xff)], encoding: .ascii) ?? "?"
+            log(String(format: "[Passthrough] Camera image %dx%d %@ (%d planes), %.0f x %.0f deg (%@ camera), intrinsics fx %.1f fy %.1f cx %.1f cy %.1f",
+                       captured.imageWidth, captured.imageHeight, fourcc, CVPixelBufferGetPlaneCount(captured.pixelBuffer), h, v, cameraName, fx, fy,
                        captured.intrinsics.columns.2.x, captured.intrinsics.columns.2.y))
         }
         if now - lastLog >= 5 {

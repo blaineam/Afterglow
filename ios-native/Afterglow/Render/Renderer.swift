@@ -1,7 +1,10 @@
-import Metal
+@preconcurrency import Metal
 import QuartzCore
 import UIKit
 import simd
+import CoreGraphics
+import ImageIO
+import UniformTypeIdentifiers
 
 /// The stereo rig. Each frame: the head pose predicted to the frame's display time, both eyes drawn
 /// in one pass with vertex amplification into a two-slice texture array (the eye texture), then
@@ -31,9 +34,15 @@ final class Renderer {
     private let inflight = DispatchSemaphore(value: 2)
     private let frames = FrameTimingLog()
     private let lastGpuMs = LockedValue<Double>(0)
+    /// How long after the display link's target time frames actually reach the screen, smoothed:
+    /// the drawable's presented time against the target it was built for. Added to the prediction
+    /// horizon, so the head pose is predicted to when the picture is really seen.
+    private let presentLagMs = LockedValue<Double>(0)
     private let launchTime = CACurrentMediaTime()
     private var lastPoseLog: Double = 0
     private var lastSettingsText = ""
+    private var dumped = false
+    private let amplifies: Bool
 
     let ar: ARController
     let settings: Settings
@@ -60,10 +69,9 @@ final class Renderer {
         self.cameraToEyes = SIMD3<Float>(settings.cameraToEyesMm) / 1000
         self.ar = ARController(device: device, preferUltraWide: settings.ultraWide)
 
-        guard device.supportsVertexAmplificationCount(2) else {
-            SessionLog.shared.error("[Stereo] This GPU cannot amplify vertices to two eyes")
-            return nil
-        }
+        // The simulator's Metal has no vertex amplification: there each eye gets its own pass
+        // into its slice (drawEyes), which is the same picture at twice the draw calls.
+        amplifies = device.supportsVertexAmplificationCount(2)
         do {
             try buildPipelines()
         } catch {
@@ -89,6 +97,9 @@ final class Renderer {
                    v.distortionCoefficients.map { String(format: "%.5f", $0) }.joined(separator: ",")))
         log(String(format: "[Stereo] Camera to eyes (%.3f, %.3f, %.3f) m in camera axes; rendering both eyes in one pass with vertex amplification, lens warp mesh %dx%d per eye",
                    cameraToEyes.x, cameraToEyes.y, cameraToEyes.z, LensDistortion.meshResolution, LensDistortion.meshResolution))
+        if !amplifies {
+            log("[Stereo] No vertex amplification on this GPU (the simulator): one pass per eye instead")
+        }
     }
 
     private func buildPipelines() throws {
@@ -97,7 +108,9 @@ final class Renderer {
             d.vertexFunction = library.makeFunction(name: vertex)
             d.fragmentFunction = library.makeFunction(name: fragment)
             d.colorAttachments[0].pixelFormat = .bgra8Unorm
-            d.maxVertexAmplificationCount = 2
+            if amplifies { d.maxVertexAmplificationCount = 2 }
+            // Writing render_target_array_index needs the topology stated up front.
+            d.inputPrimitiveTopology = .triangle
             d.label = fragment
             return try device.makeRenderPipelineState(descriptor: d)
         }
@@ -187,7 +200,8 @@ final class Renderer {
 
         // The head: the latest ARKit pose predicted ahead to the display time.
         let frame = ar.latestFrame
-        let predictTo = targetTimestamp + Double(settings.extraPredictionMs) / 1000
+        let measuredLag = presentLagMs.value
+        let predictTo = targetTimestamp + (measuredLag + Double(settings.extraPredictionMs)) / 1000
         var cameraInWorld = matrix_identity_float4x4
         var horizonMs = 0.0
         if let frame {
@@ -223,20 +237,31 @@ final class Renderer {
         uniforms.floorHeight = floorHeight
         uniforms.passthroughBlend = settings.passthrough ? 1 : 0
 
-        // Pass 1: the scene, both eyes at once.
-        let scenePass = MTLRenderPassDescriptor()
-        scenePass.colorAttachments[0].texture = eyeTexture
-        scenePass.colorAttachments[0].loadAction = .clear
-        scenePass.colorAttachments[0].storeAction = .store
-        scenePass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
-        scenePass.renderTargetArrayLength = 2
-        if let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: scenePass) {
+        // Pass 1: the scene, both eyes at once (or one pass per eye without amplification).
+        let passes: [Int?] = amplifies ? [nil] : [0, 1]
+        for slice in passes {
+            let scenePass = MTLRenderPassDescriptor()
+            scenePass.colorAttachments[0].texture = eyeTexture
+            scenePass.colorAttachments[0].loadAction = .clear
+            scenePass.colorAttachments[0].storeAction = .store
+            scenePass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+            var passUniforms = uniforms
+            if let slice {
+                scenePass.colorAttachments[0].slice = slice
+                // The shaders index the eyes by the amplification id, which is 0 here.
+                if slice == 1 { passUniforms.eyes.0 = uniforms.eyes.1 }
+            } else {
+                scenePass.renderTargetArrayLength = 2
+            }
+            guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: scenePass) else { continue }
             encoder.label = "scene"
-            var mappings = [MTLVertexAmplificationViewMapping(viewportArrayIndexOffset: 0, renderTargetArrayIndexOffset: 0),
-                            MTLVertexAmplificationViewMapping(viewportArrayIndexOffset: 0, renderTargetArrayIndexOffset: 1)]
-            encoder.setVertexAmplificationCount(2, viewMappings: &mappings)
-            encoder.setVertexBytes(&uniforms, length: MemoryLayout<FrameUniforms>.stride, index: 0)
-            encoder.setFragmentBytes(&uniforms, length: MemoryLayout<FrameUniforms>.stride, index: 0)
+            if slice == nil {
+                var mappings = [MTLVertexAmplificationViewMapping(viewportArrayIndexOffset: 0, renderTargetArrayIndexOffset: 0),
+                                MTLVertexAmplificationViewMapping(viewportArrayIndexOffset: 0, renderTargetArrayIndexOffset: 1)]
+                encoder.setVertexAmplificationCount(2, viewMappings: &mappings)
+            }
+            encoder.setVertexBytes(&passUniforms, length: MemoryLayout<FrameUniforms>.stride, index: 0)
+            encoder.setFragmentBytes(&passUniforms, length: MemoryLayout<FrameUniforms>.stride, index: 0)
             if settings.passthrough, let frame {
                 encoder.setRenderPipelineState(passthroughPipeline)
                 encoder.setFragmentTexture(frame.luma, index: 0)
@@ -273,6 +298,21 @@ final class Renderer {
             lastGpuMs.value = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
             inflight.signal()
         }
+        if settings.dumpAfterSeconds > 0 && !dumped && t2 - launchTime >= Double(settings.dumpAfterSeconds) {
+            dumped = true
+            dumpLeftEye(from: eyeTexture, in: commandBuffer)
+        }
+        #if !targetEnvironment(simulator)
+        // The simulator's drawables report no presented time.
+        let presentLagMs = self.presentLagMs
+        drawable.addPresentedHandler { presented in
+            // presentedTime is 0 when the drawable was dropped unshown.
+            if presented.presentedTime > 0 {
+                let lag = (presented.presentedTime - targetTimestamp) * 1000
+                presentLagMs.value = presentLagMs.value * 0.9 + lag * 0.1
+            }
+        }
+        #endif
         commandBuffer.present(drawable)
         commandBuffer.commit()
         let t3 = CACurrentMediaTime()
@@ -284,9 +324,44 @@ final class Renderer {
         if t2 - lastPoseLog >= 5 {
             lastPoseLog = t2
             let p = headInWorld.columns.3
-            log(String(format: "[Pose] 6DoF: head (%.2f, %.2f, %.2f), predicted %.0f ms ahead of the camera image (display %.0f ms + %d ms), camera frame age %.0f ms",
-                       p.x, p.y, p.z, horizonMs, (targetTimestamp - timestamp) * 1000, settings.extraPredictionMs,
+            log(String(format: "[Pose] 6DoF: head (%.2f, %.2f, %.2f), predicted %.0f ms ahead of the camera image (display %.0f ms + presented %.1f ms after target + %d ms), camera frame age %.0f ms",
+                       p.x, p.y, p.z, horizonMs, (targetTimestamp - timestamp) * 1000, measuredLag, settings.extraPredictionMs,
                        frame.map { (t2 - $0.pose.timestamp) * 1000 } ?? 0))
+        }
+    }
+}
+
+extension Renderer {
+    /// Copies the left eye slice into a readable texture and writes it as a PNG once the GPU is
+    /// done, for checking the picture from the Mac (`--ei dump 3`).
+    fileprivate func dumpLeftEye(from eyeTexture: MTLTexture, in commandBuffer: MTLCommandBuffer) {
+        let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: eyeTexture.width,
+                                                         height: eyeTexture.height, mipmapped: false)
+        d.storageMode = .shared
+        d.usage = .shaderRead
+        guard let copy = device.makeTexture(descriptor: d), let blit = commandBuffer.makeBlitCommandEncoder() else { return }
+        blit.copy(from: eyeTexture, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+                  sourceSize: MTLSize(width: eyeTexture.width, height: eyeTexture.height, depth: 1),
+                  to: copy, destinationSlice: 0, destinationLevel: 0, destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
+        blit.endEncoding()
+        let copied = copy
+        commandBuffer.addCompletedHandler { _ in
+            let width = copied.width, height = copied.height
+            var bytes = [UInt8](repeating: 0, count: width * height * 4)
+            copied.getBytes(&bytes, bytesPerRow: width * 4, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
+            let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("eye-left.png")
+            guard let provider = CGDataProvider(data: Data(bytes) as CFData),
+                  let image = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
+                                      space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGBitmapInfo(rawValue: CGBitmapInfo.byteOrder32Little.rawValue | CGImageAlphaInfo.noneSkipFirst.rawValue),
+                                      provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent),
+                  let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil) else {
+                log("[Stereo] Eye dump failed")
+                return
+            }
+            CGImageDestinationAddImage(destination, image, nil)
+            CGImageDestinationFinalize(destination)
+            log("[Stereo] Left eye texture written to \(url.lastPathComponent) (\(width)x\(height))")
         }
     }
 }

@@ -81,13 +81,18 @@ fragment float4 skyFragment(SceneOut in [[stage_in]], constant FrameUniforms &fr
         color = mix(disc, color, smoothstep(0.9, 1.0, r));
     }
 
-    // Stars, more of them higher up, none near the bright horizon.
+    // Stars, more of them higher up, none near the bright horizon: one small round dot in the
+    // cells the hash picks, placed within its cell by a second hash so they don't line up.
     if (up > 0.25) {
-        float2 cell = floor(float2(azimuth * 60.0, up * 120.0));
+        float2 sky = float2(azimuth * 60.0, up * 120.0);
+        float2 cell = floor(sky);
         float h = hash21(cell);
-        float twinkle = 0.75 + 0.25 * sin(frame.time * 2.0 + h * 40.0);
         if (h > 0.985 - 0.012 * up) {
-            color = mix(color, float3(1.0), 0.5 * twinkle);
+            float2 at = float2(hash21(cell + 7.3), hash21(cell + 2.1)) * 0.6 + 0.2;
+            float2 d = (fract(sky) - at) * float2(1.0, 2.0);
+            float twinkle = 0.75 + 0.25 * sin(frame.time * 2.0 + h * 40.0);
+            float dot_ = 1.0 - smoothstep(0.05, 0.12, length(d));
+            color = mix(color, float3(1.0), 0.7 * twinkle * dot_);
         }
     }
 

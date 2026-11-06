@@ -6,7 +6,12 @@
 #   zsh Tools/native_build_and_run.sh --launch              # skip the build; launch what's installed
 #   zsh Tools/native_build_and_run.sh --log                 # only copy the session log back
 #   zsh Tools/native_build_and_run.sh --test                # run the unit tests on a simulator instead
+#   zsh Tools/native_build_and_run.sh --sim --ei dump 3     # build for the iOS Simulator and run it there
 # Launch options are "--ei name value" pairs, reaching the app as AFTERGLOW_name, as on the Unity side.
+# The phone: the first reachable iPhone, or the one AFTERGLOW_DEVICE names (a UDID, or a word from
+# devicectl's model column such as "iPhone18,2" for the 17 Pro Max), so the 18 Pro Max can be kept
+# free while another phone takes the builds. The Simulator has no ARKit: it draws the surroundings
+# in stereo through the lenses with the head still, which is enough to check the rig and shaders.
 # Needs xcodegen (brew install xcodegen) only when project.yml has changed since the project was
 # generated. Signing: the same team detection as ios_build_and_run.sh (TEAM=... overrides).
 set -u
@@ -24,16 +29,21 @@ case "${1:-}" in
     --launch) MODE=launch; shift ;;
     --log) MODE=log; shift ;;
     --test) MODE=test; shift ;;
+    --sim) MODE=sim; shift ;;
 esac
 
 # The options as the JSON dictionary devicectl takes.
 ENVIRONMENT=""
+SIMENV=()
+DUMP=0
 OPTIONS=("$@")
 while [ $# -gt 0 ]; do
     if [ "$1" != "--ei" ] || [ $# -lt 3 ]; then echo "Launch options are \"--ei name value\" pairs; got: $*"; exit 1; fi
     case "$2" in (''|*[!A-Za-z0-9]*) echo "Option names are letters and digits, got \"$2\""; exit 1 ;; esac
     case "$3" in (-|'') echo "Option $2 needs a whole number, got \"$3\""; exit 1 ;; (*[!0-9-]*) echo "Option $2 needs a whole number, got \"$3\""; exit 1 ;; esac
     ENVIRONMENT+="${ENVIRONMENT:+, }\"AFTERGLOW_$2\": \"$3\""
+    SIMENV+=("SIMCTL_CHILD_AFTERGLOW_$2=$3")   # simctl passes the environment this way
+    [ "$2" = dump ] && DUMP=$3
     shift 3
 done
 
@@ -46,9 +56,36 @@ if [ ! -d $PROJECT ] || [ $N/project.yml -nt $PROJECT/project.pbxproj ]; then
     (cd $N && xcodegen generate) || exit 1
 fi
 
-if [ $MODE = test ]; then
-    SIM=$(xcrun simctl list devices available | grep -E "iPhone 1[6-9]|iPhone 2" | grep -oE '[0-9A-F-]{36}' | head -1)
+if [ $MODE = test ] || [ $MODE = sim ]; then
+    # A Pro Max simulator first (the screen the lens geometry is built for), else any recent iPhone.
+    SIM=$(xcrun simctl list devices available | grep -E "iPhone 1[6-9] Pro Max" | grep -oE '[0-9A-F-]{36}' | tail -1)
+    [ -n "$SIM" ] || SIM=$(xcrun simctl list devices available | grep -E "iPhone 1[6-9]|iPhone 2" | grep -oE '[0-9A-F-]{36}' | head -1)
     [ -n "$SIM" ] || { echo "No iPhone simulator available"; exit 1; }
+fi
+
+if [ $MODE = sim ]; then
+    echo "== simulator $SIM"
+    xcodebuild -project $PROJECT -scheme Afterglow -configuration Debug -destination "id=$SIM" \
+        -derivedDataPath $DERIVED CODE_SIGNING_ALLOWED=NO build > $LOGS/native-xcode-sim.log 2>&1
+    STATUS=$?
+    grep -E "warning:|error:" $LOGS/native-xcode-sim.log | sort -u | head -20
+    [ $STATUS -eq 0 ] || { echo "Simulator build failed; see $LOGS/native-xcode-sim.log"; exit 1; }
+    APP=$(ls -d $DERIVED/Build/Products/Debug-iphonesimulator/*.app | head -1)
+    xcrun simctl boot $SIM 2>/dev/null; xcrun simctl bootstatus $SIM -b >/dev/null
+    xcrun simctl install $SIM "$APP" || exit 1
+    xcrun simctl terminate $SIM $BUNDLE 2>/dev/null
+    env "${SIMENV[@]}" xcrun simctl launch $SIM $BUNDLE >/dev/null || exit 1
+    echo "== launched in the simulator ${ENVIRONMENT:+with {$ENVIRONMENT}}"
+    sleep $(( 8 + DUMP ))
+    DATA=$(xcrun simctl get_app_container $SIM $BUNDLE data)
+    cp "$DATA/Documents/session.log" $LOGS/native-sim-session.log 2>/dev/null && { echo "== session log ($LOGS/native-sim-session.log)"; grep -vE "Drawable" $LOGS/native-sim-session.log | cut -c1-220 | head -30; }
+    [ -f "$DATA/Documents/eye-left.png" ] && { cp "$DATA/Documents/eye-left.png" $LOGS/native-sim-eye-left.png; echo "== left eye: $LOGS/native-sim-eye-left.png"; }
+    xcrun simctl terminate $SIM $BUNDLE 2>/dev/null
+    xcrun simctl shutdown $SIM >/dev/null 2>&1
+    exit 0
+fi
+
+if [ $MODE = test ]; then
     xcodebuild -project $PROJECT -scheme Afterglow -destination "id=$SIM" -derivedDataPath $DERIVED \
         CODE_SIGNING_ALLOWED=NO test > $LOGS/native-tests.log 2>&1
     STATUS=$?
@@ -57,11 +94,13 @@ if [ $MODE = test ]; then
     exit $STATUS
 fi
 
-# The phone, by UDID: a real iPhone, not a simulator or an Apple TV (see ios_build_and_run.sh).
+# The phone, by UDID: a real iPhone, not a simulator or an Apple TV (see ios_build_and_run.sh),
+# narrowed to AFTERGLOW_DEVICE when that is set.
 UDID=$(xcrun devicectl list devices 2>/dev/null \
     | grep -v 'simulated' \
     | grep -iE '[[:space:]]iPhone[0-9]+,[0-9]+|[[:space:]]iPhone [0-9]' \
     | grep -E '[[:space:]](connected|available)([[:space:]]|$|[[:space:]]\(paired\))' \
+    | { if [ -n "${AFTERGLOW_DEVICE:-}" ]; then grep -F "$AFTERGLOW_DEVICE"; else cat; fi; } \
     | grep -oE '[0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}' | head -1)
 if [ -z "$UDID" ]; then
     echo "No reachable iPhone. Plug it in, unlock it, and trust this Mac."
@@ -111,7 +150,12 @@ if [ $MODE = build ] || [ $MODE = launch ]; then
     sleep 20
 fi
 
-xcrun devicectl device copy from --device $UDID --domain-type appDataContainer \
-    --domain-identifier $BUNDLE --source Documents/session.log --destination $LOGS/native-session.log 2>/dev/null \
+# The copy sometimes fails once right after a launch; a second try a moment later works.
+copy_log() {
+    xcrun devicectl device copy from --device $UDID --domain-type appDataContainer \
+        --domain-identifier $BUNDLE --source Documents/session.log --destination $LOGS/native-session.log >/dev/null 2>&1
+}
+rm -f $LOGS/native-session.log
+copy_log || { sleep 3; copy_log; } \
     && { echo "== session log ($LOGS/native-session.log)"; grep -E "\[Stereo\]|\[AR\]|\[Pose\]|\[Frames\]|\[Thermal\]|\[Passthrough\]|Warning|Error" $LOGS/native-session.log | cut -c1-220 | head -40; } \
     || echo "No session log yet: $LOGS/native-session.log"
