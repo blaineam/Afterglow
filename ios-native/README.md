@@ -55,6 +55,12 @@ Unity app's code.
   five: a C-shaped hand turned so its tips cross in the image is apart along the camera's axis
   until the crossing, where both tips read the nearer depth, and passes through in less time. Two hands held together come back from Vision as one; the hand it stops reporting
   is kept where it was for two seconds while the other is beside it.
+- **Impossible poses dropped**: a result whose palm span changes by more than 40 % against the
+  last one 100 ms earlier, whose finger bones change length by over 60 % against their running
+  average (more than four of them), or that moves a joint more than 25 cm in that time, is treated
+  as a miss and the hand keeps its last pose; after three in a row the result is taken, since the
+  hand has really changed. Vision's occasional wrong hand showed as a jump to a pose no hand can
+  take.
 - **Drawn** as bones and joints over the view, cyan for a left hand and green-tinted for a right,
   the tips magenta while pinching; `showHands 0` hides them. In passthrough the eyes sit at the
   camera (eased over half a second, as the Unity app does), so the hands and anything placed line

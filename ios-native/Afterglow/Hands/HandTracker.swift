@@ -79,7 +79,26 @@ final class HandTracker: @unchecked Sendable {
         var lostAt: Double = -1
         /// The last few results' depth gaps between the thumb and index tips, metres.
         var tipGaps: [Float] = []
+        /// The finger bones' lengths relative to the palm span, averaged over results, and how
+        /// many results in a row have been rejected as impossible.
+        var boneLengths: [Float] = []
+        var boneResults = 0
+        var lastSpan: Float = 0
+        var rejectedRun = 0
     }
+
+    /// Results that cannot be the same hand a few images later are dropped as a miss, and the
+    /// hand keeps its last pose (owner, 2026-11-06: a hand drawn jumping to a pose no hand can
+    /// take): the palm's span in the image changing by more than this share, a finger bone's
+    /// length against its average by more than this share, for more than this many bones, or a
+    /// joint moving more than this far in a tenth of a second. After this many rejections in a
+    /// row the result is taken, since the hand really has changed.
+    private static let maxSpanChange: Float = 0.4
+    private static let maxBoneChange: Float = 0.6
+    private static let maxBonesOff = 4
+    private static let maxJointJump: Float = 0.25
+    private static let maxRejectedRun = 3
+    private static let fingerBones = Array(HandGeometry.bones.prefix(20))
 
     /// A hand found within this long of one being lost is that hand back in view: a pinch held out
     /// of the camera's view and brought back stays the same pinch (owner, 2026-11-06).
@@ -108,6 +127,7 @@ final class HandTracker: @unchecked Sendable {
     private var pinches = 0
     private var swaps = 0
     private var edgeOn = 0
+    private var rejected = 0
     private var loggedDepth = false
     private var lastLog: Double = 0
 
@@ -294,6 +314,9 @@ final class HandTracker: @unchecked Sendable {
                 slots[fresh].pinch.reset()
                 slots[fresh].palmSizeSeen = 0
                 slots[fresh].tipGaps = []
+                slots[fresh].boneResults = 0
+                slots[fresh].lastSpan = 0
+                slots[fresh].rejectedRun = 0
             } else if let stale = slots.indices.first(where: { !used.contains($0) }) {
                 // Every slot is tracked and this hand matched none: the unmatched slot is the stale
                 // trace of a hand that moved, and this is where it went, so it keeps its pinch (a
@@ -310,6 +333,26 @@ final class HandTracker: @unchecked Sendable {
         for (i, hand) in seen.enumerated() {
             guard let s = assigned[i] else { continue }
             let slot = slots[s]
+
+            // Is this a pose the tracked hand can have taken since its last result?
+            let span = HandGeometry.palmSpan(hand.landmarks)
+            let bones = Self.fingerBones.map { simd_distance(hand.landmarks[$0.1], hand.landmarks[$0.0]) / max(span, 1) }
+            if slot.state != nil, now - slot.imageTime < 0.1, slot.rejectedRun < Self.maxRejectedRun {
+                var why: String?
+                if slot.lastSpan > 0 && abs(span - slot.lastSpan) / slot.lastSpan > Self.maxSpanChange {
+                    why = String(format: "palm span %.0f -> %.0f px", slot.lastSpan, span)
+                } else if slot.boneResults >= 5 {
+                    let off = zip(bones, slot.boneLengths).filter { abs($0 - $1) / max($1, 1e-3) > Self.maxBoneChange }.count
+                    if off > Self.maxBonesOff { why = "\(off) finger bones changed length" }
+                }
+                if let why {
+                    slot.rejectedRun += 1
+                    rejected += 1
+                    if rejected <= 3 { log("[Hands] Impossible pose dropped: \(why)") }
+                    continue
+                }
+            }
+
             // Place: a flat hand at the palm size, fitted to the palm's pixels.
             let shape = HandGeometry.flatShape(imageLandmarks: hand.landmarks, palmSize: palmSize)
             let fit = HandGeometry.fitPosition(imageLandmarks: hand.landmarks, metricLandmarks: shape, ids: HandGeometry.palm,
@@ -362,11 +405,25 @@ final class HandTracker: @unchecked Sendable {
             let cameraJoints = HandGeometry.placeJoints(imageLandmarks: hand.landmarks, metricLandmarks: shape, centerDepth: depth,
                                                         focalLength: focal, principalPoint: principal)
             // Into ARKit's camera axes (x right, y up, -z forward), then the world at the image's pose.
+            let rawJoints = cameraJoints.map { c in (cameraToWorld * SIMD4(c.x, -c.y, -c.z, 1)).xyz }
+            if let previous = slot.state, now - slot.imageTime < 0.1, slot.rejectedRun < Self.maxRejectedRun {
+                let jump = zip(rawJoints, previous.joints).map { simd_distance($0, $1) }.max() ?? 0
+                if jump > Self.maxJointJump {
+                    slot.rejectedRun += 1
+                    rejected += 1
+                    if rejected <= 3 { log(String(format: "[Hands] Impossible pose dropped: a joint moved %.0f cm", jump * 100)) }
+                    continue
+                }
+            }
             var joints: [SIMD3<Float>] = []
-            for (j, c) in cameraJoints.enumerated() {
-                let world = (cameraToWorld * SIMD4(c.x, -c.y, -c.z, 1)).xyz
+            for (j, world) in rawJoints.enumerated() {
                 joints.append(slot.jointFilters[j].filter(world, time: now))
             }
+            slot.rejectedRun = 0
+            slot.lastSpan = span
+            if slot.boneLengths.count != bones.count { slot.boneLengths = bones; slot.boneResults = 0 }
+            slot.boneLengths = zip(slot.boneLengths, bones).map { $0 + ($1 - $0) * 0.1 }
+            slot.boneResults += 1
 
             // Speed from the palm, for moving the joints on between results.
             let palmNow = HandGeometry.palm.reduce(SIMD3<Float>.zero) { $0 + joints[$1] } / Float(HandGeometry.palm.count)
@@ -455,13 +512,13 @@ final class HandTracker: @unchecked Sendable {
             if handsSeen > 0 {
                 text += String(format: ", confidence %.2f-%.2f, %.2f-%.2f m away", confidenceMin, confidenceMax, distanceMin, distanceMax)
             }
-            text += String(format: ", palm %.1f cm (%d depth samples, %d taught), %d pinches, %d handedness swaps, %d edge-on results", palmSize * 100,
-                           depthSamples, depthTaught, pinches, swaps, edgeOn)
+            text += String(format: ", palm %.1f cm (%d depth samples, %d taught), %d pinches, %d handedness swaps, %d edge-on results, %d impossible poses dropped", palmSize * 100,
+                           depthSamples, depthTaught, pinches, swaps, edgeOn, rejected)
             log(text)
             lastLog = now
             images = 0; visionMs = 0; handsSeen = 0
             confidenceMin = 1; confidenceMax = 0; distanceMin = 100; distanceMax = 0
-            depthSamples = 0; depthTaught = 0; pinches = 0; swaps = 0; edgeOn = 0
+            depthSamples = 0; depthTaught = 0; pinches = 0; swaps = 0; edgeOn = 0; rejected = 0
         }
     }
 
