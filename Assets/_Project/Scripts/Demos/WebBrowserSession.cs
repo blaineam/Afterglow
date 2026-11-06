@@ -290,12 +290,21 @@ namespace Afterglow.Demos
         // The tabs, above the address: a chip per tab with the page's title, the current one
         // selected, then New and Close for tabs.
         // A finger held on the screen for k_EndPressSeconds ends the session.
+        const float k_TapSeconds = 0.4f;
+
         void UpdateLongPress()
         {
             var touch = UnityEngine.InputSystem.Touchscreen.current;
             var pressed = touch != null && touch.primaryTouch.press.isPressed;
             if (!pressed)
             {
+                // A short press that ended is a tap: a WebXR select, as a pinch is. A viewer's
+                // button is exactly that tap.
+                if (m_PressedSince >= 0f && !m_EndRequested && Time.unscaledTime - m_PressedSince < k_TapSeconds)
+                {
+                    WebBrowser.Select();
+                    Debug.Log("[WebXR] Tap: select to the page");
+                }
                 m_PressedSince = -1f;
                 m_EndRequested = false;
                 return;
@@ -978,8 +987,16 @@ namespace Afterglow.Demos
         // A pinch clicks wherever the gaze is on the page.
         public bool TryBeginPinch(GameObject gazeTarget, PinchSource source)
         {
-            if (!WebBrowser.IsOpen || m_Immersive)
+            if (!WebBrowser.IsOpen)
                 return false;
+            // During an immersive session the page has no window to click: a pinch is a WebXR
+            // select on its gaze input source, which is what a page waits for.
+            if (m_Immersive)
+            {
+                WebBrowser.Select();
+                Debug.Log("[WebXR] Pinch: select to the page");
+                return true;
+            }
             if (!TryGazePoint(out var u, out var v))
                 return false;
 

@@ -491,6 +491,10 @@
         var px = cfg.screenPixels && cfg.screenPixels[0] > 0 ? cfg.screenPixels : null;
         var w = px ? Math.max(2, Math.round(px[0] * scale)) : Math.max(2, Math.floor(window.innerWidth * dpr));
         var h = px ? Math.max(2, Math.round(px[1] * scale)) : Math.max(2, Math.floor(window.innerHeight * dpr));
+        // The canvas's own size and style come back when the session ends, so the page is as it
+        // was: a canvas left fixed over the whole page at the top z-index would cover its
+        // controls and the app's own marks.
+        this._canvasWas = { width: canvas.width, height: canvas.height, style: canvas.getAttribute('style') };
         canvas.width = w;
         canvas.height = h;
         canvas.style.position = 'fixed';
@@ -614,6 +618,13 @@
         this._ended = true;
         this._callbacks = [];
         var gl = this._gl;
+        var was = this._canvasWas;
+        if (was && gl && gl.canvas) {
+            if (was.style === null) gl.canvas.removeAttribute('style'); else gl.canvas.setAttribute('style', was.style);
+            gl.canvas.width = was.width;
+            gl.canvas.height = was.height;
+            this._canvasWas = null;
+        }
         var home = this._canvasHome;
         if (home && gl && gl.canvas && home.parent) {
             try {

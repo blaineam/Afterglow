@@ -234,7 +234,9 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   page's own buttons and the app's gear are out of reach inside the viewer. Video in a page
   always plays inside the page, never in the iPhone's own full-screen player, which would cover
   the viewer. During a session only the page's WebXR layer shows, as on a headset: its other
-  elements, a player's toolbar say, are not drawn over it. **Logins**: when you sign in to a site the browser offers to keep the password in the
+  elements, a player's toolbar say, are not drawn over it. A pinch in front of the camera, or a
+  short tap on the screen (a viewer's button), reaches the page as a WebXR *select* on a gaze
+  input source; hand joints are not yet passed on. **Logins**: when you sign in to a site the browser offers to keep the password in the
   phone's Keychain (this phone only, readable only while it's unlocked, never in a backup), and on
   that site's login page next time it offers to fill it; nothing is kept unless you say *Save*.
   Bookmarks, history and the tabs live in a file in the app's own folder. iPhone only. (The

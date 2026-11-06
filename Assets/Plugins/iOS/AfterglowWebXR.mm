@@ -266,6 +266,8 @@ static const char *kHelperSource = R"JS(
       'border:3px solid #2de2e6;border-radius:5px;' +
       'box-shadow:0 0 0 2px rgba(10,6,26,.7),0 0 18px rgba(45,226,230,.7)');
     var hit = pick(u, v);
+    moveMouse(hit, u * vp[0], v * vp[1]);
+    report(hit, dot);
     if (!hit || !hit.actionable) { box.style.display = 'none'; return; }
     var r = hit.el.getBoundingClientRect();
     if (r.width < 2 || r.height < 2) { box.style.display = 'none'; return; }
@@ -275,6 +277,64 @@ static const char *kHelperSource = R"JS(
     box.style.width = r.width + 'px';
     box.style.height = r.height + 'px';
   };
+
+  // The gaze is the page's mouse: pointer and mouse moves go to what is under it, with over and
+  // out as it crosses from one element to another. A video player hides its control bar two
+  // seconds after the mouse last moved and takes the next click on the canvas beneath, so a
+  // gaze that never "moved" could not press the bar's buttons once a video played.
+  var hoverEl = null, hoverAt = 0;
+  function moveMouse(hit, x, y) {
+    var el = hit ? hit.el : null;
+    var now = Date.now();
+    if (el === hoverEl && now - hoverAt < 100) return;
+    hoverAt = now;
+    var o = { bubbles: true, cancelable: true, composed: true, clientX: hit ? hit.x : x, clientY: hit ? hit.y : y,
+              view: window, button: 0, buttons: 0 };
+    var po = Object.assign({ pointerId: 1, pointerType: 'mouse', isPrimary: true }, o);
+    try {
+      if (el !== hoverEl) {
+        if (hoverEl) {
+          hoverEl.dispatchEvent(new PointerEvent('pointerout', Object.assign({}, po, { relatedTarget: el })));
+          hoverEl.dispatchEvent(new MouseEvent('mouseout', Object.assign({}, o, { relatedTarget: el })));
+        }
+        if (el) {
+          el.dispatchEvent(new PointerEvent('pointerover', Object.assign({}, po, { relatedTarget: hoverEl })));
+          el.dispatchEvent(new MouseEvent('mouseover', Object.assign({}, o, { relatedTarget: hoverEl })));
+        }
+        hoverEl = el;
+      }
+      if (el) {
+        el.dispatchEvent(new PointerEvent('pointermove', po));
+        el.dispatchEvent(new MouseEvent('mousemove', o));
+      }
+    } catch (e) { /* a page that refuses synthetic events still gets the click */ }
+  }
+
+  // What is under the gaze, and whether the page has put something over the app's own dot,
+  // said once per change in the log: the way to see why a button can't be pressed.
+  var reportedEl = null, reportedCovered = '';
+  function describe(el) {
+    if (!el) return 'nothing';
+    var d = (el.tagName || '?').toLowerCase();
+    if (el.id) d += '#' + el.id;
+    var c = typeof el.className === 'string' ? el.className.trim().split(/\s+/).slice(0, 3).join('.') : '';
+    if (c) d += '.' + c;
+    return d;
+  }
+  function report(hit, dot) {
+    var el = hit ? hit.el : null;
+    var covered = '';
+    try {
+      dot.style.pointerEvents = 'auto';
+      var top = document.elementFromPoint(parseFloat(dot.style.left), parseFloat(dot.style.top));
+      dot.style.pointerEvents = 'none';
+      if (top && top !== dot) covered = describe(top);
+    } catch (e) { dot.style.pointerEvents = 'none'; }
+    if (el === reportedEl && covered === reportedCovered) return;
+    reportedEl = el; reportedCovered = covered;
+    post({ event: 'console', level: 'log', text: '[Afterglow] under the gaze: ' + describe(el) +
+      (hit && hit.actionable ? ' (actionable)' : '') + (covered ? '; the dot is covered by ' + covered : '') });
+  }
 
   window.__afterglowClick = function (u, v) {
     function say(hit, moved, note) {
