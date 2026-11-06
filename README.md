@@ -226,7 +226,8 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
 - **Web** is a browser for WebXR pages, which Safari on the iPhone can't show in a viewer: the
   page sits on a window ahead of you, with an address bar above it (back, forward, reload, a
   star that keeps the page as a bookmark, the keys and the microphone) and a strip of tabs above
-  that; a tap on the screen or a pinch clicks what the gaze is on, the gaze at an edge scrolls, a
+  that; a tap on the screen or a pinch clicks what the gaze is on, the gaze is the page's mouse (so
+  hover menus open and a player's control bar stays up), the gaze at an edge scrolls, a
   Bluetooth keyboard or the on-screen keys type, and dictation fills the address. The start page
   lists your bookmarks and the pages you opened recently (with *Clear history*), and the tabs
   come back as you left them. A page's *Enter VR* takes the whole screen in stereo through the
