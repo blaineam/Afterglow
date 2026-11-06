@@ -146,6 +146,36 @@ Everything else sits on this, and three of the newest features have never run on
 - App Store as a bonus. The browser is `WKWebView`, which is WebKit, so guideline 2.5.6 is met;
   the risk is reviewers' view of an app that is a window onto arbitrary content.
 
+## A native port? (2026-11-06)
+
+The phone cooks and the frame rate falls, and the question came up whether Unity is the right
+foundation at all. The honest picture:
+
+- **Where the heat comes from** is work that any engine would do: ARKit world tracking, the
+  camera at 60 Hz, hand models on every image, stereo rendering at the screen's resolution, and a
+  WKWebView page. Unity adds its own tax on top: a C#/IL2CPP runtime, URP's render passes, Sentis
+  running the hand landmarker on the CPU (there is no Neural Engine backend), native plugins
+  bridged through strings and `DllImport`, and no way to render both eyes in one pass the way
+  Metal's vertex amplification does. On the iPhone 18 Pro Max that tax was visible: the
+  landmarker's crop sampling and CPU inference at 70–90 ms an image once the frame was busy,
+  ARKit starved to 1–11 camera frames a second, "serious" two minutes in.
+- **What a native app would be**: Swift, ARKit for tracking and the camera, Vision for hands
+  (already what the app uses), Core ML on the Neural Engine for any further model, Metal with
+  vertex amplification for stereo and the lens distortion in one pass, AVFoundation and Photos
+  for media (already native plugins here), WKWebView with the same WebXR shim (pure JavaScript,
+  it ports as is), and SwiftUI or a small Metal UI for the panels. Android would be dropped,
+  which the owner is fine with: there is no Android device to test on.
+- **What it costs**: a rewrite of the stereo rig, the home scene, the media player, the games
+  and the UI, with the browser, the hands, the media plugins and the shim carried over. Weeks of
+  work, phased so the Unity app stays usable until the native one reaches it: (1) stereo rig,
+  head tracking and passthrough; (2) hands and pinch; (3) the browser and WebXR; (4) media;
+  (5) Home, settings, the lock and the environments; (6) games.
+- **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
+  this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
+  Before that, the three levers already pulled here (Vision-only hands, thermal caps, the
+  ultra-wide camera) show what Unity can still give; if the phone still runs hot with those,
+  the port is the answer rather than more tuning.
+
 ## Later
 
 - **Environments** (asked for 2026-11-06): the synthwave home is fun; wanted alongside it, each

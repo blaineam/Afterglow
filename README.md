@@ -1,56 +1,68 @@
-# Afterglow
+<p align="center">
+  <img src="docs/images/banner.svg" alt="Afterglow: a neon sun over a grid" width="100%">
+</p>
 
-[![CI](https://github.com/blaineam/Afterglow/actions/workflows/ci.yml/badge.svg)](https://github.com/blaineam/Afterglow/actions/workflows/ci.yml)
+<p align="center">
+  <a href="https://github.com/blaineam/Afterglow/actions/workflows/ci.yml"><img src="https://github.com/blaineam/Afterglow/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/iPhone-18%20Pro%20Max-ff3fa4" alt="iPhone 18 Pro Max">
+  <img src="https://img.shields.io/badge/licence-Apache--2.0-2de2e6" alt="Apache-2.0">
+  <img src="https://img.shields.io/badge/viewer-print%20it-b028d8" alt="Printable viewer">
+</p>
+
+<h3 align="center">Phone VR, done properly, for the iPhone 18 Pro Max.</h3>
+
+<p align="center">
+  Your photos and videos in 3D. Panoramas and 360 photos all around you. A WebXR browser your
+  hands can reach into. Games in your own room. All on the phone in your pocket and a viewer you
+  print, free and open source.
+</p>
+
+**Afterglow** is a phone VR app for Cardboard-style viewers that goes well past what Cardboard
+ever did: **6DoF head tracking** from ARKit, a **camera passthrough** through the ultra-wide
+lens, **hand tracking** from the rear camera on the Neural Engine (pinch, grab, point, two hands),
+a **WebXR browser** that gives pages your hands, **spatial photos and videos**, **panoramas** and
+your own **360 photos as the surroundings**, detected surfaces with anchored objects, and a few
+games. It is built and tested on the **iPhone 18 Pro Max** with its own printed viewer.
+
+## Start here
+
+1. **Print the viewer**: the three parts in [`Hardware/`](Hardware/) (OpenSCAD source, STLs,
+   [bill of materials](Hardware/BOM.md), [MakerWorld listing](Hardware/MAKERWORLD.md)). Two
+   Cardboard v2 lenses, a strap and some face foam complete it.
+2. **Build the app** on your Mac and run it on your phone: [Build and run](#build-and-run). A
+   free Apple ID is enough.
+3. **Put the phone in**, look at the Home panel, pinch. [Using the app](#using-the-app) has the
+   rest; Settings has the frame rate, render scale and everything else.
+
+[ROADMAP.md](ROADMAP.md) is the plan and the honest state of each piece, and
+[KNOWN_ISSUES.md](KNOWN_ISSUES.md) what is known to be wrong.
+
+<details>
+<summary><b>Where it comes from</b></summary>
 
 A fork of [brenpoly/CardboardXR](https://github.com/brenpoly/CardboardXR), named Afterglow since
-2026-11-05 (it carried upstream's name until then), that is growing the prototype into a product: a home for spatial photos and videos, panoramas, WebXR pages and the
-games, built for the iPhone 18 Pro Max in a printed viewer and tested without one in the Editor and
-the iOS Simulator. [ROADMAP.md](ROADMAP.md) is the plan and the honest state of each piece.
+2026-11-05, growing that prototype into a product. The original project has a
+[video on YouTube](https://youtu.be/XtNmiTohUcs) and two interactive pages, served from `docs/`
+by GitHub Pages: [From Cardboard to VR glasses](https://brenpoly.github.io/CardboardXR/), every
+headset since 2013 by launch price, and [Inside the iPhone build](https://brenpoly.github.io/CardboardXR/iphone-architecture.html),
+how the hardware, Apple's and Unity's frameworks and the app fit together. The upstream viewer is
+on MakerWorld as [Mobile VR viewer for modern smartphones](https://makerworld.com/en/models/3511377-mobile-vr-viewer-for-modern-smartphones);
+this fork carries its own in `Hardware/`, parametric in the phone. Android (ARCore) still builds
+but is no longer tested, since there is no Android device here.
 
-A Unity phone app for Google Cardboard-style viewers: split-screen stereo with lens distortion,
-plus what classic Cardboard never had — 6DoF head tracking from ARCore or ARKit, a camera
-passthrough view, detected surfaces with anchored objects, and hand tracking from the phone's rear
-camera with pinch, grab and a pointing ray.
+</details>
 
-Tested on a **Pixel 9 Pro** (Android, ARCore) and an **iPhone 15 Pro** (iOS, ARKit, with LiDAR).
-
-## Video and viewer
-
-**Watch the video** about the project on YouTube:
-
-[![CardboardXR on YouTube](https://img.youtube.com/vi/XtNmiTohUcs/maxresdefault.jpg)](https://youtu.be/XtNmiTohUcs)
-
-**Print the viewer**: the 3D print files for a mobile VR viewer made for modern smartphones are on
-MakerWorld: [Mobile VR viewer for modern smartphones](https://makerworld.com/en/models/3511377-mobile-vr-viewer-for-modern-smartphones).
-
-This fork also carries a viewer of its own in [`Hardware/`](Hardware/), parametric in the phone so a
-new one is a row in a table rather than a redraw, with its own
-[bill of materials](Hardware/BOM.md). It is built for the iPhone 18 Pro Max and uses the same
-Cardboard v2 lenses. See [ROADMAP.md](ROADMAP.md) for what is being added and what is still missing.
-
-## Interactive pages
-
-Two interactive pages go with the project. Click an image to open it.
-
-**From Cardboard to VR glasses**: every headset since 2013, by launch price or form factor, and
-where phone VR fell away.
-
-[![The headset timeline: every VR headset from 2013 to 2027 plotted by launch price](docs/images/timeline.png)](https://brenpoly.github.io/CardboardXR/)
-
-**Inside the iPhone build**: how the hardware, Apple's and Unity's frameworks and the app fit
-together, layer by layer.
-
-[![The iPhone build's architecture: sensors and camera through ARKit and the AI runtime to head, hand and room tracking, rendering and heat control](docs/images/architecture.png)](https://brenpoly.github.io/CardboardXR/iphone-architecture.html)
-
-The pages are in `docs/`, served by GitHub Pages.
 
 ## Install
 
-For Android, download the APK from [Releases](https://github.com/blaineam/Afterglow/releases) on
-an ARCore phone (Android 10 or later, 64-bit, with Vulkan) and open it. Android asks you to allow
-installing apps from your browser or file manager. Releases also carry an **unsigned** iOS IPA, which
-needs signing with your own Apple ID before it installs; building from source, below, does that for
-you. (This fork has no release of its own yet; upstream's `v1.0.0` was Android only.)
+**iPhone**: build from source on a Mac, below; the script signs the app with your own Apple ID (a
+free personal team is enough) and installs it on the phone. Releases also carry an **unsigned**
+iOS IPA, which needs signing before it installs.
+
+**Android** (ARCore, Android 10 or later, 64-bit, Vulkan): download the APK from
+[Releases](https://github.com/blaineam/Afterglow/releases) and open it; Android asks you to allow
+installing apps from your browser or file manager. Android still builds but is no longer tested
+here. (This fork has no release of its own yet; upstream's `v1.0.0` was Android only.)
 
 ## Requirements
 
@@ -148,9 +160,12 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
 | `arView 1` | Debug view: the AR camera full screen with every detected surface drawn (forces 6DoF) |
 | `fps N` | Target frame rate (default 60; 120 draws twice as much and ran an iPhone 18 Pro Max into its "serious" thermal state within six minutes) |
 | `renderScale N` | Eye texture resolution in percent (default 100); also sizes a WebXR page's eye buffer, which is otherwise the screen's own pixels |
+| | While the phone's thermal state is *serious* the app holds itself to 60 fps and 80% render scale, and at *critical* to 30 fps and 60%, whatever is set, until it cools |
 | `msaa N` | Anti-aliasing samples: 1, 2, 4 or 8 (default 2) |
 | `handHz N` | Run the hand landmark model at most N times a second (default 0: every camera image) |
 | `hands3dof 0` | iPhone: in 3DoF, run the plain pinch sensor instead of full hand tracking from the rear camera feed |
+| `handShape 1` | iPhone: also run the MediaPipe landmarker for each hand's 3D finger shape (off by default: it cost 70–90 ms an image on the CPU; without it a flat hand from Vision's landmarks places the hand) |
+| `camUltraWide 0` | iPhone: passthrough and hands from the main camera (70° across) instead of the ultra-wide (about 120°), the default where the phone has one |
 | `handModel 1` | iPhone: find hands with MediaPipe's palm detector on the CPU instead of Apple's Vision hand pose on the Neural Engine (the default) |
 | `handOrientation N` | iPhone: how the camera image is turned for Vision (CGImagePropertyOrientation 1–8; default 1, upright, which it is in the viewer) |
 | `showHands 1` | Draw the tracked hand joints over the camera image too (also in Settings), to see how well the tracking follows your hands |

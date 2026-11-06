@@ -120,13 +120,53 @@ namespace Afterglow.Stereo
                 m_DefaultsTaken = true;
             }
             var frameRate = Settings.Int("fps", m_TargetFrameRate);
-            Application.targetFrameRate = frameRate;
             var renderScale = Settings.Int("renderScale", 0);
             m_RenderScale = renderScale > 0 ? Mathf.Clamp(renderScale / 100f, 0.25f, 2f) : m_DefaultRenderScale;
+            // Held down while the phone is hot (ThermalCaps), whatever was asked for: at 120 fps
+            // and 120% an iPhone 18 Pro Max reached "serious" in two minutes and iOS then throttled
+            // it to a fraction of that anyway.
+            var (scaleCap, fpsCap) = ThermalCaps(m_ThermalState);
+            frameRate = Mathf.Min(frameRate, fpsCap);
+            m_RenderScale = Mathf.Min(m_RenderScale, scaleCap);
+            Application.targetFrameRate = frameRate;
             var samples = Settings.Int("msaa", m_DefaultMsaa);
             // A render texture takes 1, 2, 4 or 8 samples and throws on anything else.
             m_Msaa = samples >= 8 ? 8 : samples >= 4 ? 4 : samples >= 2 ? 2 : 1;
             return frameRate;
+        }
+
+        // What the phone's thermal state allows: the full settings while nominal or fair, 60 fps
+        // and 80% of the render scale once serious, 30 fps and 60% once critical. Pure.
+        public static (float scale, int fps) ThermalCaps(string thermalState) => thermalState switch
+        {
+            "serious" => (0.8f, 60),
+            "critical" => (0.6f, 30),
+            _ => (2f, int.MaxValue),
+        };
+
+        string m_ThermalState = "";
+        float m_NextThermalCheck;
+        const float k_ThermalCheckSeconds = 2f;
+
+        // Keeps the caps in step with the thermal state, re-reading the settings when it changes
+        // level so the eye textures are rebuilt at the capped size.
+        void Update()
+        {
+            if (!DeviceState.Supported || Time.unscaledTime < m_NextThermalCheck)
+                return;
+            m_NextThermalCheck = Time.unscaledTime + k_ThermalCheckSeconds;
+            var state = DeviceState.ThermalState;
+            if (state == m_ThermalState)
+                return;
+            var before = ThermalCaps(m_ThermalState);
+            m_ThermalState = state;
+            var after = ThermalCaps(state);
+            if (before == after)
+                return;
+            ApplySettings();
+            Debug.Log(after.fps == int.MaxValue
+                ? $"[Stereo] Thermal state {state}: the settings as asked for again"
+                : $"[Stereo] Thermal state {state}: held to {after.fps} fps and {after.scale * 100f:F0}% render scale until it cools");
         }
 
         // The settings screen changed the frame rate, render scale or anti-aliasing.

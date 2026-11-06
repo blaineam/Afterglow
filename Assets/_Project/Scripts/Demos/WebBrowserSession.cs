@@ -39,6 +39,7 @@ namespace Afterglow.Demos
         HandSubsystemFeed m_Feed;
         readonly float[] m_HandValues = new float[1 + HandTracker.MaxHands * WebBrowser.FloatsPerHand];
         int m_PushedHands;
+        int m_PushedPinches;
         [SerializeField] float m_Width = 1.25f;
         [Tooltip("Looking within this fraction of the window's top or bottom scrolls the page.")]
         [SerializeField, Range(0.02f, 0.3f)] float m_ScrollEdge = 0.12f;
@@ -745,6 +746,24 @@ namespace Afterglow.Demos
                 if (count > 0 || m_PushedHands > 0)
                     WebBrowser.PushHands(m_HandValues, 1 + count * WebBrowser.FloatsPerHand);
                 m_PushedHands = count;
+                // Said when it changes: whether the page is told a hand pinches, and how far
+                // apart its fingertips are, which is what a page that reads its own pinch sees.
+                var pinches = 0;
+                for (var h = 0; h < count; h++)
+                    if (m_HandValues[1 + h * WebBrowser.FloatsPerHand + 1] > 0.5f) pinches |= 1 << h;
+                if (pinches != m_PushedPinches)
+                {
+                    m_PushedPinches = pinches;
+                    var tips = "";
+                    for (var h = 0; h < count; h++)
+                    {
+                        var at = 1 + h * WebBrowser.FloatsPerHand + 2;
+                        var thumb = new Vector3(m_HandValues[at + 4 * 3], m_HandValues[at + 4 * 3 + 1], m_HandValues[at + 4 * 3 + 2]);
+                        var index = new Vector3(m_HandValues[at + 8 * 3], m_HandValues[at + 8 * 3 + 1], m_HandValues[at + 8 * 3 + 2]);
+                        tips += $"{(h > 0 ? ", " : "")}{(m_HandValues[1 + h * WebBrowser.FloatsPerHand] > 0.5f ? "right" : "left")} {(((pinches >> h) & 1) != 0 ? "pinching" : "open")}, tips {Vector3.Distance(thumb, index) * 100f:F1} cm apart";
+                    }
+                    Debug.Log($"[WebXR] Hands to the page: {tips}");
+                }
             }
 
             switch (WebBrowser.TakeEvent())

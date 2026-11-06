@@ -189,3 +189,40 @@ namespace Afterglow.Stereo.Tests
         }
     }
 }
+
+namespace Afterglow.Stereo.Tests
+{
+    public class CameraFormatTests
+    {
+        [Test]
+        public void Parse_ReadsTheFormatsAndSkipsWhatIsMalformed()
+        {
+            var formats = ArVideoFormats.Parse("0:1920x1440@60:wide,1:1920x1440@30:wide,6:1920x1440@60:ultrawide,bad,7:x@60:ultrawide,12:3840x2160@30:wide");
+            Assert.AreEqual(4, formats.Count);
+            Assert.AreEqual("ultrawide", formats[2].Camera);
+            Assert.AreEqual(6, formats[2].Index);
+            Assert.AreEqual(1440, formats[2].Height);
+            Assert.AreEqual(0, ArVideoFormats.Parse("").Count);
+        }
+
+        [Test]
+        public void PreferredUltraWide_PicksTheLargestAtTheRateUnderTheWidth()
+        {
+            var formats = ArVideoFormats.Parse("0:1920x1440@60:wide,6:1920x1440@60:ultrawide,7:1920x1440@30:ultrawide,8:1280x720@60:ultrawide,12:3840x2160@60:ultrawide");
+            Assert.AreEqual(6, ArVideoFormats.PreferredUltraWide(formats, 60, 1920));
+            Assert.AreEqual(12, ArVideoFormats.PreferredUltraWide(formats, 60, 4000));
+            Assert.AreEqual(7, ArVideoFormats.PreferredUltraWide(formats, 30, 1920));
+            Assert.AreEqual(-1, ArVideoFormats.PreferredUltraWide(ArVideoFormats.Parse("0:1920x1440@60:wide"), 60, 1920));
+        }
+
+        [Test]
+        public void ThermalCaps_HoldTheQualityDownWhenHot()
+        {
+            Assert.AreEqual((2f, int.MaxValue), StereoRig.ThermalCaps("nominal"));
+            Assert.AreEqual((2f, int.MaxValue), StereoRig.ThermalCaps("fair"));
+            Assert.AreEqual((0.8f, 60), StereoRig.ThermalCaps("serious"));
+            Assert.AreEqual((0.6f, 30), StereoRig.ThermalCaps("critical"));
+            Assert.AreEqual((2f, int.MaxValue), StereoRig.ThermalCaps(""));
+        }
+    }
+}

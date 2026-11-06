@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-label="Afterglow: a neon sun over a grid, synthwave style">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b0620"/>
+      <stop offset="0.55" stop-color="#2a0f4a"/>
+      <stop offset="1" stop-color="#5a1a5e"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd45c"/>
+      <stop offset="0.5" stop-color="#ff6ea8"/>
+      <stop offset="1" stop-color="#b028d8"/>
+    </linearGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a0836"/>
+      <stop offset="1" stop-color="#07030f"/>
+    </linearGradient>
+    <linearGradient id="title" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.5" stop-color="#ffd1f0"/>
+      <stop offset="1" stop-color="#ff6ea8"/>
+    </linearGradient>
+    <clipPath id="sunClip"><circle cx="600" cy="196" r="118"/></clipPath>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softglow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="360" fill="url(#sky)"/>
+  <g fill="#ffffff" opacity="0.7">
+    <circle cx="80" cy="40" r="1.4"/><circle cx="210" cy="90" r="1"/><circle cx="330" cy="30" r="1.2"/><circle cx="470" cy="70" r="1"/>
+    <circle cx="760" cy="40" r="1.3"/><circle cx="900" cy="100" r="1"/><circle cx="1040" cy="50" r="1.5"/><circle cx="1140" cy="120" r="1"/>
+    <circle cx="150" cy="150" r="1"/><circle cx="1000" cy="160" r="1.1"/><circle cx="640" cy="20" r="1"/><circle cx="380" cy="130" r="1"/>
+  </g>
+  <circle cx="600" cy="196" r="130" fill="#ff6ea8" opacity="0.35" filter="url(#softglow)"/>
+  <circle cx="600" cy="196" r="118" fill="url(#sun)"/>
+  <g clip-path="url(#sunClip)" fill="#0b0620">
+    <rect x="470" y="206" width="260" height="6"/>
+    <rect x="470" y="226" width="260" height="9"/>
+    <rect x="470" y="250" width="260" height="12"/>
+    <rect x="470" y="278" width="260" height="16"/>
+    <rect x="470" y="312" width="260" height="20"/>
+  </g>
+  <rect x="0" y="236" width="1200" height="124" fill="url(#ground)"/>
+  <g stroke="#ff3fa4" stroke-width="1.5" opacity="0.9" filter="url(#glow)">
+    <line x1="0" y1="252" x2="1200" y2="252"/>
+    <line x1="0" y1="266" x2="1200" y2="266"/>
+    <line x1="0" y1="284" x2="1200" y2="284"/>
+    <line x1="0" y1="308" x2="1200" y2="308"/>
+    <line x1="0" y1="340" x2="1200" y2="340"/>
+    <line x1="600" y1="236" x2="600" y2="360"/>
+    <line x1="600" y1="236" x2="760" y2="360"/><line x1="600" y1="236" x2="440" y2="360"/>
+    <line x1="600" y1="236" x2="930" y2="360"/><line x1="600" y1="236" x2="270" y2="360"/>
+    <line x1="600" y1="236" x2="1120" y2="360"/><line x1="600" y1="236" x2="80" y2="360"/>
+    <line x1="600" y1="236" x2="1200" y2="320"/><line x1="600" y1="236" x2="0" y2="320"/>
+    <line x1="600" y1="236" x2="1200" y2="276"/><line x1="600" y1="236" x2="0" y2="276"/>
+  </g>
+  <g filter="url(#glow)">
+    <text x="600" y="150" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-weight="800" font-size="92" letter-spacing="14" fill="url(#title)">AFTERGLOW</text>
+  </g>
+  <text x="600" y="185" text-anchor="middle" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-weight="500" font-size="20" letter-spacing="6" fill="#2de2e6">PHONE VR FOR THE iPHONE 18 PRO MAX</text>
+</svg>

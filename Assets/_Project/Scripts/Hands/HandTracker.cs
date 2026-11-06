@@ -264,6 +264,9 @@ namespace Afterglow.Hands
         // MediaPipe's detector): it finds both hands with their 21 landmarks on the Neural Engine,
         // so the CPU only runs the landmarker, for the 3D shape those landmarks are fitted to.
         bool m_UseVision;
+        // Whether the MediaPipe landmarker runs for each hand's 3D shape ("handShape 1"); with
+        // Vision it is off by default, since on the phone it cost more than the rest together.
+        bool m_UseLandmarker = true;
         readonly VisionHandPose.Hand[] m_VisionHands = new VisionHandPose.Hand[VisionHandPose.MaxHands];
         // How the camera image has to be turned to be upright for Vision (CGImagePropertyOrientation,
         // 1 up), from the image axes on screen, or the "handOrientation N" launch option.
@@ -576,11 +579,10 @@ namespace Afterglow.Hands
             foreach (var hand in m_Hands)
                 PredictJoints(hand);
             var tracked = TrackedCount;
-            // The camera runs at full rate while a hand is up, and for a few seconds after, so a
-            // hand that comes back isn't met by the slower rate (PassthroughController).
-            if (tracked > 0)
-                m_LastTrackedTime = Time.unscaledTime;
-            PassthroughController.HandsBusy = tracked > 0 || Time.unscaledTime - m_LastTrackedTime < k_HandGraceSeconds;
+            // The camera runs at full rate for as long as the tracker is on (PassthroughController):
+            // changing its rate restarts the session and stalls the images for a while, which is
+            // the last thing a hand that has just come into view needs.
+            PassthroughController.HandsBusy = true;
             if (tracked >= 2)
                 m_BothSeconds += Time.unscaledDeltaTime;
             else if (tracked == 1)
@@ -785,21 +787,27 @@ namespace Afterglow.Hands
         void Setup()
         {
             m_UseVision = VisionHandPose.Supported && Settings.Int("handModel", 0) == 0;
+            m_UseLandmarker = !m_UseVision || Settings.Int("handShape", 0) == 1;
             m_VisionOrientationOverride = LaunchOptions.GetInt("handOrientation", 0);
-            var landmarker = ModelLoader.Load(m_Landmarker);
-            m_LandmarksIndex = OutputIndex(landmarker, k_LandmarksOutput);
-            m_PresenceIndex = OutputIndex(landmarker, k_PresenceOutput);
-            m_HandednessIndex = OutputIndex(landmarker, k_HandednessOutput);
-            m_MetricIndex = OutputIndex(landmarker, k_MetricOutput);
-            m_LandmarkerWorker = new Worker(landmarker, BackendType.CPU);
-            m_LandmarkerInput = new Tensor<float>(new TensorShape(1, k_LandmarkerSize, k_LandmarkerSize, 3));
-            m_LandmarkerPixels = new float[k_LandmarkerSize * k_LandmarkerSize * 3];
             var cadence = m_TrackInterval > 0f ? $"{1f / m_TrackInterval:F0}/s" : "every image";
+            Model landmarker = null;
+            if (m_UseLandmarker)
+            {
+                landmarker = ModelLoader.Load(m_Landmarker);
+                m_LandmarksIndex = OutputIndex(landmarker, k_LandmarksOutput);
+                m_PresenceIndex = OutputIndex(landmarker, k_PresenceOutput);
+                m_HandednessIndex = OutputIndex(landmarker, k_HandednessOutput);
+                m_MetricIndex = OutputIndex(landmarker, k_MetricOutput);
+                m_LandmarkerWorker = new Worker(landmarker, BackendType.CPU);
+                m_LandmarkerInput = new Tensor<float>(new TensorShape(1, k_LandmarkerSize, k_LandmarkerSize, 3));
+                m_LandmarkerPixels = new float[k_LandmarkerSize * k_LandmarkerSize * 3];
+            }
             if (m_UseVision)
             {
                 Debug.Log($"[Hands] Vision hand pose on the Neural Engine finds the hands, {cadence}" +
                           (m_VisionOrientationOverride is >= 1 and <= 8 ? $" (handOrientation {m_VisionOrientationOverride})" : "") +
-                          $"; landmarker {m_Landmarker.name}: {Describe(landmarker)} gives each hand its 3D shape");
+                          (m_UseLandmarker ? $"; landmarker {m_Landmarker.name}: {Describe(landmarker)} gives each hand its 3D shape"
+                                           : "; a flat hand from its landmarks places each hand (handShape 1 adds the landmarker's 3D shape)"));
                 return;
             }
             m_Anchors = PalmDecoder.CreateAnchors();
@@ -1089,32 +1097,40 @@ namespace Afterglow.Hands
             var stopwatch = Stopwatch.StartNew();
             var region = hand.region.Value;
             hand.nextTrack = Time.unscaledTime + m_TrackInterval;
-            stopwatch.Restart();
-            ImageSampler.SampleRegion(m_Image, m_ImageWidth, m_ImageHeight, region, k_LandmarkerSize, m_LandmarkerPixels);
-            m_SampleMs += stopwatch.Elapsed.TotalMilliseconds;
-            stopwatch.Restart();
-            m_LandmarkerInput.Upload(m_LandmarkerPixels);
-            m_LandmarkerWorker.Schedule(m_LandmarkerInput);
-            using (var landmarks = await (m_LandmarkerWorker.PeekOutput(m_LandmarksIndex) as Tensor<float>).ReadbackAndCloneAsync())
-                CopyTo(landmarks, m_LandmarkValues);
-            float presence, handedness;
-            using (var output = (m_LandmarkerWorker.PeekOutput(m_PresenceIndex) as Tensor<float>).ReadbackAndClone())
-                presence = output[0];
-            using (var output = (m_LandmarkerWorker.PeekOutput(m_HandednessIndex) as Tensor<float>).ReadbackAndClone())
-                handedness = output[0];
-            using (var metric = (m_LandmarkerWorker.PeekOutput(m_MetricIndex) as Tensor<float>).ReadbackAndClone())
-                CopyTo(metric, m_MetricValues);
-            m_LandmarkMs += stopwatch.Elapsed.TotalMilliseconds;
-            m_LandmarkerRuns++;
-            if (!m_Running)
-                return;
-
-            // The model may give a probability or a logit.
-            if (presence < 0f || presence > 1f)
-                presence = PalmDecoder.Sigmoid(presence);
             // With Vision, its confidence in the hand is the presence and its chirality the
-            // handedness: the landmarker only ever saw the crop, Vision the whole image.
+            // handedness: the landmarker only ever saw the crop, Vision the whole image. The
+            // landmarker itself only runs when asked for (handShape 1): on the phone its crop
+            // sampling and CPU inference came to 70-90 ms an image once the frame was busy, and
+            // starved ARKit of the camera; without it a flat hand from Vision's landmarks places
+            // the hand, at 5-8 ms an image on the Neural Engine.
             var fromVision = m_UseVision && hand.visionImageNs == imageNs;
+            var useLandmarker = m_UseLandmarker || !fromVision;
+            var flat = false;
+            float presence = 0f, handedness = 0.5f;
+            if (useLandmarker)
+            {
+                stopwatch.Restart();
+                ImageSampler.SampleRegion(m_Image, m_ImageWidth, m_ImageHeight, region, k_LandmarkerSize, m_LandmarkerPixels);
+                m_SampleMs += stopwatch.Elapsed.TotalMilliseconds;
+                stopwatch.Restart();
+                m_LandmarkerInput.Upload(m_LandmarkerPixels);
+                m_LandmarkerWorker.Schedule(m_LandmarkerInput);
+                using (var landmarks = await (m_LandmarkerWorker.PeekOutput(m_LandmarksIndex) as Tensor<float>).ReadbackAndCloneAsync())
+                    CopyTo(landmarks, m_LandmarkValues);
+                using (var output = (m_LandmarkerWorker.PeekOutput(m_PresenceIndex) as Tensor<float>).ReadbackAndClone())
+                    presence = output[0];
+                using (var output = (m_LandmarkerWorker.PeekOutput(m_HandednessIndex) as Tensor<float>).ReadbackAndClone())
+                    handedness = output[0];
+                using (var metric = (m_LandmarkerWorker.PeekOutput(m_MetricIndex) as Tensor<float>).ReadbackAndClone())
+                    CopyTo(metric, m_MetricValues);
+                m_LandmarkMs += stopwatch.Elapsed.TotalMilliseconds;
+                m_LandmarkerRuns++;
+                if (!m_Running)
+                    return;
+                // The model may give a probability or a logit.
+                if (presence < 0f || presence > 1f)
+                    presence = PalmDecoder.Sigmoid(presence);
+            }
             if (fromVision)
             {
                 presence = hand.visionConfidence;
@@ -1126,7 +1142,7 @@ namespace Afterglow.Hands
                 }
             }
             m_PresenceSum += presence;
-            if (m_DumpsLeft > 0)
+            if (m_DumpsLeft > 0 && useLandmarker)
             {
                 m_DumpsLeft--;
                 var cropPath = HandDump.SaveInput(m_LandmarkerPixels, k_LandmarkerSize, $"{m_Dumped}-crop");
@@ -1145,8 +1161,9 @@ namespace Afterglow.Hands
             for (var i = 0; i < HandGeometry.JointCount; i++)
             {
                 var crop = new Vector2(m_LandmarkValues[i * 3], m_LandmarkValues[i * 3 + 1]) / k_LandmarkerSize;
-                // Vision's landmark where it was sure of the joint, the landmarker's otherwise.
-                hand.imageLandmarks[i] = fromVision && hand.visionConfidences[i] >= k_MinJointConfidence
+                // Vision's landmark where it was sure of the joint, the landmarker's otherwise
+                // (Vision's whatever its confidence when there is no landmarker).
+                hand.imageLandmarks[i] = fromVision && (!useLandmarker || hand.visionConfidences[i] >= k_MinJointConfidence)
                     ? hand.visionLandmarks[i]
                     : region.CropToImage(crop);
             }
@@ -1157,18 +1174,29 @@ namespace Afterglow.Hands
             hand.handednessScore = handedness < 0f || handedness > 1f ? PalmDecoder.Sigmoid(handedness) : handedness;
 
             // The hand's real size doesn't change, but the model's estimate of it wavers from image to
-            // image, so each shape is scaled to the user's palm size.
-            ShapeFromModel(region.rotation, hand.metricLandmarks);
-            var palmSize = HandGeometry.PalmSize(hand.metricLandmarks);
-            if (!(palmSize > 0f))
+            // image, so each shape is scaled to the user's palm size. Without the landmarker the
+            // shape is a flat hand from the landmarks at that size.
+            var palmSize = m_PalmSize;
+            if (useLandmarker)
             {
-                m_BadFits++;
-                hand.isTracking = false;
-                return;
+                ShapeFromModel(region.rotation, hand.metricLandmarks);
+                palmSize = HandGeometry.PalmSize(hand.metricLandmarks);
+                if (!(palmSize > 0f))
+                {
+                    m_BadFits++;
+                    hand.isTracking = false;
+                    return;
+                }
+                var scale = m_PalmSize / palmSize;
+                for (var i = 0; i < HandGeometry.JointCount; i++)
+                    hand.metricLandmarks[i] *= scale;
             }
-            var scale = m_PalmSize / palmSize;
-            for (var i = 0; i < HandGeometry.JointCount; i++)
-                hand.metricLandmarks[i] *= scale;
+            else
+            {
+                HandGeometry.FlatShape(hand.imageLandmarks, m_PalmSize, hand.metricLandmarks);
+                flat = true;
+                m_FlatShapes++;
+            }
 
             // The palm places the hand: the model's fingers bend and are less sure.
             var position = HandGeometry.FitPosition(hand.imageLandmarks, hand.metricLandmarks, HandGeometry.Palm,
@@ -1177,8 +1205,7 @@ namespace Afterglow.Hands
             // hand the way it expects (on the phone its presence stayed around 0.13 whatever the
             // crop). A flat hand facing the camera, built from Vision's landmarks at the user's palm
             // size, places the hand instead, at the depth its size in the image implies.
-            var flat = false;
-            if (fromVision && fitError > k_MaxFitError)
+            if (!flat && fromVision && fitError > k_MaxFitError)
             {
                 HandGeometry.FlatShape(hand.imageLandmarks, m_PalmSize, hand.metricLandmarks);
                 position = HandGeometry.FitPosition(hand.imageLandmarks, hand.metricLandmarks, HandGeometry.Palm,

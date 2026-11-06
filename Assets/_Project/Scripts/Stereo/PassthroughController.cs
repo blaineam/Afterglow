@@ -111,6 +111,7 @@ namespace Afterglow.Stereo
         float m_NextRateCheck;
         bool m_RateFailed;
         bool m_UserChoseConfiguration;
+        System.Collections.Generic.List<ArVideoFormats.Format> m_Formats = new();
 
         // Pure: whether the camera should run at its full rate.
         public static bool WantsFullRate(bool passthroughOn, bool coveredByPage, bool handsBusy) =>
@@ -687,7 +688,26 @@ namespace Afterglow.Stereo
                         .Append('@').Append(c.framerate ?? 0).Append(isCurrent ? " (current)" : "");
                 }
                 Debug.Log($"[Passthrough] Camera configurations: {(configurations.Length == 0 ? "none listed" : lines.ToString())}");
+                // Which camera each configuration is: AR Foundation's list doesn't say, ARKit's does.
+                m_Formats = ArVideoFormats.Read();
+                if (m_Formats.Count > 0)
+                    Debug.Log($"[Passthrough] ARKit's formats: {string.Join(", ", m_Formats)}");
                 var wanted = LaunchOptions.GetInt("camConfig", -1);
+                // The ultra-wide camera by default (camUltraWide 0 keeps the main one): its view is
+                // about 120 degrees across against the main camera's 70, so passthrough fills the
+                // viewer without magnifying and the hands stay in the picture at the sides.
+                if (wanted < 0 && Settings.Int("camUltraWide", 1) != 0)
+                {
+                    var ultraWide = ArVideoFormats.PreferredUltraWide(m_Formats, k_FastRate, 1920);
+                    if (ultraWide >= 0 && ultraWide < configurations.Length)
+                    {
+                        var c = configurations[ultraWide];
+                        Debug.Log($"[Passthrough] Ultra-wide camera: configuration {ultraWide} ({c.width}x{c.height}@{c.framerate ?? 0})");
+                        m_CameraManager.currentConfiguration = c;
+                    }
+                    else
+                        Debug.Log("[Passthrough] No ultra-wide camera format at 60 fps; the main camera stays");
+                }
                 if (wanted >= 0 && wanted < configurations.Length)
                 {
                     m_UserChoseConfiguration = true;
@@ -719,10 +739,14 @@ namespace Afterglow.Stereo
                 if (!current.HasValue || (current.Value.framerate ?? 0) == rate)
                     return;
                 using var configurations = m_CameraManager.GetConfigurations(Unity.Collections.Allocator.Temp);
+                // The same camera, where the formats say which that is: the sizes repeat per camera.
+                var currentCamera = CameraOf(configurations, current.Value);
                 for (var i = 0; i < configurations.Length; i++)
                 {
                     var c = configurations[i];
                     if (c.width != current.Value.width || c.height != current.Value.height || (c.framerate ?? 0) != rate)
+                        continue;
+                    if (currentCamera != null && i < m_Formats.Count && m_Formats[i].Camera != currentCamera)
                         continue;
                     m_CameraManager.currentConfiguration = c;
                     Debug.Log($"[Passthrough] Camera to {rate} Hz: " +
@@ -737,6 +761,18 @@ namespace Afterglow.Stereo
                 m_RateFailed = true;
                 Debug.Log($"[Passthrough] The camera rate couldn't be changed: {e.Message}");
             }
+        }
+
+        // Which camera a configuration belongs to, by its place in the list; null when unknown.
+        string CameraOf(Unity.Collections.NativeArray<UnityEngine.XR.ARSubsystems.XRCameraConfiguration> configurations,
+            UnityEngine.XR.ARSubsystems.XRCameraConfiguration configuration)
+        {
+            for (var i = 0; i < configurations.Length && i < m_Formats.Count; i++)
+            {
+                if (configurations[i].Equals(configuration))
+                    return m_Formats[i].Camera;
+            }
+            return null;
         }
 
         // Where a point the eye is looking at falls in the passthrough texture, from 0 to 1 on each

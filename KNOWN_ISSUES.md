@@ -47,6 +47,22 @@
   the lenses in the Simulator past a thousand frames. A long press on the screen (a second and a
   half) still ends a session, and the browser keeps every video inline rather than letting the
   phone's own full-screen player over it.
+- **Hands froze for seconds at a time, and the phone ran hot (2026-11-06, iPhone 18 Pro Max).**
+  The log showed ARKit itself starved: its camera at 1–11 frames a second instead of 60, the
+  session "initializing" and the pose "limited", while the hand landmarker took 53–66 ms an image
+  "including waits" (20 ms on a quiet frame) and its crop sampling 15–22 ms on the main thread,
+  with the saved 120 fps target and 120% render scale on top; "serious" came two minutes in.
+  Changes: the landmarker is off by default (`handShape 1` brings it back) and a flat hand from
+  Vision's landmarks places the hand at 5–8 ms an image on the Neural Engine; the app holds
+  itself to 60 fps and 80% render scale while the thermal state is serious (30 fps and 60% at
+  critical) whatever is set; the camera's rate never changes while hands are on (a change
+  restarts the session); and passthrough and hands come from the ultra-wide camera, about 120°
+  across against the main camera's 70°, so the view isn't magnified twice over to fill the
+  viewer and the hands stay in the picture at the sides. To be measured on the phone.
+- **Pinches at the image's edge, and two hands together.** With fingers partly out of view the
+  model guessed a pinch; no pinch starts within the edge margin now. Two hands clapped or palm
+  to palm read as one or swap: Vision reports them as it can and the tracker matches regions by
+  distance, so overlapping hands aren't told apart; keep them a hand's width apart.
 - **A tall photo sphere is drawn on a cylinder.** A GPano crop gives a panorama's exact span and
   height, and the band is a cylinder, which is right up to about 90° tall; a sphere cropped to,
   say, 360° × 150° stretches towards its top and bottom on it. The whole sphere (or near enough,

@@ -582,9 +582,11 @@
             if (!hs) continue;
             if (hs._pinchNow && !hs._pinching) {
                 hs._pinching = true;
+                console.log('[Afterglow] hands: ' + hs.handedness + ' selectstart');
                 active._emit('selectstart', { inputSource: hs, frame: new XRFrame(active) });
             } else if (!hs._pinchNow && hs._pinching) {
                 hs._pinching = false;
+                console.log('[Afterglow] hands: ' + hs.handedness + ' select, selectend');
                 active._emit('select', { inputSource: hs, frame: new XRFrame(active) });
                 active._emit('selectend', { inputSource: hs, frame: new XRFrame(active) });
             }

@@ -309,6 +309,10 @@ namespace Afterglow.Hands
                 feed.openResults = 0;
                 if (!hand.shapeFits)
                     return;
+                // Near the image's edge the fingers are partly out of view and read as whatever
+                // the model guesses, which on the phone was often a pinch: no pinch starts there.
+                if (m_Tracker.EdgeDistanceOf(hand) < k_EdgeMargin)
+                    return;
                 // A flat shape has no depth to measure the gap by: the image's gap over the palm's
                 // width is what it has, which is what the 3DoF pinch sensor reads too.
                 var wouldClose = hand.flatShape ? hand.pinchRatio < m_CloseRatio : hand.pinchDistance < m_PinchDistance;
