@@ -9,14 +9,17 @@
   the gaze hit on the quad to page coordinates (`TryGazePoint`, `PageV`) is where to look. Aim by
   the page's dot until then.
 
-- **Hands aren't found on the phone (2026-11-06).** The first device run since the two-hands
-  change (2026-11-03) shows the palm detector finding a hand only now and then and the landmarker
-  scoring it 0.13 presence, under the 0.5 it needs, so every hand is dropped at once and no pinch
-  is ever seen; taps and the floating buttons still work. The crop the landmarker sees is the
-  suspect (its orientation or its content), and the next run says: launch with
-  `zsh Tools/ios_launch.sh --ei handDump 6` with a hand in view, and the app writes the camera
-  image, the detector's input and the landmarker's crops to `HandDumps` in its Documents folder
-  (Finder's Files tab, or `devicectl device copy from`), with a log line per crop.
+- **Hands weren't found on the phone (2026-11-06; Vision path added the same day, to be confirmed).**
+  The first device run since the two-hands change (2026-11-03) showed the palm detector finding
+  a hand only now and then and the landmarker scoring it 0.13 presence, under the 0.5 it needs,
+  so every hand was dropped at once and no pinch was ever seen; taps and the floating buttons
+  still worked. On the iPhone the hands are now found by Apple's Vision hand pose on the Neural
+  Engine (`AfterglowHandPose.mm`, `VisionHandPose.cs`): it sees both hands in the whole image
+  with 21 landmarks each, its confidence is the presence and its chirality the handedness, and
+  the MediaPipe landmarker only gives each hand its 3D shape, fitted to Vision's landmarks. The
+  palm detector, the CPU's 30–50 ms per run, no longer runs; `handModel 1` brings it back for
+  comparison, and `handOrientation N` overrides how the image is turned for Vision if the axes
+  are read wrong. `handDump N` still writes the camera image and the landmarker's crops.
 
 - **A WebXR page drew wrong from its second session frame** (fixed 2026-11-06, Simulator-verified;
   to be confirmed on the phone). The session held and the page's renderer presented every frame,

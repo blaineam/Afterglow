@@ -155,6 +155,20 @@ namespace Afterglow.Hands
             imageY = RoundToAxis(imageY);
         }
 
+        // How the camera image has to be turned to be upright on the screen, as a
+        // CGImagePropertyOrientation for Vision (1 up, 2 up mirrored, 3 down, 4 down mirrored, 5
+        // left mirrored, 6 right, 7 right mirrored, 8 left), from where the image's axes lie on
+        // the screen (ImageAxesOnScreen; screen x right, y up). Upright is image x along screen x
+        // and image y (down the image) along screen -y.
+        public static int ImageOrientation(Vector2 imageX, Vector2 imageY)
+        {
+            if (imageX.x > 0f) return imageY.y < 0f ? 1 : 4;
+            if (imageX.x < 0f) return imageY.y > 0f ? 3 : 2;
+            // Image x runs up or down the screen: a quarter turn.
+            if (imageX.y < 0f) return imageY.x < 0f ? 6 : 5;
+            return imageY.x > 0f ? 8 : 7;
+        }
+
         static Vector2 RoundToAxis(Vector2 v) =>
             Mathf.Abs(v.x) >= Mathf.Abs(v.y) ? new Vector2(Mathf.Sign(v.x), 0f) : new Vector2(0f, Mathf.Sign(v.y));
     }

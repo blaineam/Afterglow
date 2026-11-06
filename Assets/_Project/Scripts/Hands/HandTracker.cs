@@ -260,6 +260,22 @@ namespace Afterglow.Hands
         bool m_WasPaused;
         // When the palm detector may next look for a hand, and the landmarker next run.
         float m_NextSearch;
+        // Apple's Vision hand pose instead of the palm detector, on iOS ("handModel 1" keeps
+        // MediaPipe's detector): it finds both hands with their 21 landmarks on the Neural Engine,
+        // so the CPU only runs the landmarker, for the 3D shape those landmarks are fitted to.
+        bool m_UseVision;
+        readonly VisionHandPose.Hand[] m_VisionHands = new VisionHandPose.Hand[VisionHandPose.MaxHands];
+        // How the camera image has to be turned to be upright for Vision (CGImagePropertyOrientation,
+        // 1 up), from the image axes on screen, or the "handOrientation N" launch option.
+        int m_VisionOrientation = 1;
+        int m_VisionOrientationOverride;
+        bool m_LoggedVisionFailure;
+        float m_LastTrackedTime = float.NegativeInfinity;
+        const float k_HandGraceSeconds = 3f;
+        // Vision's mean joint confidence below which what it saw isn't a hand, and a joint's
+        // confidence below which the landmarker's own landmark is kept instead of Vision's.
+        const float k_MinVisionConfidence = 0.3f;
+        const float k_MinJointConfidence = 0.1f;
         // Per hand; the detector's m_NextSearch is shared.
 
         // Whether tracking is paused while the room is scanned, leaving the CPU to plane detection
@@ -391,6 +407,7 @@ namespace Afterglow.Hands
             if (m_Occlusion != null)
                 m_Occlusion.enabled = false;
             LoseAll();
+            PassthroughController.HandsBusy = false;
         }
 
         void OnCameraFrame(ARCameraFrameEventArgs args)
@@ -403,6 +420,9 @@ namespace Afterglow.Hands
             else
                 HandGeometry.ImageAxesOnScreen(m_DisplayMatrix, out m_ImageXOnScreen, out m_ImageYOnScreen);
             m_HasAxes = true;
+            m_VisionOrientation = m_VisionOrientationOverride is >= 1 and <= 8
+                ? m_VisionOrientationOverride
+                : HandGeometry.ImageOrientation(m_ImageXOnScreen, m_ImageYOnScreen);
         }
 
         void Update()
@@ -423,6 +443,11 @@ namespace Afterglow.Hands
             foreach (var hand in m_Hands)
                 PredictJoints(hand);
             var tracked = TrackedCount;
+            // The camera runs at full rate while a hand is up, and for a few seconds after, so a
+            // hand that comes back isn't met by the slower rate (PassthroughController).
+            if (tracked > 0)
+                m_LastTrackedTime = Time.unscaledTime;
+            PassthroughController.HandsBusy = tracked > 0 || Time.unscaledTime - m_LastTrackedTime < k_HandGraceSeconds;
             if (tracked >= 2)
                 m_BothSeconds += Time.unscaledDeltaTime;
             else if (tracked == 1)
@@ -626,24 +651,33 @@ namespace Afterglow.Hands
 
         void Setup()
         {
-            m_Anchors = PalmDecoder.CreateAnchors();
-            var detector = ModelLoader.Load(m_Detector);
+            m_UseVision = VisionHandPose.Supported && Settings.Int("handModel", 0) == 0;
+            m_VisionOrientationOverride = LaunchOptions.GetInt("handOrientation", 0);
             var landmarker = ModelLoader.Load(m_Landmarker);
-            m_BoxesIndex = OutputIndex(detector, k_BoxesOutput);
-            m_ScoresIndex = OutputIndex(detector, k_ScoresOutput);
             m_LandmarksIndex = OutputIndex(landmarker, k_LandmarksOutput);
             m_PresenceIndex = OutputIndex(landmarker, k_PresenceOutput);
             m_HandednessIndex = OutputIndex(landmarker, k_HandednessOutput);
             m_MetricIndex = OutputIndex(landmarker, k_MetricOutput);
-            Debug.Log($"[Hands] Detector {m_Detector.name}: {Describe(detector)}; landmarker {m_Landmarker.name}: {Describe(landmarker)}; " +
-                      $"landmarker at most {(m_TrackInterval > 0f ? $"{1f / m_TrackInterval:F0}/s" : "every image")}, " +
-                      $"detector at most {1f / m_SearchInterval:F0}/s while no hand");
-            m_DetectorWorker = new Worker(detector, BackendType.CPU);
             m_LandmarkerWorker = new Worker(landmarker, BackendType.CPU);
-            m_DetectorInput = new Tensor<float>(new TensorShape(1, PalmDecoder.InputSize, PalmDecoder.InputSize, 3));
             m_LandmarkerInput = new Tensor<float>(new TensorShape(1, k_LandmarkerSize, k_LandmarkerSize, 3));
-            m_DetectorPixels = new float[PalmDecoder.InputSize * PalmDecoder.InputSize * 3];
             m_LandmarkerPixels = new float[k_LandmarkerSize * k_LandmarkerSize * 3];
+            var cadence = m_TrackInterval > 0f ? $"{1f / m_TrackInterval:F0}/s" : "every image";
+            if (m_UseVision)
+            {
+                Debug.Log($"[Hands] Vision hand pose on the Neural Engine finds the hands, {cadence}" +
+                          (m_VisionOrientationOverride is >= 1 and <= 8 ? $" (handOrientation {m_VisionOrientationOverride})" : "") +
+                          $"; landmarker {m_Landmarker.name}: {Describe(landmarker)} gives each hand its 3D shape");
+                return;
+            }
+            m_Anchors = PalmDecoder.CreateAnchors();
+            var detector = ModelLoader.Load(m_Detector);
+            m_BoxesIndex = OutputIndex(detector, k_BoxesOutput);
+            m_ScoresIndex = OutputIndex(detector, k_ScoresOutput);
+            Debug.Log($"[Hands] Detector {m_Detector.name}: {Describe(detector)}; landmarker {m_Landmarker.name}: {Describe(landmarker)}; " +
+                      $"landmarker at most {cadence}, detector at most {1f / m_SearchInterval:F0}/s while no hand");
+            m_DetectorWorker = new Worker(detector, BackendType.CPU);
+            m_DetectorInput = new Tensor<float>(new TensorShape(1, PalmDecoder.InputSize, PalmDecoder.InputSize, 3));
+            m_DetectorPixels = new float[PalmDecoder.InputSize * PalmDecoder.InputSize * 3];
             m_Boxes = new float[PalmDecoder.AnchorCount * PalmDecoder.ValuesPerAnchor];
             m_Scores = new float[PalmDecoder.AnchorCount];
         }
@@ -689,7 +723,11 @@ namespace Afterglow.Hands
             }
             // The detector looks for whatever hand is missing; each hand being followed has its
             // own cadence for the landmarker.
-            var wantsSearch = HasFreeSlot && Time.unscaledTime >= m_NextSearch;
+            // Vision looks at the whole image for both hands at once, so it runs on every image
+            // (at the handHz cadence); the detector only while a hand is missing.
+            var wantsSearch = m_UseVision
+                ? Time.unscaledTime >= m_NextSearch
+                : HasFreeSlot && Time.unscaledTime >= m_NextSearch;
             var wantsTrack = false;
             foreach (var candidate in m_Hands)
                 wantsTrack |= candidate.region != null && Time.unscaledTime >= candidate.nextTrack;
@@ -700,7 +738,12 @@ namespace Afterglow.Hands
 
             m_Images++;
             if (wantsSearch)
-                await Search();
+            {
+                if (m_UseVision)
+                    await SearchVision(imageNs);
+                else
+                    await Search();
+            }
             if (!m_Running)
                 return true;
 
@@ -710,6 +753,10 @@ namespace Afterglow.Hands
             foreach (var hand in m_Hands)
             {
                 if (hand.region == null || Time.unscaledTime < hand.nextTrack)
+                    continue;
+                // With Vision, only a hand it saw in this image: a request that was skipped
+                // because the last was still running leaves nothing to fit.
+                if (m_UseVision && hand.visionImageNs != imageNs)
                     continue;
                 await TrackHand(hand, imageNs);
                 if (!m_Running)
@@ -788,6 +835,83 @@ namespace Afterglow.Hands
             }
         }
 
+        // Vision's turn: the whole image, both hands, on the Neural Engine. Each hand it finds goes
+        // to the slot already following it or to a free one, with its landmarks for TrackHand to
+        // fit the shape to; a followed hand it doesn't see is gone, as with the detector.
+        async Awaitable SearchVision(long imageNs)
+        {
+            m_NextSearch = Time.unscaledTime + m_TrackInterval;
+            if (VisionHandPose.Submit(m_Image, m_ImageWidth, m_ImageHeight, m_VisionOrientation) == 0)
+                return;   // the last request is still running; this image is skipped
+            var count = 0;
+            var ms = 0f;
+            while (m_Running && !VisionHandPose.TryTake(m_VisionHands, out count, out _, out ms))
+                await Awaitable.NextFrameAsync();
+            if (!m_Running)
+                return;
+            m_DetectMs += ms;
+            m_Detections++;
+            if (count < 0)
+            {
+                if (!m_LoggedVisionFailure)
+                {
+                    m_LoggedVisionFailure = true;
+                    Debug.LogWarning("[Hands] Vision's hand pose request failed; no hands until it works (handModel 1 is the detector)");
+                }
+                return;
+            }
+            foreach (var hand in m_Hands)
+                hand.seenByVision = false;
+            for (var i = 0; i < count; i++)
+            {
+                var seen = m_VisionHands[i];
+                var confidence = seen.MeanConfidence;
+                if (confidence < k_MinVisionConfidence)
+                    continue;
+                var region = HandRegion.FromLandmarks(seen.landmarks);
+                var slot = Followed(region) ?? FreeSlot();
+                if (slot == null || slot.seenByVision)
+                    continue;
+                if (slot.region == null)
+                    slot.acquiring = true;
+                slot.region = region;
+                slot.seenByVision = true;
+                slot.visionImageNs = imageNs;
+                slot.visionConfidence = confidence;
+                slot.visionChirality = seen.chirality;
+                Array.Copy(seen.landmarks, slot.visionLandmarks, HandGeometry.JointCount);
+                Array.Copy(seen.confidences, slot.visionConfidences, HandGeometry.JointCount);
+                slot.nextTrack = 0f;
+            }
+            foreach (var hand in m_Hands)
+            {
+                if (!hand.seenByVision && hand.region != null)
+                    Lose(hand);
+            }
+            if (m_DumpsLeft > 0 && count > 0)
+            {
+                var imagePath = HandDump.SaveImage(m_Image, m_ImageWidth, m_ImageHeight, 2, $"{m_Dumped}-image");
+                var hands = new System.Text.StringBuilder();
+                for (var i = 0; i < count; i++)
+                    hands.Append($" hand {i}: {m_VisionHands[i].chirality}, confidence {m_VisionHands[i].MeanConfidence:F2}, wrist at ({m_VisionHands[i].landmarks[0].x:F0}, {m_VisionHands[i].landmarks[0].y:F0});");
+                Debug.Log($"[Hands] Dumped the {m_ImageWidth}x{m_ImageHeight} image (halved) to {imagePath}, orientation {m_VisionOrientation};{hands}");
+            }
+        }
+
+        // The hand already being followed where this region is, by the same rule as AlreadyFollowed.
+        TrackedHand Followed(HandRegion found)
+        {
+            foreach (var hand in m_Hands)
+            {
+                if (hand.region == null)
+                    continue;
+                var mine = hand.region.Value;
+                if (Vector2.Distance(mine.center, found.center) < (mine.size + found.size) / 4f)
+                    return hand;
+            }
+            return null;
+        }
+
         TrackedHand FreeSlot()
         {
             foreach (var hand in m_Hands)
@@ -842,6 +966,15 @@ namespace Afterglow.Hands
             // The model may give a probability or a logit.
             if (presence < 0f || presence > 1f)
                 presence = PalmDecoder.Sigmoid(presence);
+            // With Vision, its confidence in the hand is the presence and its chirality the
+            // handedness: the landmarker only ever saw the crop, Vision the whole image.
+            var fromVision = m_UseVision && hand.visionImageNs == imageNs;
+            if (fromVision)
+            {
+                presence = hand.visionConfidence;
+                if (hand.visionChirality != VisionHandPose.Chirality.Unknown)
+                    handedness = hand.visionChirality == VisionHandPose.Chirality.Right ? 1f : 0f;
+            }
             m_PresenceSum += presence;
             if (m_DumpsLeft > 0)
             {
@@ -862,7 +995,10 @@ namespace Afterglow.Hands
             for (var i = 0; i < HandGeometry.JointCount; i++)
             {
                 var crop = new Vector2(m_LandmarkValues[i * 3], m_LandmarkValues[i * 3 + 1]) / k_LandmarkerSize;
-                hand.imageLandmarks[i] = region.CropToImage(crop);
+                // Vision's landmark where it was sure of the joint, the landmarker's otherwise.
+                hand.imageLandmarks[i] = fromVision && hand.visionConfidences[i] >= k_MinJointConfidence
+                    ? hand.visionLandmarks[i]
+                    : region.CropToImage(crop);
             }
             hand.region = HandRegion.FromLandmarks(hand.imageLandmarks);
             hand.pinchRatio = Vector2.Distance(hand.imageLandmarks[HandGeometry.ThumbTip], hand.imageLandmarks[HandGeometry.IndexTip]) /
@@ -1163,9 +1299,9 @@ namespace Afterglow.Hands
                 // How often each hand was up over the window, which is the only way to tell a
                 // second hand that is being found from one that is being found and lost again.
                 var both = $"hands up {m_BothSeconds / seconds * 100f:F0}% two, {m_OneSeconds / seconds * 100f:F0}% one";
-                Debug.Log($"[Hands] {m_Images / seconds:F1} images/s, placed {m_Results}, {m_Detections} detector runs, " +
+                Debug.Log($"[Hands] {m_Images / seconds:F1} images/s, placed {m_Results}, {m_Detections} {(m_UseVision ? "Vision" : "detector")} runs, " +
                           $"{m_Losses} lost, {m_WithoutPose} without a pose; {distance}; {both}; per image sampling " +
-                          $"{m_SampleMs / m_Images:F1} ms; detector {m_DetectMs / Mathf.Max(1, m_Detections):F0} ms and landmarker " +
+                          $"{m_SampleMs / m_Images:F1} ms; {(m_UseVision ? "Vision" : "detector")} {m_DetectMs / Mathf.Max(1, m_Detections):F0} ms and landmarker " +
                           $"{m_LandmarkMs / landmarkerRuns:F0} ms including waits; presence {m_PresenceSum / landmarkerRuns:F2}, " +
                           $"handedness {m_Handedness:F2}; fit error {m_FitErrorSum / Mathf.Max(1, m_Fits):F1} px, {m_RejectedFits} " +
                           $"collapsed shapes replaced, {m_BadFits} bad fits, {m_OutOfReach} new hands beyond reach ignored, " +

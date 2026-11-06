@@ -1884,7 +1884,7 @@ MonoBehaviour:
   m_RenderScale: 1
   m_Msaa: 2
   m_BackgroundColor: {r: 0.1, g: 0.1, b: 0.12, a: 1}
-  m_TargetFrameRate: 120
+  m_TargetFrameRate: 60
   m_LowLatency: 1
   m_AlignmentMarker: 1
   m_Mono: 0

@@ -23,6 +23,8 @@ namespace ProjectBootstrap
     //   CoreMedia     the tagged buffer groups a spatial video's two eyes arrive in, same plugin
     //   CoreVideo     the pixel buffers inside them, and the Metal texture cache that wraps those
     //   Metal         the textures themselves, which Unity draws from without a copy
+    //   Vision        hand pose on the Neural Engine (AfterglowHandPose.mm)
+    //   Accelerate    vImage, which turns the app's RGBA image into the BGRA buffer Vision takes
     //
     // They go on UnityFramework, which is the target the plugins are compiled into; adding them to
     // Unity-iPhone instead links them into the shell app, where the plugins are not.
@@ -34,7 +36,8 @@ namespace ProjectBootstrap
         static readonly string[] k_Frameworks =
         {
             "WebKit.framework", "Photos.framework", "Speech.framework", "AVFoundation.framework",
-            "CoreMedia.framework", "CoreVideo.framework", "Metal.framework",
+            "CoreMedia.framework", "CoreVideo.framework", "Metal.framework", "Vision.framework",
+            "Accelerate.framework",
         };
 
         public void OnPostprocessBuild(BuildReport report)

@@ -115,6 +115,7 @@ namespace Afterglow.Stereo
             if (Afterglow_WebIsOpen() == 0)
                 return;
             Afterglow_WebClose();
+            PassthroughController.CoveredByPage = false;
             OnDemandRendering.renderFrameInterval = Mathf.Max(1, s_RestoreRenderInterval);
             Debug.Log("[WebXR] Closed; drawing every frame again");
 #endif
@@ -402,6 +403,8 @@ namespace Afterglow.Stereo
         {
 #if UNITY_IOS && !UNITY_EDITOR
             Afterglow_WebSetWindowed(windowed ? 1 : 0);
+            // A page with the whole screen hides passthrough, which then needn't be smooth.
+            PassthroughController.CoveredByPage = !windowed;
             if (windowed)
             {
                 OnDemandRendering.renderFrameInterval = Mathf.Max(1, s_RestoreRenderInterval);

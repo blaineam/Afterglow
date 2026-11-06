@@ -146,10 +146,12 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
 | `mono 1` | One full-screen view with no lens distortion, for use without a viewer |
 | `boundaryCm N` | Turn on the boundary warning: in VR, a grid on real surfaces within N cm |
 | `arView 1` | Debug view: the AR camera full screen with every detected surface drawn (forces 6DoF) |
-| `fps N` | Target frame rate (default 120) |
+| `fps N` | Target frame rate (default 60; 120 draws twice as much and ran an iPhone 18 Pro Max into its "serious" thermal state within six minutes) |
 | `renderScale N` | Eye texture resolution in percent (default 100); also sizes a WebXR page's eye buffer, which is otherwise the screen's own pixels |
 | `msaa N` | Anti-aliasing samples: 1, 2, 4 or 8 (default 2) |
 | `handHz N` | Run the hand landmark model at most N times a second (default 0: every camera image) |
+| `handModel 1` | iPhone: find hands with MediaPipe's palm detector on the CPU instead of Apple's Vision hand pose on the Neural Engine (the default) |
+| `handOrientation N` | iPhone: how the camera image is turned for Vision (CGImagePropertyOrientation 1–8), instead of working it out from the image axes |
 | `predictionMs N` | How far ahead head rotation is predicted, in ms (default 30) |
 | `tracker 1` | Head rotation from Android's game rotation vector instead of the app's own sensor fusion |
 | `nativeImu 0` | Android: read the sensors through the Input System instead of the native plugin |

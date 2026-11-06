@@ -98,6 +98,23 @@ namespace Afterglow.Stereo
         CommandBuffer m_Commands;
         RenderTexture m_Texture;
         bool m_On;
+
+        // The camera's rate. Passthrough that shows, or a hand being followed, wants the camera at
+        // its full rate; with neither, the camera, and ARKit's work on each of its frames, drops to
+        // half. HandTracker and WebBrowser say what they know; this, which has the camera, acts on
+        // it. A "camConfig N" choice of the user's is left alone.
+        public static bool HandsBusy;
+        public static bool CoveredByPage;
+        const int k_FastRate = 60;
+        const int k_SlowRate = 30;
+        const float k_RateCheckSeconds = 0.5f;
+        float m_NextRateCheck;
+        bool m_RateFailed;
+        bool m_UserChoseConfiguration;
+
+        // Pure: whether the camera should run at its full rate.
+        public static bool WantsFullRate(bool passthroughOn, bool coveredByPage, bool handsBusy) =>
+            handsBusy || (passthroughOn && !coveredByPage);
         float m_LoggedZoom;
         bool m_LoggedConfigurations;
         // 3DoF turned passthrough off, so it comes back with 6DoF.
@@ -576,6 +593,7 @@ namespace Afterglow.Stereo
                     "[Passthrough] The view follows the fused head pose");
             }
             var sixDof = m_Fusion.CurrentMode == HeadPoseFusion.Mode.SixDof;
+            UpdateCameraRate(sixDof);
             if (!m_On)
             {
                 if (m_ResumeWithSixDof && sixDof)
@@ -672,6 +690,7 @@ namespace Afterglow.Stereo
                 var wanted = LaunchOptions.GetInt("camConfig", -1);
                 if (wanted >= 0 && wanted < configurations.Length)
                 {
+                    m_UserChoseConfiguration = true;
                     m_CameraManager.currentConfiguration = configurations[wanted];
                     Debug.Log($"[Passthrough] Camera configuration {wanted} asked for");
                 }
@@ -679,6 +698,44 @@ namespace Afterglow.Stereo
             catch (System.Exception e)
             {
                 Debug.Log($"[Passthrough] Camera configurations couldn't be read: {e.Message}");
+            }
+        }
+
+        // Puts the camera at the rate the moment wants, checking twice a second: the rate is read
+        // back from the camera rather than remembered, since the session can come back at its
+        // default after 6DoF has been off.
+        void UpdateCameraRate(bool sixDof)
+        {
+            if (!sixDof || m_CameraManager == null || !m_CameraManager.enabled || m_RateFailed || m_UserChoseConfiguration)
+                return;
+            if (Time.unscaledTime < m_NextRateCheck)
+                return;
+            m_NextRateCheck = Time.unscaledTime + k_RateCheckSeconds;
+            var fast = WantsFullRate(m_On, CoveredByPage, HandsBusy);
+            var rate = fast ? k_FastRate : k_SlowRate;
+            try
+            {
+                var current = m_CameraManager.currentConfiguration;
+                if (!current.HasValue || (current.Value.framerate ?? 0) == rate)
+                    return;
+                using var configurations = m_CameraManager.GetConfigurations(Unity.Collections.Allocator.Temp);
+                for (var i = 0; i < configurations.Length; i++)
+                {
+                    var c = configurations[i];
+                    if (c.width != current.Value.width || c.height != current.Value.height || (c.framerate ?? 0) != rate)
+                        continue;
+                    m_CameraManager.currentConfiguration = c;
+                    Debug.Log($"[Passthrough] Camera to {rate} Hz: " +
+                              (fast ? (HandsBusy ? "a hand is up" : "passthrough shows") : "no hand up and passthrough not showing"));
+                    return;
+                }
+                m_RateFailed = true;
+                Debug.Log($"[Passthrough] No {rate} Hz camera configuration at {current.Value.width}x{current.Value.height}; the rate stays as it is");
+            }
+            catch (System.Exception e)
+            {
+                m_RateFailed = true;
+                Debug.Log($"[Passthrough] The camera rate couldn't be changed: {e.Message}");
             }
         }
 

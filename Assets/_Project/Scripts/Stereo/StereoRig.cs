@@ -36,7 +36,10 @@ namespace Afterglow.Stereo
         [SerializeField] Color m_BackgroundColor = new(0.1f, 0.1f, 0.12f);
         [Tooltip("Android runs the display at the nearest refresh rate it supports, up to this. " +
                  "The \"fps\" launch option overrides it.")]
-        [SerializeField] int m_TargetFrameRate = 120;
+        // 60 by default: 120 on a ProMotion phone doubles the GPU's work and the present rate, and
+        // on an iPhone 18 Pro Max the thermal state reached "serious" within six minutes at 120,
+        // after which iOS held it to 16-60 fps anyway. "fps 120" or the settings screen opts in.
+        [SerializeField] int m_TargetFrameRate = 60;
         [Tooltip("Keep the CPU at most one frame ahead of the GPU: lower latency, a little less throughput.")]
         [SerializeField] bool m_LowLatency = true;
         [Tooltip("Cardboard's alignment marker: a line up from the bottom center that lines up with the middle of the viewer.")]

@@ -72,6 +72,15 @@ namespace Afterglow.Hands
         public float distance;
         public float pinchDistance;
         public float pinchRatio;
+
+        // What Vision saw of this hand in the image visionImageNs (HandTracker.SearchVision):
+        // its landmarks and their confidences, its mean confidence and which hand it is.
+        public bool seenByVision;
+        public long visionImageNs;
+        public float visionConfidence;
+        public VisionHandPose.Chirality visionChirality;
+        public readonly Vector2[] visionLandmarks = new Vector2[HandGeometry.JointCount];
+        public readonly float[] visionConfidences = new float[HandGeometry.JointCount];
         public float presence;
         public bool shapeFits;
         // The landmarker's handedness, as the chance that this is a right hand.
@@ -92,6 +101,8 @@ namespace Afterglow.Hands
             depthFilter.Reset();
             speed = Vector3.zero;
             hasGoodShape = false;
+            seenByVision = false;
+            visionImageNs = 0;
         }
     }
 }

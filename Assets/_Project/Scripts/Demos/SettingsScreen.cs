@@ -154,7 +154,7 @@ namespace Afterglow.Demos
 
             m_Rows.Add(new Setting
             {
-                Key = "fps", Label = "Frame rate", Choices = new[] { 60, 90, 120 }, Fallback = 120,
+                Key = "fps", Label = "Frame rate", Choices = new[] { 60, 90, 120 }, Fallback = 60,
                 Show = v => $"{v} fps", Apply = Rig,
             });
             m_Rows.Add(new Setting
