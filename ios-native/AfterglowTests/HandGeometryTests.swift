@@ -67,7 +67,9 @@ final class HandGeometryTests: XCTestCase {
     func testPinchHysteresis() {
         var pinch = PinchDetector()
         XCTAssertFalse(pinch.update(tipDistance: 0.03))
-        XCTAssertTrue(pinch.update(tipDistance: 0.02))
+        XCTAssertFalse(pinch.update(tipDistance: 0.02))     // one close result is a hand passing through
+        XCTAssertFalse(pinch.update(tipDistance: 0.02))
+        XCTAssertTrue(pinch.update(tipDistance: 0.02))      // three in a row is a pinch
         XCTAssertTrue(pinch.update(tipDistance: 0.04))      // still closed below the open distance
         XCTAssertTrue(pinch.update(tipDistance: 0.05))      // one result apart is not a release
         XCTAssertTrue(pinch.update(tipDistance: 0.10, tipsSure: false))   // a guessed tip changes nothing
@@ -75,6 +77,12 @@ final class HandGeometryTests: XCTestCase {
         XCTAssertFalse(pinch.update(tipDistance: 0.05))     // three in a row is
         XCTAssertFalse(pinch.update(tipDistance: 0.01, allowStart: false))
         XCTAssertFalse(pinch.update(tipDistance: 0.01, tipsSure: false))
+        // A start blocked midway (tips at different depths) begins the count again.
+        XCTAssertFalse(pinch.update(tipDistance: 0.01))
+        XCTAssertFalse(pinch.update(tipDistance: 0.01, allowStart: false))
+        XCTAssertFalse(pinch.update(tipDistance: 0.01))
+        XCTAssertFalse(pinch.update(tipDistance: 0.01))
+        XCTAssertTrue(pinch.update(tipDistance: 0.01))
     }
 
     func testOneEuroFollowsAndSmooths() {

@@ -50,7 +50,11 @@ Unity app's code.
   60 % of the hand's own flat-on size): with the fingers in line the camera sees only the thumb
   and Vision guesses the index tip beside it. A hand that leaves the view keeps its pinch and
   handedness for five seconds, so a pinch carried out of the camera's view and back is the same
-  pinch, and the grab demo keeps the cube until the hand is seen open.
+  pinch, and the grab demo keeps the cube until the hand is seen open. A pinch begins only after
+  three close results in a row with the tips at the same LiDAR depth (within 2 cm): a C-shaped
+  hand turned so its tips cross in the image is apart along the camera's axis and passes through
+  in less time. Two hands held together come back from Vision as one; the hand it stops reporting
+  is kept where it was for two seconds while the other is beside it.
 - **Drawn** as bones and joints over the view, cyan for a left hand and green-tinted for a right,
   the tips magenta while pinching; `showHands 0` hides them. In passthrough the eyes sit at the
   camera (eased over half a second, as the Unity app does), so the hands and anything placed line

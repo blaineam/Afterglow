@@ -29,6 +29,11 @@ final class HandTracker: @unchecked Sendable {
     // The Unity app's constants.
     private static let minHandConfidence: Float = 0.3
     private static let graceSeconds = 0.3
+    /// A hand Vision stops reporting while the other hand is right beside it is hidden behind
+    /// (or clasped with) that hand, not gone: Vision gives one observation for two hands together
+    /// (owner, 2026-11-06; the Unity app notes the same). It is kept this long, where it was.
+    private static let overlapHoldSeconds = 2.0
+    private static let overlapDistance: Float = 0.15
     private static let handednessBlend: Float = 0.1   // slower than the Unity app's 0.2: Vision's chirality flips more often than its landmarker's did
     private static let typicalPalmSize: Float = 0.055
     private static let minPalmSize: Float = 0.04
@@ -49,6 +54,9 @@ final class HandTracker: @unchecked Sendable {
     /// depth, is edge-on: the fingers are in line with the camera, which sees only the thumb and
     /// guesses the index tip beside it, which read as a pinch (owner, 2026-11-06). No pinch starts.
     private static let edgeOnOpenness: Float = 0.6
+    /// Fingertips whose LiDAR depths differ by more than this, metres, are apart along the camera's
+    /// axis however close they look: a C-shaped hand turned so its tips cross in the image.
+    private static let maxTipDepthGap: Float = 0.02
 
     private final class Slot {
         var state: TrackedHandState?
@@ -122,8 +130,15 @@ final class HandTracker: @unchecked Sendable {
         for slot in slots {
             guard var state = slot.state else { continue }
             if time - slot.lastSeen > Self.graceSeconds {
-                slot.state = nil
-                slot.lostAt = time
+                let other = slots.first { $0 !== slot && $0.state != nil && time - $0.lastSeen <= Self.graceSeconds }
+                let overlapping = other.map { simd_distance($0.state!.joints[HandGeometry.wrist], state.joints[HandGeometry.wrist]) < Self.overlapDistance } ?? false
+                if !(overlapping && time - slot.lastSeen <= Self.overlapHoldSeconds) {
+                    slot.state = nil
+                    slot.lostAt = time
+                    continue
+                }
+                // Hidden behind the other hand: shown where it was, not moved on.
+                result.append(state)
                 continue
             }
             let dt = Float(min(max(time - slot.imageTime, 0), Self.maxPredictionSeconds)) * Self.predictionGain
@@ -365,9 +380,18 @@ final class HandTracker: @unchecked Sendable {
                 if !slot.acquiring && before != (slot.handedness >= 0.5) { swaps += 1 }
             }
 
-            // Pinch.
+            // Pinch. The tips' LiDAR depths, where there are any, say whether they really meet.
             let thumb = joints[HandGeometry.thumbTip]
             let index = joints[HandGeometry.indexTip]
+            var tipDepthGap: Float?
+            if useDepth, let sceneDepth = frame.sceneDepth {
+                let t = hand.landmarks[HandGeometry.thumbTip], i = hand.landmarks[HandGeometry.indexTip]
+                if let dt = Self.sampleDepth(sceneDepth, at: SIMD2(t.x / Float(width), t.y / Float(height)), radius: 1),
+                   let di = Self.sampleDepth(sceneDepth, at: SIMD2(i.x / Float(width), i.y / Float(height)), radius: 1) {
+                    tipDepthGap = abs(dt - di)
+                }
+            }
+            let tipsLevel = (tipDepthGap ?? 0) <= Self.maxTipDepthGap
             let margin = Self.edgeMargin * Float(width)
             let tipsInside = [hand.landmarks[HandGeometry.thumbTip], hand.landmarks[HandGeometry.indexTip]].allSatisfy {
                 $0.x > margin && $0.x < Float(width) - margin && $0.y > margin && $0.y < Float(height) - margin
@@ -378,15 +402,15 @@ final class HandTracker: @unchecked Sendable {
             let isEdgeOn = openness < Self.edgeOnOpenness
             if isEdgeOn { edgeOn += 1 }
             // Edge-on only stops a pinch starting; a held one still follows the tips, so it can end.
-            let pinched = slot.pinch.update(tipDistance: simd_distance(thumb, index), allowStart: tipsInside && !isEdgeOn,
+            let pinched = slot.pinch.update(tipDistance: simd_distance(thumb, index), allowStart: tipsInside && !isEdgeOn && tipsLevel,
                                             tipsSure: tipsSure)
             if pinched != wasPinched {
                 if pinched { pinches += 1 }
                 let p = (thumb + index) / 2
-                log(String(format: "[Pinch] %@ %@ hand at (%.2f, %.2f, %.2f), tips %.1f cm apart (confidence %.2f, %.2f), palm %.0f%% open",
+                log(String(format: "[Pinch] %@ %@ hand at (%.2f, %.2f, %.2f), tips %.1f cm apart (confidence %.2f, %.2f, depth gap %@), palm %.0f%% open",
                            pinched ? "Pinch" : "Release", slot.handedness >= 0.5 ? "right" : "left", p.x, p.y, p.z,
                            simd_distance(thumb, index) * 100, hand.confidences[HandGeometry.thumbTip],
-                           hand.confidences[HandGeometry.indexTip], openness * 100))
+                           hand.confidences[HandGeometry.indexTip], tipDepthGap.map { String(format: "%.1f cm", $0 * 100) } ?? "none", openness * 100))
             }
 
             slot.state = TrackedHandState(joints: joints, pinched: pinched, pinchPoint: (thumb + index) / 2,
@@ -402,8 +426,12 @@ final class HandTracker: @unchecked Sendable {
         // Slots not seen this image keep their state until the grace runs out (hands(at:)).
         for (s, slot) in slots.enumerated() where !used.contains(s) && slot.state != nil {
             if now - slot.lastSeen > Self.graceSeconds {
-                slot.state = nil
-                slot.lostAt = now
+                let other = slots.first { $0 !== slot && $0.state != nil && now - $0.lastSeen <= Self.graceSeconds }
+                let overlapping = other.map { simd_distance($0.state!.joints[HandGeometry.wrist], slot.state!.joints[HandGeometry.wrist]) < Self.overlapDistance } ?? false
+                if !(overlapping && now - slot.lastSeen <= Self.overlapHoldSeconds) {
+                    slot.state = nil
+                    slot.lostAt = now
+                }
             }
         }
 
@@ -434,7 +462,7 @@ final class HandTracker: @unchecked Sendable {
 
     /// The median scene depth in a 5x5 window at a fraction of the way across and down the image,
     /// of samples with at least medium confidence; nil when none.
-    private static func sampleDepth(_ sceneDepth: ARDepthData, at uv: SIMD2<Float>) -> Float? {
+    private static func sampleDepth(_ sceneDepth: ARDepthData, at uv: SIMD2<Float>, radius: Int = 2) -> Float? {
         let map = sceneDepth.depthMap
         guard CVPixelBufferGetPixelFormatType(map) == kCVPixelFormatType_DepthFloat32 else { return nil }
         let width = CVPixelBufferGetWidth(map), height = CVPixelBufferGetHeight(map)
@@ -453,8 +481,8 @@ final class HandTracker: @unchecked Sendable {
         defer { if let confidence = sceneDepth.confidenceMap { CVPixelBufferUnlockBaseAddress(confidence, .readOnly) } }
         let cx = Int(uv.x * Float(width)), cy = Int(uv.y * Float(height))
         var samples: [Float] = []
-        for y in max(0, cy - 2)...min(height - 1, cy + 2) {
-            for x in max(0, cx - 2)...min(width - 1, cx + 2) {
+        for y in max(0, cy - radius)...min(height - 1, cy + radius) {
+            for x in max(0, cx - radius)...min(width - 1, cx + radius) {
                 let d = base.load(fromByteOffset: y * rowBytes + x * 4, as: Float.self)
                 guard d > 0, d.isFinite else { continue }
                 if let confidenceBase, confidenceBase.load(fromByteOffset: y * confidenceRow + x, as: UInt8.self) < 1 { continue }

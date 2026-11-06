@@ -6,15 +6,20 @@
 struct PinchDetector {
     let closeDistance: Float
     let openDistance: Float
-    /// Results in a row past the open distance before a pinch ends (about 100 ms at 30 images/s).
+    /// Results in a row past the open distance before a pinch ends, and within the close distance
+    /// (with a start allowed) before one begins: a C-shaped hand turned so its tips cross in the
+    /// image passes through that in less time than a pinch is held (owner, 2026-11-06).
     let releaseResults: Int
+    let startResults: Int
     private(set) var isPinched = false
     private var openRun = 0
+    private var closeRun = 0
 
-    init(closeDistance: Float = 0.025, openDistance: Float = 0.045, releaseResults: Int = 3) {
+    init(closeDistance: Float = 0.025, openDistance: Float = 0.045, releaseResults: Int = 3, startResults: Int = 3) {
         self.closeDistance = closeDistance
         self.openDistance = openDistance
         self.releaseResults = releaseResults
+        self.startResults = startResults
     }
 
     /// Takes the fingertips' distance in metres. `allowStart` false keeps an open hand open (the
@@ -34,8 +39,14 @@ struct PinchDetector {
                 openRun = 0
             }
         } else if allowStart && tipDistance < closeDistance {
-            isPinched = true
-            openRun = 0
+            closeRun += 1
+            if closeRun >= startResults {
+                isPinched = true
+                openRun = 0
+                closeRun = 0
+            }
+        } else {
+            closeRun = 0
         }
         return isPinched
     }
@@ -43,5 +54,6 @@ struct PinchDetector {
     mutating func reset() {
         isPinched = false
         openRun = 0
+        closeRun = 0
     }
 }
