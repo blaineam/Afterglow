@@ -32,4 +32,10 @@ typedef struct {
     unsigned int eye;
 } DistortionVertex;
 
+// Hands and demo objects: world-space triangles with a colour each.
+typedef struct {
+    vector_float3 position;
+    vector_float4 color;
+} OverlayVertex;
+
 #endif

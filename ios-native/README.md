@@ -2,8 +2,9 @@
 
 The native port of Afterglow for iOS: Swift, SwiftUI for the shell, Metal for the picture and
 ARKit for tracking and the camera. It sits beside the Unity app and takes over from it phase by
-phase (see "A native port?" in [ROADMAP.md](../ROADMAP.md)). This is **phase 1**: the stereo rig,
-head tracking and passthrough. Nothing here touches the Unity app's code.
+phase (see "A native port?" in [ROADMAP.md](../ROADMAP.md)). Done so far: **phase 1**, the stereo
+rig, head tracking and passthrough, and **phase 2**, hands and pinch. Nothing here touches the
+Unity app's code.
 
 ## What it does
 
@@ -30,6 +31,42 @@ head tracking and passthrough. Nothing here touches the Unity app's code.
   on each change of iOS's thermal state with the time since launch, `[Pose]`, `[AR]`,
   `[Passthrough]`, `[Stereo]`. Written to `Documents/session.log`, previous run kept as
   `session-previous.log`.
+
+## Phase 2: hands and pinch
+
+- **Hands from Vision** on the Neural Engine (`HandTracker.swift`), the way the Unity app does it
+  on the iPhone: each camera image goes to `VNDetectHumanHandPoseRequest`, up to two hands with
+  21 joints each, a confidence per joint and which hand it is, at most `handHz` images a second
+  (30) and one at a time. The landmarks are placed in 3D by a port of the Unity app's tested
+  `HandGeometry.cs`: a flat hand at the learned palm size, fitted to the palm's pixels; where the
+  phone has LiDAR, ARKit's scene depth at the palm places the hand where the sensor saw it and
+  teaches the palm size for when there is no depth. The joints are smoothed with One Euro filters
+  (the Unity app's settings), held for 0.3 s through a missed image, and moved on by the palm's
+  speed for the time since their image.
+- **Pinch**: the thumb and index tips within 2.5 cm, open again past 4.5 cm for three results in
+  a row, never started with a tip at the image's edge, and held as it is while a tip is hidden
+  (Vision's confidence under 0.4), since a turning hand hides a fingertip and a guessed tip broke
+  the pinch.
+- **Drawn** as bones and joints over the view, cyan for a left hand and green-tinted for a right,
+  the tips magenta while pinching; `showHands 0` hides them. In passthrough the eyes sit at the
+  camera (eased over half a second, as the Unity app does), so the hands and anything placed line
+  up with the camera image.
+- **A grab demo** (`GrabDemo` in `HandOverlay.swift`): a pinch takes the nearest cube within
+  8 cm or makes a new one, carries it, and the release leaves it there. Enough to feel the hands
+  before the games arrive.
+- **Log**: `[Hands]` every five seconds (images/s, Vision's time per image, hands seen and
+  tracked, confidence, distance, the palm size and what taught it, pinches, handedness swaps) and
+  `[Pinch]` on every pinch and release.
+
+Launch options: `hands` (1), `handHz` (20), `handDepth` (1: the scene depth places the hands and
+teaches the palm size), `showHands` (1).
+
+**What the hands cost** (iPhone 18 Pro Max, 2026-11-06, from cold, passthrough on, two hands in
+view most of the time): Vision at 30 images/s took 16–18 ms an image on the Neural Engine, the
+frame loop stayed at 60.0 fps with 0.0 % late and 1–2 ms of GPU, and the phone went from nominal
+to "fair" at 1:43 after launch (the phase 1 run, without hands, stayed nominal). That is the one
+steady load the hands add, whether or not a hand is in view, so the default rate is 20 images/s
+(the Unity app ran 15); `handHz 30` brings the smoother tracking back.
 
 ## Build and run
 
@@ -70,6 +107,7 @@ screen shows a control strip for the first four, whose values are kept between r
 | `eyesX`, `eyesY`, `eyesZ` | 60, -10, 66 | the eyes' midpoint relative to the camera, mm, camera axes (x right, y up, z back) |
 | `dump` | 0 | save the left eye's texture to `Documents/eye-left.png` this many seconds after launch |
 | `cold` | 0 | 1 vouches the phone is cold, so `[Thermal]` times the run from cold despite a recent run |
+| `hands`, `handHz`, `handDepth`, `showHands` | 1, 20, 1, 1 | hand tracking on, its image rate, LiDAR depth for the hands, the hands drawn |
 
 ## Phase 1 run (iPhone 18 Pro Max, 2026-11-06)
 
@@ -111,6 +149,7 @@ ios-native/
   Afterglow/Stereo/           ViewerParams, PolynomialRadialDistortion, LensDistortion, ScreenMetrics
   Afterglow/Render/           Renderer, Shaders.metal, ShaderTypes.h
   Afterglow/Tracking/         ARController (session, formats, camera textures), PosePredictor
+  Afterglow/Hands/            HandTracker (Vision), HandGeometry, OneEuroFilter, PinchDetector, HandOverlay + GrabDemo
   Afterglow/Log/              SessionLog, FrameTimingLog, ThermalLog
   AfterglowTests/             the optics against the Unity app's numbers
 ```

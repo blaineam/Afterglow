@@ -40,12 +40,17 @@ final class ARController: NSObject, ARSessionDelegate, @unchecked Sendable {
     private var lastState = ""
     private var loggedImage = false
     private let preferUltraWide: Bool
+    private let wantsDepth: Bool
+    /// The hand tracker fed with every frame; nil with hands off.
+    let hands: HandTracker?
     private(set) var chosenFormatText = "none"
     private(set) var cameraName = "wide"
 
-    init(device: MTLDevice, preferUltraWide: Bool) {
+    init(device: MTLDevice, preferUltraWide: Bool, hands: HandTracker?, wantsDepth: Bool) {
         self.device = device
         self.preferUltraWide = preferUltraWide
+        self.hands = hands
+        self.wantsDepth = wantsDepth
         super.init()
         CVMetalTextureCacheCreate(nil, nil, device, nil, &textureCache)
     }
@@ -68,6 +73,11 @@ final class ARController: NSObject, ARSessionDelegate, @unchecked Sendable {
         configuration.worldAlignment = .gravity
         if let format = chooseFormat() {
             configuration.videoFormat = format
+        }
+        // The scene depth (LiDAR) teaches the hand tracker the user's palm size.
+        if wantsDepth && hands != nil && ARWorldTrackingConfiguration.supportsFrameSemantics(.sceneDepth) {
+            configuration.frameSemantics.insert(.sceneDepth)
+            log("[AR] Scene depth on, for the hands' palm size")
         }
         session.delegate = self
         session.delegateQueue = queue
@@ -123,6 +133,7 @@ final class ARController: NSObject, ARSessionDelegate, @unchecked Sendable {
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
         let pose = PoseSample(timestamp: frame.timestamp, transform: frame.camera.transform)
         predictor.arrived(pose)
+        hands?.submit(frame)
 
         var captured: CapturedFrame?
         // The iPhone 18 Pro Max delivers x420, 10-bit video-range samples left-justified in 16-bit

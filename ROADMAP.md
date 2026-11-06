@@ -176,6 +176,10 @@ foundation at all. The honest picture:
   world tracking with the head predicted ahead by the gyroscope, passthrough at the camera's true
   field of view, a procedural synthwave surrounding, and this app's `[Frames]`/`[Thermal]` log
   lines for comparison. Its README carries the five-minute run next to this app's numbers.
+- **Phase 2 done 2026-11-06**, the same day: Vision hand pose on the Neural Engine at 30 images/s,
+  the hands placed by LiDAR depth and `HandGeometry` (ported, tested), pinch with hysteresis held
+  through hidden tips and fast moves, hands drawn over the view, a grab-a-cube demo. Next:
+  phase 3, the browser and WebXR (the shim ports as is).
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

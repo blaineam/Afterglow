@@ -29,6 +29,12 @@ final class Settings: ObservableObject {
     let dumpAfterSeconds: Int
     /// The owner vouches the phone is cold (`cold 1`), overriding the fifteen-minute rule.
     let assertedCold: Bool
+    /// Hand tracking on, its image rate, whether the scene depth (LiDAR) teaches the palm size,
+    /// and whether the tracked hands are drawn.
+    let hands: Bool
+    let handHz: Int
+    let handDepth: Bool
+    let showHands: Bool
 
     private var loading = true
     private var options: [String: String] = [:]
@@ -48,6 +54,10 @@ final class Settings: ObservableObject {
                                Self.read("eyesZ", options: options, default: 66))
         dumpAfterSeconds = Self.read("dump", options: options, default: 0)
         assertedCold = Self.read("cold", options: options, default: 0) != 0
+        hands = Self.read("hands", options: options, default: 1) != 0
+        handHz = min(max(Self.read("handHz", options: options, default: 20), 1), 60)
+        handDepth = Self.read("handDepth", options: options, default: 1) != 0
+        showHands = Self.read("showHands", options: options, default: 1) != 0
         loading = false
         let given = options.keys.sorted().map { "\($0) \(options[$0]!)" }.joined(separator: ", ")
         log("[Stereo] Launch options: \(given.isEmpty ? "none" : given)")

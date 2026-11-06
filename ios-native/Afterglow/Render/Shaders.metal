@@ -1,7 +1,10 @@
-// Afterglow's shaders. The scene passes (sky, floor, passthrough) draw both eyes in one draw with
-// vertex amplification: the amplification id picks the eye's uniforms and the slice of the eye
-// texture array the fragment lands in. The distortion pass then warps each slice onto its half of
-// the screen with the viewer's lens geometry.
+// Afterglow's shaders. The scene passes (sky, floor, passthrough, overlay) draw both eyes in one
+// draw with vertex amplification: the amplification id picks the eye's uniforms, and the pass's
+// view mappings add the eye's slice to the render target array index the vertex writes, which is
+// therefore always 0 here (writing the eye index too sent the right eye to slice 2, out of range,
+// and both eyes landed on the left slice: 2026-11-06). Without amplification (the Simulator) the
+// pass is bound to one slice and 0 is right as well. The distortion pass then warps each slice
+// onto its half of the screen with the viewer's lens geometry.
 #include <metal_stdlib>
 #include "ShaderTypes.h"
 using namespace metal;
@@ -21,7 +24,7 @@ vertex SceneOut fullscreenVertex(uint vid [[vertex_id]], ushort amp [[amplificat
     const float2 corners[3] = { float2(-1, -1), float2(3, -1), float2(-1, 3) };
     SceneOut out;
     out.position = float4(corners[vid], 0.5, 1);
-    out.layer = amp;
+    out.layer = 0;
     out.ndc = corners[vid];
     out.worldPos = float3(0);
     out.eye = amp;
@@ -119,7 +122,7 @@ vertex SceneOut floorVertex(uint vid [[vertex_id]], ushort amp [[amplification_i
     float3 world = float3(c.x, frame.floorHeight, c.y);
     SceneOut out;
     out.position = eye.viewProjection * float4(world, 1);
-    out.layer = amp;
+    out.layer = 0;
     out.ndc = float2(0);
     out.worldPos = world;
     out.eye = amp;
@@ -190,6 +193,29 @@ fragment float4 passthroughFragment(SceneOut in [[stage_in]], constant FrameUnif
                         y + 1.8556 * cbcr.x);
     float rim = smoothstep(0.0, 0.03, edge);
     return float4(rgb * rim, 1.0);
+}
+
+// ---- Hands and demo objects ---------------------------------------------------------------
+
+struct OverlayOut {
+    float4 position [[position]];
+    uint layer [[render_target_array_index]];
+    float4 color;
+};
+
+vertex OverlayOut overlayVertex(uint vid [[vertex_id]], ushort amp [[amplification_id]],
+                                const device OverlayVertex *vertices [[buffer(1)]],
+                                constant FrameUniforms &frame [[buffer(0)]]) {
+    OverlayVertex v = vertices[vid];
+    OverlayOut out;
+    out.position = frame.eyes[amp].viewProjection * float4(v.position, 1);
+    out.layer = 0;
+    out.color = v.color;
+    return out;
+}
+
+fragment float4 overlayFragment(OverlayOut in [[stage_in]]) {
+    return in.color;
 }
 
 // ---- Lens distortion -----------------------------------------------------------------------

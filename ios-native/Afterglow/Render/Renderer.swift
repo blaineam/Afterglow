@@ -19,6 +19,11 @@ final class Renderer {
     private var floorPipeline: MTLRenderPipelineState!
     private var passthroughPipeline: MTLRenderPipelineState!
     private var distortionPipeline: MTLRenderPipelineState!
+    private var overlayPipeline: MTLRenderPipelineState!
+    private var overlay = HandOverlay()
+    private var grabDemo = GrabDemo()
+    private var overlayBuffers: [MTLBuffer] = []
+    private var overlayBufferIndex = 0
 
     private let screen: ScreenMetrics
     private let lens: LensDistortion
@@ -51,6 +56,11 @@ final class Renderer {
     /// The eyes' midpoint relative to the camera, in camera axes (x right, y up, z back), metres.
     private let cameraToEyes: SIMD3<Float>
     private let floorHeight: Float = -1.6
+    /// How far the eyes have moved onto the camera (1) from their real place (0): with passthrough
+    /// on they sit at the camera, so the hands and anything placed line up with the camera image,
+    /// which is drawn as if seen from there. Eased over half a second, as the Unity app does.
+    private var eyesAtCamera: Float = 0
+    private var lastDrawTime: Double = 0
 
     init?(settings: Settings, thermal: ThermalLog, screen uiScreen: UIScreen) {
         guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue(),
@@ -67,7 +77,8 @@ final class Renderer {
         self.lens = LensDistortion(viewer: .afterglowViewer, screenWidthMeters: screen.widthMeters,
                                    screenHeightMeters: screen.heightMeters)
         self.cameraToEyes = SIMD3<Float>(settings.cameraToEyesMm) / 1000
-        self.ar = ARController(device: device, preferUltraWide: settings.ultraWide)
+        let hands = settings.hands ? HandTracker(hertz: settings.handHz, useDepth: settings.handDepth) : nil
+        self.ar = ARController(device: device, preferUltraWide: settings.ultraWide, hands: hands, wantsDepth: settings.handDepth)
 
         // The simulator's Metal has no vertex amplification: there each eye gets its own pass
         // into its slice (drawEyes), which is the same picture at twice the draw calls.
@@ -117,6 +128,7 @@ final class Renderer {
         skyPipeline = try scene("fullscreenVertex", "skyFragment")
         floorPipeline = try scene("floorVertex", "floorFragment")
         passthroughPipeline = try scene("fullscreenVertex", "passthroughFragment")
+        overlayPipeline = try scene("overlayVertex", "overlayFragment")
 
         let d = MTLRenderPipelineDescriptor()
         d.vertexFunction = library.makeFunction(name: "distortionVertex")
@@ -208,7 +220,11 @@ final class Renderer {
             cameraInWorld = ar.predictor.predict(frame.pose, to: predictTo)
             horizonMs = (predictTo - frame.pose.timestamp) * 1000
         }
-        let headInWorld = cameraInWorld * simd_float4x4.translation(cameraToEyes)
+        let step = Float(min(max(t2 - lastDrawTime, 0), 0.1)) / 0.5
+        lastDrawTime = t2
+        let target: Float = settings.passthrough ? 1 : 0
+        eyesAtCamera += min(max(target - eyesAtCamera, -step), step)
+        let headInWorld = cameraInWorld * simd_float4x4.translation(cameraToEyes * (1 - eyesAtCamera))
 
         var uniforms = FrameUniforms()
         for eye in Eye.allCases {
@@ -237,6 +253,33 @@ final class Renderer {
         uniforms.time = Float(t2 - launchTime)
         uniforms.floorHeight = floorHeight
         uniforms.passthroughBlend = settings.passthrough ? 1 : 0
+
+        // The hands as of this frame, and the grab demo they drive.
+        overlay.clear()
+        if let hands = ar.hands {
+            let tracked = hands.hands(at: predictTo)
+            grabDemo.update(hands: tracked)
+            let eyeMid = headInWorld.columns.3.xyz
+            if settings.showHands {
+                for hand in tracked { overlay.addHand(hand, eye: eyeMid) }
+            }
+            grabDemo.draw(into: &overlay)
+        }
+        var overlayBuffer: MTLBuffer?
+        if !overlay.vertices.isEmpty {
+            let bytes = overlay.vertices.count * MemoryLayout<OverlayVertex>.stride
+            if overlayBuffers.count < 3 {
+                while overlayBuffers.count < 3 {
+                    overlayBuffers.append(device.makeBuffer(length: 1 << 20, options: .storageModeShared)!)
+                }
+            }
+            overlayBufferIndex = (overlayBufferIndex + 1) % overlayBuffers.count
+            let buffer = overlayBuffers[overlayBufferIndex]
+            if bytes <= buffer.length {
+                overlay.vertices.withUnsafeBytes { buffer.contents().copyMemory(from: $0.baseAddress!, byteCount: bytes) }
+                overlayBuffer = buffer
+            }
+        }
 
         // Pass 1: the scene, both eyes at once (or one pass per eye without amplification).
         let passes: [Int?] = amplifies ? [nil] : [0, 1]
@@ -274,6 +317,11 @@ final class Renderer {
                 encoder.setRenderPipelineState(floorPipeline)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
             }
+            if let overlayBuffer {
+                encoder.setRenderPipelineState(overlayPipeline)
+                encoder.setVertexBuffer(overlayBuffer, offset: 0, index: 1)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: overlay.vertices.count)
+            }
             encoder.endEncoding()
         }
 
@@ -301,7 +349,8 @@ final class Renderer {
         }
         if settings.dumpAfterSeconds > 0 && !dumped && t2 - launchTime >= Double(settings.dumpAfterSeconds) {
             dumped = true
-            dumpLeftEye(from: eyeTexture, in: commandBuffer)
+            dumpEye(0, from: eyeTexture, in: commandBuffer)
+            dumpEye(1, from: eyeTexture, in: commandBuffer)
         }
         #if !targetEnvironment(simulator)
         // The simulator's drawables report no presented time.
@@ -333,15 +382,15 @@ final class Renderer {
 }
 
 extension Renderer {
-    /// Copies the left eye slice into a readable texture and writes it as a PNG once the GPU is
-    /// done, for checking the picture from the Mac (`--ei dump 3`).
-    fileprivate func dumpLeftEye(from eyeTexture: MTLTexture, in commandBuffer: MTLCommandBuffer) {
+    /// Copies an eye's slice into a readable texture and writes it as a PNG once the GPU is done,
+    /// for checking the picture from the Mac (`--ei dump 3`): eye-left.png and eye-right.png.
+    fileprivate func dumpEye(_ slice: Int, from eyeTexture: MTLTexture, in commandBuffer: MTLCommandBuffer) {
         let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: eyeTexture.width,
                                                          height: eyeTexture.height, mipmapped: false)
         d.storageMode = .shared
         d.usage = .shaderRead
         guard let copy = device.makeTexture(descriptor: d), let blit = commandBuffer.makeBlitCommandEncoder() else { return }
-        blit.copy(from: eyeTexture, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+        blit.copy(from: eyeTexture, sourceSlice: slice, sourceLevel: 0, sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
                   sourceSize: MTLSize(width: eyeTexture.width, height: eyeTexture.height, depth: 1),
                   to: copy, destinationSlice: 0, destinationLevel: 0, destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0))
         blit.endEncoding()
@@ -350,7 +399,7 @@ extension Renderer {
             let width = copied.width, height = copied.height
             var bytes = [UInt8](repeating: 0, count: width * height * 4)
             copied.getBytes(&bytes, bytesPerRow: width * 4, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
-            let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("eye-left.png")
+            let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent(slice == 0 ? "eye-left.png" : "eye-right.png")
             guard let provider = CGDataProvider(data: Data(bytes) as CFData),
                   let image = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
                                       space: CGColorSpaceCreateDeviceRGB(),
@@ -362,7 +411,7 @@ extension Renderer {
             }
             CGImageDestinationAddImage(destination, image, nil)
             CGImageDestinationFinalize(destination)
-            log("[Stereo] Left eye texture written to \(url.lastPathComponent) (\(width)x\(height))")
+            log("[Stereo] Eye texture written to \(url.lastPathComponent) (\(width)x\(height))")
         }
     }
 }
