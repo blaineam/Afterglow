@@ -179,10 +179,15 @@ fragment float4 passthroughFragment(SceneOut in [[stage_in]], constant FrameUnif
     }
     float y = lumaTexture.sample(s, uv).r;
     float2 cbcr = chromaTexture.sample(s, uv).rg - 0.5;
-    // Full-range BT.601, which ARKit's 420f images are.
-    float3 rgb = float3(y + 1.402 * cbcr.y,
-                        y - 0.344136 * cbcr.x - 0.714136 * cbcr.y,
-                        y + 1.772 * cbcr.x);
+    if (frame.captureVideoRange > 0.5) {
+        // Video range: Y 16-235 and C 16-240 of 255 (the same fractions for 10-bit samples).
+        y = (y - 16.0 / 255.0) * (255.0 / 219.0);
+        cbcr *= 255.0 / 224.0;
+    }
+    // BT.709.
+    float3 rgb = float3(y + 1.5748 * cbcr.y,
+                        y - 0.1873 * cbcr.x - 0.4681 * cbcr.y,
+                        y + 1.8556 * cbcr.x);
     float rim = smoothstep(0.0, 0.03, edge);
     return float4(rgb * rim, 1.0);
 }

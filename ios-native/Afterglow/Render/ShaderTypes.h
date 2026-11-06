@@ -23,7 +23,7 @@ typedef struct {
     float time;                          // seconds since launch, for the environment's animation
     float floorHeight;                   // the virtual floor's y
     float passthroughBlend;              // 1 shows the camera image, 0 the surroundings
-    float pad;
+    float captureVideoRange;             // 1 when the image's samples are video range (Y 16-235)
 } FrameUniforms;
 
 typedef struct {

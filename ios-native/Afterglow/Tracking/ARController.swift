@@ -19,6 +19,8 @@ struct CapturedFrame: @unchecked Sendable {
     // And the pixel buffer itself: ARKit recycles it for a new capture once its frame is released,
     // which showed as coloured static in passthrough (2026-11-06).
     let pixelBuffer: CVPixelBuffer
+    /// Video range (Y 16-235, C 16-240 of 255) rather than full range; 10-bit buffers are video range.
+    let videoRange: Bool
 }
 
 /// Runs ARKit world tracking: picks the camera format (the ultra-wide at 60 fps where the phone
@@ -123,14 +125,23 @@ final class ARController: NSObject, ARSessionDelegate, @unchecked Sendable {
         predictor.arrived(pose)
 
         var captured: CapturedFrame?
+        // The iPhone 18 Pro Max delivers x420, 10-bit video-range samples left-justified in 16-bit
+        // words, even for its non-HDR formats; read as 8-bit it was coloured static (2026-11-06).
+        // 16-bit unorm textures read the 10 bits as a fraction directly.
+        let pixelFormat = CVPixelBufferGetPixelFormatType(frame.capturedImage)
+        let tenBit = pixelFormat == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange
+            || pixelFormat == kCVPixelFormatType_420YpCbCr10BiPlanarFullRange
+        let videoRange = pixelFormat == kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
+            || pixelFormat == kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange
         if let cache = textureCache,
-           let luma = texture(from: frame.capturedImage, plane: 0, format: .r8Unorm, cache: cache),
-           let chroma = texture(from: frame.capturedImage, plane: 1, format: .rg8Unorm, cache: cache) {
+           let luma = texture(from: frame.capturedImage, plane: 0, format: tenBit ? .r16Unorm : .r8Unorm, cache: cache),
+           let chroma = texture(from: frame.capturedImage, plane: 1, format: tenBit ? .rg16Unorm : .rg8Unorm, cache: cache) {
             captured = CapturedFrame(pose: pose, intrinsics: frame.camera.intrinsics,
                                      imageWidth: CVPixelBufferGetWidth(frame.capturedImage),
                                      imageHeight: CVPixelBufferGetHeight(frame.capturedImage),
                                      luma: luma.texture, chroma: chroma.texture,
-                                     lumaRef: luma.ref, chromaRef: chroma.ref, pixelBuffer: frame.capturedImage)
+                                     lumaRef: luma.ref, chromaRef: chroma.ref, pixelBuffer: frame.capturedImage,
+                                     videoRange: videoRange)
         }
         // Entries the renderer no longer holds go back to the pool.
         if let textureCache { CVMetalTextureCacheFlush(textureCache, 0) }
@@ -155,8 +166,10 @@ final class ARController: NSObject, ARSessionDelegate, @unchecked Sendable {
             let v = 2 * atan(Float(captured.imageHeight) / (2 * fy)) * degrees
             let format = CVPixelBufferGetPixelFormatType(captured.pixelBuffer)
             let fourcc = String(bytes: [UInt8(format >> 24 & 0xff), UInt8(format >> 16 & 0xff), UInt8(format >> 8 & 0xff), UInt8(format & 0xff)], encoding: .ascii) ?? "?"
-            log(String(format: "[Passthrough] Camera image %dx%d %@ (%d planes), %.0f x %.0f deg (%@ camera), intrinsics fx %.1f fy %.1f cx %.1f cy %.1f",
-                       captured.imageWidth, captured.imageHeight, fourcc, CVPixelBufferGetPlaneCount(captured.pixelBuffer), h, v, cameraName, fx, fy,
+            log(String(format: "[Passthrough] Camera image %dx%d %@ (%d planes, %@, %@), %.0f x %.0f deg (%@ camera), intrinsics fx %.1f fy %.1f cx %.1f cy %.1f",
+                       captured.imageWidth, captured.imageHeight, fourcc, CVPixelBufferGetPlaneCount(captured.pixelBuffer),
+                       captured.luma.pixelFormat == .r16Unorm ? "16-bit" : "8-bit", captured.videoRange ? "video range" : "full range",
+                       h, v, cameraName, fx, fy,
                        captured.intrinsics.columns.2.x, captured.intrinsics.columns.2.y))
         }
         if now - lastLog >= 5 {

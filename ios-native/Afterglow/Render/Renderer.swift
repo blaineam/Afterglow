@@ -232,6 +232,7 @@ final class Renderer {
             let k = frame.intrinsics
             uniforms.captureIntrinsics = SIMD4(k.columns.0.x / Float(frame.imageWidth), k.columns.1.y / Float(frame.imageHeight),
                                                k.columns.2.x / Float(frame.imageWidth), k.columns.2.y / Float(frame.imageHeight))
+            uniforms.captureVideoRange = frame.videoRange ? 1 : 0
         }
         uniforms.time = Float(t2 - launchTime)
         uniforms.floorHeight = floorHeight
