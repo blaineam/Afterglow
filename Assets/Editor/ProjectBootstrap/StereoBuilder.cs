@@ -127,15 +127,17 @@ namespace ProjectBootstrap
             EditorApplication.Exit(summary.result == BuildResult.Succeeded ? 0 : 1);
         }
 
-        // For published builds (Tools/release_android.sh). CARDBOARDXR_VERSION (1.2.3) sets the version
-        // and, on Android, a version code that rises with it (10203), so updates install over older
-        // releases. CARDBOARDXR_KEYSTORE signs the APK with that keystore instead of Unity's debug key,
-        // which differs on every machine; its password comes in CARDBOARDXR_KEYSTORE_PASS (also the key's,
-        // as in a PKCS12 keystore) and the key's alias in CARDBOARDXR_KEY_ALIAS, by default cardboardxr.
+        // For published builds (Tools/release_android.sh, .github/workflows/release.yml). CARDBOARDXR_VERSION
+        // (1.2.3) sets the version and, on Android, a version code that rises with it (10203), so updates
+        // install over older releases. CARDBOARDXR_KEYSTORE signs the APK with that keystore instead of
+        // Unity's debug key, which differs on every machine; its password comes in CARDBOARDXR_KEYSTORE_PASS
+        // (also the key's, as in a PKCS12 keystore, unless CARDBOARDXR_KEY_PASS says otherwise) and the
+        // key's alias in CARDBOARDXR_KEY_ALIAS, by default cardboardxr. Each can come on the command line
+        // instead, under the names game-ci's unity-builder uses, since it forwards no environment of ours.
         // False if they're set wrong, rather than shipping a build signed with the wrong key.
         static bool ApplyRelease(BuildTarget target)
         {
-            var version = System.Environment.GetEnvironmentVariable("CARDBOARDXR_VERSION");
+            var version = Option("CARDBOARDXR_VERSION", "-buildVersion");
             if (!string.IsNullOrWhiteSpace(version))
             {
                 var parts = version.Trim().Split('.');
@@ -150,23 +152,46 @@ namespace ProjectBootstrap
                 Debug.Log($"[Build] Version {PlayerSettings.bundleVersion} ({PlayerSettings.Android.bundleVersionCode})");
             }
 
-            var keystore = System.Environment.GetEnvironmentVariable("CARDBOARDXR_KEYSTORE");
-            if (target != BuildTarget.Android || string.IsNullOrWhiteSpace(keystore))
+            var keystore = Option("CARDBOARDXR_KEYSTORE", "-androidKeystoreName");
+            if (target != BuildTarget.Android || keystore == null)
                 return true;
-            var password = System.Environment.GetEnvironmentVariable("CARDBOARDXR_KEYSTORE_PASS");
-            if (!System.IO.File.Exists(keystore) || string.IsNullOrEmpty(password))
+            // A relative path is relative to the project, which is where unity-builder puts the keystore.
+            if (!System.IO.Path.IsPathRooted(keystore))
+                keystore = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "..", keystore));
+            var password = Option("CARDBOARDXR_KEYSTORE_PASS", "-androidKeystorePass");
+            if (!System.IO.File.Exists(keystore) || password == null)
             {
                 Debug.LogError($"[Build] Keystore {keystore} missing, or CARDBOARDXR_KEYSTORE_PASS unset");
                 return false;
             }
-            var alias = System.Environment.GetEnvironmentVariable("CARDBOARDXR_KEY_ALIAS");
+            var alias = Option("CARDBOARDXR_KEY_ALIAS", "-androidKeyaliasName");
             PlayerSettings.Android.useCustomKeystore = true;
             PlayerSettings.Android.keystoreName = keystore;
             PlayerSettings.Android.keystorePass = password;
-            PlayerSettings.Android.keyaliasName = string.IsNullOrWhiteSpace(alias) ? "cardboardxr" : alias.Trim();
-            PlayerSettings.Android.keyaliasPass = password;
+            PlayerSettings.Android.keyaliasName = alias ?? "cardboardxr";
+            PlayerSettings.Android.keyaliasPass = Option("CARDBOARDXR_KEY_PASS", "-androidKeyaliasPass") ?? password;
             Debug.Log($"[Build] Signing with {System.IO.Path.GetFileName(keystore)}, key {PlayerSettings.Android.keyaliasName}");
             return true;
+        }
+
+        // The environment variable's value, else the value after the argument on the command line, else
+        // null; blank counts as unset, since unity-builder passes every argument, set or not.
+        static string Option(string variable, string argument)
+        {
+            var value = System.Environment.GetEnvironmentVariable(variable);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                var args = System.Environment.GetCommandLineArgs();
+                for (var i = 0; i + 1 < args.Length; i++)
+                {
+                    if (args[i] == argument)
+                    {
+                        value = args[i + 1];
+                        break;
+                    }
+                }
+            }
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
         }
 
         // Core first, since it's the scene the app starts in, then the lobby and the demos.

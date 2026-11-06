@@ -27,7 +27,7 @@ and the gap between them is most of the work.
 | **Performance** | Last device log (iPhone 18 Pro Max, 2026-11-03): 55–77 fps against a 120 target, 13–26 % late frames, steady ~50 ms "present wait" hitches with the browser window up. Visible judder in a headset. |
 | **Optics** | Until 2026-11-05 the rig defaulted to **Cardboard v1** — the wrong lenses for every viewer this project knows — unless a QR code had been scanned. The printed viewer's profile is now the default, and the scan screen offers the built-ins. |
 | **Desk testing** | New: the Editor runs 6DoF in AR Foundation's XR Simulation (a synthetic room), and both the Editor without it and the iOS Simulator run 3DoF with drag-to-look (`DeskHeadLook`). `Tools/ios_sim_build_and_run.sh` builds and launches on a simulator — **verified 2026-11-05**: the app runs on an iPhone 18 Pro Max simulator, defaults to the printed viewer's optics and falls back to 3DoF. |
-| **Distribution** | Android APK via `Tools/release_android.sh`. iOS is build-from-source. No repository of this fork's own yet, no CI. |
+| **Distribution** | Its own repository since 2026-11-05: [blaineam/CardboardXR](https://github.com/blaineam/CardboardXR), public. CI runs the script and workflow checks on every push; the EditMode tests and the tag-triggered Android APK + unsigned iOS IPA builds are written but **wait on a Unity licence in the secrets**, so neither has run yet. Until then, Android via `Tools/release_android.sh` and iOS from source. |
 
 Unity 6000.6.0f1 is installed; the C# compiles and all 297 EditMode tests pass (2026-11-04).
 
@@ -59,9 +59,12 @@ Everything else sits on this, and three of the newest features have never run on
 - **Home**: replace the lobby + app library with a home screen of Media, Web, Files, Play and
   Settings. The lobby becomes the Play section's room. The room scan moves to where 6DoF is first
   needed instead of blocking the cold start.
-- **A repository of its own, with CI**: push this fork to GitHub (the only remote today is
-  brenpoly's upstream, which is not ours to push to), run the EditMode tests on every push, and
-  build the Android APK and an unsigned iOS archive on tags.
+- **A repository of its own, with CI** — done 2026-11-05: `github.com/blaineam/CardboardXR`
+  (`origin`; brenpoly's stays as `upstream`). `ci.yml` checks scripts, workflows and the Unity
+  version on every push and runs the EditMode tests when a licence is in the secrets; `release.yml`
+  builds the Android APK and an unsigned iOS IPA on a `v*` tag into a draft release. To do: add the
+  licence secrets and watch the first Unity jobs — the iOS archive step (Xcode on `macos-26`,
+  unsigned) has never run.
 
 ## Phase 2 — Media browser
 

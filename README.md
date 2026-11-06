@@ -1,5 +1,12 @@
 # CardboardXR
 
+[![CI](https://github.com/blaineam/CardboardXR/actions/workflows/ci.yml/badge.svg)](https://github.com/blaineam/CardboardXR/actions/workflows/ci.yml)
+
+A fork of [brenpoly/CardboardXR](https://github.com/brenpoly/CardboardXR) that is growing the
+prototype into a product: a home for spatial photos and videos, panoramas, WebXR pages and the
+games, built for the iPhone 18 Pro Max in a printed viewer and tested without one in the Editor and
+the iOS Simulator. [ROADMAP.md](ROADMAP.md) is the plan and the honest state of each piece.
+
 A Unity phone app for Google Cardboard-style viewers: split-screen stereo with lens distortion,
 plus what classic Cardboard never had — 6DoF head tracking from ARCore or ARKit, a camera
 passthrough view, detected surfaces with anchored objects, and hand tracking from the phone's rear
@@ -39,10 +46,11 @@ The pages are in `docs/`, served by GitHub Pages.
 
 ## Install
 
-For Android, download the APK from [Releases](https://github.com/brenpoly/CardboardXR/releases) on
+For Android, download the APK from [Releases](https://github.com/blaineam/CardboardXR/releases) on
 an ARCore phone (Android 10 or later, 64-bit, with Vulkan) and open it. Android asks you to allow
-installing apps from your browser or file manager. For iOS there's no download yet: build it from
-source, below.
+installing apps from your browser or file manager. Releases also carry an **unsigned** iOS IPA, which
+needs signing with your own Apple ID before it installs; building from source, below, does that for
+you. (This fork has no release of its own yet; upstream's `v1.0.0` was Android only.)
 
 ## Requirements
 
@@ -97,10 +105,17 @@ it and run `ios_launch.sh`.
 
 ### Releases
 
-`Tools/release_android.sh 1.2.3` builds a release APK from a fresh clone of the public repository
-(so it holds only the placeholder videos), signs it with your release keystore, checks the signature
-and contents, and makes a draft GitHub release with it to review and publish. The script's header
-says where the keystore and its password go.
+Pushing a version tag (`git tag v1.2.3 && git push origin v1.2.3`) runs the **Release** workflow
+([`.github/workflows/release.yml`](.github/workflows/release.yml)): it builds the Android APK and an
+unsigned iOS IPA on GitHub's runners and attaches both, with their SHA-256 sums, to a **draft**
+release for you to review and publish. It needs the Unity licence secrets described under
+*Continuous integration*; with the keystore secrets named at the top of the workflow the APK is
+signed with your release key, otherwise with Unity's debug key.
+
+`Tools/release_android.sh 1.2.3` is the same for Android from this Mac: it builds a release APK from
+a fresh clone of the public repository (so it holds only the placeholder videos), signs it with your
+release keystore, checks the signature and contents, and makes a draft GitHub release with it. The
+script's header says where the keystore and its password go.
 
 ### Launch options
 
@@ -251,6 +266,25 @@ trim it. In passthrough both eyes see the same image, so one eye is the whole ex
 EditMode tests cover the parts that don't need a device: lens distortion and viewer QR profiles,
 sensor and pose fusion, the camera clock, hand geometry, pinch detection, depth sampling and palm
 calibration, floor picking, passthrough, gaze pointing and anchoring.
+
+### Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push to `main` and every pull
+request. Its *Checks* job needs nothing: it parses the scripts, lints the workflows and fails if the
+Unity version differs anywhere. Its *EditMode tests* job runs the tests above in
+[game-ci](https://game.ci)'s Unity image, and is **skipped until the repository has a Unity licence**
+in its secrets — a Personal licence works, and game-ci's
+[activation guide](https://game.ci/docs/github/activation) walks through getting the licence file
+(`.ulf`) for it. Then, from a Mac signed into `gh`:
+
+```sh
+gh secret set UNITY_LICENSE < Unity_v6000.x.ulf
+gh secret set UNITY_EMAIL     # the Unity account's email, then its password: both are needed to
+gh secret set UNITY_PASSWORD  # activate a Personal licence in a container
+```
+
+Pull requests from forks don't see the secrets, so for them only *Checks* runs. The Release
+workflow needs the same three secrets.
 
 ## How it's built
 

@@ -71,6 +71,14 @@ assembly, and the build report counting each as an error. The messages name the 
 so nothing is actually duplicated; the export, the Xcode build and the app are fine. Real failures
 still say `error CS` in the log and `Build Failed` in the summary, which the scripts check for.
 
+### CI's Unity jobs have never run
+
+`ci.yml`'s EditMode tests and all of `release.yml` need a Unity licence in the repository's secrets
+(README, "Continuous integration") and are skipped — or, for a release, fail at once — without one.
+They have never run, so expect a first round of fixes when the secrets arrive: the iOS step in
+particular builds Unity's Xcode project unsigned on a `macos-26` runner, which has only been
+reasoned about, not tried. The *Checks* job needs no licence and does run.
+
 ## Editor and iOS Simulator
 
 ### No ARKit, so no 6DoF, passthrough, surfaces or hands

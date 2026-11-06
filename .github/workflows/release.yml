@@ -1,0 +1,198 @@
+# A version tag (v1.2.3) builds the Android APK and an unsigned iOS IPA and attaches them to a
+# draft GitHub release, to review and publish. Run by hand it only keeps the builds as artifacts.
+#
+# Needs the Unity licence secrets (README.md, "Continuous integration"). The APK is signed with
+# the release key when ANDROID_KEYSTORE_BASE64 (the keystore, base64-encoded),
+# ANDROID_KEYSTORE_PASS and ANDROID_KEYALIAS_NAME are secrets too; without them it is signed with
+# Unity's debug key, and an APK signed that way does not install over a release.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to stamp the builds with (major.minor.patch)
+        default: 0.0.0
+
+permissions:
+  contents: read
+
+env:
+  UNITY_VERSION: 6000.6.0f1
+
+jobs:
+  meta:
+    name: Version and licence
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      licensed: ${{ steps.license.outputs.present }}
+    steps:
+      - id: version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT: ${{ inputs.version }}
+        run: |
+          if [ "$REF_TYPE" = tag ]; then version="${REF_NAME#v}"; else version="$INPUT"; fi
+          echo "$version" | grep -Eq '^[0-9]+\.[0-9]{1,2}\.[0-9]{1,2}$' ||
+            { echo "::error::$version is not major.minor.patch (minor and patch under 100)"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - id: license
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        run: |
+          if [ -n "$UNITY_LICENSE" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::error::No UNITY_LICENSE secret, so nothing can be built. README.md, \"Continuous integration\", says how to add one."
+            exit 1
+          fi
+
+  android:
+    name: Android APK
+    needs: meta
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Make room for the Android image
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+
+      - uses: actions/cache@v6
+        with:
+          path: Library
+          key: Library-Android-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: Library-Android-
+
+      # StereoBuilder reads the version and keystore from the arguments unity-builder passes.
+      - uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion: ${{ env.UNITY_VERSION }}
+          targetPlatform: Android
+          buildMethod: ProjectBootstrap.StereoBuilder.BuildAndroid
+          versioning: Custom
+          version: ${{ needs.meta.outputs.version }}
+          androidKeystoreName: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && 'release.keystore' || '' }}
+          androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME }}
+          androidKeyaliasPass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+
+      - name: Name the APK
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+        run: |
+          sudo mv Builds/CardboardXR.apk "CardboardXR-$VERSION.apk"
+          ls -l "CardboardXR-$VERSION.apk"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android-apk
+          path: CardboardXR-*.apk
+          if-no-files-found: error
+
+  ios-export:
+    name: iOS Xcode project
+    needs: meta
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/cache@v6
+        with:
+          path: Library
+          key: Library-iOS-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: Library-iOS-
+
+      - uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion: ${{ env.UNITY_VERSION }}
+          targetPlatform: iOS
+          buildMethod: ProjectBootstrap.StereoBuilder.BuildIos
+          versioning: Custom
+          version: ${{ needs.meta.outputs.version }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ios-xcode-project
+          path: Builds/iOS
+          if-no-files-found: error
+          retention-days: 3
+
+  ios-ipa:
+    name: iOS unsigned IPA
+    needs: [meta, ios-export]
+    runs-on: macos-26
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: ios-xcode-project
+          path: Builds/iOS
+
+      # Archived as an artifact, the files lost their modes; Xcode runs MapFileParser.sh.
+      - name: Build without signing
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+        run: |
+          cd Builds/iOS
+          find . -name '*.sh' -exec chmod +x {} +
+          xcodebuild -project Unity-iPhone.xcodeproj -scheme Unity-iPhone -configuration Release \
+            -sdk iphoneos -derivedDataPath "$RUNNER_TEMP/derived" -quiet build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=
+          app=$(find "$RUNNER_TEMP/derived/Build/Products/Release-iphoneos" -maxdepth 1 -name '*.app' | head -1)
+          [ -n "$app" ] || { echo "::error::No .app came out of the build"; exit 1; }
+          mkdir Payload && cp -R "$app" Payload/
+          zip -qr "$GITHUB_WORKSPACE/CardboardXR-$VERSION-unsigned.ipa" Payload
+          ls -l "$GITHUB_WORKSPACE/CardboardXR-$VERSION-unsigned.ipa"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ios-ipa
+          path: CardboardXR-*-unsigned.ipa
+          if-no-files-found: error
+
+  release:
+    name: Draft GitHub release
+    if: github.ref_type == 'tag'
+    needs: [meta, android, ios-ipa]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: '{android-apk,ios-ipa}'
+          merge-multiple: true
+          path: dist
+
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.meta.outputs.version }}
+          SHA: ${{ github.sha }}
+        run: |
+          cd dist
+          shasum -a 256 ./* | tee SHA256SUMS
+          notes="Built from ${SHA:0:7} by the Release workflow.
+
+          **Android** (\`CardboardXR-$VERSION.apk\`): needs an ARCore phone (Android 10 or later, 64-bit, Vulkan). Download it on the phone and open it; Android asks you to allow installing apps from your browser or file manager.
+
+          **iOS** (\`CardboardXR-$VERSION-unsigned.ipa\`): unsigned, so sign it with your own Apple ID before installing, or build from source (README.md).
+
+          SHA-256 sums are in \`SHA256SUMS\`."
+          gh release create "$TAG" ./* --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+            --title "CardboardXR $VERSION" --notes "$notes"
+          echo "Drafted: review and publish it at https://github.com/$GITHUB_REPOSITORY/releases"

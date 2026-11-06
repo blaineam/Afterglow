@@ -1,3 +1,4 @@
+#if UNITY_ANDROID
 using System.IO;
 using System.Xml;
 using UnityEditor.Android;
@@ -34,3 +35,4 @@ namespace ProjectBootstrap
         }
     }
 }
+#endif
