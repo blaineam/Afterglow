@@ -133,7 +133,9 @@ Everything else sits on this, and three of the newest features have never run on
 - **Hand input sources** — done 2026-11-06: an input source per tracked hand with the 25 WebXR joint spaces
   (`getJointPose`, `fillPoses`, `fillJointRadii`, `inputsourceschange`), posed every frame from the
   tracker's 21 joints (metacarpals midway between wrist and knuckle), a pinch as that hand's select.
-  To be confirmed on the phone with a page that draws hands.
+  Confirmed on the phone 2026-11-06. The pointing ray was too jittery to aim a wand, so it now runs from
+  an estimated shoulder (down and to the side of the head) through the palm, and both it and the joints
+  go through One Euro filters in the shim (steady at rest, quick in a sweep); to be confirmed.
 - `local-floor` from the floor ARKit found rather than a fixed 1.6 m.
 - Measure an immersive session's frame rate honestly and say in the start page what to expect.
 

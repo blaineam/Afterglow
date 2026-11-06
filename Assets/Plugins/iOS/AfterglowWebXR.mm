@@ -219,7 +219,8 @@ static const char *kHelperSource = R"JS(
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
     }
-    set(lf.user, user);
+    // A saved password with no username leaves whatever username field there is alone.
+    if (user) set(lf.user, user);
     set(lf.pass, pass);
     return true;
   };

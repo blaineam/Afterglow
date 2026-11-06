@@ -390,6 +390,39 @@
     XRHand.prototype.forEach = function (cb, thisArg) { this._spaces.forEach(cb, thisArg); };
     XRHand.prototype[Symbol.iterator] = function () { return this._spaces.entries(); };
 
+    // One Euro filters: steady when still, quick when moving, so a pointer doesn't shake at rest
+    // and doesn't lag a sweep. minCutoff is the smoothing at rest in Hz, beta how fast it lets go
+    // with speed.
+    function OneEuro(minCutoff, beta) {
+        this.minCutoff = minCutoff; this.beta = beta; this.dCutoff = 1.0;
+        this.x = null; this.dx = 0; this.t = 0;
+    }
+    OneEuro.prototype.alpha = function (cutoff, dt) { var tau = 1 / (2 * Math.PI * cutoff); return 1 / (1 + tau / dt); };
+    OneEuro.prototype.filter = function (x, t) {
+        if (this.x === null) { this.x = x; this.t = t; return x; }
+        var dt = Math.max(1e-3, t - this.t);
+        this.t = t;
+        var dx = (x - this.x) / dt;
+        var ad = this.alpha(this.dCutoff, dt);
+        this.dx = ad * dx + (1 - ad) * this.dx;
+        var cutoff = this.minCutoff + this.beta * Math.abs(this.dx);
+        var a = this.alpha(cutoff, dt);
+        this.x = a * x + (1 - a) * this.x;
+        return this.x;
+    };
+    OneEuro.prototype.reset = function () { this.x = null; this.dx = 0; };
+    function Vec3Euro(minCutoff, beta) { this.f = [new OneEuro(minCutoff, beta), new OneEuro(minCutoff, beta), new OneEuro(minCutoff, beta)]; }
+    Vec3Euro.prototype.filter = function (v, t) { return [this.f[0].filter(v[0], t), this.f[1].filter(v[1], t), this.f[2].filter(v[2], t)]; };
+    Vec3Euro.prototype.reset = function () { this.f[0].reset(); this.f[1].reset(); this.f[2].reset(); };
+
+    // The joints are smoothed lightly (hands still look live); the pointing ray harder, since
+    // a wand is held on something for a while.
+    var JOINT_SMOOTHING = { minCutoff: 1.5, beta: 0.8 };
+    var RAY_SMOOTHING = { minCutoff: 0.6, beta: 0.4 };
+    // Where the shoulder is from the head, in the head's frame: down and to the hand's side. The
+    // ray runs from there through the palm, which moves with the arm rather than the fingers.
+    var SHOULDER = { down: 0.22, aside: 0.17, back: 0.05 };
+
     function handSource(handedness) {
         var s = new XRInputSource();
         s.handedness = handedness;
@@ -399,10 +432,35 @@
         s.profiles = ['generic-hand-select', 'generic-hand'];
         s.hand = new XRHand(s);
         s._joints = new Float32Array(63);
+        s._raw = new Float32Array(63);
+        s._jointFilters = [];
+        for (var i = 0; i < 21; i++) s._jointFilters.push(new Vec3Euro(JOINT_SMOOTHING.minCutoff, JOINT_SMOOTHING.beta));
+        s._rayOrigin = new Vec3Euro(RAY_SMOOTHING.minCutoff, RAY_SMOOTHING.beta);
+        s._rayDir = new Vec3Euro(RAY_SMOOTHING.minCutoff, RAY_SMOOTHING.beta);
+        s._ray = null;
         s._present = false;
         s._pinching = false;
         return s;
     }
+    function resetSource(s) {
+        for (var i = 0; i < s._jointFilters.length; i++) s._jointFilters[i].reset();
+        s._rayOrigin.reset(); s._rayDir.reset(); s._ray = null;
+    }
+    // The pointing ray for a hand, from the raw landmarks of this frame: its origin the palm,
+    // its direction from the shoulder through the palm, both smoothed. Worked out once per
+    // frame when the hands arrive, so every getPose in the frame agrees.
+    function updateRay(s, t) {
+        var w = raw(s, 0), k5 = raw(s, 5), k9 = raw(s, 9), k13 = raw(s, 13), k17 = raw(s, 17);
+        var palm = [(w[0] + k5[0] + k9[0] + k13[0] + k17[0]) / 5, (w[1] + k5[1] + k9[1] + k13[1] + k17[1]) / 5, (w[2] + k5[2] + k9[2] + k13[2] + k17[2]) / 5];
+        var side = s.handedness === 'right' ? SHOULDER.aside : -SHOULDER.aside;
+        var shoulder = rotateVec(pose.q, [side, -SHOULDER.down, SHOULDER.back]);
+        shoulder = [pose.p[0] + shoulder[0], pose.p[1] + shoulder[1], pose.p[2] + shoulder[2]];
+        var dir = norm(sub(palm, shoulder));
+        var origin = s._rayOrigin.filter(palm, t);
+        var smoothDir = norm(s._rayDir.filter(dir, t));
+        s._ray = { origin: origin, dir: smoothDir, palm: palm };
+    }
+    function raw(s, i) { return [s._raw[i * 3], s._raw[i * 3 + 1], s._raw[i * 3 + 2]]; }
     var handSources = { left: null, right: null };
 
     function landmark(src, i) { return [src._joints[i * 3], src._joints[i * 3 + 1], src._joints[i * 3 + 2]]; }
@@ -471,8 +529,11 @@
         var palm = [(w[0] + k5[0] + k9[0] + k13[0] + k17[0]) / 5, (w[1] + k5[1] + k9[1] + k13[1] + k17[1]) / 5, (w[2] + k5[2] + k9[2] + k13[2] + k17[2]) / 5];
         if (space._kind === 'grip')
             return intoBase(palm, quatLook(sub(k9, w), up), base);
-        // The pointing ray: from the index knuckle, the way the wrist-to-index-tip line goes.
-        return intoBase(k5, quatLook(sub(landmark(src, 8), w), up), base);
+        // The pointing ray (updateRay): from the palm, the way the shoulder-to-palm line goes,
+        // smoothed; rolled with the world's up rather than the palm's, which wavers.
+        var ray = src._ray;
+        if (!ray) return null;
+        return intoBase(ray.origin, quatLook(ray.dir, [0, 1, 0]), base);
     }
 
     // The app's hands, each frame: [count, then per hand handedness (0 left, 1 right), pinching
@@ -487,8 +548,14 @@
             if (seen[handed]) continue;
             seen[handed] = true;
             var src = handSources[handed] || (handSources[handed] = handSource(handed));
-            if (!src._present) { src._present = true; added.push(src); }
-            for (var i = 0; i < 63; i++) src._joints[i] = a[at + 2 + i];
+            if (!src._present) { src._present = true; added.push(src); resetSource(src); }
+            var now = performance.now() / 1000;
+            for (var i = 0; i < 63; i++) src._raw[i] = a[at + 2 + i];
+            for (var j = 0; j < 21; j++) {
+                var sm = src._jointFilters[j].filter(raw(src, j), now);
+                src._joints[j * 3] = sm[0]; src._joints[j * 3 + 1] = sm[1]; src._joints[j * 3 + 2] = sm[2];
+            }
+            updateRay(src, now);
             src._pinchNow = a[at + 1] > 0.5;
         }
         for (var side in handSources) {

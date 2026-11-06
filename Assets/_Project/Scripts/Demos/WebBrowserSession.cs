@@ -253,6 +253,8 @@ namespace Afterglow.Demos
         string StartPage => "file://" + Path.Combine(Application.streamingAssetsPath, m_HomePage);
         // How the store names the start page, since its path is the install's.
         const string k_StartPageName = "afterglow://start";
+        // The Keychain account a password with no username is kept under.
+        const string k_PasswordOnlyAccount = "(password only)";
 
         void ClickAtGaze()
         {
@@ -409,7 +411,7 @@ namespace Afterglow.Demos
             }
             else if (Keychain.TryLoad(m_PromptHost, m_PromptUser, out var secret))
             {
-                WebBrowser.Fill(m_PromptUser, secret);
+                WebBrowser.Fill(m_PromptUser == k_PasswordOnlyAccount ? "" : m_PromptUser, secret);
                 Debug.Log($"[WebXR] Filled the saved login for {m_PromptHost} ({m_PromptUser})");
             }
             HidePrompt();
@@ -423,18 +425,24 @@ namespace Afterglow.Demos
                 return;
             if (WebBrowser.TryTakeCredential(out var host, out var user, out var password))
             {
-                if (string.IsNullOrEmpty(user))
-                    Debug.Log($"[WebXR] A password without a username on {host}: nothing to keep it under");
-                else if (Keychain.TryLoad(host, user, out var known) && known == password)
-                    Debug.Log($"[WebXR] The login for {host} ({user}) is already saved");
+                // A site that asks for a password alone (no username) keeps it under a name of
+                // the app's own; the fill then puts back only the password.
+                var passwordOnly = string.IsNullOrEmpty(user);
+                var account = passwordOnly ? k_PasswordOnlyAccount : user;
+                var who = passwordOnly ? "" : $" ({user})";
+                if (Keychain.TryLoad(host, account, out var known) && known == password)
+                    Debug.Log($"[WebXR] The login for {host}{who} is already saved");
                 else
-                    ShowPrompt($"Save the password for {host} ({user})?", "Save", true, host, user, password);
+                    ShowPrompt($"Save the password for {host}{who}?", "Save", true, host, account, password);
             }
             if (WebBrowser.TryTakeLoginHost(out var loginHost))
             {
                 var accounts = Keychain.Accounts(loginHost);
                 if (accounts.Length > 0)
-                    ShowPrompt($"Fill the saved login for {loginHost} ({accounts[0]})?", "Fill", false, loginHost, accounts[0], null);
+                {
+                    var who = accounts[0] == k_PasswordOnlyAccount ? "" : $" ({accounts[0]})";
+                    ShowPrompt($"Fill the saved {(who.Length == 0 ? "password" : "login")} for {loginHost}{who}?", "Fill", false, loginHost, accounts[0], null);
+                }
             }
         }
 
