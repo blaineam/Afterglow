@@ -1,11 +1,11 @@
 using System.Collections.Generic;
-using CardboardXR.Hands;
-using CardboardXR.Interaction;
-using CardboardXR.UI;
+using Afterglow.Hands;
+using Afterglow.Interaction;
+using Afterglow.UI;
 using TMPro;
 using UnityEngine;
 
-namespace CardboardXR.Demos.Rush
+namespace Afterglow.Demos.Rush
 {
     // Orb Rush: orbs fly in and you hit them with your hand. Press Start facing the way you want to
     // play: that direction becomes the track, fixed in the room. Each orb arrives at a ringed spot
@@ -99,7 +99,7 @@ namespace CardboardXR.Demos.Rush
             if (core.Settings != null)
                 core.Settings.OpenChanged += OnSettingsOpenChanged;
             m_Best = PlayerPrefs.GetInt(k_BestKey, 0);
-            m_RingMaterial = new Material(Shader.Find("CardboardXR/Reticle")) { name = "Landing Ring" };
+            m_RingMaterial = new Material(Shader.Find("Afterglow/Reticle")) { name = "Landing Ring" };
             m_RingMaterial.SetFloat("_Inner", 0.8f);
             m_RingMaterial.SetFloat("_Outer", 0.95f);
             m_RingMaterial.SetFloat("_Outline", 0f);

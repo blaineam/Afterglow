@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Asks Android to run the display at the fastest refresh rate up to a target. A frame-rate target
     // alone doesn't change the panel's refresh rate; the window has to prefer a faster display mode.

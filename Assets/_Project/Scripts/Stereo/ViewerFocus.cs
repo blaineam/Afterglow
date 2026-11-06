@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // How far the viewer's focus wheel has moved the lens carriage, in meters, added to the
     // viewer profile's screenToLensDistance.
@@ -24,7 +24,7 @@ namespace CardboardXR.Stereo
         public const float MaxOffset = 0.012f;
         public const float Step = 0.0005f;
 
-        const string k_Key = "CardboardXR.FocusOffset";
+        const string k_Key = "Afterglow.FocusOffset";
 
         static bool s_Loaded;
         static float s_Offset;

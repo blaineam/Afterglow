@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3153debd146ee47ea8f7e9f6ae859def, type: 3}
   m_Name: DemoCatalog
-  m_EditorClassIdentifier: CardboardXR.Demos::CardboardXR.Demos.DemoCatalog
+  m_EditorClassIdentifier: Afterglow.Demos::Afterglow.Demos.DemoCatalog
   m_HomeScenePath: Assets/_Project/Demos/Home/Home.unity
   m_Demos:
   - Id: sandbox

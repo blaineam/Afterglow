@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace CardboardXR.Interaction
+namespace Afterglow.Interaction
 {
     // Makes a world-space canvas's UI respond to the GazePointer. Use this instead of a
     // GraphicRaycaster: that would let screen taps hit world-space UI at the tapped spot. It also

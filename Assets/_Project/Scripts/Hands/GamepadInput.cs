@@ -1,9 +1,9 @@
-using CardboardXR.Interaction;
-using CardboardXR.Stereo;
+using Afterglow.Interaction;
+using Afterglow.Stereo;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // A Bluetooth controller, as another way to press what the gaze is on.
     //

@@ -1,10 +1,10 @@
-using CardboardXR.Stereo;
+using Afterglow.Stereo;
 using UnityEngine;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Real physics for a placed object, except while it's held. Free, it falls, slides, bounces off
     // other objects and lands on the room's detected surfaces (their colliders). Held, XRI moves it

@@ -3,12 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace CardboardXR.Demos.Portal
+namespace Afterglow.Demos.Portal
 {
     // A doorway standing on the floor, with a night world beyond it. Built in code when placed. Its
     // "World" child is turned so +z runs from the doorway into the world; the player starts on the
     // -z side, in their room, which passthrough shows.
-    //   Outside, a box of depth mask (CardboardXR/DepthMask) wraps the world's front half with a
+    //   Outside, a box of depth mask (Afterglow/DepthMask) wraps the world's front half with a
     //   hole where the door is, so the world shows only through the doorway and the room around it.
     //   Inside, after walking through the frame, the box goes, the world's back half appears around
     //   the player, and a mask in the doorway shows the room through the door behind them.

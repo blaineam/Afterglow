@@ -1,12 +1,12 @@
 using System.Collections.Generic;
-using CardboardXR.Hands;
-using CardboardXR.Stereo;
-using CardboardXR.UI;
+using Afterglow.Hands;
+using Afterglow.Stereo;
+using Afterglow.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace CardboardXR.Demos
+namespace Afterglow.Demos
 {
     // The home screen: what the app opens on and comes back to, above the settings panel, which its
     // Home button shows and hides. A grid of five sections -- Media (the Photos library's spatial
@@ -207,7 +207,7 @@ namespace CardboardXR.Demos
             Build();
             m_SectionsPage.gameObject.SetActive(true);
             m_PlayPage.gameObject.SetActive(false);
-            m_Title.text = "CardboardXR";
+            m_Title.text = "Afterglow";
             m_Back.gameObject.SetActive(false);
             m_HomeIcon.SetActive(true);
             m_Leave.gameObject.SetActive(m_Demos != null && m_Demos.Current != null);
@@ -348,7 +348,7 @@ namespace CardboardXR.Demos
                 new Vector2(-size.x / 2f + k_Padding + k_Header / 2f, top - k_Header / 2f), ShowSections, k_Header);
             m_HomeIcon = M3.Icon("Home Icon", m_Root, "home", 24f, new Vector2(-size.x / 2f + k_Padding + k_Header / 2f, top - k_Header / 2f),
                 M3Theme.Primary).gameObject;
-            m_Title = M3.Text("Title", m_Root, "CardboardXR", M3Theme.Type.TitleLarge,
+            m_Title = M3.Text("Title", m_Root, "Afterglow", M3Theme.Type.TitleLarge,
                 new Vector2(k_Header / 2f + k_Gap / 2f, top - k_Header / 2f), new Vector2(size.x - 2f * k_Padding - k_Header - k_Gap - 120f, k_Header),
                 alignment: TextAlignmentOptions.Left);
             const float leaveWidth = 112f;

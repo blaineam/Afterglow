@@ -1,7 +1,10 @@
 {
-    "name": "CardboardXR.Tracking",
-    "rootNamespace": "CardboardXR.Tracking",
-    "references": [],
+    "name": "Afterglow.UI",
+    "rootNamespace": "Afterglow.UI",
+    "references": [
+        "UnityEngine.UI",
+        "Unity.TextMeshPro"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
@@ -10,5 +13,5 @@
     "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [],
-    "noEngineReferences": true
+    "noEngineReferences": false
 }

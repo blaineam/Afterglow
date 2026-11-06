@@ -3,14 +3,14 @@
 // light's shadow map says it's in shadow. Multiplies, so it never brightens, and its edges fade
 // with the surface's (SurfaceMesh's UV1.x). _ShadowCatcherStrength, a global PassthroughLighting
 // sets, is how dark a full shadow gets; 0 (out of passthrough) leaves the image untouched. Drawn
-// before the surface marks (CardboardXR/Boundary), with depth tested, so objects in front cover it.
+// before the surface marks (Afterglow/Boundary), with depth tested, so objects in front cover it.
 // Real surfaces have no depth, so a floor shadow under a table would show through the tabletop:
 // surfaces draw highest first (SurfaceMesh.SortingOrder) and each claims its pixels in a stencil
 // bit, so a lower surface's shadow only shows where no higher surface is in the way.
 // The shadow is softened here rather than by URP's soft shadows, whose blur is a shadow-map texel
 // or two (a few millimeters at this range) and looked hard on the phones: it's sampled at
 // _Softness meters around each point on the surface, in a disk of k_Taps, and averaged.
-Shader "CardboardXR/ShadowCatcher"
+Shader "Afterglow/ShadowCatcher"
 {
     SubShader
     {

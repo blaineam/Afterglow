@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.XR.ARFoundation;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Keeps a detected plane out of the way until it's big enough to matter, and gives it a thin box
     // collider over its rectangle so the gaze and the hand's ray can land on it. ARCore finds many

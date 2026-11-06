@@ -1,4 +1,4 @@
-using CardboardXR.UI;
+using Afterglow.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -7,7 +7,7 @@ using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 using UnityEngine.XR.ARFoundation;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Lets the user pick their viewer: one of the built-in profiles, or any Cardboard viewer by
     // scanning the QR code printed on it, like the Cardboard apps' "switch viewer" flow. The choice
@@ -17,15 +17,15 @@ namespace CardboardXR.Stereo
     // then put back as they were: off, unless ArPoseSource is tracking with them.
     public class ViewerSetupController : MonoBehaviour
     {
-        const string k_SavedViewerKey = "CardboardXR.ViewerUrl";
+        const string k_SavedViewerKey = "Afterglow.ViewerUrl";
         // A built-in profile picked by hand, by its key below. A scanned code replaces it.
-        const string k_BuiltInKey = "CardboardXR.ViewerBuiltIn";
+        const string k_BuiltInKey = "Afterglow.ViewerBuiltIn";
 
         // The profiles on offer without a code, in the order the scan screen shows them. The printed
         // viewer first, since it is the rig's default and the one this app is built for.
         static readonly (string key, string label, System.Func<ViewerParams> make)[] k_BuiltIn =
         {
-            ("printed", "Printed viewer", () => ViewerParams.CardboardXRViewer),
+            ("printed", "Printed viewer", () => ViewerParams.AfterglowViewer),
             ("v2", "Cardboard v2", () => ViewerParams.CardboardV2),
             ("v1", "Cardboard v1", () => ViewerParams.CardboardV1),
         };

@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using UnityEngine;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     public class ViewerFocusTests
     {
@@ -136,7 +136,7 @@ namespace CardboardXR.Stereo.Tests
         {
             // The iPhone 18 Pro Max's active area, in meters.
             const float width = 0.1584f, height = 0.0729f;
-            var centred = new LensDistortion(ViewerParams.CardboardXRViewer, width, height)
+            var centred = new LensDistortion(ViewerParams.AfterglowViewer, width, height)
                 .GetFieldOfView(Eye.Left) * Mathf.Rad2Deg;
             var tray = new LensDistortion(ViewerParams.CardboardV2, width, height)
                 .GetFieldOfView(Eye.Left) * Mathf.Rad2Deg;
@@ -152,8 +152,8 @@ namespace CardboardXR.Stereo.Tests
         {
             // Its back is open for the camera, so a pinch in front of it is the click; there is no
             // shell over the screen to need a magnet or a touch lever.
-            Assert.AreEqual(ViewerParams.ButtonType.None, ViewerParams.CardboardXRViewer.primaryButton);
-            Assert.AreEqual(ViewerParams.VerticalAlignment.Center, ViewerParams.CardboardXRViewer.verticalAlignment);
+            Assert.AreEqual(ViewerParams.ButtonType.None, ViewerParams.AfterglowViewer.primaryButton);
+            Assert.AreEqual(ViewerParams.VerticalAlignment.Center, ViewerParams.AfterglowViewer.verticalAlignment);
         }
 
     }

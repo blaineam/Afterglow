@@ -1,8 +1,8 @@
-using CardboardXR.UI;
+using Afterglow.UI;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     public class MaterialUiTests
     {

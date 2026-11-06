@@ -14,7 +14,7 @@ using UnityEngine.XR.Management;
 
 namespace ProjectBootstrap
 {
-    // Applies the CardboardXR player settings for Android and iOS, and gives each the only XR loader
+    // Applies the Afterglow player settings for Android and iOS, and gives each the only XR loader
     // it can use: ARCore on Android, ARKit on iOS. Safe to re-run.
     public static class ProjectSetup
     {
@@ -34,9 +34,9 @@ namespace ProjectBootstrap
         {
             var android = NamedBuildTarget.Android;
 
-            PlayerSettings.companyName = "brenpoly";
-            PlayerSettings.productName = "CardboardXR";
-            PlayerSettings.SetApplicationIdentifier(android, "com.brenpoly.cardboardxr");
+            PlayerSettings.companyName = "wemiller";
+            PlayerSettings.productName = "Afterglow";
+            PlayerSettings.SetApplicationIdentifier(android, "com.wemiller.afterglow");
 
             PlayerSettings.SetScriptingBackend(android, ScriptingImplementation.IL2CPP);
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
@@ -63,7 +63,7 @@ namespace ProjectBootstrap
             PlayerSettings.enableFrameTimingStats = true;
 
             var ios = NamedBuildTarget.iOS;
-            PlayerSettings.SetApplicationIdentifier(ios, "com.brenpoly.cardboardxr");
+            PlayerSettings.SetApplicationIdentifier(ios, "com.wemiller.afterglow");
             PlayerSettings.SetScriptingBackend(ios, ScriptingImplementation.IL2CPP);
             // AR Foundation 6 needs iOS 12; 14 is where the LiDAR depth on the iPhone Pro arrived.
             PlayerSettings.iOS.targetOSVersionString = "14.0";
@@ -71,7 +71,7 @@ namespace ProjectBootstrap
             PlayerSettings.iOS.targetDevice = iOSTargetDevice.iPhoneOnly;
             // iOS kills the app the moment ARKit opens the camera unless it can say why.
             PlayerSettings.iOS.cameraUsageDescription =
-                "CardboardXR uses the camera to follow your head and hands, and to show the room around you.";
+                "Afterglow uses the camera to follow your head and hands, and to show the room around you.";
             // Xcode signs with whichever Apple ID is signed into it.
             PlayerSettings.iOS.appleEnableAutomaticSigning = true;
 

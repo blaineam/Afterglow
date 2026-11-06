@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.UI
+namespace Afterglow.UI
 {
     // Sizes a world-space canvas so one canvas unit is one dp at its distance from the viewer (see
     // M3Theme): UI is laid out in dp and looks the same size wherever it's placed. Set when it wakes,

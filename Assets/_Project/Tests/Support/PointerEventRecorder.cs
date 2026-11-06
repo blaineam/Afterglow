@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     // Records the pointer events it receives, in order. Runs in edit mode so ExecuteEvents treats it
     // as enabled.

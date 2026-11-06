@@ -3,9 +3,9 @@ using UnityEngine;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
-    // A detected plane's mesh, made so the CardboardXR/Boundary shader can fade its edges rather than
+    // A detected plane's mesh, made so the Afterglow/Boundary shader can fade its edges rather than
     // cut them off: AR Foundation's own mesh (ARPlaneMeshVisualizer) only has the boundary's points,
     // so nothing inside it can tell how near the edge it is. This one has a ring inset m_Feather from
     // the boundary: the boundary's points carry a fade of 0 in UV1.x, the ring's and the middle's 1,
@@ -77,7 +77,7 @@ namespace CardboardXR.Stereo
         }
 
         // Higher surfaces draw first, so a table's shadow pass claims its pixels before the floor's
-        // (see CardboardXR/ShadowCatcher). Always negative, so surfaces still draw before UI panels.
+        // (see Afterglow/ShadowCatcher). Always negative, so surfaces still draw before UI panels.
         public static int SortingOrder(float height) => -10000 - Mathf.RoundToInt(Mathf.Clamp(height, -50f, 50f) * 100f);
 
         void UpdateVisibility()

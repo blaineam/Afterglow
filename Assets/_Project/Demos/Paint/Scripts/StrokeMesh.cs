@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace CardboardXR.Demos.Paint
+namespace Afterglow.Demos.Paint
 {
     public enum BrushStyle
     {

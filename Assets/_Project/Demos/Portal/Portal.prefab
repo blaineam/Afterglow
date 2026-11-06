@@ -43,7 +43,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5a576b0d254834230b04fc127cbd8a64, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: CardboardXR.Demos.Portal::CardboardXR.Demos.Portal.PortalWorld
+  m_EditorClassIdentifier: Afterglow.Demos.Portal::Afterglow.Demos.Portal.PortalWorld
   m_Sky: {fileID: 2100000, guid: a4bf9b3ecba764e648436998baff5aa4, type: 2}
   m_Ground: {fileID: 2100000, guid: e29e581898f674f9f8ce13711198ecec, type: 2}
   m_Glow: {fileID: 2100000, guid: 2b2b983a6e8ac47f0b585650cedf897f, type: 2}

@@ -67,7 +67,7 @@ namespace
 // Writes the landscape screen's width and height in millimeters, and a line saying where the
 // numbers came from, into the buffers given. Returns 0 if the screen couldn't be measured, 1 if
 // its pixel size was in the table, and 2 if the density was guessed from the pixel count.
-extern "C" int CardboardXR_ScreenSizeMillimeters(float *width, float *height, char *source, int sourceLength)
+extern "C" int Afterglow_ScreenSizeMillimeters(float *width, float *height, char *source, int sourceLength)
 {
     if (width == nullptr || height == nullptr)
         return 0;

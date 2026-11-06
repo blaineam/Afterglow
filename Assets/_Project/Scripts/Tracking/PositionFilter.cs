@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace CardboardXR.Tracking
+namespace Afterglow.Tracking
 {
     // Estimates a position from linear acceleration, integrated at the IMU rate, and position fixes
     // that arrive less often and late, such as ARCore camera poses (30 Hz, 45-100 ms old). Each axis

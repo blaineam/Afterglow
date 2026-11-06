@@ -1,8 +1,8 @@
-using CardboardXR.Demos.Video;
+using Afterglow.Demos.Video;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     public class VideoDemoTests
     {

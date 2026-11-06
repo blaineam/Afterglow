@@ -1,4 +1,4 @@
-namespace CardboardXR.Tracking
+namespace Afterglow.Tracking
 {
     // Double-precision 3x3 matrix for the Kalman filter's covariances.
     // Ported from the Cardboard SDK (sdk/util/matrix_3x3.cc and matrixutils.cc, Apache License 2.0).

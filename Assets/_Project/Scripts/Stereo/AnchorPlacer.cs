@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Places objects on real surfaces in 6DoF, in both VR and passthrough. A tap on a detected plane
     // (see PlacementSurface) anchors a copy of the object prefab there with ARCore. A tap on a placed

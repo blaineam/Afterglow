@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // A virtual surrounding, such as a room, that passthrough hides so the camera image shows
     // instead. It can be in any scene, including a demo loaded after passthrough came on, which is

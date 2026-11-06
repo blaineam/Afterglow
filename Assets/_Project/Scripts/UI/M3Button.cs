@@ -2,7 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace CardboardXR.UI
+namespace Afterglow.UI
 {
     // A Material 3 button: pill-shaped, colored by its variant, with a state layer for hover and press
     // and Material's disabled look. A toggle shows "selected". The variants:

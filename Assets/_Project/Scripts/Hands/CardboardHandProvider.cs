@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.XR.Hands;
 using UnityEngine.XR.Hands.ProviderImplementation;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Hands for XR Hands, and through it the XR Interaction Toolkit, from the camera-based tracking:
     // the hands HandTracker follows, as the left and right hand, with the pointing, grip, pinch and
@@ -12,7 +12,7 @@ namespace CardboardXR.Hands
     // only one.
     public class CardboardHandProvider : XRHandSubsystemProvider
     {
-        public const string Id = "CardboardXR-Hands";
+        public const string Id = "Afterglow-Hands";
 
         // Where the hand comes from, while a HandSubsystemFeed is enabled.
         internal static HandSubsystemFeed Feed { get; set; }

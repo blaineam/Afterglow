@@ -1,10 +1,10 @@
-using CardboardXR.UI;
+using Afterglow.UI;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Uses ARCore's detected planes in 6DoF. It lines the virtual floor up with the real one, and
     // shows the surfaces it finds while scanning; between scans only the surface pointed at shows
@@ -13,7 +13,7 @@ namespace CardboardXR.Stereo
     // floor level. The
     // planes' GameObjects live in ARCore's session space under this XR Origin, so the origin follows
     // HeadPoseFusion's session-to-world pose. Put it on the XR Origin with the ARPlaneManager; the
-    // planes use the CardboardXR/Boundary shader.
+    // planes use the Afterglow/Boundary shader.
     // Plane detection only runs while scanning: running all the time, ARCore's plane finding and the
     // constant outline and mesh updates take CPU time the hand tracker and the frame rate need. A scan
     // starts each time 6DoF does and ends a few seconds after the floor is found, which is all most

@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-namespace CardboardXR.Demos
+namespace Afterglow.Demos
 {
     // The apps the home screen offers, each a scene of its own: the games and the room in the Play
     // section, and the media player in Media (the home screen's Media and Files tiles both open the
     // first Media entry). Entries are in the order their section shows them, and the "demo" launch
     // option picks one by its index here. The build includes each entry's scene after Core and the
     // Home scene.
-    [CreateAssetMenu(menuName = "CardboardXR/Demo Catalog")]
+    [CreateAssetMenu(menuName = "Afterglow/Demo Catalog")]
     public class DemoCatalog : ScriptableObject
     {
         // Which part of the home screen an entry belongs to.

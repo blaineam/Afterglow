@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace CardboardXR.Demos.Paint
+namespace Afterglow.Demos.Paint
 {
     // One stroke, growing while the pinch lasts. Points closer than k_MinSpacing to the last one are
     // skipped, and the mesh is rebuilt only when one is added. Its points are in world space when

@@ -1,8 +1,8 @@
-using CardboardXR.UI;
+using Afterglow.UI;
 using TMPro;
 using UnityEngine;
 
-namespace CardboardXR.Demos.Portal
+namespace Afterglow.Demos.Portal
 {
     // Open a doorway in your room and walk through it into another world. Look at the floor and
     // pinch: a portal stands there, facing you, anchored to the floor, with the world visible only

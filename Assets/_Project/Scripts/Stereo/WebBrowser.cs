@@ -6,13 +6,13 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
-    // The in-app browser for WebXR pages (Plugins/iOS/CardboardXRWebXR.mm).
+    // The in-app browser for WebXR pages (Plugins/iOS/AfterglowWebXR.mm).
     //
     // Safari has no WebXR on iOS, so a WebXR page opened anywhere on this phone falls back to a
     // flat view. This puts a web view over Unity's, injects an implementation of navigator.xr
-    // (StreamingAssets/webxr/cardboardxr-webxr.js), and hands it this rig's own lens geometry, so
+    // (StreamingAssets/webxr/afterglow-webxr.js), and hands it this rig's own lens geometry, so
     // a page is drawn in stereo and corrected with exactly the numbers the native app uses.
     //
     // Unity keeps running underneath: it still owns the camera, the head tracking and the hand
@@ -36,7 +36,7 @@ namespace CardboardXR.Stereo
         // site's desktop layout fits, small enough to snapshot a dozen times a second.
         public const int WindowWidth = 1024;
         public const int WindowHeight = 768;
-        const string k_ShimPath = "webxr/cardboardxr-webxr.js";
+        const string k_ShimPath = "webxr/afterglow-webxr.js";
 
 #if UNITY_IOS && !UNITY_EDITOR
         // What the frame interval was before the browser took the screen, to put back on close.
@@ -55,7 +55,7 @@ namespace CardboardXR.Stereo
             get
             {
 #if UNITY_IOS && !UNITY_EDITOR
-                return CardboardXR_WebIsOpen() != 0;
+                return Afterglow_WebIsOpen() != 0;
 #else
                 return false;
 #endif
@@ -86,7 +86,7 @@ namespace CardboardXR.Stereo
                 return false;
 
 #if UNITY_IOS && !UNITY_EDITOR
-            if (CardboardXR_WebOpen(url, BuildConfig(rig, hasPosition), shim,
+            if (Afterglow_WebOpen(url, BuildConfig(rig, hasPosition), shim,
                                     windowed ? 1 : 0, WindowWidth, WindowHeight) == 0)
             {
                 Debug.LogWarning($"[WebXR] Couldn't open {url}");
@@ -108,9 +108,9 @@ namespace CardboardXR.Stereo
         public static void Close()
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            if (CardboardXR_WebIsOpen() == 0)
+            if (Afterglow_WebIsOpen() == 0)
                 return;
-            CardboardXR_WebClose();
+            Afterglow_WebClose();
             OnDemandRendering.renderFrameInterval = Mathf.Max(1, s_RestoreRenderInterval);
             Debug.Log("[WebXR] Closed; drawing every frame again");
 #endif
@@ -122,7 +122,7 @@ namespace CardboardXR.Stereo
         public static void PushPose(Vector3 position, Quaternion rotation)
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_WebPose(position.x, position.y, -position.z,
+            Afterglow_WebPose(position.x, position.y, -position.z,
                                 -rotation.x, -rotation.y, rotation.z, rotation.w);
 #endif
         }
@@ -131,7 +131,7 @@ namespace CardboardXR.Stereo
         public static void Select()
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_WebSelect();
+            Afterglow_WebSelect();
 #endif
         }
 
@@ -139,7 +139,7 @@ namespace CardboardXR.Stereo
         public static Event TakeEvent()
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            return (Event)CardboardXR_WebTakeEvent();
+            return (Event)Afterglow_WebTakeEvent();
 #else
             return Event.None;
 #endif
@@ -150,7 +150,7 @@ namespace CardboardXR.Stereo
         public static bool TryUpdateTexture(ref Texture2D target)
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            if (CardboardXR_WebPixels(out var bytes, out var width, out var height) == 0)
+            if (Afterglow_WebPixels(out var bytes, out var width, out var height) == 0)
                 return false;
             if (bytes == IntPtr.Zero || width <= 0 || height <= 0)
                 return false;
@@ -176,7 +176,7 @@ namespace CardboardXR.Stereo
         public static void ClickAt(float u, float v)
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_WebClickAt(u, v);
+            Afterglow_WebClickAt(u, v);
 #endif
         }
 
@@ -186,7 +186,7 @@ namespace CardboardXR.Stereo
         public static void HoverAt(float u, float v)
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_WebHoverAt(u, v);
+            Afterglow_WebHoverAt(u, v);
 #endif
         }
 
@@ -195,28 +195,28 @@ namespace CardboardXR.Stereo
         public static void ScrollAt(float u, float v, float dx, float dy)
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_WebScrollAt(u, v, dx, dy);
+            Afterglow_WebScrollAt(u, v, dx, dy);
 #endif
         }
 
         public static void GoBack()
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_WebGoBack();
+            Afterglow_WebGoBack();
 #endif
         }
 
         public static void GoForward()
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_WebGoForward();
+            Afterglow_WebGoForward();
 #endif
         }
 
         public static void Reload()
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_WebReload();
+            Afterglow_WebReload();
 #endif
         }
 
@@ -228,7 +228,7 @@ namespace CardboardXR.Stereo
             if (string.IsNullOrEmpty(text))
                 return;
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_WebType(text);
+            Afterglow_WebType(text);
 #endif
         }
 
@@ -237,7 +237,7 @@ namespace CardboardXR.Stereo
         public static void Key(string key)
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_WebKey(key);
+            Afterglow_WebKey(key);
 #endif
         }
 
@@ -247,7 +247,7 @@ namespace CardboardXR.Stereo
             get
             {
 #if UNITY_IOS && !UNITY_EDITOR
-                return CardboardXR_WebTextFocused() != 0;
+                return Afterglow_WebTextFocused() != 0;
 #else
                 return false;
 #endif
@@ -259,7 +259,7 @@ namespace CardboardXR.Stereo
             if (string.IsNullOrEmpty(url))
                 return;
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_WebLoadUrl(url);
+            Afterglow_WebLoadUrl(url);
 #endif
         }
 
@@ -269,11 +269,11 @@ namespace CardboardXR.Stereo
             get
             {
 #if UNITY_IOS && !UNITY_EDITOR
-                var needed = CardboardXR_WebCopyUrl(null, 0);
+                var needed = Afterglow_WebCopyUrl(null, 0);
                 if (needed <= 0)
                     return string.Empty;
                 var buffer = new byte[needed + 1];
-                CardboardXR_WebCopyUrl(buffer, buffer.Length);
+                Afterglow_WebCopyUrl(buffer, buffer.Length);
                 return Encoding.UTF8.GetString(buffer, 0, needed);
 #else
                 return string.Empty;
@@ -315,7 +315,7 @@ namespace CardboardXR.Stereo
         public static void SetWindowed(bool windowed)
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_WebSetWindowed(windowed ? 1 : 0);
+            Afterglow_WebSetWindowed(windowed ? 1 : 0);
             if (windowed)
             {
                 OnDemandRendering.renderFrameInterval = Mathf.Max(1, s_RestoreRenderInterval);
@@ -382,25 +382,25 @@ namespace CardboardXR.Stereo
         }
 
 #if UNITY_IOS && !UNITY_EDITOR
-        [DllImport("__Internal")] static extern int CardboardXR_WebOpen(string url, string configJson, string shim, int windowed, int pixelWidth, int pixelHeight);
-        [DllImport("__Internal")] static extern int CardboardXR_WebPixels(out IntPtr bytes, out int width, out int height);
-        [DllImport("__Internal")] static extern void CardboardXR_WebClickAt(float u, float v);
-        [DllImport("__Internal")] static extern void CardboardXR_WebHoverAt(float u, float v);
-        [DllImport("__Internal")] static extern void CardboardXR_WebScrollAt(float u, float v, float dx, float dy);
-        [DllImport("__Internal")] static extern void CardboardXR_WebGoBack();
-        [DllImport("__Internal")] static extern void CardboardXR_WebGoForward();
-        [DllImport("__Internal")] static extern void CardboardXR_WebReload();
-        [DllImport("__Internal")] static extern void CardboardXR_WebType(string text);
-        [DllImport("__Internal")] static extern void CardboardXR_WebKey(string key);
-        [DllImport("__Internal")] static extern int CardboardXR_WebTextFocused();
-        [DllImport("__Internal")] static extern void CardboardXR_WebLoadUrl(string url);
-        [DllImport("__Internal")] static extern int CardboardXR_WebCopyUrl(byte[] buffer, int capacity);
-        [DllImport("__Internal")] static extern void CardboardXR_WebSetWindowed(int windowed);
-        [DllImport("__Internal")] static extern void CardboardXR_WebClose();
-        [DllImport("__Internal")] static extern int CardboardXR_WebIsOpen();
-        [DllImport("__Internal")] static extern void CardboardXR_WebPose(float px, float py, float pz, float qx, float qy, float qz, float qw);
-        [DllImport("__Internal")] static extern void CardboardXR_WebSelect();
-        [DllImport("__Internal")] static extern int CardboardXR_WebTakeEvent();
+        [DllImport("__Internal")] static extern int Afterglow_WebOpen(string url, string configJson, string shim, int windowed, int pixelWidth, int pixelHeight);
+        [DllImport("__Internal")] static extern int Afterglow_WebPixels(out IntPtr bytes, out int width, out int height);
+        [DllImport("__Internal")] static extern void Afterglow_WebClickAt(float u, float v);
+        [DllImport("__Internal")] static extern void Afterglow_WebHoverAt(float u, float v);
+        [DllImport("__Internal")] static extern void Afterglow_WebScrollAt(float u, float v, float dx, float dy);
+        [DllImport("__Internal")] static extern void Afterglow_WebGoBack();
+        [DllImport("__Internal")] static extern void Afterglow_WebGoForward();
+        [DllImport("__Internal")] static extern void Afterglow_WebReload();
+        [DllImport("__Internal")] static extern void Afterglow_WebType(string text);
+        [DllImport("__Internal")] static extern void Afterglow_WebKey(string key);
+        [DllImport("__Internal")] static extern int Afterglow_WebTextFocused();
+        [DllImport("__Internal")] static extern void Afterglow_WebLoadUrl(string url);
+        [DllImport("__Internal")] static extern int Afterglow_WebCopyUrl(byte[] buffer, int capacity);
+        [DllImport("__Internal")] static extern void Afterglow_WebSetWindowed(int windowed);
+        [DllImport("__Internal")] static extern void Afterglow_WebClose();
+        [DllImport("__Internal")] static extern int Afterglow_WebIsOpen();
+        [DllImport("__Internal")] static extern void Afterglow_WebPose(float px, float py, float pz, float qx, float qy, float qz, float qw);
+        [DllImport("__Internal")] static extern void Afterglow_WebSelect();
+        [DllImport("__Internal")] static extern int Afterglow_WebTakeEvent();
 #endif
     }
 }

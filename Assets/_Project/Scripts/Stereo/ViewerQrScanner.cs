@@ -8,7 +8,7 @@ using UnityEngine.XR.ARSubsystems;
 using ZXing;
 using ZXing.Common;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Looks for a QR code in ARCore's camera images and reports its text. Decodes the image's
     // luminance plane on a worker thread a few times a second, and keeps an RGB preview texture

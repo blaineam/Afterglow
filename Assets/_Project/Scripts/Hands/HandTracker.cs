@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using CardboardXR.Stereo;
+using Afterglow.Stereo;
 using Unity.Collections;
 using Unity.InferenceEngine;
 using UnityEngine;
@@ -9,7 +9,7 @@ using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 using Debug = UnityEngine.Debug;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Tracks one hand in ARCore's camera images with MediaPipe's BlazeHand models on the CPU, in
     // 6DoF. As in MediaPipe, the palm detector only runs while no hand is tracked; after that, each

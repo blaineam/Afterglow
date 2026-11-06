@@ -9,7 +9,7 @@
 // surface, which lit up the floor whenever it was looked at. The marks sit in
 // session space, so they stay put on the surface as the plane grows. Drawn over everything, since
 // it's a safety warning.
-Shader "CardboardXR/Boundary"
+Shader "Afterglow/Boundary"
 {
     Properties
     {

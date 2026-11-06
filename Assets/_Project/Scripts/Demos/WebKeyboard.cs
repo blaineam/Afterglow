@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using CardboardXR.Interaction;
-using CardboardXR.Stereo;
-using CardboardXR.UI;
+using Afterglow.Interaction;
+using Afterglow.Stereo;
+using Afterglow.UI;
 using TMPro;
 using UnityEngine;
 
-namespace CardboardXR.Demos
+namespace Afterglow.Demos
 {
     // Keys you look at and pinch, for when there is no Bluetooth keyboard and nothing to say.
     //

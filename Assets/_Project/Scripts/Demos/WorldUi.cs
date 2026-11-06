@@ -1,10 +1,10 @@
-using CardboardXR.Interaction;
-using CardboardXR.UI;
+using Afterglow.Interaction;
+using Afterglow.UI;
 using UnityEngine;
 
-namespace CardboardXR.Demos
+namespace Afterglow.Demos
 {
-    // Helpers for demos that build their panels at runtime with the Material kit (CardboardXR.UI.M3):
+    // Helpers for demos that build their panels at runtime with the Material kit (Afterglow.UI.M3):
     // a panel the gaze pointer works (look, then pinch or tap the screen), laid out in dp, and where
     // to put it.
     public static class WorldUi

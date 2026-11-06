@@ -1,10 +1,10 @@
 using System.Collections;
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Fades the whole view to black and back, for moving between scenes: a black quad just past the
-    // eyes' near clip, held with the head, drawn over everything (CardboardXR/Fade) in both eyes and
+    // eyes' near clip, held with the head, drawn over everything (Afterglow/Fade) in both eyes and
     // in the single-view mode alike. Hidden while clear, so it costs nothing then. DemoManager fades
     // out before unloading a scene and in once the next has started. Put it on the quad, under the head.
     [RequireComponent(typeof(MeshRenderer))]

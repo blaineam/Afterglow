@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Head tracking for a desk, where there is no phone to turn: the Editor without XR Simulation,
     // and the iOS Simulator. It takes over only while GyroHeadTracker found no sensors, so on a

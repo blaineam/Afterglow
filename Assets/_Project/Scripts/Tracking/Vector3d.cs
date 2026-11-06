@@ -1,6 +1,6 @@
 using System;
 
-namespace CardboardXR.Tracking
+namespace Afterglow.Tracking
 {
     // Double-precision 3D vector for sensor fusion, where float precision loses small rotations.
     // Ported from the Cardboard SDK (sdk/util/vector.h and vectorutils.cc, Apache License 2.0).

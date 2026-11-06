@@ -1,7 +1,7 @@
-using CardboardXR.UI;
+using Afterglow.UI;
 using UnityEngine;
 
-namespace CardboardXR.Demos
+namespace Afterglow.Demos
 {
     // One line of guidance, low in front of where the user starts a scene: how to bring back the
     // settings panel and the home screen, which open by themselves on entering the Home scene

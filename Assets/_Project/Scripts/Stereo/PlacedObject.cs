@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.XR.ARFoundation;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // An object the user placed on a real surface. Tapping it removes it and its anchor. Goes on the
     // AnchorPlacer's object prefab, on the GameObject with the collider.

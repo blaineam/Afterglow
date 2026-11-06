@@ -2,9 +2,9 @@ using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
-    // Speaking instead of typing (Plugins/iOS/CardboardXRDictation.mm).
+    // Speaking instead of typing (Plugins/iOS/AfterglowDictation.mm).
     //
     // In a viewer you cannot see your hands, so aiming a gaze at one key at a time is the slowest
     // input the app has. This is the fastest, and the phone already does it well.
@@ -28,14 +28,14 @@ namespace CardboardXR.Stereo
 
         public static bool Supported =>
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_DictationAvailable() != 0;
+            Afterglow_DictationAvailable() != 0;
 #else
             false;
 #endif
 
         public static State Current =>
 #if UNITY_IOS && !UNITY_EDITOR
-            (State)CardboardXR_DictationState();
+            (State)Afterglow_DictationState();
 #else
             State.Unavailable;
 #endif
@@ -45,7 +45,7 @@ namespace CardboardXR.Stereo
         public static void Start()
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_DictationStart();
+            Afterglow_DictationStart();
 #else
             Debug.Log("[Speech] Dictation is iOS only.");
 #endif
@@ -54,7 +54,7 @@ namespace CardboardXR.Stereo
         public static void Stop()
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_DictationStop();
+            Afterglow_DictationStop();
 #endif
         }
 
@@ -62,7 +62,7 @@ namespace CardboardXR.Stereo
         public static bool TakeFinished()
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            return CardboardXR_DictationTakeFinished() != 0;
+            return Afterglow_DictationTakeFinished() != 0;
 #else
             return false;
 #endif
@@ -74,11 +74,11 @@ namespace CardboardXR.Stereo
             get
             {
 #if UNITY_IOS && !UNITY_EDITOR
-                var needed = CardboardXR_DictationCopyText(null, 0);
+                var needed = Afterglow_DictationCopyText(null, 0);
                 if (needed <= 0)
                     return string.Empty;
                 var buffer = new byte[needed + 1];
-                CardboardXR_DictationCopyText(buffer, buffer.Length);
+                Afterglow_DictationCopyText(buffer, buffer.Length);
                 return Encoding.UTF8.GetString(buffer, 0, needed);
 #else
                 return string.Empty;
@@ -99,12 +99,12 @@ namespace CardboardXR.Stereo
         };
 
 #if UNITY_IOS && !UNITY_EDITOR
-        [DllImport("__Internal")] static extern int CardboardXR_DictationAvailable();
-        [DllImport("__Internal")] static extern void CardboardXR_DictationStart();
-        [DllImport("__Internal")] static extern void CardboardXR_DictationStop();
-        [DllImport("__Internal")] static extern int CardboardXR_DictationState();
-        [DllImport("__Internal")] static extern int CardboardXR_DictationTakeFinished();
-        [DllImport("__Internal")] static extern int CardboardXR_DictationCopyText(byte[] buffer, int capacity);
+        [DllImport("__Internal")] static extern int Afterglow_DictationAvailable();
+        [DllImport("__Internal")] static extern void Afterglow_DictationStart();
+        [DllImport("__Internal")] static extern void Afterglow_DictationStop();
+        [DllImport("__Internal")] static extern int Afterglow_DictationState();
+        [DllImport("__Internal")] static extern int Afterglow_DictationTakeFinished();
+        [DllImport("__Internal")] static extern int Afterglow_DictationCopyText(byte[] buffer, int capacity);
 #endif
     }
 }

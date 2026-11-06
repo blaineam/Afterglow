@@ -1,7 +1,7 @@
 using TMPro;
 using UnityEngine;
 
-namespace CardboardXR.UI
+namespace Afterglow.UI
 {
     // The fonts the Material UI is set in, as TextMesh Pro font assets: Roboto in two weights and
     // Material Icons (Round). Kept in Resources so UI built at runtime in any scene finds them; the

@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace CardboardXR.UI
+namespace Afterglow.UI
 {
     // Material's state layer: a wash of the content color over an interactive element, 8% while
     // hovered and 10% while pressed, eased in and out. Gaze is how this app hovers, so it's what says

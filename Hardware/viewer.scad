@@ -1,4 +1,4 @@
-// A phone VR viewer for CardboardXR, parametric in the phone.
+// A phone VR viewer for Afterglow, parametric in the phone.
 //
 // Why this exists: the viewer this project was built around is published as print files only, one
 // set per phone, with no CAD source, so a new phone cannot be added to it. This is a separate

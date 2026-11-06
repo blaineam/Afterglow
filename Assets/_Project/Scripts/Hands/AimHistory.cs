@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Recent pointing rays, so a pinch can aim with the ray from just before it: closing the fingers
     // moves the point between them, and with it the ray, by a median 5.6 degrees on the phone.

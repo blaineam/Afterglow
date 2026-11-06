@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Development overrides passed when launching the app, so settings can be compared without a
     // rebuild. The launch scripts take them the same way on both platforms:
@@ -16,7 +16,7 @@ namespace CardboardXR.Stereo
     // them: opened from the home screen, the app takes its defaults.
     public static class LaunchOptions
     {
-        public const string k_EnvironmentPrefix = "CARDBOARDXR_";
+        public const string k_EnvironmentPrefix = "AFTERGLOW_";
 
         public static int GetInt(string name, int fallback)
         {

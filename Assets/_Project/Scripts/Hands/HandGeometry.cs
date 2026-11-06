@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Places the landmarker's 21 landmarks in 3D in front of the camera. The model gives each
     // landmark in image pixels, and separately the hand's 3D shape in meters around its center. The

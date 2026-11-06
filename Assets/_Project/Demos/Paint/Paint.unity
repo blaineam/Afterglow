@@ -147,7 +147,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2ad46c45c14274592b412804c266efeb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: CardboardXR.Stereo::CardboardXR.Stereo.VirtualEnvironment
+  m_EditorClassIdentifier: Afterglow.Stereo::Afterglow.Stereo.VirtualEnvironment
 --- !u!4 &1131213370
 Transform:
   m_ObjectHideFlags: 0
@@ -282,7 +282,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: da93adac0f2c04b4e87630e9f7f6592f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: CardboardXR.Demos.Paint::CardboardXR.Demos.Paint.PaintDemo
+  m_EditorClassIdentifier: Afterglow.Demos.Paint::Afterglow.Demos.Paint.PaintDemo
   m_SolidMaterial: {fileID: 2100000, guid: 2756e3633b5824995936233ffc6bedaa, type: 2}
   m_GlowMaterial: {fileID: 2100000, guid: 4a8b9706111d646bfb78c9292199d73b, type: 2}
 --- !u!4 &1884124144

@@ -3,21 +3,21 @@
 #   zsh Tools/ios_launch.sh
 #   zsh Tools/ios_launch.sh --ei dof 6 --ei passthrough 1
 # Launch options are given as on Android (see LaunchOptions.cs): each "--ei name value" reaches the
-# app as the environment variable CARDBOARDXR_name. Use this instead of ios_build_and_run.sh when
+# app as the environment variable AFTERGLOW_name. Use this instead of ios_build_and_run.sh when
 # nothing has changed and the app just needs to run again: after unlocking the phone, to re-read the
 # log after a test, or to try other options. The phone must be unlocked, because iOS refuses to
 # launch anything on a locked device.
 set -u
-BUNDLE=${CARDBOARDXR_BUNDLE_ID:-com.brenpoly.cardboardxr}
-PREFIX=CARDBOARDXR_
-LOGS=${TMPDIR:-/tmp}/cardboardxr
+BUNDLE=${AFTERGLOW_BUNDLE_ID:-com.wemiller.afterglow}
+PREFIX=AFTERGLOW_
+LOGS=${TMPDIR:-/tmp}/afterglow
 mkdir -p $LOGS
 
 # --check only validates the options, so ios_build_and_run.sh can reject a typo before building.
 CHECK_ONLY=0
 if [ "${1:-}" = "--check" ]; then CHECK_ONLY=1; shift; fi
 
-# The options as the JSON dictionary devicectl takes, e.g. {"CARDBOARDXR_dof": "6"}.
+# The options as the JSON dictionary devicectl takes, e.g. {"AFTERGLOW_dof": "6"}.
 ENVIRONMENT=""
 OPTIONS=("$@")
 while [ $# -gt 0 ]; do

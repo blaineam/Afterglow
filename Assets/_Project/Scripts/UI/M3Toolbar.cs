@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace CardboardXR.UI
+namespace Afterglow.UI
 {
     // Lays out an orbiter toolbar's items in a row, in groups with a divider between them, from only
     // the items showing: hide one and the rest close up and the toolbar narrows, with no gap where it

@@ -2,7 +2,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     public class CameraClockTests
     {

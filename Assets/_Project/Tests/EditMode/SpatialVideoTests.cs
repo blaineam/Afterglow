@@ -1,8 +1,8 @@
 using System;
-using CardboardXR.Demos.Video;
+using Afterglow.Demos.Video;
 using NUnit.Framework;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     // Keeping a spatial video's two external textures pointed at the decoder's own memory.
     //

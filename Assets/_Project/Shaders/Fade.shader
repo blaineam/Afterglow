@@ -1,6 +1,6 @@
 // A black veil over the whole view, for fading between scenes: drawn last, over everything,
 // including the reticle and UI, at the opacity ScreenFade sets in _Alpha.
-Shader "CardboardXR/Fade"
+Shader "Afterglow/Fade"
 {
     Properties
     {

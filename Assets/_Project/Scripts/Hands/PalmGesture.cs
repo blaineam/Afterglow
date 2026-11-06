@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Whether a hand shows its palm to the camera, from three of its landmarks in the camera image
     // and which hand it is. The phone's camera sees about what the eyes see, so a palm toward the

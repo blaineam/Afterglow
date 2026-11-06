@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     public enum Eye
     {

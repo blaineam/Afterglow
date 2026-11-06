@@ -1,10 +1,10 @@
 using System.Linq;
-using CardboardXR.Hands;
+using Afterglow.Hands;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.XR.Hands;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     public class HandSkeletonTests
     {

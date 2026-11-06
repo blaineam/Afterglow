@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace CardboardXR.UI
+namespace Afterglow.UI
 {
     // The Material Icons (Round) the app uses, by name, with their codepoints from the font's
     // codepoints file. The icon font asset is made with exactly these glyphs (MaterialAssets).

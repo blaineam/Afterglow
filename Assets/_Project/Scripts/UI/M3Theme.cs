@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.UI
+namespace Afterglow.UI
 {
     // Material 3's design tokens as the app uses them, following Material Design for XR
     // (developer.android.com/design/ui/xr): the baseline dark color scheme, the type scale, shapes,

@@ -1,9 +1,9 @@
-# CardboardXR
+# Afterglow
 
-[![CI](https://github.com/blaineam/CardboardXR/actions/workflows/ci.yml/badge.svg)](https://github.com/blaineam/CardboardXR/actions/workflows/ci.yml)
+[![CI](https://github.com/blaineam/Afterglow/actions/workflows/ci.yml/badge.svg)](https://github.com/blaineam/Afterglow/actions/workflows/ci.yml)
 
-A fork of [brenpoly/CardboardXR](https://github.com/brenpoly/CardboardXR) that is growing the
-prototype into a product: a home for spatial photos and videos, panoramas, WebXR pages and the
+A fork of [brenpoly/CardboardXR](https://github.com/brenpoly/CardboardXR), named Afterglow since
+2026-11-05 (it carried upstream's name until then), that is growing the prototype into a product: a home for spatial photos and videos, panoramas, WebXR pages and the
 games, built for the iPhone 18 Pro Max in a printed viewer and tested without one in the Editor and
 the iOS Simulator. [ROADMAP.md](ROADMAP.md) is the plan and the honest state of each piece.
 
@@ -46,7 +46,7 @@ The pages are in `docs/`, served by GitHub Pages.
 
 ## Install
 
-For Android, download the APK from [Releases](https://github.com/blaineam/CardboardXR/releases) on
+For Android, download the APK from [Releases](https://github.com/blaineam/Afterglow/releases) on
 an ARCore phone (Android 10 or later, 64-bit, with Vulkan) and open it. Android asks you to allow
 installing apps from your browser or file manager. Releases also carry an **unsigned** iOS IPA, which
 needs signing with your own Apple ID before it installs; building from source, below, does that for
@@ -89,12 +89,12 @@ video decoding. What neither has is ARKit: no passthrough, no surfaces and no ca
 The app notices (`Capabilities`) and refuses those with a log line rather than waiting for tracking.
 
 Builds are release builds. For a development build (debuggable, with the Unity Profiler able to
-connect over the local network), set `CARDBOARDXR_DEVELOPMENT=1`. The app id is
-`com.brenpoly.cardboardxr`; an iOS bundle id belongs to the Apple team that first signed it, so to
+connect over the local network), set `AFTERGLOW_DEVELOPMENT=1`. The app id is
+`com.wemiller.afterglow`; an iOS bundle id belongs to the Apple team that first signed it, so to
 build for your own iPhone pick your own, the same way for every script:
 
 ```sh
-CARDBOARDXR_BUNDLE_ID=com.example.cardboardxr zsh Tools/ios_build_and_run.sh
+AFTERGLOW_BUNDLE_ID=com.example.afterglow zsh Tools/ios_build_and_run.sh
 ```
 
 The Android script also runs the EditMode tests first. On iOS, the first install needs Developer
@@ -129,7 +129,7 @@ zsh Tools/ios_launch.sh --ei dof 3 --ei mono 1
 ```
 
 On Android they're intent extras; on iOS they reach the app as environment variables
-(`CARDBOARDXR_<name>`). Either way they only apply to a launch from the Mac, not one from the
+(`AFTERGLOW_<name>`). Either way they only apply to a launch from the Mac, not one from the
 phone's home screen. The app logs the options it received at startup (`[Stereo] Launch options`).
 
 | Option | Effect |
@@ -193,10 +193,10 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   bundled, and the spatial photos need no copying in: allow Photos the first time Media opens and
   they are listed with the files. **Files** is the same player listing only what you copied in or
   linked, and never asks about Photos. To bundle your own in local builds, put them in a `360` folder
-  beside the project (or set `CARDBOARDXR_VIDEOS`): the build scripts copy them into
+  beside the project (or set `AFTERGLOW_VIDEOS`): the build scripts copy them into
   `Assets/StreamingAssets`, which git ignores apart from the test clips. Or add your own to the app's `Videos` folder on the phone: on
-  Android `adb push video.mp4 /storage/emulated/0/Android/data/com.brenpoly.cardboardxr/files/Videos`;
-  on iPhone, Finder's Files tab for the phone, then CardboardXR > Videos. Tags in the name set the
+  Android `adb push video.mp4 /storage/emulated/0/Android/data/com.wemiller.afterglow/files/Videos`;
+  on iPhone, Finder's Files tab for the phone, then Afterglow > Videos. Tags in the name set the
   format (`_360`, `_180`, `_flat`, `_sbs`, `_tb`, `_mono`); `_flat` (or `_screen`, `_cinema`) is a
   film on a screen rather than anything wrapped around you, which is what a 3D film wants. For Google Drive, put share links in
   `videos.txt` in that folder, one per line; each downloads on first play.
@@ -235,10 +235,10 @@ Every launch writes a session log on the phone, replacing the last one (which is
 `session-previous.log`). The scripts print its start; to read the whole thing:
 
 ```sh
-adb pull /storage/emulated/0/Android/data/com.brenpoly.cardboardxr/files/session.log   # Android
+adb pull /storage/emulated/0/Android/data/com.wemiller.afterglow/files/session.log   # Android
 ```
 
-On iOS, `ios_launch.sh` copies it to `$TMPDIR/cardboardxr/ios-session.log`.
+On iOS, `ios_launch.sh` copies it to `$TMPDIR/afterglow/ios-session.log`.
 
 Lines are tagged by area: `[Pose]` head tracking, `[AR]` the AR session, `[Room]` surfaces and the
 floor, `[Anchor]` placed objects, `[Hands]` hand tracking and grabs, `[Pinch]` the pinch study,

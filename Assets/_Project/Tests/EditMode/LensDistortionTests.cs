@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using UnityEngine;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     // Expected values come from a Python transcription of the Cardboard SDK's lens_distortion.cc,
     // polynomial_radial_distortion.cc and distortion_mesh.cc, run in double precision.

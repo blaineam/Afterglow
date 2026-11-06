@@ -1,14 +1,14 @@
 using System;
 using System.IO;
-using CardboardXR.Hands;
-using CardboardXR.Interaction;
-using CardboardXR.Stereo;
-using CardboardXR.UI;
+using Afterglow.Hands;
+using Afterglow.Interaction;
+using Afterglow.Stereo;
+using Afterglow.UI;
 using TMPro;
 using UnityEngine.UI;
 using UnityEngine;
 
-namespace CardboardXR.Demos
+namespace Afterglow.Demos
 {
     // Runs the in-app browser: a page hung on a quad in the scene, fed the head pose, driven by
     // gaze and pinch, and handed the whole screen only when a page starts an immersive session.

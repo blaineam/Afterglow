@@ -1,6 +1,6 @@
 using System.IO;
-using CardboardXR.Demos;
-using CardboardXR.UI;
+using Afterglow.Demos;
+using Afterglow.UI;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -16,7 +16,7 @@ namespace ProjectBootstrap
     {
         public static void Capture()
         {
-            var folder = ArgumentAfter("-previewPath") ?? Path.Combine(Path.GetTempPath(), "cardboardxr-preview");
+            var folder = ArgumentAfter("-previewPath") ?? Path.Combine(Path.GetTempPath(), "afterglow-preview");
             Directory.CreateDirectory(folder);
             StereoBuilder.BuildScenes();
 
@@ -30,7 +30,7 @@ namespace ProjectBootstrap
             // eye level above it: the sections, one looked at, then the Play page.
             var panel = (RectTransform)GameObject.Find("Gaze Panel").transform;
             var above = (RectTransform)panel.Find("Home Screen");
-            CardboardXR.Hands.SettingsSummoner.Place(panel, above, Vector3.zero, 0f);
+            Afterglow.Hands.SettingsSummoner.Place(panel, above, Vector3.zero, 0f);
             Render(camera, Path.Combine(folder, "toolbar.png"), -12f, 0f);
             var home = Object.FindAnyObjectByType<HomeScreen>();
             home.Show(true);
@@ -42,7 +42,7 @@ namespace ProjectBootstrap
             Render(camera, Path.Combine(folder, "home-play.png"), -6f, 0f);
             var settings = Object.FindAnyObjectByType<SettingsScreen>();
             settings.Show(true);
-            CardboardXR.Hands.SettingsSummoner.Place(panel, (RectTransform)panel.Find("Settings Screen"), Vector3.zero, 0f);
+            Afterglow.Hands.SettingsSummoner.Place(panel, (RectTransform)panel.Find("Settings Screen"), Vector3.zero, 0f);
             Render(camera, Path.Combine(folder, "settings.png"), -6f, 0f);
             panel.gameObject.SetActive(false);
             RenderDemoPanels(camera, folder);
@@ -55,7 +55,7 @@ namespace ProjectBootstrap
         // they need nothing from Core) and filled with sample content, straight ahead.
         static void RenderDemoPanels(Camera camera, string folder)
         {
-            var video = Demo("CardboardXR.Demos.Video.VideoDemo, CardboardXR.Demos.Video");
+            var video = Demo("Afterglow.Demos.Video.VideoDemo, Afterglow.Demos.Video");
             if (video != null)
             {
                 Call(video, "BuildPanel");
@@ -92,7 +92,7 @@ namespace ProjectBootstrap
                 panel.gameObject.SetActive(false);
             }
 
-            var paint = Demo("CardboardXR.Demos.Paint.PaintDemo, CardboardXR.Demos.Paint");
+            var paint = Demo("Afterglow.Demos.Paint.PaintDemo, Afterglow.Demos.Paint");
             if (paint != null)
             {
                 Call(paint, "BuildPanel");
@@ -104,7 +104,7 @@ namespace ProjectBootstrap
                 panel.gameObject.SetActive(false);
             }
 
-            var rush = Demo("CardboardXR.Demos.Rush.RushDemo, CardboardXR.Demos.Rush");
+            var rush = Demo("Afterglow.Demos.Rush.RushDemo, Afterglow.Demos.Rush");
             if (rush != null)
             {
                 Call(rush, "BuildMenu");
@@ -130,7 +130,7 @@ namespace ProjectBootstrap
         // Detected surfaces as a scan shows them: a floor and a table-height patch, mid-wave and after.
         static void RenderSurfaces(Camera camera, string folder)
         {
-            var material = new Material(Shader.Find("CardboardXR/Boundary"));
+            var material = new Material(Shader.Find("Afterglow/Boundary"));
             Surface(material, new Vector3(0f, -1.3f, 2f), new[]
             {
                 new Vector2(-2f, -1.2f), new Vector2(1.6f, -1.6f), new Vector2(2.2f, 1.4f), new Vector2(-0.4f, 2.2f), new Vector2(-2.4f, 1f),
@@ -149,13 +149,13 @@ namespace ProjectBootstrap
 
             // Passthrough: a lit cube on the table patch, its shadow caught on the camera image (a
             // flat gray here), after the scan has faded.
-            var catcher = new Material(Shader.Find("CardboardXR/ShadowCatcher"));
+            var catcher = new Material(Shader.Find("Afterglow/ShadowCatcher"));
             foreach (var renderer in Object.FindObjectsByType<MeshRenderer>())
             {
                 if (renderer.name != "Preview Surface")
                     continue;
                 renderer.sharedMaterials = new[] { catcher, material };
-                renderer.sortingOrder = CardboardXR.Stereo.SurfaceMesh.SortingOrder(renderer.transform.position.y);
+                renderer.sortingOrder = Afterglow.Stereo.SurfaceMesh.SortingOrder(renderer.transform.position.y);
             }
             var light = new GameObject("Preview Light").AddComponent<Light>();
             light.type = LightType.Directional;
@@ -181,7 +181,7 @@ namespace ProjectBootstrap
             var vertices = new System.Collections.Generic.List<Vector3>();
             var fades = new System.Collections.Generic.List<Vector2>();
             var triangles = new System.Collections.Generic.List<int>();
-            CardboardXR.Stereo.SurfaceMesh.Build(boundary, Vector2.zero, 0.15f, vertices, fades, triangles);
+            Afterglow.Stereo.SurfaceMesh.Build(boundary, Vector2.zero, 0.15f, vertices, fades, triangles);
             var mesh = new Mesh();
             mesh.SetVertices(vertices);
             mesh.SetUVs(1, fades);

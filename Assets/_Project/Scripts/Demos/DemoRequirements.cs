@@ -1,6 +1,6 @@
 using System;
 
-namespace CardboardXR.Demos
+namespace Afterglow.Demos
 {
     // Whether a demo needs a capability on, off, or doesn't mind.
     public enum Need

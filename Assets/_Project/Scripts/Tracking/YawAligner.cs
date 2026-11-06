@@ -1,6 +1,6 @@
 using System;
 
-namespace CardboardXR.Tracking
+namespace Afterglow.Tracking
 {
     // Estimates the heading (yaw) difference between two gravity-aligned tracking spaces with y up,
     // such as the head tracker's space and ARCore's, from rotations of the same object measured at

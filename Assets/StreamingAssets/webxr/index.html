@@ -1,7 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>CardboardXR</title>
+<title>Afterglow</title>
 <style>
   :root { color-scheme: dark; }
   body { margin: 0; padding: 7vh 6vw; background: #000; color: #e6e6e6;
@@ -20,7 +20,7 @@
   .warn { color: #d8a657; }
 </style>
 
-<h1>CardboardXR browser</h1>
+<h1>Afterglow browser</h1>
 <p class="sub">WebXR pages render in stereo through the viewer's lenses. Everything else browses flat.</p>
 
 <form onsubmit="go(event)">
@@ -51,8 +51,8 @@
   }
   // Says whether the shim actually loaded, which is the first thing to check if a page is flat.
   var s = document.getElementById('status');
-  if (navigator.xr && window.__cardboardxrConfig) {
-    var c = window.__cardboardxrConfig;
+  if (navigator.xr && window.__afterglowConfig) {
+    var c = window.__afterglowConfig;
     s.textContent = 'Ready: screen ' + (c.screen[0] * 1000).toFixed(0) + ' x ' +
       (c.screen[1] * 1000).toFixed(0) + ' mm, lenses ' + (c.interLens * 1000).toFixed(1) +
       ' mm apart, ' + (c.hasPosition ? '6DoF' : '3DoF') + '.';

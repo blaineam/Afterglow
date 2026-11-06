@@ -1,6 +1,6 @@
 using System;
 
-namespace CardboardXR.Tracking
+namespace Afterglow.Tracking
 {
     // A 3D rotation stored as a normalized double-precision quaternion (x, y, z vector part, w
     // scalar), with right-hand-rule axis-angle conventions and Hamilton products.

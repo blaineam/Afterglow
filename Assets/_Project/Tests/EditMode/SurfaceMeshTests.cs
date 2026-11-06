@@ -1,9 +1,9 @@
 using System.Collections.Generic;
-using CardboardXR.Stereo;
+using Afterglow.Stereo;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     public class SurfaceMeshTests
     {

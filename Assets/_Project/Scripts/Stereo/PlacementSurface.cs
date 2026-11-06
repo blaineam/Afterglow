@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.XR.ARFoundation;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Makes a detected plane somewhere to put things. While the gaze is on it, a soft spot of it shows
     // in the highlight color where the gaze meets it (the shader's _GazePoint), even in VR where it

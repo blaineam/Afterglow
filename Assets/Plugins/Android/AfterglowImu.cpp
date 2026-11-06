@@ -93,7 +93,7 @@ std::atomic<bool> g_running{false};
 std::thread g_thread;
 std::string g_description;
 
-// Hands the sensor thread's setup result back to CardboardXR_ImuStart.
+// Hands the sensor thread's setup result back to Afterglow_ImuStart.
 std::mutex g_start_mutex;
 std::condition_variable g_start_changed;
 bool g_start_done = false;
@@ -192,7 +192,7 @@ extern "C" {
 
 // Starts reading on a new thread. Returns 0 once both sensors deliver, or a negative error:
 // -1 libandroid's sensor API is missing, -2 no gyroscope or accelerometer, -3 registration failed.
-__attribute__((visibility("default"))) int CardboardXR_ImuStart(const char* package_name) {
+__attribute__((visibility("default"))) int Afterglow_ImuStart(const char* package_name) {
   std::lock_guard<std::mutex> control(g_control_mutex);
   if (g_running.load()) return 0;
   if (!g_api.Load()) return -1;
@@ -220,14 +220,14 @@ __attribute__((visibility("default"))) int CardboardXR_ImuStart(const char* pack
   return status;
 }
 
-__attribute__((visibility("default"))) void CardboardXR_ImuStop() {
+__attribute__((visibility("default"))) void Afterglow_ImuStop() {
   std::lock_guard<std::mutex> control(g_control_mutex);
   if (!g_running.exchange(false)) return;
   g_thread.join();
 }
 
 // Moves up to max buffered samples, oldest first, into samples. Returns how many.
-__attribute__((visibility("default"))) int CardboardXR_ImuRead(Sample* samples, int max) {
+__attribute__((visibility("default"))) int Afterglow_ImuRead(Sample* samples, int max) {
   std::lock_guard<std::mutex> lock(g_buffer_mutex);
   const int count = std::min(g_count, max);
   for (int i = 0; i < count; i++) samples[i] = g_buffer[(g_first + i) % kCapacity];
@@ -237,20 +237,20 @@ __attribute__((visibility("default"))) int CardboardXR_ImuRead(Sample* samples, 
 }
 
 // The current time on the sample timestamps' clock.
-__attribute__((visibility("default"))) int64_t CardboardXR_ImuNowNs() {
+__attribute__((visibility("default"))) int64_t Afterglow_ImuNowNs() {
   timespec now;
   clock_gettime(CLOCK_BOOTTIME, &now);
   return static_cast<int64_t>(now.tv_sec) * 1000000000LL + now.tv_nsec;
 }
 
 // Samples discarded because the buffer was full since the last start.
-__attribute__((visibility("default"))) int64_t CardboardXR_ImuDropped() {
+__attribute__((visibility("default"))) int64_t Afterglow_ImuDropped() {
   std::lock_guard<std::mutex> lock(g_buffer_mutex);
   return g_dropped;
 }
 
 // Writes the sensors and their periods as UTF-8 into buffer. Returns the length written.
-__attribute__((visibility("default"))) int CardboardXR_ImuDescribe(char* buffer, int size) {
+__attribute__((visibility("default"))) int Afterglow_ImuDescribe(char* buffer, int size) {
   std::lock_guard<std::mutex> control(g_control_mutex);
   if (buffer == nullptr || size <= 0) return 0;
   const int length = std::min(static_cast<int>(g_description.size()), size);

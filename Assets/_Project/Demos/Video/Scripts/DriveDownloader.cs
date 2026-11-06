@@ -4,7 +4,7 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace CardboardXR.Demos.Video
+namespace Afterglow.Demos.Video
 {
     // Downloads a Google Drive video into the cache, then points its entry at the file. Playing it
     // straight from Drive was the other choice, but Drive throttles and interrupts long reads, so a

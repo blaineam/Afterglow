@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace CardboardXR.UI
+namespace Afterglow.UI
 {
     // Rounded rectangles of any corner radius from one generated sprite: an anti-aliased white circle,
     // nine-sliced at its middle, so the corners are its quarters and the rest stretches. An Image's

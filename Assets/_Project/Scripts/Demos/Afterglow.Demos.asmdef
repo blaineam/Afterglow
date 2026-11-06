@@ -1,12 +1,12 @@
 {
-    "name": "CardboardXR.Demos",
-    "rootNamespace": "CardboardXR.Demos",
+    "name": "Afterglow.Demos",
+    "rootNamespace": "Afterglow.Demos",
     "references": [
-        "CardboardXR.Stereo",
-        "CardboardXR.Hands",
-        "CardboardXR.Interaction",
+        "Afterglow.Stereo",
+        "Afterglow.Hands",
+        "Afterglow.Interaction",
         "UnityEngine.UI",
-        "CardboardXR.UI",
+        "Afterglow.UI",
         "Unity.TextMeshPro"
     ],
     "includePlatforms": [],

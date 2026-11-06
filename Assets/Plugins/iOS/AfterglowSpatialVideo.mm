@@ -1,6 +1,6 @@
 // Spatial video from the user's Photos library: both eyes of an MV-HEVC file, as Metal textures
 // Unity draws from without ever copying the pixels. SpatialVideo.cs is the C# side, and
-// CardboardXRSpatialPhotos.mm owns the library scan whose indexes this takes.
+// AfterglowSpatialPhotos.mm owns the library scan whose indexes this takes.
 //
 // An iPhone 15 Pro and later record a spatial video as one MV-HEVC track whose two views are
 // separate layers. An ordinary decode hands back one layer -- whichever the file calls the hero eye
@@ -38,7 +38,7 @@
 extern "C" id<MTLDevice> UnityGetMetalDevice(void) __attribute__((weak_import));
 
 // The library's own fetch, so a video is opened by its place in the same list the photos use.
-extern "C" PHAsset *CardboardXR_SpatialAssetAt(int index);
+extern "C" PHAsset *Afterglow_SpatialAssetAt(int index);
 
 namespace
 {
@@ -297,9 +297,9 @@ namespace
 }
 
 // Starts loading one spatial video. Returns 0 if the item isn't a video this can open.
-extern "C" int CardboardXR_SpatialOpenVideo(int index)
+extern "C" int Afterglow_SpatialOpenVideo(int index)
 {
-    PHAsset *asset = CardboardXR_SpatialAssetAt(index);
+    PHAsset *asset = Afterglow_SpatialAssetAt(index);
     if (asset == nil || asset.mediaType != PHAssetMediaTypeVideo)
         return 0;
     if (@available(iOS 18.0, *))
@@ -312,9 +312,9 @@ extern "C" int CardboardXR_SpatialOpenVideo(int index)
 }
 
 // 0 nothing asked for, 1 loading, 2 ready, 3 failed.
-extern "C" int CardboardXR_SpatialVideoState() { return g_State.load(); }
+extern "C" int Afterglow_SpatialVideoState() { return g_State.load(); }
 
-extern "C" const char *CardboardXR_SpatialVideoError()
+extern "C" const char *Afterglow_SpatialVideoError()
 {
     return g_Error != nil ? g_Error.UTF8String : "";
 }
@@ -322,7 +322,7 @@ extern "C" const char *CardboardXR_SpatialVideoError()
 // The two eyes of the frame to show now, as Metal textures Unity draws as external textures. Both
 // eyes carry the same texture for a file that holds one view, and `stereo` then says so. Returns 0
 // while there is no frame yet.
-extern "C" int CardboardXR_SpatialVideoFrame(void **left, void **right, int *width, int *height, int *stereo)
+extern "C" int Afterglow_SpatialVideoFrame(void **left, void **right, int *width, int *height, int *stereo)
 {
     if (@available(iOS 18.0, *))
         TakeFrame();
@@ -357,7 +357,7 @@ extern "C" int CardboardXR_SpatialVideoFrame(void **left, void **right, int *wid
     return 1;
 }
 
-extern "C" void CardboardXR_SpatialVideoSetPlaying(int playing)
+extern "C" void Afterglow_SpatialVideoSetPlaying(int playing)
 {
     if (playing != 0)
         [g_Player play];
@@ -365,14 +365,14 @@ extern "C" void CardboardXR_SpatialVideoSetPlaying(int playing)
         [g_Player pause];
 }
 
-extern "C" int CardboardXR_SpatialVideoPlaying()
+extern "C" int Afterglow_SpatialVideoPlaying()
 {
     // The rate rather than timeControlStatus: a player waiting to buffer is still meant to be
     // playing, and the controls should go on showing pause.
     return g_Player != nil && g_Player.rate != 0.0f ? 1 : 0;
 }
 
-extern "C" double CardboardXR_SpatialVideoTime()
+extern "C" double Afterglow_SpatialVideoTime()
 {
     if (g_Player == nil)
         return 0.0;
@@ -380,7 +380,7 @@ extern "C" double CardboardXR_SpatialVideoTime()
     return isfinite(seconds) ? seconds : 0.0;
 }
 
-extern "C" double CardboardXR_SpatialVideoLength()
+extern "C" double Afterglow_SpatialVideoLength()
 {
     AVPlayerItem *item = g_Player.currentItem;
     if (item == nil)
@@ -389,7 +389,7 @@ extern "C" double CardboardXR_SpatialVideoLength()
     return isfinite(seconds) ? seconds : 0.0;
 }
 
-extern "C" void CardboardXR_SpatialVideoSeek(double seconds)
+extern "C" void Afterglow_SpatialVideoSeek(double seconds)
 {
     if (g_Player == nil)
         return;
@@ -399,7 +399,7 @@ extern "C" void CardboardXR_SpatialVideoSeek(double seconds)
          toleranceBefore:kCMTimeZero toleranceAfter:kCMTimeZero];
 }
 
-extern "C" void CardboardXR_SpatialVideoClose()
+extern "C" void Afterglow_SpatialVideoClose()
 {
     g_Request.fetch_add(1);
     // Nothing can have been opened on anything older, so there is nothing to tear down there.

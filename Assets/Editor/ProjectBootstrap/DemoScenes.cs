@@ -1,10 +1,10 @@
-using CardboardXR.Demos;
-using CardboardXR.Demos.Paint;
-using CardboardXR.Demos.Portal;
-using CardboardXR.Demos.Rush;
-using CardboardXR.Demos.Video;
-using CardboardXR.Interaction;
-using CardboardXR.Stereo;
+using Afterglow.Demos;
+using Afterglow.Demos.Paint;
+using Afterglow.Demos.Portal;
+using Afterglow.Demos.Rush;
+using Afterglow.Demos.Video;
+using Afterglow.Interaction;
+using Afterglow.Stereo;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;

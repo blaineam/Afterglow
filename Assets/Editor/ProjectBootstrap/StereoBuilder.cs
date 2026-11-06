@@ -1,8 +1,8 @@
-using CardboardXR.Demos;
-using CardboardXR.Hands;
-using CardboardXR.Interaction;
-using CardboardXR.Stereo;
-using CardboardXR.UI;
+using Afterglow.Demos;
+using Afterglow.Hands;
+using Afterglow.Interaction;
+using Afterglow.Stereo;
+using Afterglow.UI;
 using Unity.InferenceEngine;
 using TMPro;
 using Unity.XR.CoreUtils;
@@ -36,7 +36,7 @@ namespace ProjectBootstrap
         const string ScenesFolder = "Assets/_Project/Scenes";
         const string GeneratedFolder = "Assets/_Project/Stereo/Generated";
         const string CoreScene = ScenesFolder + "/Core.unity";
-        const string AndroidApk = "Builds/CardboardXR.apk";
+        const string AndroidApk = "Builds/Afterglow.apk";
         // Xcode projects are folders, and Xcode builds and signs them from there.
         const string XcodeProject = "Builds/iOS";
         const string XcodeProjectSimulator = "Builds/iOS-Simulator";
@@ -69,13 +69,13 @@ namespace ProjectBootstrap
         // The same scenes as an Xcode project for the iPhone, which Xcode then builds and signs.
         // Invoke with: -buildTarget iOS -executeMethod ProjectBootstrap.StereoBuilder.BuildIos
         //
-        // CARDBOARDXR_SIMULATOR=1 exports for the iOS Simulator instead (Tools/ios_sim_build_and_run.sh):
+        // AFTERGLOW_SIMULATOR=1 exports for the iOS Simulator instead (Tools/ios_sim_build_and_run.sh):
         // the arm64 simulator, which is the one the ARKit plug-in ships a slice for, into its own
         // Xcode project so a device export beside it is left alone. The SDK choice is put back
         // afterwards, so the setting in the repository stays the device's.
         public static void BuildIos()
         {
-            var simulator = System.Environment.GetEnvironmentVariable("CARDBOARDXR_SIMULATOR") == "1";
+            var simulator = System.Environment.GetEnvironmentVariable("AFTERGLOW_SIMULATOR") == "1";
             var sdk = PlayerSettings.iOS.sdkVersion;
             PlayerSettings.iOS.sdkVersion = simulator ? iOSSdkVersion.SimulatorSDK : iOSSdkVersion.DeviceSDK;
             if (simulator)
@@ -85,20 +85,20 @@ namespace ProjectBootstrap
                 () => PlayerSettings.iOS.sdkVersion = sdk);
         }
 
-        // A release build unless CARDBOARDXR_DEVELOPMENT=1: a development build is debuggable on
-        // Android and lets the Unity Profiler connect over the local network. CARDBOARDXR_BUNDLE_ID
+        // A release build unless AFTERGLOW_DEVELOPMENT=1: a development build is debuggable on
+        // Android and lets the Unity Profiler connect over the local network. AFTERGLOW_BUNDLE_ID
         // builds under another app id, since an iOS bundle id belongs to the Apple team that first
         // signed it. The first scene is the one the app starts in.
         static void BuildAndExit(string[] scenePaths, string outputPath, BuildTarget target, System.Action restore = null)
         {
-            var bundleId = System.Environment.GetEnvironmentVariable("CARDBOARDXR_BUNDLE_ID");
+            var bundleId = System.Environment.GetEnvironmentVariable("AFTERGLOW_BUNDLE_ID");
             if (!string.IsNullOrWhiteSpace(bundleId))
             {
                 PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.FromBuildTargetGroup(BuildPipeline.GetBuildTargetGroup(target)),
                     bundleId.Trim());
                 Debug.Log($"[Build] App id {bundleId.Trim()}");
             }
-            var development = System.Environment.GetEnvironmentVariable("CARDBOARDXR_DEVELOPMENT") == "1";
+            var development = System.Environment.GetEnvironmentVariable("AFTERGLOW_DEVELOPMENT") == "1";
             var version = PlayerSettings.bundleVersion;
             var versionCode = PlayerSettings.Android.bundleVersionCode;
             if (!ApplyRelease(target))
@@ -127,24 +127,24 @@ namespace ProjectBootstrap
             EditorApplication.Exit(summary.result == BuildResult.Succeeded ? 0 : 1);
         }
 
-        // For published builds (Tools/release_android.sh, .github/workflows/release.yml). CARDBOARDXR_VERSION
+        // For published builds (Tools/release_android.sh, .github/workflows/release.yml). AFTERGLOW_VERSION
         // (1.2.3) sets the version and, on Android, a version code that rises with it (10203), so updates
-        // install over older releases. CARDBOARDXR_KEYSTORE signs the APK with that keystore instead of
-        // Unity's debug key, which differs on every machine; its password comes in CARDBOARDXR_KEYSTORE_PASS
-        // (also the key's, as in a PKCS12 keystore, unless CARDBOARDXR_KEY_PASS says otherwise) and the
-        // key's alias in CARDBOARDXR_KEY_ALIAS, by default cardboardxr. Each can come on the command line
+        // install over older releases. AFTERGLOW_KEYSTORE signs the APK with that keystore instead of
+        // Unity's debug key, which differs on every machine; its password comes in AFTERGLOW_KEYSTORE_PASS
+        // (also the key's, as in a PKCS12 keystore, unless AFTERGLOW_KEY_PASS says otherwise) and the
+        // key's alias in AFTERGLOW_KEY_ALIAS, by default afterglow. Each can come on the command line
         // instead, under the names game-ci's unity-builder uses, since it forwards no environment of ours.
         // False if they're set wrong, rather than shipping a build signed with the wrong key.
         static bool ApplyRelease(BuildTarget target)
         {
-            var version = Option("CARDBOARDXR_VERSION", "-buildVersion");
+            var version = Option("AFTERGLOW_VERSION", "-buildVersion");
             if (!string.IsNullOrWhiteSpace(version))
             {
                 var parts = version.Trim().Split('.');
                 if (parts.Length != 3 || !int.TryParse(parts[0], out var major) || !int.TryParse(parts[1], out var minor) ||
                     !int.TryParse(parts[2], out var patch) || minor > 99 || patch > 99)
                 {
-                    Debug.LogError($"[Build] CARDBOARDXR_VERSION {version} isn't major.minor.patch (minor and patch under 100)");
+                    Debug.LogError($"[Build] AFTERGLOW_VERSION {version} isn't major.minor.patch (minor and patch under 100)");
                     return false;
                 }
                 PlayerSettings.bundleVersion = version.Trim();
@@ -152,24 +152,24 @@ namespace ProjectBootstrap
                 Debug.Log($"[Build] Version {PlayerSettings.bundleVersion} ({PlayerSettings.Android.bundleVersionCode})");
             }
 
-            var keystore = Option("CARDBOARDXR_KEYSTORE", "-androidKeystoreName");
+            var keystore = Option("AFTERGLOW_KEYSTORE", "-androidKeystoreName");
             if (target != BuildTarget.Android || keystore == null)
                 return true;
             // A relative path is relative to the project, which is where unity-builder puts the keystore.
             if (!System.IO.Path.IsPathRooted(keystore))
                 keystore = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "..", keystore));
-            var password = Option("CARDBOARDXR_KEYSTORE_PASS", "-androidKeystorePass");
+            var password = Option("AFTERGLOW_KEYSTORE_PASS", "-androidKeystorePass");
             if (!System.IO.File.Exists(keystore) || password == null)
             {
-                Debug.LogError($"[Build] Keystore {keystore} missing, or CARDBOARDXR_KEYSTORE_PASS unset");
+                Debug.LogError($"[Build] Keystore {keystore} missing, or AFTERGLOW_KEYSTORE_PASS unset");
                 return false;
             }
-            var alias = Option("CARDBOARDXR_KEY_ALIAS", "-androidKeyaliasName");
+            var alias = Option("AFTERGLOW_KEY_ALIAS", "-androidKeyaliasName");
             PlayerSettings.Android.useCustomKeystore = true;
             PlayerSettings.Android.keystoreName = keystore;
             PlayerSettings.Android.keystorePass = password;
-            PlayerSettings.Android.keyaliasName = alias ?? "cardboardxr";
-            PlayerSettings.Android.keyaliasPass = Option("CARDBOARDXR_KEY_PASS", "-androidKeyaliasPass") ?? password;
+            PlayerSettings.Android.keyaliasName = alias ?? "afterglow";
+            PlayerSettings.Android.keyaliasPass = Option("AFTERGLOW_KEY_PASS", "-androidKeyaliasPass") ?? password;
             Debug.Log($"[Build] Signing with {System.IO.Path.GetFileName(keystore)}, key {PlayerSettings.Android.keyaliasName}");
             return true;
         }

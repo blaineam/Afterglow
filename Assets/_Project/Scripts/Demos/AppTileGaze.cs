@@ -2,7 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-namespace CardboardXR.Demos
+namespace Afterglow.Demos
 {
     // Shows an app's tagline under the library's grid while the gaze is on its tile.
     public class AppTileGaze : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler

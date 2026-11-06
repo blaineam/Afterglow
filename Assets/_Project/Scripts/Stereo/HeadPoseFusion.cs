@@ -1,8 +1,8 @@
-using CardboardXR.Tracking;
+using Afterglow.Tracking;
 using UnityEngine;
-using CardboardXR.UI;
+using Afterglow.UI;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Drives the head in one of two modes. 3DoF: GyroHeadTracker's rotation alone, with ARCore off
     // and the display at up to 120 Hz. 6DoF: ARCore adds position; Android caps the display at 60 Hz

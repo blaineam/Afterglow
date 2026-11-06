@@ -2,9 +2,9 @@ using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
-namespace CardboardXR.Demos.Video
+namespace Afterglow.Demos.Video
 {
-    // Spatial video from the user's Photos library (Plugins/iOS/CardboardXRSpatialVideo.mm): a
+    // Spatial video from the user's Photos library (Plugins/iOS/AfterglowSpatialVideo.mm): a
     // moving picture per eye, from the same iPhone that goes in the viewer. It opens by its place in
     // SpatialPhotos.Scan's list, which both plugins share.
     //
@@ -59,14 +59,14 @@ namespace CardboardXR.Demos.Video
 
         public static State PlayState =>
 #if UNITY_IOS && !UNITY_EDITOR
-            (State)CardboardXR_SpatialVideoState();
+            (State)Afterglow_SpatialVideoState();
 #else
             State.Idle;
 #endif
 
         public static string Error =>
 #if UNITY_IOS && !UNITY_EDITOR
-            Marshal.PtrToStringUTF8(CardboardXR_SpatialVideoError()) ?? "";
+            Marshal.PtrToStringUTF8(Afterglow_SpatialVideoError()) ?? "";
 #else
             "";
 #endif
@@ -76,7 +76,7 @@ namespace CardboardXR.Demos.Video
         public static bool Open(int index)
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            return CardboardXR_SpatialOpenVideo(index) != 0;
+            return Afterglow_SpatialOpenVideo(index) != 0;
 #else
             return false;
 #endif
@@ -85,8 +85,8 @@ namespace CardboardXR.Demos.Video
         public static bool Playing
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            get => CardboardXR_SpatialVideoPlaying() != 0;
-            set => CardboardXR_SpatialVideoSetPlaying(value ? 1 : 0);
+            get => Afterglow_SpatialVideoPlaying() != 0;
+            set => Afterglow_SpatialVideoSetPlaying(value ? 1 : 0);
 #else
             get => false;
             set { }
@@ -95,14 +95,14 @@ namespace CardboardXR.Demos.Video
 
         public static double Time =>
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_SpatialVideoTime();
+            Afterglow_SpatialVideoTime();
 #else
             0.0;
 #endif
 
         public static double Length =>
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_SpatialVideoLength();
+            Afterglow_SpatialVideoLength();
 #else
             0.0;
 #endif
@@ -110,7 +110,7 @@ namespace CardboardXR.Demos.Video
         public static void Seek(double seconds)
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_SpatialVideoSeek(seconds);
+            Afterglow_SpatialVideoSeek(seconds);
 #endif
         }
 
@@ -125,7 +125,7 @@ namespace CardboardXR.Demos.Video
 #if UNITY_IOS && !UNITY_EDITOR
             // Only what a frame actually arrived with is trusted: nothing the plugin writes on the
             // way out of an empty pull is worth reading.
-            if (CardboardXR_SpatialVideoFrame(out left, out right, out width, out height, out var stereo) != 0)
+            if (Afterglow_SpatialVideoFrame(out left, out right, out width, out height, out var stereo) != 0)
             {
                 Stereo = stereo != 0;
             }
@@ -153,7 +153,7 @@ namespace CardboardXR.Demos.Video
             Right = s_Right;
             Stereo = false;
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_SpatialVideoClose();
+            Afterglow_SpatialVideoClose();
 #endif
         }
 
@@ -213,16 +213,16 @@ namespace CardboardXR.Demos.Video
         }
 
 #if UNITY_IOS && !UNITY_EDITOR
-        [DllImport("__Internal")] static extern int CardboardXR_SpatialOpenVideo(int index);
-        [DllImport("__Internal")] static extern int CardboardXR_SpatialVideoState();
-        [DllImport("__Internal")] static extern IntPtr CardboardXR_SpatialVideoError();
-        [DllImport("__Internal")] static extern int CardboardXR_SpatialVideoFrame(out IntPtr left, out IntPtr right, out int width, out int height, out int stereo);
-        [DllImport("__Internal")] static extern void CardboardXR_SpatialVideoSetPlaying(int playing);
-        [DllImport("__Internal")] static extern int CardboardXR_SpatialVideoPlaying();
-        [DllImport("__Internal")] static extern double CardboardXR_SpatialVideoTime();
-        [DllImport("__Internal")] static extern double CardboardXR_SpatialVideoLength();
-        [DllImport("__Internal")] static extern void CardboardXR_SpatialVideoSeek(double seconds);
-        [DllImport("__Internal")] static extern void CardboardXR_SpatialVideoClose();
+        [DllImport("__Internal")] static extern int Afterglow_SpatialOpenVideo(int index);
+        [DllImport("__Internal")] static extern int Afterglow_SpatialVideoState();
+        [DllImport("__Internal")] static extern IntPtr Afterglow_SpatialVideoError();
+        [DllImport("__Internal")] static extern int Afterglow_SpatialVideoFrame(out IntPtr left, out IntPtr right, out int width, out int height, out int stereo);
+        [DllImport("__Internal")] static extern void Afterglow_SpatialVideoSetPlaying(int playing);
+        [DllImport("__Internal")] static extern int Afterglow_SpatialVideoPlaying();
+        [DllImport("__Internal")] static extern double Afterglow_SpatialVideoTime();
+        [DllImport("__Internal")] static extern double Afterglow_SpatialVideoLength();
+        [DllImport("__Internal")] static extern void Afterglow_SpatialVideoSeek(double seconds);
+        [DllImport("__Internal")] static extern void Afterglow_SpatialVideoClose();
 #endif
     }
 }

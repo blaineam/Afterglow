@@ -9,7 +9,7 @@
 // This file does the photos, which are self-contained: the stereo pair is found through ImageIO's
 // group metadata, each eye is drawn into a BGRA buffer, and C# uploads the two buffers as
 // textures. The videos need a decoder told to keep both layers and are in
-// CardboardXRSpatialVideo.mm, which opens them by their index in this file's scan.
+// AfterglowSpatialVideo.mm, which opens them by their index in this file's scan.
 //
 // Loading is asynchronous, with C# polling the state, because a photo is opened by a pinch while
 // the headset is drawing: a synchronous library fetch would hold up a frame, which in a viewer is
@@ -150,7 +150,7 @@ namespace
 }
 
 // 0 denied or restricted, 1 granted, 2 asking (the dialog is up; poll again).
-extern "C" int CardboardXR_SpatialAuthorize()
+extern "C" int Afterglow_SpatialAuthorize()
 {
     const PHAuthorizationStatus status =
         [PHPhotoLibrary authorizationStatusForAccessLevel:PHAccessLevelReadWrite];
@@ -169,9 +169,9 @@ extern "C" int CardboardXR_SpatialAuthorize()
 
 // Finds every spatial photo and video in the library, newest first, and returns how many there
 // are, or -1 if the library can't be read yet.
-extern "C" int CardboardXR_SpatialScan()
+extern "C" int Afterglow_SpatialScan()
 {
-    if (CardboardXR_SpatialAuthorize() != 1)
+    if (Afterglow_SpatialAuthorize() != 1)
         return -1;
 
     // Spatial photos arrived with the iPhone 15 Pro on iOS 17, and the stereo pair is read through
@@ -197,7 +197,7 @@ extern "C" int CardboardXR_SpatialScan()
 
 // One scanned item, for the sibling plugin that opens the videos: the scan and its indexes live
 // here, so a video is opened by its place in the same list the photos are.
-extern "C" PHAsset *CardboardXR_SpatialAssetAt(int index)
+extern "C" PHAsset *Afterglow_SpatialAssetAt(int index)
 {
     if (g_Assets == nil || index < 0 || index >= (int)g_Assets.count)
         return nil;
@@ -205,7 +205,7 @@ extern "C" PHAsset *CardboardXR_SpatialAssetAt(int index)
 }
 
 // Describes one item: whether it's a video, how long it runs, and a title for the list.
-extern "C" int CardboardXR_SpatialItem(int index, char *title, int titleLength, int *isVideo, double *seconds)
+extern "C" int Afterglow_SpatialItem(int index, char *title, int titleLength, int *isVideo, double *seconds)
 {
     if (g_Assets == nil || index < 0 || index >= (int)g_Assets.count)
         return 0;
@@ -226,7 +226,7 @@ extern "C" int CardboardXR_SpatialItem(int index, char *title, int titleLength, 
 
 // Starts loading one spatial photo's two pictures. Returns the request number to pass back when
 // collecting them, or 0 if the item can't be loaded.
-extern "C" int CardboardXR_SpatialOpenPhoto(int index)
+extern "C" int Afterglow_SpatialOpenPhoto(int index)
 {
     if (g_Assets == nil || index < 0 || index >= (int)g_Assets.count)
         return 0;
@@ -300,16 +300,16 @@ extern "C" int CardboardXR_SpatialOpenPhoto(int index)
 }
 
 // 0 nothing asked for, 1 loading, 2 ready, 3 failed.
-extern "C" int CardboardXR_SpatialPhotoState() { return g_State.load(); }
+extern "C" int Afterglow_SpatialPhotoState() { return g_State.load(); }
 
-extern "C" const char *CardboardXR_SpatialPhotoError()
+extern "C" const char *Afterglow_SpatialPhotoError()
 {
     return g_Error != nil ? g_Error.UTF8String : "";
 }
 
 // One eye's pixels, as tightly packed BGRA rows starting at the bottom. The buffer belongs to this
 // plugin and stays valid until the next open or close, which is long enough for Unity to upload it.
-extern "C" int CardboardXR_SpatialPhotoEye(int eye, void **bytes, int *width, int *height)
+extern "C" int Afterglow_SpatialPhotoEye(int eye, void **bytes, int *width, int *height)
 {
     if (eye < 0 || eye > 1 || g_State.load() != LoadStateReady || g_Eyes[eye].bytes == nullptr)
         return 0;
@@ -322,7 +322,7 @@ extern "C" int CardboardXR_SpatialPhotoEye(int eye, void **bytes, int *width, in
     return 1;
 }
 
-extern "C" void CardboardXR_SpatialClosePhoto()
+extern "C" void Afterglow_SpatialClosePhoto()
 {
     g_Request.fetch_add(1);
     ReleaseEyes();

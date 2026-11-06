@@ -1,10 +1,10 @@
 using System.Collections.Generic;
-using CardboardXR.Interaction;
+using Afterglow.Interaction;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     // The pointer sits at the origin looking down +z.
     public class GazePointerTests

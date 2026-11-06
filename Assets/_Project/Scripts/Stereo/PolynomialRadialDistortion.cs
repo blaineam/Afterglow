@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Radial lens distortion p' = p (1 + K1 r^2 + K2 r^4 + ...), with r in tan-angle units: distance
     // on the screen divided by the distance from the eye to the screen.

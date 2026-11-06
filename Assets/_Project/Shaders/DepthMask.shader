@@ -3,7 +3,7 @@
 // first (the passthrough camera image) shows through instead. The portal uses it to show its world
 // only through the doorway from outside, and the real room only through the doorway from inside.
 // Double-sided, so a box of it hides its inside from any angle.
-Shader "CardboardXR/DepthMask"
+Shader "Afterglow/DepthMask"
 {
     SubShader
     {

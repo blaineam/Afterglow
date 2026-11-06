@@ -18,11 +18,11 @@
 set -u
 P=${0:A:h:h}
 U=${UNITY:-/Applications/Unity/Hub/Editor/6000.6.0f1/Unity.app/Contents/MacOS/Unity}
-BUNDLE=${CARDBOARDXR_BUNDLE_ID:-com.brenpoly.cardboardxr}
+BUNDLE=${AFTERGLOW_BUNDLE_ID:-com.wemiller.afterglow}
 SIMULATOR=${SIMULATOR:-iPhone 18 Pro Max}
 XCODE_PROJECT=$P/Builds/iOS-Simulator/Unity-iPhone.xcodeproj
 DERIVED=$P/Builds/ios-sim-derived
-LOGS=${TMPDIR:-/tmp}/cardboardxr
+LOGS=${TMPDIR:-/tmp}/afterglow
 mkdir -p $LOGS
 cd $P || exit 1
 
@@ -38,7 +38,7 @@ zsh $P/Tools/ios_launch.sh --check "$@" || exit 1
 typeset -a CHILD_ENV
 OPTIONS=("$@")
 while [ $# -gt 0 ]; do
-    CHILD_ENV+=("SIMCTL_CHILD_CARDBOARDXR_$2=$3")
+    CHILD_ENV+=("SIMCTL_CHILD_AFTERGLOW_$2=$3")
     shift 3
 done
 
@@ -47,7 +47,7 @@ if [ $STAGE = all ]; then
     zsh $P/Tools/make_videos.sh || exit 1
     echo "== Unity export for the Simulator"
     rm -f $LOGS/ios-sim.log
-    CARDBOARDXR_SIMULATOR=1 $U -batchmode -quit -projectPath $P -buildTarget iOS \
+    AFTERGLOW_SIMULATOR=1 $U -batchmode -quit -projectPath $P -buildTarget iOS \
         -executeMethod ProjectBootstrap.StereoBuilder.BuildIos -logFile $LOGS/ios-sim.log
     grep -E "\[Build\]|error CS" $LOGS/ios-sim.log | head -10
     grep -q "Build Succeeded" $LOGS/ios-sim.log || { echo "Unity export failed; see $LOGS/ios-sim.log"; exit 1; }

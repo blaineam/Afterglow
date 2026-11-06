@@ -1,9 +1,9 @@
 using System.Collections.Generic;
-using CardboardXR.Hands;
-using CardboardXR.UI;
+using Afterglow.Hands;
+using Afterglow.UI;
 using UnityEngine;
 
-namespace CardboardXR.Demos.Paint
+namespace Afterglow.Demos.Paint
 {
     // Paint in the air with your hand, like Tilt Brush. Pinch anywhere to paint: the stroke follows
     // the point between your thumb and index fingertip for as long as the pinch lasts. A small ball

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // A debug view for checking that ARCore's detected surfaces line up with the real ones. With the
     // "arView" launch option (1) it replaces the stereo view with the AR camera, which shows the

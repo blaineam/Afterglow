@@ -1,6 +1,6 @@
 {
-    "name": "CardboardXR.Tests.Support",
-    "rootNamespace": "CardboardXR.Stereo.Tests",
+    "name": "Afterglow.Tests.Support",
+    "rootNamespace": "Afterglow.Stereo.Tests",
     "references": [
         "UnityEngine.UI"
     ],

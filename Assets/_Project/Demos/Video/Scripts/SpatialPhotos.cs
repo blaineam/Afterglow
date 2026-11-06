@@ -3,9 +3,9 @@ using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
 
-namespace CardboardXR.Demos.Video
+namespace Afterglow.Demos.Video
 {
-    // Spatial photos from the user's Photos library (Plugins/iOS/CardboardXRSpatialPhotos.mm).
+    // Spatial photos from the user's Photos library (Plugins/iOS/AfterglowSpatialPhotos.mm).
     //
     // An iPhone 15 Pro and later record a spatial photo as one HEIC holding a picture per eye, so
     // this is the one source of 3D the user already has a library of, taken on the same phone that
@@ -63,7 +63,7 @@ namespace CardboardXR.Demos.Video
         public static Access Authorize()
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            return (Access)CardboardXR_SpatialAuthorize();
+            return (Access)Afterglow_SpatialAuthorize();
 #else
             return Access.Denied;
 #endif
@@ -74,7 +74,7 @@ namespace CardboardXR.Demos.Video
         public static Item[] Scan()
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            var count = CardboardXR_SpatialScan();
+            var count = Afterglow_SpatialScan();
             if (count <= 0)
                 return Array.Empty<Item>();
 
@@ -84,7 +84,7 @@ namespace CardboardXR.Demos.Video
             for (var index = 0; index < count; index++)
             {
                 title.Length = 0;
-                if (CardboardXR_SpatialItem(index, title, title.Capacity, out var isVideo, out var seconds) == 0)
+                if (Afterglow_SpatialItem(index, title, title.Capacity, out var isVideo, out var seconds) == 0)
                     continue;
                 items[found++] = new Item(index, title.ToString(), isVideo != 0, seconds);
             }
@@ -100,14 +100,14 @@ namespace CardboardXR.Demos.Video
 
         public static State PhotoState =>
 #if UNITY_IOS && !UNITY_EDITOR
-            (State)CardboardXR_SpatialPhotoState();
+            (State)Afterglow_SpatialPhotoState();
 #else
             State.Idle;
 #endif
 
         public static string PhotoError =>
 #if UNITY_IOS && !UNITY_EDITOR
-            Marshal.PtrToStringUTF8(CardboardXR_SpatialPhotoError()) ?? "";
+            Marshal.PtrToStringUTF8(Afterglow_SpatialPhotoError()) ?? "";
 #else
             "";
 #endif
@@ -116,7 +116,7 @@ namespace CardboardXR.Demos.Video
         public static bool OpenPhoto(int index)
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            return CardboardXR_SpatialOpenPhoto(index) != 0;
+            return Afterglow_SpatialOpenPhoto(index) != 0;
 #else
             return false;
 #endif
@@ -147,7 +147,7 @@ namespace CardboardXR.Demos.Video
         public static void Close()
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            CardboardXR_SpatialClosePhoto();
+            Afterglow_SpatialClosePhoto();
 #endif
         }
 
@@ -156,7 +156,7 @@ namespace CardboardXR.Demos.Video
         // Unity's BGRA32 wants, so it uploads without being touched.
         static Texture2D Upload(int eye)
         {
-            if (CardboardXR_SpatialPhotoEye(eye, out var bytes, out var width, out var height) == 0)
+            if (Afterglow_SpatialPhotoEye(eye, out var bytes, out var width, out var height) == 0)
                 return null;
             if (bytes == IntPtr.Zero || width <= 0 || height <= 0)
                 return null;
@@ -171,14 +171,14 @@ namespace CardboardXR.Demos.Video
             return texture;
         }
 
-        [DllImport("__Internal")] static extern int CardboardXR_SpatialAuthorize();
-        [DllImport("__Internal")] static extern int CardboardXR_SpatialScan();
-        [DllImport("__Internal")] static extern int CardboardXR_SpatialItem(int index, StringBuilder title, int titleLength, out int isVideo, out double seconds);
-        [DllImport("__Internal")] static extern int CardboardXR_SpatialOpenPhoto(int index);
-        [DllImport("__Internal")] static extern int CardboardXR_SpatialPhotoState();
-        [DllImport("__Internal")] static extern IntPtr CardboardXR_SpatialPhotoError();
-        [DllImport("__Internal")] static extern int CardboardXR_SpatialPhotoEye(int eye, out IntPtr bytes, out int width, out int height);
-        [DllImport("__Internal")] static extern void CardboardXR_SpatialClosePhoto();
+        [DllImport("__Internal")] static extern int Afterglow_SpatialAuthorize();
+        [DllImport("__Internal")] static extern int Afterglow_SpatialScan();
+        [DllImport("__Internal")] static extern int Afterglow_SpatialItem(int index, StringBuilder title, int titleLength, out int isVideo, out double seconds);
+        [DllImport("__Internal")] static extern int Afterglow_SpatialOpenPhoto(int index);
+        [DllImport("__Internal")] static extern int Afterglow_SpatialPhotoState();
+        [DllImport("__Internal")] static extern IntPtr Afterglow_SpatialPhotoError();
+        [DllImport("__Internal")] static extern int Afterglow_SpatialPhotoEye(int eye, out IntPtr bytes, out int width, out int height);
+        [DllImport("__Internal")] static extern void Afterglow_SpatialClosePhoto();
 #endif
     }
 }

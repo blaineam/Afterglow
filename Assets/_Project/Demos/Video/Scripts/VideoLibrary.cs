@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-namespace CardboardXR.Demos.Video
+namespace Afterglow.Demos.Video
 {
     // One video the player can show.
     public class VideoEntry
@@ -37,7 +37,7 @@ namespace CardboardXR.Demos.Video
     // Finds the videos to offer: the ones bundled with the app, files the user copied into the
     // Videos folder, Google Drive links listed in videos.txt in that folder, and, on an iPhone,
     // the spatial photos and videos already in the user's Photos library.
-    //   Android: /storage/emulated/0/Android/data/com.brenpoly.cardboardxr/files/Videos
+    //   Android: /storage/emulated/0/Android/data/com.wemiller.afterglow/files/Videos
     //            (adb push beach_360.mp4 there; no storage permission needed)
     //   iPhone:  the app's Documents/Videos, which Finder (the phone's Files tab) and the Files app
     //            can copy into, since the app shares its Documents folder

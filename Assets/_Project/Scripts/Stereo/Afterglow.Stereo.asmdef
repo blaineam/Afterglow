@@ -1,13 +1,14 @@
 {
-    "name": "CardboardXR.Demos.Video",
-    "rootNamespace": "CardboardXR.Demos.Video",
+    "name": "Afterglow.Stereo",
+    "rootNamespace": "Afterglow.Stereo",
     "references": [
-        "CardboardXR.Demos",
-        "CardboardXR.Stereo",
-        "CardboardXR.Hands",
-        "CardboardXR.Interaction",
+        "Unity.InputSystem",
+        "Unity.XR.ARFoundation",
+        "Unity.XR.ARSubsystems",
         "UnityEngine.UI",
-        "CardboardXR.UI",
+        "Afterglow.Tracking",
+        "Unity.XR.Management",
+        "Afterglow.UI",
         "Unity.TextMeshPro"
     ],
     "includePlatforms": [],

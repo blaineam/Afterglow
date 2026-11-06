@@ -1,4 +1,4 @@
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Whether the thumb and index fingertips are pinched together, from how far apart they are. A
     // pinch starts closer than it ends, so the state doesn't flicker near the threshold.

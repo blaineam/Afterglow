@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Logs where the CPU time goes and how hot the phone is getting, every m_Interval seconds with
     // the [Perf] tag, to find what makes it throttle. CPU time comes from Linux's per-thread counters

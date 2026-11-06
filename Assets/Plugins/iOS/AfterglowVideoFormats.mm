@@ -13,7 +13,7 @@
 #import <ARKit/ARKit.h>
 
 // Writes a line per supported format into `out`. Returns how many there were.
-extern "C" int CardboardXR_VideoFormats(char *out, int length)
+extern "C" int Afterglow_VideoFormats(char *out, int length)
 {
     NSMutableString *text = [NSMutableString string];
     int count = 0;

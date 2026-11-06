@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
-using CardboardXR.Tracking;
+using Afterglow.Tracking;
 using NUnit.Framework;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     public class PositionFilterTests
     {

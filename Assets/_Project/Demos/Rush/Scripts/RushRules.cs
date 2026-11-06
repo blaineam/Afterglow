@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace CardboardXR.Demos.Rush
+namespace Afterglow.Demos.Rush
 {
     public enum Judgement
     {

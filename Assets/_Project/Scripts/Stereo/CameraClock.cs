@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Puts camera-image timestamps on a reference clock, and says how old an image is on its own.
     // HeadPoseFusion uses it to match an AR pose with the gyroscope rotation at the moment its image

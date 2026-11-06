@@ -1,5 +1,5 @@
 using System;
-using CardboardXR.Tracking;
+using Afterglow.Tracking;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
@@ -7,7 +7,7 @@ using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.InputSystem.Android;
 #endif
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // 3DoF head tracking. By default it fuses every raw gyroscope and accelerometer sample with the
     // Cardboard SDK's Kalman filter (SensorFusionEkf), which keeps up with fast turns. Android's game

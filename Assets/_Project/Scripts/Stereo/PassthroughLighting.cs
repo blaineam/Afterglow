@@ -2,12 +2,12 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.XR.ARFoundation;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Lights virtual objects like the room the camera sees, while passthrough is on: Core's one
     // directional light, and the ambient light, follow ARCore's or ARKit's light estimate, and the
     // light casts soft shadows, which detected surfaces show on the camera image (the
-    // CardboardXR/ShadowCatcher pass on the plane prefab, turned up through _ShadowCatcherStrength).
+    // Afterglow/ShadowCatcher pass on the plane prefab, turned up through _ShadowCatcherStrength).
     //   What the estimate gives differs by platform. ARCore's Environmental HDR mode gives the main
     //   light's direction, color and brightness and the ambient light as spherical harmonics, so on
     //   Android shadows fall away from the room's brightest light. ARKit's world tracking only gives

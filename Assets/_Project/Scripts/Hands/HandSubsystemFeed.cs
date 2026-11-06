@@ -4,7 +4,7 @@ using UnityEngine.XR.Hands;
 using UnityEngine.XR.Hands.Configuration;
 using UnityEngine.XR.Hands.ProviderImplementation;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Runs the XR Hands subsystem for the camera-tracked hands (CardboardHandProvider) and supplies
     // it: HandTracker's joints in the XR Origin's tracking space, where XR Hands' poses are, as the

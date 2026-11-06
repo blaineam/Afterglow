@@ -2,7 +2,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.XR.Management;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Says out loud whether XR Plug-in Management started and which loader it started, because
     // nothing else does. When XR fails to start, AR Foundation only reports the consequences, one

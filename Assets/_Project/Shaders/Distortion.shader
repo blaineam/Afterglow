@@ -1,6 +1,6 @@
 // Draws a Cardboard distortion mesh: vertices are already normalized device coordinates for the
 // whole screen, and UVs index the eye texture. Used by StereoRig's compositor camera.
-Shader "CardboardXR/Distortion"
+Shader "Afterglow/Distortion"
 {
     Properties
     {

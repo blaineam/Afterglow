@@ -1,7 +1,7 @@
-using CardboardXR.Stereo;
+using Afterglow.Stereo;
 using UnityEngine;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Shows each tracked hand as a simple skeleton, colored by finger: its 21 joints as small spheres and
     // the bones between them as thin rods. It follows only the joints' positions, so it can't twist the

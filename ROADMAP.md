@@ -18,8 +18,8 @@ and the gap between them is most of the work.
 
 | Asked for | State |
 |---|---|
-| Spatial **photos** from the Photos library | Done (`CardboardXRSpatialPhotos.mm`, HEIC stereo pair via ImageIO). **Not verified on the phone.** |
-| Spatial **video** from the Photos library | Done (`CardboardXRSpatialVideo.mm`, MV-HEVC both layers via `AVPlayerVideoOutput`, zero-copy Metal, iOS 18+). Built 2026-11-04, **never launched on the phone.** |
+| Spatial **photos** from the Photos library | Done (`AfterglowSpatialPhotos.mm`, HEIC stereo pair via ImageIO). **Not verified on the phone.** |
+| Spatial **video** from the Photos library | Done (`AfterglowSpatialVideo.mm`, MV-HEVC both layers via `AVPlayerVideoOutput`, zero-copy Metal, iOS 18+). Built 2026-11-04, **never launched on the phone.** |
 | **Panoramas** | **Not built.** The Photos query asks only for `spatialMedia`; the player has no cylindrical projection; the file scanner lists only video extensions, so a 360 still is invisible too. |
 | **WebXR browser** | A working start: page on a quad at ~12 fps, gaze + pinch click, gaze-edge and gamepad scroll, back/forward/home/reload/resize, address bar, on-screen keys, Bluetooth keyboard, on-device dictation, `immersive-vr` full screen with page-side stereo and barrel distortion from the app's own lens numbers. Window verified on the phone; **an immersive session is not**. Missing: tabs, bookmarks, history, text selection, downloads, `immersive-ar`, hand input sources, floor-relative spaces from the real floor. iOS only. |
 | **Two hands** | Done (`723c064`, `aede100`): detector keeps both palms, two `TrackedHand` slots, XR Hands fed left and right. **Never run on the phone**; the last device log predates both commits. |
@@ -27,7 +27,7 @@ and the gap between them is most of the work.
 | **Performance** | Last device log (iPhone 18 Pro Max, 2026-11-03): 55–77 fps against a 120 target, 13–26 % late frames, steady ~50 ms "present wait" hitches with the browser window up. Visible judder in a headset. |
 | **Optics** | Until 2026-11-05 the rig defaulted to **Cardboard v1** — the wrong lenses for every viewer this project knows — unless a QR code had been scanned. The printed viewer's profile is now the default, and the scan screen offers the built-ins. |
 | **Desk testing** | New: the Editor runs 6DoF in AR Foundation's XR Simulation (a synthetic room), and both the Editor without it and the iOS Simulator run 3DoF with drag-to-look (`DeskHeadLook`). `Tools/ios_sim_build_and_run.sh` builds and launches on a simulator — **verified 2026-11-05**: the app runs on an iPhone 18 Pro Max simulator, defaults to the printed viewer's optics and falls back to 3DoF. |
-| **Distribution** | Its own repository since 2026-11-05: [blaineam/CardboardXR](https://github.com/blaineam/CardboardXR), public. CI runs the script and workflow checks on every push; the EditMode tests and the tag-triggered Android APK + unsigned iOS IPA builds are written but **wait on a Unity licence in the secrets**, so neither has run yet. Until then, Android via `Tools/release_android.sh` and iOS from source. |
+| **Distribution** | Its own repository since 2026-11-05: [blaineam/Afterglow](https://github.com/blaineam/Afterglow), public (renamed from CardboardXR the same day; the old address redirects). CI runs the script and workflow checks on every push; the EditMode tests and the tag-triggered Android APK + unsigned iOS IPA builds are written but **wait on a Unity licence in the secrets**, so neither has run yet. Until then, Android via `Tools/release_android.sh` and iOS from source. |
 
 Unity 6000.6.0f1 is installed; the C# compiles and all 297 EditMode tests pass (2026-11-04).
 
@@ -40,7 +40,7 @@ Everything else sits on this, and three of the newest features have never run on
 - **Verify on the phone**: two hands, spatial photo and video playback, an immersive WebXR
   session. Each gets a session-log line that proves it, and a KNOWN_ISSUES entry for what it
   does badly.
-- **Default optics** — done: `ViewerParams.CardboardXRViewer` (Cardboard v2 lenses centred on the
+- **Default optics** — done: `ViewerParams.AfterglowViewer` (Cardboard v2 lenses centred on the
   phone's width, which is where brenpoly's carriage puts them: bores at x = 0.0 in the STEP,
   64.0 mm apart) is the rig's default; the scan screen offers *Printed viewer*, *Cardboard v2*,
   *Cardboard v1* and remembers the pick.
@@ -64,7 +64,7 @@ Everything else sits on this, and three of the newest features have never run on
   Web opens the browser, Play turns the page and The Room loads from it. Not exercised there:
   *Leave*, *Files* and the *Settings* tile (the Simulator's screen gear doesn't take injected taps,
   and a palm needs a camera), and the scan prompt, which needs 6DoF and so the phone.
-- **A repository of its own, with CI** — done 2026-11-05: `github.com/blaineam/CardboardXR`
+- **A repository of its own, with CI** — done 2026-11-05: `github.com/blaineam/Afterglow`
   (`origin`; brenpoly's stays as `upstream`). `ci.yml` checks scripts, workflows and the Unity
   version on every push and runs the EditMode tests when a licence is in the secrets; `release.yml`
   builds the Android APK and an unsigned iOS IPA on a `v*` tag into a draft release. To do: add the

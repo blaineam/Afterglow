@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
-using CardboardXR.Interaction;
-using CardboardXR.Stereo;
+using Afterglow.Interaction;
+using Afterglow.Stereo;
 using Unity.Collections;
 using Unity.InferenceEngine;
 using UnityEngine;
@@ -9,7 +9,7 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 using Debug = UnityEngine.Debug;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // A pinch as a click, for 3DoF, without hand tracking's cost. Where HandTracker places the hand
     // in 3D (which needs the AR session running, depth, and the landmarker on every image), this only

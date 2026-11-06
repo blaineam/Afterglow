@@ -28,7 +28,7 @@ enum DictationState
     DictationFailed = 5,
 };
 
-@interface CardboardXRDictation : NSObject <SFSpeechRecognizerDelegate>
+@interface AfterglowDictation : NSObject <SFSpeechRecognizerDelegate>
 @property (nonatomic, strong) SFSpeechRecognizer *recognizer;
 @property (nonatomic, strong) SFSpeechAudioBufferRecognitionRequest *request;
 @property (nonatomic, strong) SFSpeechRecognitionTask *task;
@@ -44,9 +44,9 @@ enum DictationState
 @property (nonatomic, assign) BOOL tapped;
 @end
 
-static CardboardXRDictation *g_Dictation = nil;
+static AfterglowDictation *g_Dictation = nil;
 
-@implementation CardboardXRDictation
+@implementation AfterglowDictation
 
 - (instancetype)init
 {
@@ -139,7 +139,7 @@ static CardboardXRDictation *g_Dictation = nil;
         return;
     }
 
-    __weak CardboardXRDictation *weakSelf = self;
+    __weak AfterglowDictation *weakSelf = self;
     [input installTapOnBus:0 bufferSize:1024 format:format
                      block:^(AVAudioPCMBuffer *buffer, AVAudioTime *when) {
         [weakSelf.request appendAudioPCMBuffer:buffer];
@@ -160,7 +160,7 @@ static CardboardXRDictation *g_Dictation = nil;
     self.task = [recognizer recognitionTaskWithRequest:self.request
                                          resultHandler:^(SFSpeechRecognitionResult *result,
                                                          NSError *taskError) {
-        CardboardXRDictation *me = weakSelf;
+        AfterglowDictation *me = weakSelf;
         if (me == nil)
             return;
         if (result != nil)
@@ -183,7 +183,7 @@ static CardboardXRDictation *g_Dictation = nil;
 
 // Whether dictation could work at all: the framework is there and this locale can be recognised
 // without leaving the phone.
-extern "C" int CardboardXR_DictationAvailable()
+extern "C" int Afterglow_DictationAvailable()
 {
     SFSpeechRecognizer *recognizer = [SFSpeechRecognizer new];
     if (recognizer == nil)
@@ -191,10 +191,10 @@ extern "C" int CardboardXR_DictationAvailable()
     return recognizer.supportsOnDeviceRecognition ? 1 : 0;
 }
 
-extern "C" void CardboardXR_DictationStart()
+extern "C" void Afterglow_DictationStart()
 {
     if (g_Dictation == nil)
-        g_Dictation = [CardboardXRDictation new];
+        g_Dictation = [AfterglowDictation new];
     if (g_Dictation.state == DictationListening || g_Dictation.state == DictationAsking)
         return;
 
@@ -217,7 +217,7 @@ extern "C" void CardboardXR_DictationStart()
                     g_Dictation.state = DictationDenied;
                     return;
                 }
-                CardboardXR_DictationStart();
+                Afterglow_DictationStart();
             });
         }];
         return;
@@ -259,7 +259,7 @@ extern "C" void CardboardXR_DictationStart()
     [g_Dictation begin];
 }
 
-extern "C" void CardboardXR_DictationStop()
+extern "C" void Afterglow_DictationStop()
 {
     if (g_Dictation == nil)
         return;
@@ -273,13 +273,13 @@ extern "C" void CardboardXR_DictationStop()
     g_Dictation.finished = YES;
 }
 
-extern "C" int CardboardXR_DictationState()
+extern "C" int Afterglow_DictationState()
 {
     return g_Dictation != nil ? g_Dictation.state : DictationIdle;
 }
 
 // True once per phrase, cleared as it is read, so C# can commit the text exactly once.
-extern "C" int CardboardXR_DictationTakeFinished()
+extern "C" int Afterglow_DictationTakeFinished()
 {
     if (g_Dictation == nil || !g_Dictation.finished)
         return 0;
@@ -287,7 +287,7 @@ extern "C" int CardboardXR_DictationTakeFinished()
     return 1;
 }
 
-extern "C" int CardboardXR_DictationCopyText(char *buffer, int capacity)
+extern "C" int Afterglow_DictationCopyText(char *buffer, int capacity)
 {
     if (g_Dictation == nil)
         return 0;

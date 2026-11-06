@@ -1,10 +1,10 @@
 using System.Collections;
-using CardboardXR.Hands;
-using CardboardXR.Stereo;
+using Afterglow.Hands;
+using Afterglow.Stereo;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace CardboardXR.Demos
+namespace Afterglow.Demos
 {
     // Moves between the Home scene and the apps. The Core scene (rig, AR, hands, gaze) stays loaded
     // the whole time, so tracking, placed anchors and the viewer's calibration carry across; Home and

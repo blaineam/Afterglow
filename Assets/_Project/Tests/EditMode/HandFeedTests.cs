@@ -1,8 +1,8 @@
-using CardboardXR.Hands;
+using Afterglow.Hands;
 using NUnit.Framework;
 using UnityEngine.XR.Hands;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     // Putting two hands on two sides.
     //

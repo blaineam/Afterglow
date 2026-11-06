@@ -147,7 +147,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8de1a98fcbb604187a9bd2030929480c, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: CardboardXR.Demos.Portal::CardboardXR.Demos.Portal.PortalDemo
+  m_EditorClassIdentifier: Afterglow.Demos.Portal::Afterglow.Demos.Portal.PortalDemo
   m_PortalPrefab: {fileID: 7880606057578739313, guid: 6e700c57f57d94f3cbb02d67cc08de77, type: 3}
 --- !u!4 &733825185
 Transform:

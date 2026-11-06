@@ -1,6 +1,6 @@
 using System;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Physical description of a Cardboard-style viewer, mirroring the Cardboard SDK's DeviceParams
     // protobuf (proto/cardboard_device.proto). Lengths are in meters, angles in degrees.
@@ -79,10 +79,10 @@ namespace CardboardXR.Stereo
         //   No button, either: a Cardboard viewer needs one because its shell covers the screen,
         // and this app's input is gaze plus a pinch in front of the rear camera, which the open
         // back leaves clear.
-        public static ViewerParams CardboardXRViewer => new()
+        public static ViewerParams AfterglowViewer => new()
         {
-            vendor = "CardboardXR",
-            model = "CardboardXR Viewer",
+            vendor = "Afterglow",
+            model = "Afterglow Viewer",
             screenToLensDistance = 0.0393f,
             interLensDistance = 0.0639f,
             leftEyeFieldOfViewAngles = new[] { 60f, 60f, 60f, 60f },

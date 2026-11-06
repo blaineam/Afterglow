@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Turns a held object with the hand holding it, as grabbed things do in VR: twist the wrist and it
     // twists too. XRI moves it (its XRGrabInteractable tracks position only), because the point XRI

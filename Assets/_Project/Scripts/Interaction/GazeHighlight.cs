@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-namespace CardboardXR.Interaction
+namespace Afterglow.Interaction
 {
     // Lightens a renderer while the gaze is on it and shifts its hue when it's clicked. Useful as a
     // gaze target in test scenes. Needs a collider. Something that can be grabbed also turns cyan

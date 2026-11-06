@@ -1,7 +1,7 @@
 using Unity.Collections;
 using UnityEngine;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Fills the models' NHWC float inputs (RGB, 0 to 1) from an RGBA32 camera image whose first row
     // is the top of the image, with bilinear filtering. Pixels outside the image are black.

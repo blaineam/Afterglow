@@ -1,8 +1,8 @@
-using CardboardXR.Demos;
+using Afterglow.Demos;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     // The browser window's one piece of geometry: where on the page a point on the quad is.
     //

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.Demos
+namespace Afterglow.Demos
 {
     // The root of a demo scene. DemoManager calls OnDemoEnter once the scene has loaded and Core has
     // switched to what the demo needs, and OnDemoExit before unloading it, while Core is still as

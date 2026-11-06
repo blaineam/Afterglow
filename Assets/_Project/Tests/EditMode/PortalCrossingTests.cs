@@ -1,8 +1,8 @@
-using CardboardXR.Demos.Portal;
+using Afterglow.Demos.Portal;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     public class PortalCrossingTests
     {

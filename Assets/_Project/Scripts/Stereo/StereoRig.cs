@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Renders the scene once per eye and warps both images onto the screen through the viewer's lens
     // distortion, like the Cardboard SDK. Put it on the head transform that head tracking moves. The
@@ -22,7 +22,7 @@ namespace CardboardXR.Stereo
         // The printed viewer's optics unless a QR code or the viewer picker says otherwise. Not
         // Cardboard v1's: the Cardboard SDK's own fallback, but the wrong lenses for every viewer
         // this project ships with, and running them silently was the default until 2026-11.
-        [SerializeField] ViewerParams m_Viewer = ViewerParams.CardboardXRViewer;
+        [SerializeField] ViewerParams m_Viewer = ViewerParams.AfterglowViewer;
         [Tooltip("Physical landscape screen size in meters. Zero uses the size the device reports.")]
         [SerializeField] Vector2 m_ScreenSizeOverride;
         [SerializeField] Shader m_DistortionShader;

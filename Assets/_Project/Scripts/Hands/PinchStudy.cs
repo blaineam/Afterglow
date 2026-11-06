@@ -1,9 +1,9 @@
-using CardboardXR.Stereo;
-using CardboardXR.UI;
+using Afterglow.Stereo;
+using Afterglow.UI;
 using TMPro;
 using UnityEngine;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // A short, prompted run for tuning pinch detection, with the "pinchStudy" launch option (1). Text
     // in front of the eyes alternates between asking for an open hand and a pinch, first with the palm

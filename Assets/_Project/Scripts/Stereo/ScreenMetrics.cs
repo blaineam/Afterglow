@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Physical screen size, which the lens distortion needs in meters.
     public static class ScreenMetrics
@@ -16,7 +16,7 @@ namespace CardboardXR.Stereo
         // came from, for logging.
         //   Neither platform has an API for the screen's physical size, so each turns pixels into
         // meters its own way: Android reports a real per-axis density, while iOS needs a table
-        // (Plugins/iOS/CardboardXRScreenMetrics.mm). Unity's own Screen.dpi is the last resort on
+        // (Plugins/iOS/AfterglowScreenMetrics.mm). Unity's own Screen.dpi is the last resort on
         // both, because its table is keyed on the device model and so knows only the phones that
         // existed when that Unity version shipped: on a newer one it can report a wrong density, or
         // 0, and the stereo geometry is then wrong on every frame with nothing to say so.
@@ -47,7 +47,7 @@ namespace CardboardXR.Stereo
             size = default;
             source = null;
             var text = new StringBuilder(k_SourceLength);
-            var result = CardboardXR_ScreenSizeMillimeters(out var width, out var height, text, text.Capacity);
+            var result = Afterglow_ScreenSizeMillimeters(out var width, out var height, text, text.Capacity);
             if (result == 0 || width <= 0f || height <= 0f)
             {
                 Debug.LogWarning("[Stereo] iOS couldn't measure the screen; falling back on Unity's own density.");
@@ -63,7 +63,7 @@ namespace CardboardXR.Stereo
         }
 
         [DllImport("__Internal")]
-        static extern int CardboardXR_ScreenSizeMillimeters(out float width, out float height, StringBuilder source, int sourceLength);
+        static extern int Afterglow_ScreenSizeMillimeters(out float width, out float height, StringBuilder source, int sourceLength);
 #endif
 
 #if UNITY_ANDROID && !UNITY_EDITOR

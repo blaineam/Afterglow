@@ -1,8 +1,8 @@
-using CardboardXR.Hands;
+using Afterglow.Hands;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     public class DepthSamplerTests
     {

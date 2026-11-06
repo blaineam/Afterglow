@@ -1,11 +1,11 @@
 using UnityEngine;
 
-namespace CardboardXR.Interaction
+namespace Afterglow.Interaction
 {
     // Cardboard's gaze reticle: a dot straight ahead that grows into a ring over something clickable.
     // It sits at the distance of whatever the gaze hits, so both eyes converge on the target, and its
     // size is set in degrees, so it looks the same at any distance. The sizes and growth speed follow
-    // the Google VR SDK's GvrReticlePointer. Put it on a unit quad using the CardboardXR/Reticle
+    // the Google VR SDK's GvrReticlePointer. Put it on a unit quad using the Afterglow/Reticle
     // shader, as a child of the GazePointer.
     [RequireComponent(typeof(MeshRenderer))]
     public class GazeReticle : MonoBehaviour

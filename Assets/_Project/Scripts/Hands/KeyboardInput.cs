@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // A Bluetooth keyboard, which is the fastest way to type here by a wide margin.
     //

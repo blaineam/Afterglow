@@ -1,11 +1,11 @@
-using CardboardXR.Interaction;
-using CardboardXR.Stereo;
+using Afterglow.Interaction;
+using Afterglow.Stereo;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit.Inputs.Readers;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Two ways to reach things that never overlap: the head looks at UI and at surfaces and a pinch
     // clicks them, while things to pick up are taken by the hand — beside them, or along the line from

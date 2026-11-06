@@ -9,7 +9,7 @@
 // the fragment is turned into the axes of the camera that took the image, and that direction says
 // where in the image to sample. Depth drops out, and so does where the head is -- only which way it
 // faces can move the picture. See PassthroughController for why that matters.
-Shader "CardboardXR/Passthrough"
+Shader "Afterglow/Passthrough"
 {
     Properties
     {

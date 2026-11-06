@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.UI
+namespace Afterglow.UI
 {
     // Fades a panel in when it's shown and out when it's hidden, as Material's motion does for
     // surfaces that appear and leave: opacity with a slight grow, quick and decelerating in, quicker

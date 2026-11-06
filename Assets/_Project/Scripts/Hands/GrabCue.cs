@@ -1,8 +1,8 @@
-using CardboardXR.Interaction;
+using Afterglow.Interaction;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Shows on an object while the hand could grab it, near or along its ray: a pinch then takes it,
     // where otherwise the pinch clicks whatever the head is looking at. In passthrough the camera

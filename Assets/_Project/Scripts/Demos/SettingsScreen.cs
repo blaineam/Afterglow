@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using CardboardXR.Hands;
-using CardboardXR.Stereo;
-using CardboardXR.UI;
+using Afterglow.Hands;
+using Afterglow.Stereo;
+using Afterglow.UI;
 using TMPro;
 using UnityEngine;
 
-namespace CardboardXR.Demos
+namespace Afterglow.Demos
 {
     // The settings screen: the knobs that used to be launch options from a Mac, as rows a gaze can
     // change -- look at the minus or plus beside a value and pinch or tap. It stands above the

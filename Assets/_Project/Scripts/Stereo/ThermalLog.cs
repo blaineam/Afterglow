@@ -1,7 +1,7 @@
 using System.Globalization;
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Times the phone's heating: each change of iOS's thermal state, checked every second, logged with
     // the time since launch and how long the last state lasted, so "how long until fair" is read

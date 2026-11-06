@@ -1,9 +1,9 @@
-using CardboardXR.Interaction;
-using CardboardXR.Stereo;
+using Afterglow.Interaction;
+using Afterglow.Stereo;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Where the hand's pinches come from: hand tracking in 6DoF, which knows where the hand is, or the
     // 3DoF pinch sensor, which only sees that a pinch happened.

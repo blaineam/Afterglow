@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace CardboardXR.UI
+namespace Afterglow.UI
 {
     // A Material 3 slider for showing and setting a position, such as a video's: an inactive track,
     // the active part up to the value, and a handle. Clicking anywhere along it reports that point's

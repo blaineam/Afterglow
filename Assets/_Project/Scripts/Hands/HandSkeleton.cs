@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // XR Hands' 26 joints from MediaPipe's 21 landmarks, in XR Hands' order (XRHandJointID.ToIndex):
     // the wrist, the palm, then the thumb's four joints and each finger's five, from base to tip.

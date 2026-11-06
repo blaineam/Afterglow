@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
 
-namespace CardboardXR.UI
+namespace Afterglow.UI
 {
     // Builds Material 3 components, styled after Material Design for XR, on uGUI canvases. Sizes and
     // positions are in canvas units, which on world canvases made by Canvas are dp (see M3Canvas);

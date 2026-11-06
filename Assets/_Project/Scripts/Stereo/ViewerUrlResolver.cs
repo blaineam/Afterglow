@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Follows a scanned URL's redirects until it reaches a Cardboard viewer URL, like the Cardboard
     // SDK's followCardboardParamRedirect: at most five redirects, always over https.

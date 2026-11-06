@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Measured depth for the hand, from the AR provider's environment depth where there's a depth
     // sensor: the iPhone Pro's LiDAR gives a 256x192 depth map for each camera image, covering the

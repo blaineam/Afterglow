@@ -14,9 +14,9 @@ P=${0:A:h:h}
 # Another Unity 6000.6 install: UNITY=/path/to/Unity.app/Contents/MacOS/Unity zsh Tools/...
 U=${UNITY:-/Applications/Unity/Hub/Editor/6000.6.0f1/Unity.app/Contents/MacOS/Unity}
 # Another app id (an iOS bundle id belongs to the Apple team that first signed it):
-#   CARDBOARDXR_BUNDLE_ID=com.example.cardboardxr zsh Tools/...
-PKG=${CARDBOARDXR_BUNDLE_ID:-com.brenpoly.cardboardxr}
-LOGS=${TMPDIR:-/tmp}/cardboardxr
+#   AFTERGLOW_BUNDLE_ID=com.example.afterglow zsh Tools/...
+PKG=${AFTERGLOW_BUNDLE_ID:-com.wemiller.afterglow}
+LOGS=${TMPDIR:-/tmp}/afterglow
 mkdir -p $LOGS
 cd $P || exit 1
 if pgrep -f "Unity.app/Contents/MacOS/Unity" >/dev/null; then echo "Unity is running; close it first"; exit 1; fi
@@ -49,7 +49,7 @@ adb start-server >/dev/null 2>&1
 adb shell am force-stop $PKG
 # Stop unless it installs: launching anyway would start the build already on the phone, and its logs
 # would look like the new one's. USB drops are common, so this happens.
-INSTALL=$(adb install -r Builds/CardboardXR.apk 2>&1 | tail -1)
+INSTALL=$(adb install -r Builds/Afterglow.apk 2>&1 | tail -1)
 echo "$INSTALL"
 case "$INSTALL" in
     *Success*) ;;

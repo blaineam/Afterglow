@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.Demos.Rush
+namespace Afterglow.Demos.Rush
 {
     // One incoming orb, a child of the track, whose +z points away from the player and whose origin
     // is where their eyes were at the start. It flies in along -z toward its arrival spot, marked by

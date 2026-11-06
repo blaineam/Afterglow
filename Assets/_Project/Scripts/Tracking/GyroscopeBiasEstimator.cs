@@ -1,4 +1,4 @@
-namespace CardboardXR.Tracking
+namespace Afterglow.Tracking
 {
     // Estimates the gyroscope's bias by averaging it while the phone is still, with stillness judged
     // from both the gyroscope and the accelerometer. Feed it every sample, at 10 Hz or more.

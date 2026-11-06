@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Reads viewer parameters from the Cardboard DeviceParams protobuf (proto2 wire format) and from
     // the URLs viewer QR codes hold, following the Cardboard SDK's rules

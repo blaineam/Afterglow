@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Everything HandTracker knows about one hand.
     //

@@ -1,11 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
-using CardboardXR.UI;
+using Afterglow.UI;
 using UnityEngine;
 using UnityEngine.Video;
 
-namespace CardboardXR.Demos.Video
+namespace Afterglow.Demos.Video
 {
     // Watch 360 and VR180 videos, 2D or 3D, and the spatial photos and videos the phone itself
     // took. It opens on a library of what's on the phone (see VideoLibrary); pick one and it plays
@@ -636,7 +636,7 @@ namespace CardboardXR.Demos.Video
                     () => Play(m_Page * k_EntriesPerPage + slot)));
             }
             var folder = Application.platform == RuntimePlatform.IPhonePlayer
-                ? "On a Mac, open the iPhone in Finder, then Files > CardboardXR > Videos, and drag videos in."
+                ? "On a Mac, open the iPhone in Finder, then Files > Afterglow > Videos, and drag videos in."
                 : $"Copy videos with: adb push video.mp4 {VideoLibrary.VideoFolder}";
             m_EmptyMessage = M3.Text("Empty", m_LibraryPage, "No videos yet.\n\n" + folder +
                 "\n\nName tags set the format: _360, _180, _sbs, _tb. For Google Drive, list share links in videos.txt in that folder.",

@@ -6,7 +6,7 @@ using UnityEditor.Android;
 namespace ProjectBootstrap
 {
     // Declares HIGH_SAMPLING_RATE_SENSORS, without which Android 12+ caps the head tracker's native
-    // sensor reader (CardboardXRImu.cpp) at 200 Hz. It's a normal permission, granted at install
+    // sensor reader (AfterglowImu.cpp) at 200 Hz. It's a normal permission, granted at install
     // without a prompt.
     class HighSamplingRatePermission : IPostGenerateGradleAndroidProject
     {

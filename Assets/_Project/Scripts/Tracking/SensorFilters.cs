@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace CardboardXR.Tracking
+namespace Afterglow.Tracking
 {
     // First-order low-pass filter for timestamped 3D samples, with a cutoff frequency.
     // Ported from the Cardboard SDK (sdk/sensors/lowpass_filter.cc, Apache License 2.0).

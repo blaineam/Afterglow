@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // A palm the detector found, in the detector input's normalized coordinates: 0 to 1 across and
     // down the square input.

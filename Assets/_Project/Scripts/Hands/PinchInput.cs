@@ -1,9 +1,9 @@
-using CardboardXR.Interaction;
-using CardboardXR.Stereo;
-using CardboardXR.UI;
+using Afterglow.Interaction;
+using Afterglow.Stereo;
+using Afterglow.UI;
 using UnityEngine;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // Gaze and pinch are the app's main input everywhere: the head aims, a pinch clicks, and a screen
     // tap still works too. In 6DoF, hand tracking (HandTracker, through HandInteractorRig) turns a

@@ -90,13 +90,13 @@ jobs:
         env:
           VERSION: ${{ needs.meta.outputs.version }}
         run: |
-          sudo mv Builds/CardboardXR.apk "CardboardXR-$VERSION.apk"
-          ls -l "CardboardXR-$VERSION.apk"
+          sudo mv Builds/Afterglow.apk "Afterglow-$VERSION.apk"
+          ls -l "Afterglow-$VERSION.apk"
 
       - uses: actions/upload-artifact@v7
         with:
           name: android-apk
-          path: CardboardXR-*.apk
+          path: Afterglow-*.apk
           if-no-files-found: error
 
   ios-export:
@@ -154,13 +154,13 @@ jobs:
           app=$(find "$RUNNER_TEMP/derived/Build/Products/Release-iphoneos" -maxdepth 1 -name '*.app' | head -1)
           [ -n "$app" ] || { echo "::error::No .app came out of the build"; exit 1; }
           mkdir Payload && cp -R "$app" Payload/
-          zip -qr "$GITHUB_WORKSPACE/CardboardXR-$VERSION-unsigned.ipa" Payload
-          ls -l "$GITHUB_WORKSPACE/CardboardXR-$VERSION-unsigned.ipa"
+          zip -qr "$GITHUB_WORKSPACE/Afterglow-$VERSION-unsigned.ipa" Payload
+          ls -l "$GITHUB_WORKSPACE/Afterglow-$VERSION-unsigned.ipa"
 
       - uses: actions/upload-artifact@v7
         with:
           name: ios-ipa
-          path: CardboardXR-*-unsigned.ipa
+          path: Afterglow-*-unsigned.ipa
           if-no-files-found: error
 
   release:
@@ -188,11 +188,11 @@ jobs:
           shasum -a 256 ./* | tee SHA256SUMS
           notes="Built from ${SHA:0:7} by the Release workflow.
 
-          **Android** (\`CardboardXR-$VERSION.apk\`): needs an ARCore phone (Android 10 or later, 64-bit, Vulkan). Download it on the phone and open it; Android asks you to allow installing apps from your browser or file manager.
+          **Android** (\`Afterglow-$VERSION.apk\`): needs an ARCore phone (Android 10 or later, 64-bit, Vulkan). Download it on the phone and open it; Android asks you to allow installing apps from your browser or file manager.
 
-          **iOS** (\`CardboardXR-$VERSION-unsigned.ipa\`): unsigned, so sign it with your own Apple ID before installing, or build from source (README.md).
+          **iOS** (\`Afterglow-$VERSION-unsigned.ipa\`): unsigned, so sign it with your own Apple ID before installing, or build from source (README.md).
 
           SHA-256 sums are in \`SHA256SUMS\`."
           gh release create "$TAG" ./* --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
-            --title "CardboardXR $VERSION" --notes "$notes"
+            --title "Afterglow $VERSION" --notes "$notes"
           echo "Drafted: review and publish it at https://github.com/$GITHUB_REPOSITORY/releases"

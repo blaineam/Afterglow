@@ -1,7 +1,7 @@
-using CardboardXR.UI;
+using Afterglow.UI;
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // The "uiScale" setting (or launch option): how much bigger than Android XR's sizes the Material
     // UI is drawn, in percent (default M3Theme.k_DefaultCardboardScale), for tuning legibility

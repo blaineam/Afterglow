@@ -1,4 +1,4 @@
-// A WebXR implementation for pages shown inside CardboardXR's browser.
+// A WebXR implementation for pages shown inside Afterglow's browser.
 //
 // Safari has no WebXR on iOS -- not in 26, not in 27; immersive sessions are Vision Pro only -- so
 // a page opened here finds no navigator.xr and falls back to a flat view. This supplies one.
@@ -6,7 +6,7 @@
 // It is not a polyfill of the usual kind, which reads the phone's own orientation sensors through
 // DeviceOrientation. The app around this page already has a fused head pose (gyroscope corrected
 // by ARKit), which is better than anything the page could get for itself, and it pushes that pose
-// in through __cardboardxrPose. What this file does is turn that pose, and the viewer's measured
+// in through __afterglowPose. What this file does is turn that pose, and the viewer's measured
 // optics, into the matrices a WebXR page expects, split the canvas into two eyes, and -- after the
 // page has drawn -- warp both halves through the lenses' barrel distortion.
 //
@@ -23,7 +23,7 @@
     'use strict';
 
     if (navigator.xr) return;                       // a real implementation; leave it alone
-    var cfg = window.__cardboardxrConfig;
+    var cfg = window.__afterglowConfig;
     if (!cfg) return;                               // not running inside the app
 
     var MESH = 40;                                  // LensDistortion.MeshResolution
@@ -161,7 +161,7 @@
 
     // ---------------------------------------------------------------- head pose
     var pose = { p: [0, 0, 0], q: [0, 0, 0, 1] };
-    window.__cardboardxrPose = function (px, py, pz, qx, qy, qz, qw) {
+    window.__afterglowPose = function (px, py, pz, qx, qy, qz, qw) {
         pose.p[0] = px; pose.p[1] = py; pose.p[2] = pz;
         pose.q[0] = qx; pose.q[1] = qy; pose.q[2] = qz; pose.q[3] = qw;
     };
@@ -342,7 +342,7 @@
         gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depth);
         var ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        if (!ok) { console.error('[CardboardXR] eye framebuffer incomplete'); return null; }
+        if (!ok) { console.error('[Afterglow] eye framebuffer incomplete'); return null; }
         return { fbo: fbo, tex: tex, depth: depth };
     }
 
@@ -356,7 +356,7 @@
         gl.shaderSource(s, src);
         gl.compileShader(s);
         if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
-            console.error('[CardboardXR] shader: ' + gl.getShaderInfoLog(s));
+            console.error('[Afterglow] shader: ' + gl.getShaderInfoLog(s));
         return s;
     }
 
@@ -366,7 +366,7 @@
         gl.attachShader(p, compile(gl, gl.FRAGMENT_SHADER, FRAG));
         gl.linkProgram(p);
         if (!gl.getProgramParameter(p, gl.LINK_STATUS))
-            console.error('[CardboardXR] program: ' + gl.getProgramInfoLog(p));
+            console.error('[Afterglow] program: ' + gl.getProgramInfoLog(p));
         var d = {
             program: p,
             aPos: gl.getAttribLocation(p, 'aPos'),
@@ -433,7 +433,7 @@
         if (type === 'viewer' || type === 'local' || type === 'local-floor')
             return Promise.resolve(new XRReferenceSpace(type));
         // Anything else -- bounded-floor, unbounded -- this cannot honestly provide.
-        return Promise.reject(new Error('CardboardXR has no "' + type + '" reference space'));
+        return Promise.reject(new Error('Afterglow has no "' + type + '" reference space'));
     };
 
     XRSession.prototype.requestAnimationFrame = function (cb) {
@@ -463,7 +463,7 @@
         var frame = new XRFrame(this);
         for (var i = 0; i < due.length; i++) {
             try { due[i].cb(time, frame); }
-            catch (e) { console.error('[CardboardXR] frame callback: ' + (e && e.message)); }
+            catch (e) { console.error('[Afterglow] frame callback: ' + (e && e.message)); }
         }
         if (gl && this._fbo) this._composite();
         if (this._callbacks.length) this._schedule();
@@ -524,13 +524,13 @@
         }
         this._emit('end');
         // Lets the app put its own view back.
-        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cardboardxr)
-            window.webkit.messageHandlers.cardboardxr.postMessage({ event: 'sessionend' });
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.afterglow)
+            window.webkit.messageHandlers.afterglow.postMessage({ event: 'sessionend' });
         return Promise.resolve();
     };
 
     // A pinch in front of the camera, or a tap, arrives here from the app.
-    window.__cardboardxrSelect = function () {
+    window.__afterglowSelect = function () {
         if (!active || active._ended) return;
         var source = active.inputSources[0];
         active._emit('selectstart', { inputSource: source, frame: new XRFrame(active) });
@@ -546,11 +546,11 @@
         },
         requestSession: function (mode) {
             if (mode !== 'immersive-vr' && mode !== 'inline')
-                return Promise.reject(new Error('CardboardXR supports immersive-vr and inline only'));
+                return Promise.reject(new Error('Afterglow supports immersive-vr and inline only'));
             active = new XRSession();
             active.inputSources = [new XRInputSource()];
-            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cardboardxr)
-                window.webkit.messageHandlers.cardboardxr.postMessage({ event: 'sessionstart' });
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.afterglow)
+                window.webkit.messageHandlers.afterglow.postMessage({ event: 'sessionstart' });
             return Promise.resolve(active);
         },
         addEventListener: function () {},
@@ -572,6 +572,6 @@
     window.XRViewerPose = XRViewerPose;
     window.XRReferenceSpace = XRReferenceSpace;
 
-    console.log('[CardboardXR] WebXR ready' + (cfg.mono ? ' (phone view: one picture, no lens correction)' : '') + ': screen ' + cfg.screen[0].toFixed(4) + ' x ' +
+    console.log('[Afterglow] WebXR ready' + (cfg.mono ? ' (phone view: one picture, no lens correction)' : '') + ': screen ' + cfg.screen[0].toFixed(4) + ' x ' +
                 cfg.screen[1].toFixed(4) + ' m, lenses ' + (cfg.interLens * 1000).toFixed(1) + ' mm apart');
 })();

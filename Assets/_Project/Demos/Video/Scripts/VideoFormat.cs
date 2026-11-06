@@ -2,7 +2,7 @@ using System;
 using System.Text.RegularExpressions;
 using UnityEngine;
 
-namespace CardboardXR.Demos.Video
+namespace Afterglow.Demos.Video
 {
     // How much of the sphere around the viewer a video covers.
     public enum Projection

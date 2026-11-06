@@ -2,10 +2,10 @@ using System.Runtime.InteropServices;
 using System.Text;
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // What camera formats ARKit will give a world-tracking session here
-    // (Plugins/iOS/CardboardXRVideoFormats.mm).
+    // (Plugins/iOS/AfterglowVideoFormats.mm).
     //
     // Worth knowing because the camera's field of view is this app's tightest constraint: the main
     // lens sees about 68 degrees across and 42 up and down, and a hand reaching for something
@@ -20,7 +20,7 @@ namespace CardboardXR.Stereo
         {
 #if UNITY_IOS && !UNITY_EDITOR
             var text = new StringBuilder(k_Length);
-            var count = CardboardXR_VideoFormats(text, text.Capacity);
+            var count = Afterglow_VideoFormats(text, text.Capacity);
             if (count <= 0)
             {
                 Debug.Log("[Camera] ARKit offered no world-tracking video formats to choose from.");
@@ -31,7 +31,7 @@ namespace CardboardXR.Stereo
         }
 
 #if UNITY_IOS && !UNITY_EDITOR
-        [DllImport("__Internal")] static extern int CardboardXR_VideoFormats(StringBuilder formats, int length);
+        [DllImport("__Internal")] static extern int Afterglow_VideoFormats(StringBuilder formats, int length);
 #endif
     }
 }

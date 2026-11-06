@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Copies the app's tagged log lines ([Pose], [AR], [Tracking] and so on) and any errors to
     // Application.persistentDataPath/session.log, replaced at each launch with the previous one kept

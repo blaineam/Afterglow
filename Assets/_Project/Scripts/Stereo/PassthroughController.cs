@@ -1,10 +1,10 @@
 using UnityEngine;
 using UnityEngine.InputSystem.XR;
 using UnityEngine.Rendering;
-using CardboardXR.UI;
+using Afterglow.UI;
 using UnityEngine.XR.ARFoundation;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Camera passthrough in the viewer. Each new ARCore camera image is drawn with ARCore's own
     // background material into a texture, with its display transform widened so the texture holds

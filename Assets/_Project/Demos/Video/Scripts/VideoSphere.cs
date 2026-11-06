@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-namespace CardboardXR.Demos.Video
+namespace Afterglow.Demos.Video
 {
     // The surface a video is drawn on: a large sphere around the viewer, its front half, or a flat
     // screen ahead of them, textured from the inside. A 3D video gets one per eye, each on a layer only that eye's

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Keeps the screen bright while the app is in front: a viewer's lenses dim the picture, and the
     // phone's own brightness is set for reading at arm's length. 90% by default rather than full, to

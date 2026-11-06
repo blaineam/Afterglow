@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // The user's saved settings: what used to need a launch from the Mac, kept in PlayerPrefs under
     // the launch option's own name, so one name means one thing everywhere. A launch option still
@@ -12,7 +12,7 @@ namespace CardboardXR.Stereo
     // or a 0/1), and one shape keeps the settings screen a table rather than a type per row.
     public static class Settings
     {
-        const string k_Prefix = "CardboardXR.Setting.";
+        const string k_Prefix = "Afterglow.Setting.";
 
         // Raised with the name of a setting that changed, for whatever applies it live.
         public static event Action<string> Changed;

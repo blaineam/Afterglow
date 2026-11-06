@@ -1,6 +1,6 @@
 // The gaze reticle: a disc, or a ring when _Inner > 0, with a dark outline, drawn over everything.
 // Radii are fractions of the quad's half-width, set every frame by GazeReticle.
-Shader "CardboardXR/Reticle"
+Shader "Afterglow/Reticle"
 {
     Properties
     {

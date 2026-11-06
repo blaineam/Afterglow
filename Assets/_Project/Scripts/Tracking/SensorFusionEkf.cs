@@ -1,6 +1,6 @@
 using System;
 
-namespace CardboardXR.Tracking
+namespace Afterglow.Tracking
 {
     // One gyroscope or accelerometer reading. sensorTimestampNs orders and spaces samples;
     // systemTimestampNs is on the clock prediction requests use.

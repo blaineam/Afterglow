@@ -87,7 +87,7 @@ static const char *kHelperSource = R"JS(
   // carries them. Aiming by eye through a lens is imprecise enough without having to guess the
   // target, and a crosshair that comes back from the page is also the proof that the point the
   // scene sends and the point the page reads are the same one.
-  window.__cardboardxrHover = function (u, v) {
+  window.__afterglowHover = function (u, v) {
     var vp = viewport();
     // A negative point means the gaze has left the window. Both marks go away, rather than
     // staying where the gaze last was, which would read as a crosshair that had stuck.
@@ -118,10 +118,10 @@ static const char *kHelperSource = R"JS(
     box.style.height = r.height + 'px';
   };
 
-  window.__cardboardxrClick = function (u, v) {
+  window.__afterglowClick = function (u, v) {
     function say(hit, moved, note) {
       try {
-        window.webkit.messageHandlers.cardboardxr.postMessage(
+        window.webkit.messageHandlers.afterglow.postMessage(
           { event: 'click', hit: hit, moved: !!moved, note: note || '' });
       } catch (e) { /* nothing to report to */ }
     }
@@ -186,7 +186,7 @@ static const char *kHelperSource = R"JS(
   // Scrolls whatever is under the gaze. Most sites now put their content in an inner scroller,
   // and window.scrollBy does not move those at all -- which looked like a page that would not
   // scroll, and left every link below the fold unreachable.
-  window.__cardboardxrScroll = function (u, v, dx, dy) {
+  window.__afterglowScroll = function (u, v, dx, dy) {
     var p = pick(u, v);
     var node = p ? p.el : null;
     for (var depth = 0; node && depth < 12; node = node.parentElement, depth++) {
@@ -204,7 +204,7 @@ static const char *kHelperSource = R"JS(
   };
 
   function tell(body) {
-    try { window.webkit.messageHandlers.cardboardxr.postMessage(body); } catch (e) { /* no host */ }
+    try { window.webkit.messageHandlers.afterglow.postMessage(body); } catch (e) { /* no host */ }
   }
 
   // Which field, if any, the typing goes into -- following focus through same-origin frames,
@@ -266,7 +266,7 @@ static const char *kHelperSource = R"JS(
   // After the fact: at focusout the old element is still the active one.
   document.addEventListener('focusout', function () { setTimeout(reportFocus, 0); }, true);
 
-  window.__cardboardxrType = function (text) {
+  window.__afterglowType = function (text) {
     var el = focused();
     if (!el) { tell({ event: 'typed', ok: 0, note: 'nothing is focused' }); return; }
     if (el.isContentEditable) {
@@ -288,7 +288,7 @@ static const char *kHelperSource = R"JS(
     tell({ event: 'typed', ok: 1, value: valueOf(el) });
   };
 
-  window.__cardboardxrKey = function (key) {
+  window.__afterglowKey = function (key) {
     var el = focused();
     if (!el) { tell({ event: 'key', ok: 0, note: 'nothing is focused', which: key }); return; }
 
@@ -353,7 +353,7 @@ static const char *kHelperSource = R"JS(
 })();
 )JS";
 
-@interface CardboardXRWebHost : NSObject <WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate>
+@interface AfterglowWebHost : NSObject <WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate>
 @property (nonatomic, strong) WKWebView *web;
 @property (nonatomic, assign) int pending;
 // Windowed: the view lives behind Unity's, where it still renders but is never seen, and is
@@ -376,9 +376,9 @@ static const char *kHelperSource = R"JS(
 - (void)capture;
 @end
 
-static CardboardXRWebHost *g_Host = nil;
+static AfterglowWebHost *g_Host = nil;
 
-@implementation CardboardXRWebHost
+@implementation AfterglowWebHost
 
 - (void)userContentController:(WKUserContentController *)controller
       didReceiveScriptMessage:(WKScriptMessage *)message
@@ -530,7 +530,7 @@ static CardboardXRWebHost *g_Host = nil;
 
 // Opens `url` over Unity's view, with `configJson` and `shim` injected into every page it loads.
 // Returns 1 if the view went up.
-extern "C" int CardboardXR_WebOpen(const char *url, const char *configJson, const char *shim,
+extern "C" int Afterglow_WebOpen(const char *url, const char *configJson, const char *shim,
                                    int windowed, int pixelWidth, int pixelHeight)
 {
     if (url == nullptr || configJson == nullptr || shim == nullptr)
@@ -552,13 +552,13 @@ extern "C" int CardboardXR_WebOpen(const char *url, const char *configJson, cons
         return 0;
     }
 
-    CardboardXRWebHost *host = [CardboardXRWebHost new];
+    AfterglowWebHost *host = [AfterglowWebHost new];
 
     WKUserContentController *content = [WKUserContentController new];
-    [content addScriptMessageHandler:host name:@"cardboardxr"];
+    [content addScriptMessageHandler:host name:@"afterglow"];
     // The config first, then the shim, both before the page's own scripts: a page that looks for
     // navigator.xr on load has to find it already there.
-    NSString *config = [NSString stringWithFormat:@"window.__cardboardxrConfig = %s;",
+    NSString *config = [NSString stringWithFormat:@"window.__afterglowConfig = %s;",
                         configJson];
     [content addUserScript:[[WKUserScript alloc] initWithSource:config
                                                   injectionTime:WKUserScriptInjectionTimeAtDocumentStart
@@ -643,7 +643,7 @@ extern "C" int CardboardXR_WebOpen(const char *url, const char *configJson, cons
     return 1;
 }
 
-extern "C" void CardboardXR_WebClose()
+extern "C" void Afterglow_WebClose()
 {
     if (g_Host == nil)
         return;
@@ -655,7 +655,7 @@ extern "C" void CardboardXR_WebClose()
         g_Host.pixels = NULL;
     }
     WKWebView *web = g_Host.web;
-    [web.configuration.userContentController removeScriptMessageHandlerForName:@"cardboardxr"];
+    [web.configuration.userContentController removeScriptMessageHandlerForName:@"afterglow"];
     [web stopLoading];
     [web removeFromSuperview];
     [g_Host.veil removeFromSuperview];
@@ -665,30 +665,30 @@ extern "C" void CardboardXR_WebClose()
     NSLog(@"[WebXR] closed");
 }
 
-extern "C" int CardboardXR_WebIsOpen() { return g_Host != nil ? 1 : 0; }
+extern "C" int Afterglow_WebIsOpen() { return g_Host != nil ? 1 : 0; }
 
 // The head pose, pushed in rather than read out: the app's fusion is better than anything the page
 // could get for itself, and WKWebView cannot be asked synchronously.
-extern "C" void CardboardXR_WebPose(float px, float py, float pz, float qx, float qy, float qz, float qw)
+extern "C" void Afterglow_WebPose(float px, float py, float pz, float qx, float qy, float qz, float qw)
 {
     if (g_Host == nil || g_Host.web == nil)
         return;
     NSString *call = [NSString stringWithFormat:
-        @"window.__cardboardxrPose&&window.__cardboardxrPose(%.5f,%.5f,%.5f,%.6f,%.6f,%.6f,%.6f)",
+        @"window.__afterglowPose&&window.__afterglowPose(%.5f,%.5f,%.5f,%.6f,%.6f,%.6f,%.6f)",
         px, py, pz, qx, qy, qz, qw];
     [g_Host.web evaluateJavaScript:call completionHandler:nil];
 }
 
-extern "C" void CardboardXR_WebSelect()
+extern "C" void Afterglow_WebSelect()
 {
     if (g_Host == nil || g_Host.web == nil)
         return;
-    [g_Host.web evaluateJavaScript:@"window.__cardboardxrSelect&&window.__cardboardxrSelect()"
+    [g_Host.web evaluateJavaScript:@"window.__afterglowSelect&&window.__afterglowSelect()"
                  completionHandler:nil];
 }
 
 // Whatever the page last said, cleared as it is read.
-extern "C" int CardboardXR_WebTakeEvent()
+extern "C" int Afterglow_WebTakeEvent()
 {
     if (g_Host == nil)
         return WebEventNone;
@@ -699,7 +699,7 @@ extern "C" int CardboardXR_WebTakeEvent()
 
 // The latest picture of the page, as tightly packed BGRA rows starting at the bottom. Returns 0
 // when there is nothing new, so Unity only uploads a texture when the page has actually changed.
-extern "C" int CardboardXR_WebPixels(void **bytes, int *width, int *height)
+extern "C" int Afterglow_WebPixels(void **bytes, int *width, int *height)
 {
     if (g_Host == nil || !g_Host.windowed || g_Host.pixels == NULL || !g_Host.freshPixels)
         return 0;
@@ -715,11 +715,11 @@ extern "C" int CardboardXR_WebPixels(void **bytes, int *width, int *height)
 //
 // Synthesised rather than a real touch, because UIKit has no public way to inject one. The work is
 // in kHelperSource above; all this does is name the point.
-extern "C" void CardboardXR_WebClickAt(float u, float v)
+extern "C" void Afterglow_WebClickAt(float u, float v)
 {
     if (g_Host == nil || g_Host.web == nil)
         return;
-    NSString *js = [NSString stringWithFormat:@"window.__cardboardxrClick&&window.__cardboardxrClick(%.5f,%.5f)", u, v];
+    NSString *js = [NSString stringWithFormat:@"window.__afterglowClick&&window.__afterglowClick(%.5f,%.5f)", u, v];
     [g_Host.web evaluateJavaScript:js completionHandler:^(id result, NSError *error) {
         if (error != nil)
             NSLog(@"[WebXR] click script failed: %@", error.localizedDescription);
@@ -728,38 +728,38 @@ extern "C" void CardboardXR_WebClickAt(float u, float v)
 
 // Draws the crosshair and outlines whatever a click would land on. Called a dozen times a second
 // while the gaze is on the window, which is as often as the snapshot that carries it.
-extern "C" void CardboardXR_WebHoverAt(float u, float v)
+extern "C" void Afterglow_WebHoverAt(float u, float v)
 {
     if (g_Host == nil || g_Host.web == nil || !g_Host.windowed)
         return;
-    NSString *js = [NSString stringWithFormat:@"window.__cardboardxrHover&&window.__cardboardxrHover(%.5f,%.5f)", u, v];
+    NSString *js = [NSString stringWithFormat:@"window.__afterglowHover&&window.__afterglowHover(%.5f,%.5f)", u, v];
     [g_Host.web evaluateJavaScript:js completionHandler:nil];
 }
 
 // Scrolls what is under the point rather than always the window, so pages that put their content
 // in an inner scroller move too.
-extern "C" void CardboardXR_WebScrollAt(float u, float v, float dx, float dy)
+extern "C" void Afterglow_WebScrollAt(float u, float v, float dx, float dy)
 {
     if (g_Host == nil || g_Host.web == nil)
         return;
     NSString *js = [NSString stringWithFormat:
-        @"window.__cardboardxrScroll&&window.__cardboardxrScroll(%.5f,%.5f,%.2f,%.2f)", u, v, dx, dy];
+        @"window.__afterglowScroll&&window.__afterglowScroll(%.5f,%.5f,%.2f,%.2f)", u, v, dx, dy];
     [g_Host.web evaluateJavaScript:js completionHandler:nil];
 }
 
-extern "C" void CardboardXR_WebGoBack()
+extern "C" void Afterglow_WebGoBack()
 {
     if (g_Host != nil && g_Host.web != nil && g_Host.web.canGoBack)
         [g_Host.web goBack];
 }
 
-extern "C" void CardboardXR_WebGoForward()
+extern "C" void Afterglow_WebGoForward()
 {
     if (g_Host != nil && g_Host.web != nil && g_Host.web.canGoForward)
         [g_Host.web goForward];
 }
 
-extern "C" void CardboardXR_WebReload()
+extern "C" void Afterglow_WebReload()
 {
     if (g_Host != nil && g_Host.web != nil)
         [g_Host.web reload];
@@ -781,32 +781,32 @@ static NSString *JsString(NSString *text)
 }
 
 // Types text into whatever field the page has focused.
-extern "C" void CardboardXR_WebType(const char *text)
+extern "C" void Afterglow_WebType(const char *text)
 {
     if (g_Host == nil || g_Host.web == nil || text == nullptr)
         return;
-    NSString *js = [NSString stringWithFormat:@"window.__cardboardxrType&&window.__cardboardxrType(%@)",
+    NSString *js = [NSString stringWithFormat:@"window.__afterglowType&&window.__afterglowType(%@)",
                     JsString([NSString stringWithUTF8String:text])];
     [g_Host.web evaluateJavaScript:js completionHandler:nil];
 }
 
 // Backspace, Clear or Enter, which commits.
-extern "C" void CardboardXR_WebKey(const char *key)
+extern "C" void Afterglow_WebKey(const char *key)
 {
     if (g_Host == nil || g_Host.web == nil || key == nullptr)
         return;
-    NSString *js = [NSString stringWithFormat:@"window.__cardboardxrKey&&window.__cardboardxrKey(%@)",
+    NSString *js = [NSString stringWithFormat:@"window.__afterglowKey&&window.__afterglowKey(%@)",
                     JsString([NSString stringWithUTF8String:key])];
     [g_Host.web evaluateJavaScript:js completionHandler:nil];
 }
 
 // Whether the page has a field focused, so the keyboard can say where the typing is going.
-extern "C" int CardboardXR_WebTextFocused()
+extern "C" int Afterglow_WebTextFocused()
 {
     return g_Host != nil ? g_Host.focusHas : 0;
 }
 
-extern "C" void CardboardXR_WebLoadUrl(const char *url)
+extern "C" void Afterglow_WebLoadUrl(const char *url)
 {
     if (g_Host == nil || g_Host.web == nil || url == nullptr)
         return;
@@ -823,7 +823,7 @@ extern "C" void CardboardXR_WebLoadUrl(const char *url)
 
 // The current address, for the bar to show. Returns the length written, or what it would have
 // needed if the buffer was too small.
-extern "C" int CardboardXR_WebCopyUrl(char *buffer, int capacity)
+extern "C" int Afterglow_WebCopyUrl(char *buffer, int capacity)
 {
     if (g_Host == nil || g_Host.web == nil)
         return 0;
@@ -843,7 +843,7 @@ extern "C" int CardboardXR_WebCopyUrl(char *buffer, int capacity)
 
 // An immersive session needs the frame rate a snapshot cannot give, so the view comes to the
 // front and the scene stops drawing it on a quad. Ending the session puts it back.
-extern "C" void CardboardXR_WebSetWindowed(int windowed)
+extern "C" void Afterglow_WebSetWindowed(int windowed)
 {
     if (g_Host == nil || g_Host.web == nil || g_Host.windowed == (windowed != 0))
         return;

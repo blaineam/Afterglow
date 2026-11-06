@@ -1,9 +1,9 @@
-using CardboardXR.Hands;
-using CardboardXR.Interaction;
-using CardboardXR.Stereo;
+using Afterglow.Hands;
+using Afterglow.Interaction;
+using Afterglow.Stereo;
 using UnityEngine;
 
-namespace CardboardXR.Demos
+namespace Afterglow.Demos
 {
     // The Core scene's shared pieces, for demo scenes to reach: a reference saved in one scene can't
     // point into another, so a demo finds them here. Lives in the Core scene, which never unloads.

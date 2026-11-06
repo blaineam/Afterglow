@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Logs the achieved frame rate every few seconds with the [Frames] tag, and each hitch with the
     // [Hitch] tag: when it happened and where the time went (main thread, render thread, GPU, or

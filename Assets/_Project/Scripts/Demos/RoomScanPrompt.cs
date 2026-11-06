@@ -1,11 +1,11 @@
 using System.Collections;
-using CardboardXR.Hands;
-using CardboardXR.Stereo;
-using CardboardXR.UI;
+using Afterglow.Hands;
+using Afterglow.Stereo;
+using Afterglow.UI;
 using TMPro;
 using UnityEngine;
 
-namespace CardboardXR.Demos
+namespace Afterglow.Demos
 {
     // The room scan's panel, shown over an app that scans the room as it opens (DemoManager, for a
     // catalog entry with ScanSurfaces, in 6DoF, when the room hasn't been scanned since 6DoF began):

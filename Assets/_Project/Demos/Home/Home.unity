@@ -260,7 +260,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2a6d25dda0a864643b7525e8dbf0174f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: CardboardXR.Demos::CardboardXR.Demos.PalmHint
+  m_EditorClassIdentifier: Afterglow.Demos::Afterglow.Demos.PalmHint
   m_Distance: 1.75
   m_Pitch: -21
   m_Text: Look at your palm, then pinch, for Home and settings
@@ -307,7 +307,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2ad46c45c14274592b412804c266efeb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: CardboardXR.Stereo::CardboardXR.Stereo.VirtualEnvironment
+  m_EditorClassIdentifier: Afterglow.Stereo::Afterglow.Stereo.VirtualEnvironment
 --- !u!4 &469548042
 Transform:
   m_ObjectHideFlags: 0

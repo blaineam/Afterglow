@@ -1,7 +1,7 @@
-using CardboardXR.Demos;
+using Afterglow.Demos;
 using NUnit.Framework;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     public class DemoRequirementsTests
     {

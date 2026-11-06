@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // How the camera image fits the square detector input: scaled to fit, centered, and padded.
     public struct Letterbox

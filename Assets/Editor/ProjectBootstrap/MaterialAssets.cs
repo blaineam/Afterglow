@@ -1,6 +1,6 @@
 using System.IO;
 using System.Linq;
-using CardboardXR.UI;
+using Afterglow.UI;
 using TMPro;
 using UnityEditor;
 using UnityEngine;

@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.Management;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // What this build, on this machine, can actually do. Decided from what XR Plug-in Management
     // managed to start rather than from the platform: an iPhone has ARKit, but the iOS Simulator

@@ -147,7 +147,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 71b107424a2b041e58655e78e5708df0, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: CardboardXR.Demos.Video::CardboardXR.Demos.Video.VideoSphere
+  m_EditorClassIdentifier: Afterglow.Demos.Video::Afterglow.Demos.Video.VideoSphere
   m_Material: {fileID: 2100000, guid: fb9307f4d21324f79b6b4ba2867544ad, type: 2}
   m_Radius: 15
 --- !u!4 &702426232
@@ -194,7 +194,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ee05ea77be7d445ddb50959caa0204e1, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: CardboardXR.Demos.Video::CardboardXR.Demos.Video.VideoDemo
+  m_EditorClassIdentifier: Afterglow.Demos.Video::Afterglow.Demos.Video.VideoDemo
   m_Sphere: {fileID: 702426231}
   m_Bundled:
   - Sample_360.mp4

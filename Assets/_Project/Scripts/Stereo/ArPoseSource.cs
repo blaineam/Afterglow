@@ -3,7 +3,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // Keeps ARCore tracking running behind the stereo view and exposes its latest camera pose, stamped
     // with the capture time of the camera image it came from. ARCore updates the pose once per camera

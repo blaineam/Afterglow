@@ -6,12 +6,12 @@
 #import <UIKit/UIKit.h>
 
 // NSProcessInfoThermalState: 0 nominal, 1 fair, 2 serious, 3 critical.
-extern "C" int CardboardXR_ThermalState()
+extern "C" int Afterglow_ThermalState()
 {
     return (int)[NSProcessInfo processInfo].thermalState;
 }
 
-extern "C" int CardboardXR_ScreenMaximumFramesPerSecond()
+extern "C" int Afterglow_ScreenMaximumFramesPerSecond()
 {
     return (int)[UIScreen mainScreen].maximumFramesPerSecond;
 }

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.Stereo
+namespace Afterglow.Stereo
 {
     // The Cardboard alignment marker: a thin line up from the bottom center of the screen, between
     // the two eye images. Lining it up with the middle of the viewer centers the phone between the

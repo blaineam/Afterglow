@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace CardboardXR.Demos.Video
+namespace Afterglow.Demos.Video
 {
     // Google Drive share links. A share link opens Drive's page for the file, not the file, so it's
     // turned into a direct download. confirm=t skips the page Drive shows instead of large files,

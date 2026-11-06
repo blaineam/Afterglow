@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // The One Euro filter (Casiez, Roussel and Vogel, 2012): a low-pass filter whose cutoff rises with
     // speed, so a still hand holds steady and a moving one keeps up. The cutoff is minCutoff Hz at

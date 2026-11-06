@@ -1,8 +1,8 @@
-using CardboardXR.Demos.Rush;
+using Afterglow.Demos.Rush;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     public class RushRulesTests
     {

@@ -12,14 +12,14 @@ namespace ProjectBootstrap
     // A plugin that imports a framework's headers compiles happily without it: the header is found
     // on the SDK's include path whether or not anything links the library. It is the linker that
     // objects, and only at the end of a full iOS build, with "Undefined symbols ... referenced
-    // from CardboardXRWebXR.o". Nothing earlier -- not the Editor's own compile, not the EditMode
+    // from AfterglowWebXR.o". Nothing earlier -- not the Editor's own compile, not the EditMode
     // tests, not Unity's export -- says a word about it.
     //
-    //   WebKit        the in-app browser's WKWebView (CardboardXRWebXR.mm)
-    //   Photos        the spatial photo and video library (CardboardXRSpatialPhotos.mm)
-    //   Speech        dictation into the browser (CardboardXRDictation.mm)
+    //   WebKit        the in-app browser's WKWebView (AfterglowWebXR.mm)
+    //   Photos        the spatial photo and video library (AfterglowSpatialPhotos.mm)
+    //   Speech        dictation into the browser (AfterglowDictation.mm)
     //   AVFoundation  the microphone that feeds it, and the player that decodes both layers of a
-    //                 spatial video (CardboardXRSpatialVideo.mm)
+    //                 spatial video (AfterglowSpatialVideo.mm)
     //   CoreMedia     the tagged buffer groups a spatial video's two eyes arrive in, same plugin
     //   CoreVideo     the pixel buffers inside them, and the Metal texture cache that wraps those
     //   Metal         the textures themselves, which Unity draws from without a copy

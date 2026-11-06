@@ -1,7 +1,7 @@
-using CardboardXR.Stereo;
+using Afterglow.Stereo;
 using UnityEngine;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // While a hand is tracked, moves the passthrough image to the hand's distance, so the hand in the
     // image lines up with its tracked joints in both eyes. The image is flat and can only be at one

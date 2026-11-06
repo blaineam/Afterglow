@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.XR.Hands;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // One hand's worth of what HandSubsystemFeed reports to XR Hands: which side it is, its joints
     // in the tracking space, and its pinch.

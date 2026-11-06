@@ -5,7 +5,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
-namespace CardboardXR.Interaction
+namespace Afterglow.Interaction
 {
     // Cardboard's gaze input. A ray from the middle of the head picks what the user looks at, and a
     // screen tap, which is what a viewer's button does, clicks it. Targets get the standard UI pointer

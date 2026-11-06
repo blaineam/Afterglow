@@ -1,8 +1,8 @@
-using CardboardXR.Hands;
+using Afterglow.Hands;
 using NUnit.Framework;
 using UnityEngine;
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     public class PalmCalibrationTests
     {
@@ -85,7 +85,7 @@ namespace CardboardXR.Stereo.Tests
     }
 }
 
-namespace CardboardXR.Stereo.Tests
+namespace Afterglow.Stereo.Tests
 {
     public class HandReachTests
     {
@@ -93,17 +93,17 @@ namespace CardboardXR.Stereo.Tests
         [Test]
         public void ArmsLength_IsKept()
         {
-            Assert.IsTrue(CardboardXR.Hands.HandTracker.WithinReach(0.65f, float.NaN));
-            Assert.IsTrue(CardboardXR.Hands.HandTracker.WithinReach(0.60f, 0.65f));
+            Assert.IsTrue(Afterglow.Hands.HandTracker.WithinReach(0.65f, float.NaN));
+            Assert.IsTrue(Afterglow.Hands.HandTracker.WithinReach(0.60f, 0.65f));
         }
 
         // The strays of 2026-09-24, with and without a depth sensor.
         [Test]
         public void StrayDetections_AreDropped()
         {
-            Assert.IsFalse(CardboardXR.Hands.HandTracker.WithinReach(1.49f, 1.14f));
-            Assert.IsFalse(CardboardXR.Hands.HandTracker.WithinReach(1.68f, float.NaN));
-            Assert.IsFalse(CardboardXR.Hands.HandTracker.WithinReach(0.90f, float.NaN));
+            Assert.IsFalse(Afterglow.Hands.HandTracker.WithinReach(1.49f, 1.14f));
+            Assert.IsFalse(Afterglow.Hands.HandTracker.WithinReach(1.68f, float.NaN));
+            Assert.IsFalse(Afterglow.Hands.HandTracker.WithinReach(0.90f, float.NaN));
         }
 
         // The sensor decides where it has a reading, in either direction: a real hand whose estimate
@@ -111,8 +111,8 @@ namespace CardboardXR.Stereo.Tests
         [Test]
         public void Measurement_OverrulesTheEstimate()
         {
-            Assert.IsTrue(CardboardXR.Hands.HandTracker.WithinReach(1.5f, 0.45f));
-            Assert.IsFalse(CardboardXR.Hands.HandTracker.WithinReach(0.4f, 1.2f));
+            Assert.IsTrue(Afterglow.Hands.HandTracker.WithinReach(1.5f, 0.45f));
+            Assert.IsFalse(Afterglow.Hands.HandTracker.WithinReach(0.4f, 1.2f));
         }
     }
 }

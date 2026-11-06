@@ -18,7 +18,7 @@ Parts of `Assets/_Project/Scripts/Tracking/` port the SDK's head tracking, under
 - `Rotation.cs`, `Vector3d.cs`, `Matrix3x3d.cs` — from `sdk/util/rotation.cc`, `vector.h`,
   `vectorutils.cc`, `matrix_3x3.cc`, `matrixutils.cc`
 
-`Assets/Plugins/Android/CardboardXRImu.cpp` follows the SDK's Android sensor readers
+`Assets/Plugins/Android/AfterglowImu.cpp` follows the SDK's Android sensor readers
 (`sdk/sensors/android/device_gyroscope_sensor.cc`, `device_accelerometer_sensor.cc` and
 `sensor_event_producer.cc`), rewritten to read both sensors on one thread into a buffer.
 

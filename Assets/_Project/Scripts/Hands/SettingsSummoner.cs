@@ -1,8 +1,8 @@
-using CardboardXR.Stereo;
-using CardboardXR.UI;
+using Afterglow.Stereo;
+using Afterglow.UI;
 using UnityEngine;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // The app's settings panel (Core's toolbar), summoned as visionOS offers its controls: look at your
     // palm and a round gear button appears between your thumb and index finger, following the hand;

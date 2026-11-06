@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace CardboardXR.Tracking
+namespace Afterglow.Tracking
 {
     // Learns a gyroscope bias from how a tracker's heading drifts against a reference whose heading
     // doesn't, such as ARCore. Over each window it fits the trend of the heading difference; that

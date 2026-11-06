@@ -3,7 +3,7 @@ using UnityEngine.Rendering;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using UnityEngine.XR.Interaction.Toolkit.Interactors.Visuals;
 
-namespace CardboardXR.Hands
+namespace Afterglow.Hands
 {
     // A dot on whatever the hand's ray could pick up, and nothing the rest of the time: the ray only
     // grabs, so a cursor that followed it everywhere would be clutter beside the gaze reticle, which is
