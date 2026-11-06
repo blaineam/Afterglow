@@ -9,7 +9,7 @@
   the gaze hit on the quad to page coordinates (`TryGazePoint`, `PageV`) is where to look. Aim by
   the page's dot until then.
 
-- **Hands weren't found on the phone (2026-11-06; Vision path added the same day, to be confirmed).**
+- **Hands weren't found on the phone (2026-11-06; fixed the same day with Vision, confirmed on the phone).**
   The first device run since the two-hands change (2026-11-03) showed the palm detector finding
   a hand only now and then and the landmarker scoring it 0.13 presence, under the 0.5 it needs,
   so every hand was dropped at once and no pinch was ever seen; taps and the floating buttons
@@ -18,8 +18,16 @@
   with 21 landmarks each, its confidence is the presence and its chirality the handedness, and
   the MediaPipe landmarker only gives each hand its 3D shape, fitted to Vision's landmarks. The
   palm detector, the CPU's 30–50 ms per run, no longer runs; `handModel 1` brings it back for
-  comparison, and `handOrientation N` overrides how the image is turned for Vision if the axes
-  are read wrong. `handDump N` still writes the camera image and the landmarker's crops.
+  comparison. The crop dumps found the original fault: the orientation read off ARKit's display
+  matrix (built for a portrait screen) had Vision turn an image that is upright in the viewer as
+  it comes, and Vision reports points in the turned frame, so every landmark was mirrored across
+  the image and the landmarker's crop held the room beside the hand. Upright, on an iPhone 18
+  Pro Max: Vision 5 ms and the landmarker 20 ms per image, 15 images/s, presence 0.72–0.84, the
+  shape fitting at 11–18 px, the hand placed 0.26–0.41 m away, pinches reaching the Home panel.
+  `handOrientation N` turns the image if a phone ever needs it, `handDump N` still writes the
+  image and the crops, and *Show tracked hands* in Settings draws the joints over the camera
+  image to see how the tracking follows. Results still arrive ~165 ms behind the camera image
+  (sampling the crop takes 13 ms on the main thread), which the prediction covers for ~120 ms.
 
 - **A WebXR page drew wrong from its second session frame** (fixed 2026-11-06, Simulator-verified;
   to be confirmed on the phone). The session held and the page's renderer presented every frame,
