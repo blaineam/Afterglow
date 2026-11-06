@@ -196,6 +196,26 @@ cooled phone, the Cube Sandbox reached iOS's "fair" thermal state in about 3½ m
 already warm from testing reached "serious" in about 70 s. The `[Thermal]` log lines time each
 change, and say when a run didn't start cold.
 
+## iPhone 18 Pro Max
+
+### The phone runs hot, and the frame rate falls with it
+
+(2026-11-06) In a seven-minute run of Home and the browser, with an immersive WebXR session in
+the middle, iOS's thermal state was "serious" for most of it, and the app held 16–60 fps against
+its 120 fps target with nearly every frame late. The frame itself is cheap: the main thread took
+1–9 ms and the GPU up to 6 ms, with the rest spent waiting to present. The heat is from what
+runs every frame regardless of the scene: the rear camera at 1920×1440 at 60 Hz for passthrough
+and hands, ARKit world tracking for 6DoF, stereo rendering aimed at 120 fps, and the web view
+drawing its page (during a session, now at the screen's own pixels rather than nearly twice
+them). The hand models were not the cost in this run: with no hand in view the palm detector
+ran about twice a second at 32–51 ms on the CPU, and the landmarker not at all; with a hand in
+view the landmarker runs on every image unless `handHz` limits it. The phone went from
+"nominal" to "fair" 3:21 after launch and to "serious" at 5:30, and it had not started cold.
+Unity's own drawing is already paused while a page has the screen. Options still open: a 60 fps
+default (`fps 60` tries it), a 3DoF browser and media player with no ARKit when nothing needs the
+room, a 30 Hz camera when no hand is being tracked, and the hand models on the Neural Engine
+through Apple's Vision hand pose instead of the CPU.
+
 ## Pixel 9 Pro
 
 ### The display drops to 60 Hz while the camera runs

@@ -483,8 +483,14 @@
             gl.canvas.clientWidth + 'x' + gl.canvas.clientHeight + ', ' + (gl instanceof WebGL2RenderingContext ? 'webgl2' : 'webgl'));
         var dpr = window.devicePixelRatio || 1;
         var canvas = gl.canvas;
-        var w = Math.max(2, Math.floor(window.innerWidth * dpr));
-        var h = Math.max(2, Math.floor(window.innerHeight * dpr));
+        // The eye buffer is the screen's own pixels (times the app's render scale), not the
+        // window times the pixel ratio: the window is 1024x768 at three pixels per point and
+        // is then stretched onto the screen, which on a phone made for nearly twice the pixels
+        // the screen can show, drawn and warped every frame for nothing.
+        var scale = (cfg.renderScale > 0 ? cfg.renderScale : 100) / 100;
+        var px = cfg.screenPixels && cfg.screenPixels[0] > 0 ? cfg.screenPixels : null;
+        var w = px ? Math.max(2, Math.round(px[0] * scale)) : Math.max(2, Math.floor(window.innerWidth * dpr));
+        var h = px ? Math.max(2, Math.round(px[1] * scale)) : Math.max(2, Math.floor(window.innerHeight * dpr));
         canvas.width = w;
         canvas.height = h;
         canvas.style.position = 'fixed';
@@ -493,6 +499,16 @@
         canvas.style.width = '100%';
         canvas.style.height = '100%';
         canvas.style.zIndex = '2147483647';
+        // Only the layer shows during an immersive session, as on a headset, where the page's
+        // other elements are simply not there. A player's canvas usually sits inside a container
+        // that is its own stacking context, so a toolbar outside it would draw over the layer
+        // whatever its z-index; the canvas moves to the end of the body for the session and goes
+        // back where it was when the session ends.
+        this._canvasHome = { parent: canvas.parentNode, next: canvas.nextSibling };
+        if (canvas.parentNode !== document.body || canvas.nextSibling) {
+            document.body.appendChild(canvas);
+            console.log('[Afterglow] layer canvas moved to the end of the body for the session');
+        }
         this._fbWidth = w;
         this._fbHeight = h;
 
@@ -505,7 +521,8 @@
         this._distort = createDistortion(gl);
         restoreState(gl, vao, saved);
         this.renderState.baseLayer = layer;
-        console.log('[Afterglow] eye buffer ' + w + 'x' + h + (target ? ' ready' : ' FAILED') + ', distortion ' + (this._distort ? 'ready' : 'missing'));
+        console.log('[Afterglow] eye buffer ' + w + 'x' + h + (px ? ' (screen pixels' + (scale !== 1 ? ' x ' + scale.toFixed(2) : '') + ')' : ' (window x pixel ratio)') +
+            (target ? ' ready' : ' FAILED') + ', distortion ' + (this._distort ? 'ready' : 'missing'));
     };
 
     XRSession.prototype.updateRenderState = function (state) {
@@ -597,6 +614,14 @@
         this._ended = true;
         this._callbacks = [];
         var gl = this._gl;
+        var home = this._canvasHome;
+        if (home && gl && gl.canvas && home.parent) {
+            try {
+                if (home.next && home.next.parentNode === home.parent) home.parent.insertBefore(gl.canvas, home.next);
+                else home.parent.appendChild(gl.canvas);
+            } catch (e) { /* the page took its canvas elsewhere */ }
+            this._canvasHome = null;
+        }
         if (gl) {
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             if (this._fbo) gl.deleteFramebuffer(this._fbo);

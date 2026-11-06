@@ -458,6 +458,11 @@ namespace Afterglow.Stereo
                    $"\"k\":[{k}]," +
                    $"\"fov\":[{Fov(Eye.Left)},{Fov(Eye.Right)}]," +
                    $"\"hasPosition\":{(hasPosition ? "true" : "false")}," +
+                   // The screen in pixels, with the eye-texture scale, so the page's eye buffer
+                   // is the size of the screen it ends up on rather than of its 1024x768 window
+                   // times the pixel ratio, which is nearly twice the pixels on a phone.
+                   $"\"screenPixels\":[{Screen.width},{Screen.height}]," +
+                   $"\"renderScale\":{Settings.Int("renderScale", 100)}," +
                    // Phone view: one picture filling the screen, no lens correction, for holding
                    // the phone in your hand rather than wearing it. The page has to be told,
                    // otherwise it keeps drawing a split, distorted pair nobody is looking through.

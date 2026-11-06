@@ -147,7 +147,7 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
 | `boundaryCm N` | Turn on the boundary warning: in VR, a grid on real surfaces within N cm |
 | `arView 1` | Debug view: the AR camera full screen with every detected surface drawn (forces 6DoF) |
 | `fps N` | Target frame rate (default 120) |
-| `renderScale N` | Eye texture resolution in percent (default 100) |
+| `renderScale N` | Eye texture resolution in percent (default 100); also sizes a WebXR page's eye buffer, which is otherwise the screen's own pixels |
 | `msaa N` | Anti-aliasing samples: 1, 2, 4 or 8 (default 2) |
 | `handHz N` | Run the hand landmark model at most N times a second (default 0: every camera image) |
 | `predictionMs N` | How far ahead head rotation is predicted, in ms (default 30) |
@@ -233,7 +233,8 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   lenses; hold a finger on the screen for a second and a half to end the session, since the
   page's own buttons and the app's gear are out of reach inside the viewer. Video in a page
   always plays inside the page, never in the iPhone's own full-screen player, which would cover
-  the viewer. **Logins**: when you sign in to a site the browser offers to keep the password in the
+  the viewer. During a session only the page's WebXR layer shows, as on a headset: its other
+  elements, a player's toolbar say, are not drawn over it. **Logins**: when you sign in to a site the browser offers to keep the password in the
   phone's Keychain (this phone only, readable only while it's unlocked, never in a backup), and on
   that site's login page next time it offers to fill it; nothing is kept unless you say *Save*.
   Bookmarks, history and the tabs live in a file in the app's own folder. iPhone only. (The
