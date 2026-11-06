@@ -8,24 +8,38 @@
 
 /* Begin PBXBuildFile section */
 		0113CE32E718FC51FC3EBD4B /* ARController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27D58785E652A50828B3FA73 /* ARController.swift */; };
+		1084C85F476B2C5EB0582CBF /* Panels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62905D062521A7CC64D592BA /* Panels.swift */; };
 		11DE11B2F262E90405DBEE7D /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3675F8D2A8455F705C68C25 /* Renderer.swift */; };
 		16D3E9D0732259261E2D92C5 /* PosePredictor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9966FF18394C15E0D6C282F /* PosePredictor.swift */; };
+		348FA203915A0E073B48490F /* afterglow-webxr.js in Resources */ = {isa = PBXBuildFile; fileRef = 1AA30D699725082AF000DBAB /* afterglow-webxr.js */; };
+		3B611AB1D9B01C012F739B97 /* WebBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C758612B9495CD314D59EF61 /* WebBridge.swift */; };
 		3C5D52A1580439FA628A5336 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1558F78E920E5997115FF985 /* ContentView.swift */; };
+		41D13DAC96C560971D3E2F8C /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE734763626DCDC395851D92 /* CredentialStore.swift */; };
 		4752687B06DCC27E53D2DE95 /* LensDistortionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */; };
 		5FADCF4942F922DF8FD0C5C4 /* HandOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7854AEB3ED92FB2970560611 /* HandOverlay.swift */; };
+		75BE77AC84FBAB02AE1C6FB8 /* BrowserWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407B733E5D15B248CD512A98 /* BrowserWindow.swift */; };
+		77C5951CAE44BFA58BE8C46A /* Toolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B81BBB54C49B3845F94E2832 /* Toolbar.swift */; };
 		7A38FB3AAA8E460C9F4F65D7 /* OneEuroFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B54E68953FBF0A4BF468CAE /* OneEuroFilter.swift */; };
 		80531BEAA4C2E3BD43B155AB /* FrameTimingLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42BBF82DA32DCFE7BA0AD50 /* FrameTimingLog.swift */; };
+		85FC0F60F815AACB5EB653D6 /* afterglow-helper.js in Resources */ = {isa = PBXBuildFile; fileRef = C4592C811D59569C81790593 /* afterglow-helper.js */; };
 		8600C1861C53352DF6521570 /* PolynomialRadialDistortion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 078E21E05BF54EC00E0F4308 /* PolynomialRadialDistortion.swift */; };
 		87FA55609E5C45D423B33A4C /* ViewerParams.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1258CEE15BE1B0F0A68046 /* ViewerParams.swift */; };
 		8A26420DC8EEC87E91BE44DA /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F383C9716F8214D0A4E65E7D /* Settings.swift */; };
+		8C25915865BFF7086BB43B56 /* BrowserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D8895069D15A18068ACE71 /* BrowserTests.swift */; };
+		9095BA84A3DC061A60F4CD65 /* Dictation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9423C371E42B4C272012AA5 /* Dictation.swift */; };
 		91E95FC2F446BEEE1D5D8481 /* UltraWideController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F03EB15525A4EC358532B829 /* UltraWideController.swift */; };
+		97305D4E9B52CAA27CC13956 /* Browser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47EDB0FC1E0D6EF4E3D1AE0 /* Browser.swift */; };
 		998F8E4E9A185C881C5B74DC /* SessionLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97890D6EB3536CA74C71E09 /* SessionLog.swift */; };
+		A60D870018233AC8AD7E288C /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = ECB85CC898B2F8A77E2B54A9 /* index.html */; };
 		AED9AC2DB5CA264371AF1869 /* HandGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */; };
 		B11BEA3C83C4B14B3E457065 /* LensDistortion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4402EC68CCA81B671B468EE8 /* LensDistortion.swift */; };
+		BA4BD6BE9A09CCCEFC49BB63 /* BrowserStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF67DFEAB12B2149E6F36069 /* BrowserStore.swift */; };
 		BC2DD9993B328B9BFE55C0D8 /* PinchDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E2E0B57207F4DEAA2DF268C /* PinchDetector.swift */; };
+		C41DAACF85D3845C8E068C10 /* WebTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9D14AF0F2015E62D345D07C /* WebTab.swift */; };
 		C803CA1BEC03B79551EFB51B /* UltraWideProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */; };
 		CD88B09669D877C78226AE06 /* CameraSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D94EC27CAA1FF1943486BB0 /* CameraSource.swift */; };
 		D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */; };
+		E1962322F97DB95D45A90270 /* HeadsetTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87C4D44511F04B6AD7D43D31 /* HeadsetTap.swift */; };
 		E1F20C8F70E32B1C44AA3A59 /* ScreenMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F27D509791361AD2011E47 /* ScreenMetrics.swift */; };
 		E386311B4A1748A01C31E880 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = F3791EB1A750663D58286739 /* Shaders.metal */; };
 		E7BA05E46A062EE88CE62A42 /* AfterglowApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A07A7A60E0764F6995F5B5 /* AfterglowApp.swift */; };
@@ -49,45 +63,78 @@
 		12EF0275572665780B091BD3 /* HandGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandGeometry.swift; sourceTree = "<group>"; };
 		135AAF215BBE3C9874DB7911 /* HandTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandTracker.swift; sourceTree = "<group>"; };
 		1558F78E920E5997115FF985 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		1AA30D699725082AF000DBAB /* afterglow-webxr.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "afterglow-webxr.js"; sourceTree = "<group>"; };
 		27D58785E652A50828B3FA73 /* ARController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARController.swift; sourceTree = "<group>"; };
 		2B54E68953FBF0A4BF468CAE /* OneEuroFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OneEuroFilter.swift; sourceTree = "<group>"; };
+		37D8895069D15A18068ACE71 /* BrowserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserTests.swift; sourceTree = "<group>"; };
 		38B30CD74969D37109A6EC5B /* AfterglowTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AfterglowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		407B733E5D15B248CD512A98 /* BrowserWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserWindow.swift; sourceTree = "<group>"; };
 		4402EC68CCA81B671B468EE8 /* LensDistortion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensDistortion.swift; sourceTree = "<group>"; };
 		57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalLog.swift; sourceTree = "<group>"; };
 		5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandGeometryTests.swift; sourceTree = "<group>"; };
+		62905D062521A7CC64D592BA /* Panels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels.swift; sourceTree = "<group>"; };
 		67A818255D526B59948B967F /* ShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
 		7854AEB3ED92FB2970560611 /* HandOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandOverlay.swift; sourceTree = "<group>"; };
+		87C4D44511F04B6AD7D43D31 /* HeadsetTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadsetTap.swift; sourceTree = "<group>"; };
 		937E65EAEBF6C26F50ED3B34 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9D94EC27CAA1FF1943486BB0 /* CameraSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraSource.swift; sourceTree = "<group>"; };
 		9E2E0B57207F4DEAA2DF268C /* PinchDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinchDetector.swift; sourceTree = "<group>"; };
 		A3675F8D2A8455F705C68C25 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		A7F27D509791361AD2011E47 /* ScreenMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenMetrics.swift; sourceTree = "<group>"; };
 		B2A07A7A60E0764F6995F5B5 /* AfterglowApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AfterglowApp.swift; sourceTree = "<group>"; };
+		B81BBB54C49B3845F94E2832 /* Toolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toolbar.swift; sourceTree = "<group>"; };
 		BB1258CEE15BE1B0F0A68046 /* ViewerParams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerParams.swift; sourceTree = "<group>"; };
+		BF67DFEAB12B2149E6F36069 /* BrowserStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserStore.swift; sourceTree = "<group>"; };
+		C4592C811D59569C81790593 /* afterglow-helper.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "afterglow-helper.js"; sourceTree = "<group>"; };
+		C758612B9495CD314D59EF61 /* WebBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebBridge.swift; sourceTree = "<group>"; };
 		C9966FF18394C15E0D6C282F /* PosePredictor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosePredictor.swift; sourceTree = "<group>"; };
+		C9D14AF0F2015E62D345D07C /* WebTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebTab.swift; sourceTree = "<group>"; };
+		CE734763626DCDC395851D92 /* CredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialStore.swift; sourceTree = "<group>"; };
 		D42BBF82DA32DCFE7BA0AD50 /* FrameTimingLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameTimingLog.swift; sourceTree = "<group>"; };
+		D47EDB0FC1E0D6EF4E3D1AE0 /* Browser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Browser.swift; sourceTree = "<group>"; };
 		D97890D6EB3536CA74C71E09 /* SessionLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLog.swift; sourceTree = "<group>"; };
 		DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensDistortionTests.swift; sourceTree = "<group>"; };
 		E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UltraWideProbe.swift; sourceTree = "<group>"; };
+		ECB85CC898B2F8A77E2B54A9 /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
 		F03EB15525A4EC358532B829 /* UltraWideController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UltraWideController.swift; sourceTree = "<group>"; };
 		F3791EB1A750663D58286739 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
 		F383C9716F8214D0A4E65E7D /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
+		F9423C371E42B4C272012AA5 /* Dictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dictation.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		0565E438A2808EBA81B29229 /* webxr */ = {
+			isa = PBXGroup;
+			children = (
+				1AA30D699725082AF000DBAB /* afterglow-webxr.js */,
+				ECB85CC898B2F8A77E2B54A9 /* index.html */,
+			);
+			path = webxr;
+			sourceTree = "<group>";
+		};
 		1AFE8A8B31701757B0E378F8 /* AfterglowTests */ = {
 			isa = PBXGroup;
 			children = (
+				37D8895069D15A18068ACE71 /* BrowserTests.swift */,
 				5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */,
 				DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */,
 			);
 			path = AfterglowTests;
 			sourceTree = "<group>";
 		};
+		1E150F1B8FD54F8E79628E24 /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				B81BBB54C49B3845F94E2832 /* Toolbar.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
 		3ACA2A5303130431042030D6 = {
 			isa = PBXGroup;
 			children = (
 				9BFC2DC2C15F790660B215F4 /* Afterglow */,
+				F95164F99F7AEB622525CE32 /* Afterglow */,
 				1AFE8A8B31701757B0E378F8 /* AfterglowTests */,
 				B9BDD00DF717B7759B21B2AC /* Products */,
 			);
@@ -105,6 +152,14 @@
 			path = Tracking;
 			sourceTree = "<group>";
 		};
+		5D563449AA1161E489A3E0DD /* web */ = {
+			isa = PBXGroup;
+			children = (
+				C4592C811D59569C81790593 /* afterglow-helper.js */,
+			);
+			path = web;
+			sourceTree = "<group>";
+		};
 		6977E4302D248A13F4C272D6 /* App */ = {
 			isa = PBXGroup;
 			children = (
@@ -113,6 +168,15 @@
 				F383C9716F8214D0A4E65E7D /* Settings.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		6A349F2B742FA042961ED828 /* Input */ = {
+			isa = PBXGroup;
+			children = (
+				F9423C371E42B4C272012AA5 /* Dictation.swift */,
+				87C4D44511F04B6AD7D43D31 /* HeadsetTap.swift */,
+			);
+			path = Input;
 			sourceTree = "<group>";
 		};
 		86E626DEA1D101755C49D099 /* Stereo */ = {
@@ -131,7 +195,10 @@
 			children = (
 				937E65EAEBF6C26F50ED3B34 /* Info.plist */,
 				6977E4302D248A13F4C272D6 /* App */,
+				FEF5E09E6BBB32ED16C89585 /* Browser */,
 				EDA76F939C41E1DAB52320CA /* Hands */,
+				1E150F1B8FD54F8E79628E24 /* Home */,
+				6A349F2B742FA042961ED828 /* Input */,
 				D8C250DD6830DB4EB6EA5DA9 /* Log */,
 				F7AE949468DC1E095BBA8ECB /* Render */,
 				86E626DEA1D101755C49D099 /* Stereo */,
@@ -147,6 +214,22 @@
 				38B30CD74969D37109A6EC5B /* AfterglowTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		C91B7EF79664E589DD136246 /* StreamingAssets */ = {
+			isa = PBXGroup;
+			children = (
+				0565E438A2808EBA81B29229 /* webxr */,
+			);
+			path = StreamingAssets;
+			sourceTree = "<group>";
+		};
+		C9CEDFE8FCD11D10F84C6D09 /* Assets */ = {
+			isa = PBXGroup;
+			children = (
+				C91B7EF79664E589DD136246 /* StreamingAssets */,
+			);
+			path = Assets;
 			sourceTree = "<group>";
 		};
 		D8C250DD6830DB4EB6EA5DA9 /* Log */ = {
@@ -181,6 +264,30 @@
 			path = Render;
 			sourceTree = "<group>";
 		};
+		F95164F99F7AEB622525CE32 /* Afterglow */ = {
+			isa = PBXGroup;
+			children = (
+				C9CEDFE8FCD11D10F84C6D09 /* Assets */,
+			);
+			name = Afterglow;
+			path = ..;
+			sourceTree = "<group>";
+		};
+		FEF5E09E6BBB32ED16C89585 /* Browser */ = {
+			isa = PBXGroup;
+			children = (
+				D47EDB0FC1E0D6EF4E3D1AE0 /* Browser.swift */,
+				BF67DFEAB12B2149E6F36069 /* BrowserStore.swift */,
+				407B733E5D15B248CD512A98 /* BrowserWindow.swift */,
+				CE734763626DCDC395851D92 /* CredentialStore.swift */,
+				62905D062521A7CC64D592BA /* Panels.swift */,
+				C758612B9495CD314D59EF61 /* WebBridge.swift */,
+				C9D14AF0F2015E62D345D07C /* WebTab.swift */,
+				5D563449AA1161E489A3E0DD /* web */,
+			);
+			path = Browser;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -207,6 +314,7 @@
 			buildConfigurationList = F5A1FADBF0E80FD073F6DB25 /* Build configuration list for PBXNativeTarget "Afterglow" */;
 			buildPhases = (
 				F3D3B77078171E5C5179C37B /* Sources */,
+				8FE247492FFFC171B4A7E9E0 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -256,11 +364,25 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		8FE247492FFFC171B4A7E9E0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				85FC0F60F815AACB5EB653D6 /* afterglow-helper.js in Resources */,
+				348FA203915A0E073B48490F /* afterglow-webxr.js in Resources */,
+				A60D870018233AC8AD7E288C /* index.html in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		CB1FB0B0660E7FE02621D00E /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8C25915865BFF7086BB43B56 /* BrowserTests.swift in Sources */,
 				AED9AC2DB5CA264371AF1869 /* HandGeometryTests.swift in Sources */,
 				4752687B06DCC27E53D2DE95 /* LensDistortionTests.swift in Sources */,
 			);
@@ -272,14 +394,21 @@
 			files = (
 				0113CE32E718FC51FC3EBD4B /* ARController.swift in Sources */,
 				E7BA05E46A062EE88CE62A42 /* AfterglowApp.swift in Sources */,
+				97305D4E9B52CAA27CC13956 /* Browser.swift in Sources */,
+				BA4BD6BE9A09CCCEFC49BB63 /* BrowserStore.swift in Sources */,
+				75BE77AC84FBAB02AE1C6FB8 /* BrowserWindow.swift in Sources */,
 				CD88B09669D877C78226AE06 /* CameraSource.swift in Sources */,
 				3C5D52A1580439FA628A5336 /* ContentView.swift in Sources */,
+				41D13DAC96C560971D3E2F8C /* CredentialStore.swift in Sources */,
+				9095BA84A3DC061A60F4CD65 /* Dictation.swift in Sources */,
 				80531BEAA4C2E3BD43B155AB /* FrameTimingLog.swift in Sources */,
 				F0433297A0D001C5C4CA77C7 /* HandGeometry.swift in Sources */,
 				5FADCF4942F922DF8FD0C5C4 /* HandOverlay.swift in Sources */,
 				F6FFC447E3208CC29FA6EAB3 /* HandTracker.swift in Sources */,
+				E1962322F97DB95D45A90270 /* HeadsetTap.swift in Sources */,
 				B11BEA3C83C4B14B3E457065 /* LensDistortion.swift in Sources */,
 				7A38FB3AAA8E460C9F4F65D7 /* OneEuroFilter.swift in Sources */,
+				1084C85F476B2C5EB0582CBF /* Panels.swift in Sources */,
 				BC2DD9993B328B9BFE55C0D8 /* PinchDetector.swift in Sources */,
 				8600C1861C53352DF6521570 /* PolynomialRadialDistortion.swift in Sources */,
 				16D3E9D0732259261E2D92C5 /* PosePredictor.swift in Sources */,
@@ -289,9 +418,12 @@
 				8A26420DC8EEC87E91BE44DA /* Settings.swift in Sources */,
 				E386311B4A1748A01C31E880 /* Shaders.metal in Sources */,
 				D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */,
+				77C5951CAE44BFA58BE8C46A /* Toolbar.swift in Sources */,
 				91E95FC2F446BEEE1D5D8481 /* UltraWideController.swift in Sources */,
 				C803CA1BEC03B79551EFB51B /* UltraWideProbe.swift in Sources */,
 				87FA55609E5C45D423B33A4C /* ViewerParams.swift in Sources */,
+				3B611AB1D9B01C012F739B97 /* WebBridge.swift in Sources */,
+				C41DAACF85D3845C8E068C10 /* WebTab.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

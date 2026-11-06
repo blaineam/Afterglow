@@ -32,6 +32,9 @@ struct ContentView: View {
     private var controls: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 24) {
+                Toggle("Browser", isOn: $settings.browserOpen)
+                    .toggleStyle(.switch)
+                    .fixedSize()
                 Toggle("Passthrough", isOn: $settings.passthrough)
                     .toggleStyle(.switch)
                     .fixedSize()
@@ -59,6 +62,7 @@ struct ContentView: View {
         .onChange(of: settings.targetFrameRate) { _, _ in scheduleHide() }
         .onChange(of: settings.extraPredictionMs) { _, _ in scheduleHide() }
         .onChange(of: settings.degreesOfFreedom) { _, _ in scheduleHide() }
+        .onChange(of: settings.browserOpen) { _, _ in scheduleHide() }
     }
 
     private func toggleControls() {
@@ -83,6 +87,7 @@ struct ContentView: View {
 final class StereoModel: ObservableObject {
     @Published var status = "starting"
     let thermal = ThermalLog()
+    let dictation = Dictation()
     private(set) var renderer: Renderer?
     private var started = false
 
@@ -96,7 +101,23 @@ final class StereoModel: ObservableObject {
             status = "no renderer; see the session log"
             return
         }
+        renderer.onDictate = { [weak self] in self?.dictate() }
         renderer.startSource()
+    }
+
+    /// Push to talk: a press starts listening, the next stops it and types what was heard.
+    func dictate() {
+        guard let renderer, let browser = renderer.browser else { return }
+        if dictation.listening {
+            dictation.stop()
+            return
+        }
+        Task { @MainActor in
+            guard await dictation.requestPermission() else { return }
+            dictation.start { text in
+                if !text.isEmpty { browser.type(text) }
+            }
+        }
     }
 
     func updateStatus(fps: Double) {
@@ -151,7 +172,9 @@ final class MetalLayerView: UIView {
         super.didMoveToWindow()
         if let window {
             model?.start(on: window.screen)
+            model?.renderer?.attach(window: window)
             if let device = model?.renderer?.device { metalLayer.device = device }
+            installGestures()
             updateDrawableSize()
             startDisplayLink()
         } else {
@@ -177,6 +200,41 @@ final class MetalLayerView: UIView {
                 log("[Stereo] Drawable \(Int(size.width))x\(Int(size.height)) px (scale \(scale))")
             }
         }
+    }
+
+    private var gesturesInstalled = false
+    private var lastPan = CGPoint.zero
+
+    // A tap selects, a long press ends an immersive session, a drag turns the head when nothing
+    // tracks it (the Simulator). The SwiftUI tap on the view (the control strip) stays as well.
+    private func installGestures() {
+        guard !gesturesInstalled else { return }
+        gesturesInstalled = true
+        let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
+        tap.cancelsTouchesInView = false
+        addGestureRecognizer(tap)
+        let hold = UILongPressGestureRecognizer(target: self, action: #selector(held(_:)))
+        hold.minimumPressDuration = 1.5
+        addGestureRecognizer(hold)
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(panned(_:)))
+        pan.maximumNumberOfTouches = 1
+        addGestureRecognizer(pan)
+    }
+
+    @objc private func tapped(_ gesture: UITapGestureRecognizer) {
+        model?.renderer?.screenTapped()
+    }
+
+    @objc private func held(_ gesture: UILongPressGestureRecognizer) {
+        if gesture.state == .began { model?.renderer?.screenHeld() }
+    }
+
+    @objc private func panned(_ gesture: UIPanGestureRecognizer) {
+        let point = gesture.translation(in: self)
+        if gesture.state == .began { lastPan = .zero }
+        let dx = Float(point.x - lastPan.x), dy = Float(point.y - lastPan.y)
+        lastPan = point
+        model?.renderer?.deskLook(yawDelta: -dx * 0.004, pitchDelta: -dy * 0.004)
     }
 
     private func startDisplayLink() {

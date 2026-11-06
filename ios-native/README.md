@@ -3,8 +3,8 @@
 The native port of Afterglow for iOS: Swift, SwiftUI for the shell, Metal for the picture and
 ARKit for tracking and the camera. It sits beside the Unity app and takes over from it phase by
 phase (see "A native port?" in [ROADMAP.md](../ROADMAP.md)). Done so far: **phase 1**, the stereo
-rig, head tracking and passthrough, and **phase 2**, hands and pinch. Nothing here touches the
-Unity app's code.
+rig, head tracking and passthrough; **phase 2**, hands and pinch; **phase 3**, the browser and
+WebXR. Nothing here touches the Unity app's code.
 
 ## What it does
 
@@ -82,6 +82,50 @@ to "fair" at 1:43 after launch (the phase 1 run, without hands, stayed nominal).
 steady load the hands add, whether or not a hand is in view, so the default rate is 20 images/s
 (the Unity app ran 15); `handHz 30` brings the smoother tracking back.
 
+## Phase 3: the browser and WebXR
+
+The Unity app's browser, on WebKit directly (`Browser.swift`, `WebTab.swift`, `WebBridge.swift`),
+with the JavaScript shared as it is: the WebXR shim and the start page come from
+`Assets/StreamingAssets/webxr/` (referenced by the project, not copied) and the helper script is a
+copy of the plugin's `kHelperSource` (`Browser/web/afterglow-helper.js`). The contract is the
+plugin's: three user scripts at document start (helper, `window.__afterglowConfig`, shim), one
+message handler `afterglow`, and the `window.__afterglow*` calls for pose, hands, hover, click,
+scroll, type, key, fill, select and end.
+
+- **The window**: each tab is a web view of its own (scroll and forms kept between tabs; up to
+  six), laid out 1280×800 points, held in a veil in the app's window at alpha 0.01 so WebKit keeps
+  drawing it, and snapshotted twelve times a second with `takeSnapshot` (rendered by the web
+  process, about 10–20 ms in flight) into a texture on a pane 1.25 m wide, 1.3 m ahead (four
+  sizes; "place" re-hangs it where the head looks). Text is scaled with the page zoom (`textScale`,
+  150 %) so it reads in the viewer.
+- **Gaze and clicks**: the reticle is the head's forward ray on the pane; the helper draws the
+  page's own crosshair at that point and highlights the element under it; a pinch beginning, a
+  screen tap, or a **double tap on the viewer** (read off the accelerometer; the target is the
+  element under the gaze when the first tap landed) clicks there. Looking at the top or bottom
+  12 % of the page scrolls it.
+- **The chrome and keyboard panels** (`Panels.swift`): SwiftUI views rendered to textures only when
+  their content changes, with buttons at known rectangles the gaze hovers and a pinch presses. The
+  chrome has the tabs, address, back, forward, reload, home, bookmark, size, place, keyboard, mic
+  and close; a login prompt (save or fill) takes its second row. The keyboard is a gaze QWERTY
+  with a symbols layer, shift, space, backspace, clear, mic and go, shown when a page field takes
+  focus or the keyboard button is pressed; it types into the focused field, else the address bar.
+- **Logins**: the helper's field detection as before; passwords are offered for saving and saved
+  logins offered back, in the Unity app's Keychain item format (generic password, service = host,
+  account = username or "(password only)"), so both apps share them.
+- **Tabs, private tabs, history, bookmarks**: history (500, newest first, repeats within a minute
+  folded), bookmarks and open tabs in `Documents/browser.json`; private tabs use a non-persistent
+  store and leave nothing. The start page lists bookmarks and recent pages.
+- **Dictation** (`Input/Dictation.swift`): the Speech framework, on device where it can be; the mic
+  button on the keyboard or chrome starts it and the next press stops it and types what was heard.
+- **WebXR**: on `sessionstart` the veil goes to alpha 1, scales to the screen and comes to the
+  front; the page draws both eyes and the lens distortion itself (the shim's own 40×40 meshes
+  from the same viewer numbers) while the app pushes the predicted head pose and the hands every
+  frame and skips its own scene; a long press on the screen or the page's own exit ends it. The
+  Simulator proves all of it but the hands: a test script (`actions`) presses panel buttons, types,
+  looks, enters VR and screenshots.
+
+Launch options: `web` (1: open at launch), `url <address>`, `textScale` (150), `actions <script>`.
+
 ## 3DoF on the ultra-wide
 
 ARKit's world tracking has no ultra-wide format on the iPhone and stops the moment another
@@ -135,6 +179,8 @@ screen shows a control strip for the first four, whose values are kept between r
 | `eyesX`, `eyesY`, `eyesZ` | 60, -10, 66 | the eyes' midpoint relative to the camera, mm, camera axes (x right, y up, z back) |
 | `dump` | 0 | save both eyes' textures to `Documents/eye-left.png` and `eye-right.png` this many seconds after launch |
 | `ultraTest` | 0 | an experiment: open the ultra-wide through AVFoundation this many seconds in and log what ARKit does (it stops) |
+| `web`, `url`, `textScale` | 1, –, 150 | the browser open at launch, a page to open, the page zoom in percent |
+| `actions` | – | a test script: `wait N; press <button>; type <text>; key <Backspace\|Clear\|Enter>; look <yaw> <pitch>; tap; dump; screenshot; immersive; end` |
 | `cold` | 0 | 1 vouches the phone is cold, so `[Thermal]` times the run from cold despite a recent run |
 | `hands`, `handHz`, `handDepth`, `showHands` | 1, 20, 1, 1 | hand tracking on, its image rate, LiDAR depth for the hands, the hands drawn |
 
@@ -179,6 +225,8 @@ ios-native/
   Afterglow/Render/           Renderer, Shaders.metal, ShaderTypes.h
   Afterglow/Tracking/         CameraSource, ARController (6DoF), UltraWideController (3DoF), PosePredictor
   Afterglow/Hands/            HandTracker (Vision), HandGeometry, OneEuroFilter, PinchDetector, HandOverlay + GrabDemo
+  Afterglow/Browser/          Browser, WebTab, WebBridge, BrowserWindow, Panels (chrome + keyboard), BrowserStore, CredentialStore, web/afterglow-helper.js
+  Afterglow/Input/            HeadsetTap (double tap on the viewer), Dictation
   Afterglow/Log/              SessionLog, FrameTimingLog, ThermalLog
   AfterglowTests/             the optics against the Unity app's numbers
 ```

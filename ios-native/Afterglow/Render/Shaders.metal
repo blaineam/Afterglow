@@ -218,6 +218,34 @@ fragment float4 overlayFragment(OverlayOut in [[stage_in]]) {
     return in.color;
 }
 
+// ---- Textured quads (the browser window) --------------------------------------------------
+
+struct QuadOut {
+    float4 position [[position]];
+    uint layer [[render_target_array_index]];
+    float2 uv;
+};
+
+vertex QuadOut quadVertex(uint vid [[vertex_id]], ushort amp [[amplification_id]],
+                          const device QuadVertex *vertices [[buffer(1)]],
+                          constant FrameUniforms &frame [[buffer(0)]]) {
+    QuadVertex v = vertices[vid];
+    QuadOut out;
+    out.position = frame.eyes[amp].viewProjection * float4(v.position, 1);
+    out.layer = 0;
+    out.uv = v.uv;
+    return out;
+}
+
+// The page texture, with a soft dark border so the window reads as a pane; `tint` is alpha for
+// fading and a dimming factor.
+fragment float4 quadFragment(QuadOut in [[stage_in]], texture2d<float> page [[texture(0)]],
+                             constant float4 &tint [[buffer(2)]]) {
+    constexpr sampler s(filter::linear, address::clamp_to_edge);
+    float4 c = page.sample(s, in.uv);
+    return float4(c.rgb * tint.rgb, tint.a);
+}
+
 // ---- Lens distortion -----------------------------------------------------------------------
 
 struct DistortionOut {

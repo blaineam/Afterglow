@@ -40,7 +40,10 @@ OPTIONS=("$@")
 while [ $# -gt 0 ]; do
     if [ "$1" != "--ei" ] || [ $# -lt 3 ]; then echo "Launch options are \"--ei name value\" pairs; got: $*"; exit 1; fi
     case "$2" in (''|*[!A-Za-z0-9]*) echo "Option names are letters and digits, got \"$2\""; exit 1 ;; esac
-    case "$3" in (-|'') echo "Option $2 needs a whole number, got \"$3\""; exit 1 ;; (*[!0-9-]*) echo "Option $2 needs a whole number, got \"$3\""; exit 1 ;; esac
+    # Numbers, except "url" (an address) and "actions" (a test script).
+    if [ "$2" != url ] && [ "$2" != actions ]; then
+        case "$3" in (-|'') echo "Option $2 needs a whole number, got \"$3\""; exit 1 ;; (*[!0-9-]*) echo "Option $2 needs a whole number, got \"$3\""; exit 1 ;; esac
+    fi
     ENVIRONMENT+="${ENVIRONMENT:+, }\"AFTERGLOW_$2\": \"$3\""
     SIMENV+=("SIMCTL_CHILD_AFTERGLOW_$2=$3")   # simctl passes the environment this way
     [ "$2" = dump ] && DUMP=$3
@@ -76,10 +79,23 @@ if [ $MODE = sim ]; then
     xcrun simctl terminate $SIM $BUNDLE 2>/dev/null
     env "${SIMENV[@]}" xcrun simctl launch $SIM $BUNDLE >/dev/null || exit 1
     echo "== launched in the simulator ${ENVIRONMENT:+with {$ENVIRONMENT}}"
-    sleep $(( 8 + DUMP ))
+    # While the app runs, a screenshot of the Simulator's screen for every "screenshot" step the
+    # test script logs (native-sim-screen-N.png), since the app's own eye dump cannot show a page
+    # that has taken the screen.
     DATA=$(xcrun simctl get_app_container $SIM $BUNDLE data)
+    SHOTS=0
+    rm -f $LOGS/native-sim-screen-*.png
+    for i in $(seq 1 $(( 8 + DUMP ))); do
+        sleep 1
+        COUNT=$(grep -c "\[Actions\] screenshot" "$DATA/Documents/session.log" 2>/dev/null || echo 0)
+        while [ "$SHOTS" -lt "$COUNT" ]; do
+            SHOTS=$(( SHOTS + 1 ))
+            xcrun simctl io $SIM screenshot $LOGS/native-sim-screen-$SHOTS.png >/dev/null 2>&1 && echo "== screenshot $SHOTS: $LOGS/native-sim-screen-$SHOTS.png"
+        done
+    done
     cp "$DATA/Documents/session.log" $LOGS/native-sim-session.log 2>/dev/null && { echo "== session log ($LOGS/native-sim-session.log)"; grep -vE "Drawable" $LOGS/native-sim-session.log | cut -c1-220 | head -30; }
     [ -f "$DATA/Documents/eye-left.png" ] && { cp "$DATA/Documents/eye-left.png" $LOGS/native-sim-eye-left.png; echo "== left eye: $LOGS/native-sim-eye-left.png"; }
+    xcrun simctl io $SIM screenshot $LOGS/native-sim-screen.png >/dev/null 2>&1 && echo "== screen: $LOGS/native-sim-screen.png"
     xcrun simctl terminate $SIM $BUNDLE 2>/dev/null
     xcrun simctl shutdown $SIM >/dev/null 2>&1
     exit 0

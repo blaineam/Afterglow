@@ -110,7 +110,11 @@ final class HandTracker: @unchecked Sendable {
     private let lock = NSLock()
     private var busy = false
     private var nextImageTime: Double = 0
-    private let interval: Double
+    /// Images a second, changeable while running.
+    var hertz: Int {
+        didSet { if hertz != oldValue { interval = 1.0 / Double(max(hertz, 1)) } }
+    }
+    private var interval: Double
     private let useDepth: Bool
     private var palmSize = HandTracker.typicalPalmSize
     private var slots = [Slot(), Slot()]
@@ -142,6 +146,7 @@ final class HandTracker: @unchecked Sendable {
     ]
 
     init(hertz: Int, useDepth: Bool) {
+        self.hertz = hertz
         interval = 1.0 / Double(max(hertz, 1))
         self.useDepth = useDepth
         request = VNDetectHumanHandPoseRequest()

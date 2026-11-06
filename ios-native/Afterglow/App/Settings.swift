@@ -31,6 +31,16 @@ final class Settings: ObservableObject {
     let cameraToEyesMm: SIMD3<Int>
     /// Save the left eye's texture to Documents/eye-left.png this many seconds after launch (0: never).
     let dumpAfterSeconds: Int
+    /// Open the browser at launch, and the page zoom in percent for text readable in the viewer.
+    @Published var browserOpen: Bool { didSet { save("web", browserOpen ? 1 : 0) } }
+    let textScalePercent: Int
+    /// A page to open at launch instead of the saved tabs (a launch option only; text, not a number).
+    let launchURL: String?
+    /// A test script for the Simulator: steps separated by ";", each "wait N", "press <button id>",
+    /// "type <text>", "key <Backspace|Clear|Enter>", "look <yaw> <pitch>" (degrees), "tap", "dump",
+    /// "screenshot" (logs a marker for the harness to screenshot), "immersive" (asks the page's
+    /// first WebXR button), "end".
+    let actions: [String]
     /// The owner vouches the phone is cold (`cold 1`), overriding the fifteen-minute rule.
     let assertedCold: Bool
     /// Hand tracking on, its image rate, whether the scene depth (LiDAR) teaches the palm size,
@@ -39,6 +49,10 @@ final class Settings: ObservableObject {
     let handHz: Int
     let handDepth: Bool
     let showHands: Bool
+    /// The same, changeable from the menu while running.
+    @Published var showHandsLive: Bool { didSet { save("showHands", showHandsLive ? 1 : 0) } }
+    @Published var handHzLive: Int { didSet { save("handHz", handHzLive) } }
+    @Published var textScaleLive: Int { didSet { save("textScale", textScaleLive) } }
     /// An experiment: open the ultra-wide camera through AVFoundation this many seconds after
     /// ARKit starts, to see whether ARKit keeps tracking beside it (0: never).
     let ultraTestSeconds: Int
@@ -61,11 +75,18 @@ final class Settings: ObservableObject {
                                Self.read("eyesY", options: options, default: -10),
                                Self.read("eyesZ", options: options, default: 66))
         dumpAfterSeconds = Self.read("dump", options: options, default: 0)
+        browserOpen = Self.read("web", options: options, default: 1) != 0
+        textScalePercent = min(max(Self.read("textScale", options: options, default: 150), 50), 300)
+        launchURL = options["url"]
+        actions = (options["actions"] ?? "").split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         assertedCold = Self.read("cold", options: options, default: 0) != 0
         hands = Self.read("hands", options: options, default: 1) != 0
         handHz = min(max(Self.read("handHz", options: options, default: 20), 1), 60)
         handDepth = Self.read("handDepth", options: options, default: 1) != 0
         showHands = Self.read("showHands", options: options, default: 1) != 0
+        showHandsLive = showHands
+        handHzLive = min(max(Self.read("handHz", options: options, default: 20), 1), 60)
+        textScaleLive = min(max(Self.read("textScale", options: options, default: 150), 50), 300)
         ultraTestSeconds = Self.read("ultraTest", options: options, default: 0)
         loading = false
         let given = options.keys.sorted().map { "\($0) \(options[$0]!)" }.joined(separator: ", ")

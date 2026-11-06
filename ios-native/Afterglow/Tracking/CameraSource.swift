@@ -13,6 +13,8 @@ protocol CameraSource: AnyObject {
     var cameraName: String { get }
     /// Positional tracking (6) or rotation only (3).
     var degreesOfFreedom: Int { get }
+    /// The motion reader, for taps on the viewer.
+    var predictor: PosePredictor { get }
     /// The camera's transform in the world predicted for `time`, from the latest pose.
     func predictedCameraTransform(at time: Double) -> simd_float4x4?
     func start()

@@ -30,6 +30,11 @@ targets:
       - path: Afterglow
         excludes:
           - "**/* 2.*"
+      # The WebXR shim and the start page, shared with the Unity app as they are.
+      - path: ../Assets/StreamingAssets/webxr/afterglow-webxr.js
+        buildPhase: resources
+      - path: ../Assets/StreamingAssets/webxr/index.html
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.wemiller.afterglow.native

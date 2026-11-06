@@ -32,6 +32,12 @@ typedef struct {
     unsigned int eye;
 } DistortionVertex;
 
+// Textured quads in the world (the browser window, panels): position and texture coordinate.
+typedef struct {
+    vector_float3 position;
+    vector_float2 uv;
+} QuadVertex;
+
 // Hands and demo objects: world-space triangles with a colour each.
 typedef struct {
     vector_float3 position;

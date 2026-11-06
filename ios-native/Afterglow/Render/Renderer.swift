@@ -20,6 +20,25 @@ final class Renderer {
     private var passthroughPipeline: MTLRenderPipelineState!
     private var distortionPipeline: MTLRenderPipelineState!
     private var overlayPipeline: MTLRenderPipelineState!
+    private var quadPipeline: MTLRenderPipelineState!
+    private var quadBuffers: [MTLBuffer] = []
+    private var quadBufferIndex = 0
+    /// The browser and its panels in the scene; nil until opened.
+    private(set) var browser: Browser?
+    private var chrome: ChromePanel?
+    private var keyboard: KeyboardPanel?
+    private var uiWindow: UIWindow?
+    private var toolbar: Toolbar?
+    private(set) var openApp: AppKind?
+    /// Input for the frame: a pinch that began, a tap, a double tap on the viewer.
+    private var pinchWas = [false, false]
+    private let tapRequests = LockedValue<Int>(0)
+    private var doubleTapTarget: SIMD2<Float>?
+    private var doubleTapPending = false
+    /// Desk mode: with no tracking (the Simulator), a drag turns the head.
+    private(set) var deskYaw: Float = 0
+    private(set) var deskPitch: Float = 0
+    var onDictate: (() -> Void)?
     private var overlay = HandOverlay()
     private var grabDemo = GrabDemo()
     private var overlayBuffers: [MTLBuffer] = []
@@ -105,6 +124,135 @@ final class Renderer {
         return ARController(device: device, preferUltraWide: settings.ultraWide, hands: hands, wantsDepth: settings.handDepth)
     }
 
+    /// The window the app is in: the browser's veiled web view lives in it.
+    func attach(window: UIWindow) {
+        uiWindow = window
+        let toolbar = Toolbar(device: device, settings: settings)
+        toolbar.onLaunch = { [weak self] app in self?.launch(app) }
+        toolbar.onRecentre = { [weak self] in self?.recentre() }
+        toolbar.onCloseApp = { [weak self] in self?.closeApp() }
+        toolbar.place(ahead: lastHead)
+        self.toolbar = toolbar
+        source.predictor.onTap = { [weak self] kind in
+            self?.tapRequests.value = kind
+        }
+    }
+
+    func openBrowser() {
+        guard browser == nil, let uiWindow else { return }
+        let fovs = Eye.allCases.map { lens.fieldOfView($0) }
+        let config = WebBridge.Config(screenMeters: SIMD2(screen.widthMeters, screen.heightMeters),
+                                      screenToLens: lens.viewer.screenToLensDistance, interLens: lens.viewer.interLensDistance,
+                                      yEyeOffset: lens.yEyeOffsetMeters, k: lens.viewer.distortionCoefficients, fov: fovs,
+                                      hasPosition: source.degreesOfFreedom == 6,
+                                      screenPixels: SIMD2(screen.pixelWidth, screen.pixelHeight), renderScale: settings.renderScalePercent)
+        let browser = Browser(device: device, config: config, textScalePercent: settings.textScalePercent)
+        self.browser = browser
+        chrome = ChromePanel(device: device)
+        keyboard = KeyboardPanel(device: device)
+        browser.open(in: uiWindow, head: lastHead, launchURL: settings.launchURL.flatMap { URL(string: WebBridge.normalizeAddress($0)) })
+        layoutPanels()
+    }
+
+    func closeBrowser() {
+        browser?.close()
+        browser = nil
+        chrome = nil
+        keyboard = nil
+    }
+
+    func launch(_ app: AppKind) {
+        toolbar?.noteOpened(app)
+        switch app {
+        case .browser:
+            settings.browserOpen = true
+            openApp = .browser
+        default:
+            log("[Home] \(app.rawValue) is not built yet")
+        }
+        log("[Home] Opened \(app.rawValue)")
+    }
+
+    func closeApp() {
+        if openApp == .browser { settings.browserOpen = false }
+        openApp = nil
+    }
+
+    /// Re-hangs the window and the toolbar where the head looks now.
+    func recentre() {
+        browser?.window.place(ahead: lastHead)
+        toolbar?.place(ahead: lastHead)
+        layoutPanels()
+        log("[Home] Recentred")
+    }
+
+    /// A tap on the screen (desk mode, or the viewer's button): a select.
+    func screenTapped() { tapRequests.value = 2 }
+    /// A long press on the screen ends an immersive session.
+    func screenHeld() { browser?.endSession() }
+    func deskLook(yawDelta: Float, pitchDelta: Float) {
+        deskYaw += yawDelta
+        deskPitch = min(max(deskPitch + pitchDelta, -1.4), 1.4)
+    }
+
+    private var lastHead = matrix_identity_float4x4
+    private var actionIndex = 0
+    private var actionWaitUntil: Double = 0
+
+    /// Runs the next step of the `actions` script when its time has come (the Simulator harness).
+    private func runActions(now: Double) {
+        guard actionIndex < settings.actions.count, now >= actionWaitUntil else { return }
+        let step = settings.actions[actionIndex]
+        actionIndex += 1
+        let parts = step.split(separator: " ", maxSplits: 1).map(String.init)
+        let verb = parts.first ?? ""
+        let argument = parts.count > 1 ? parts[1] : ""
+        log("[Actions] \(step)")
+        switch verb {
+        case "wait": actionWaitUntil = now + (Double(argument) ?? 1)
+        case "press":
+            if let keyboard, keyboard.panel.buttons.contains(where: { $0.id == argument }) { pressPanel(keyboard.panel, id: argument) }
+            else if let chrome, chrome.panel.buttons.contains(where: { $0.id == argument }) { pressPanel(chrome.panel, id: argument) }
+            else if let toolbar { toolbar.press(argument) }
+        case "type": browser?.type(argument)
+        case "key": browser?.key(argument)
+        case "look":
+            let numbers = argument.split(separator: " ").compactMap { Float($0) }
+            if numbers.count == 2 { deskYaw = numbers[0] * .pi / 180; deskPitch = numbers[1] * .pi / 180 }
+        case "tap": tapRequests.value = 2
+        case "dump": dumped = false; actionWaitUntil = now + 0.5; dumpNext = true
+        case "screenshot": log("[Actions] screenshot")
+        case "immersive":
+            // The page's Enter VR control: a button or link whose text mentions VR or XR.
+            let script = "(function(){var els=Array.from(document.querySelectorAll('button,a,[role=button]'));"
+                + "var b=els.find(function(e){return /\\b(vr|xr)\\b/i.test(e.textContent||'');})||els.find(function(e){return e.tagName==='BUTTON';});"
+                + "if(b){b.click();return 'clicked '+(b.textContent||'').trim().slice(0,40);}return 'no button';})()"
+            browser?.current?.webView.evaluateJavaScript(script) { result, _ in log("[Actions] immersive: \(result ?? "?")") }
+        case "end": browser?.endSession()
+        case "js":
+            browser?.current?.webView.evaluateJavaScript(argument) { result, error in
+                log("[Actions] js: \(result.map { "\($0)" } ?? error?.localizedDescription ?? "nil")")
+            }
+        default: break
+        }
+    }
+    private var dumpNext = false
+
+    private func layoutPanels() {
+        guard let browser, let chrome, let keyboard else { return }
+        let w = browser.window
+        chrome.panel.pane.widthMeters = w.widthMeters
+        chrome.panel.pane.right = w.right
+        chrome.panel.pane.up = w.up
+        chrome.panel.pane.centre = w.centre + w.up * (w.heightMeters / 2 + chrome.panel.pane.heightMeters / 2 + 0.02)
+        keyboard.panel.pane.widthMeters = w.widthMeters
+        keyboard.panel.pane.right = w.right
+        // Tilted up a little, below the window and nearer.
+        let tilt = simd_quatf(angle: -0.35, axis: w.right)
+        keyboard.panel.pane.up = tilt.act(w.up)
+        keyboard.panel.pane.centre = w.centre - w.up * (w.heightMeters / 2 + keyboard.panel.pane.heightMeters / 2 * 0.9 + 0.03) - w.normal * 0.15
+    }
+
     /// Starts the source; also swaps it when the setting changed (the strip's switch).
     func startSource() {
         if sourceDof != settings.degreesOfFreedom {
@@ -152,6 +300,7 @@ final class Renderer {
         floorPipeline = try scene("floorVertex", "floorFragment")
         passthroughPipeline = try scene("fullscreenVertex", "passthroughFragment")
         overlayPipeline = try scene("overlayVertex", "overlayFragment")
+        quadPipeline = try scene("quadVertex", "quadFragment")
 
         let d = MTLRenderPipelineDescriptor()
         d.vertexFunction = library.makeFunction(name: "distortionVertex")
@@ -243,6 +392,11 @@ final class Renderer {
         if let predicted = source.predictedCameraTransform(at: predictTo) {
             cameraInWorld = predicted
             if let frame { horizonMs = (predictTo - frame.pose.timestamp) * 1000 }
+        } else {
+            // No tracking (the Simulator): the desk look.
+            let yaw = simd_quatf(angle: deskYaw, axis: SIMD3(0, 1, 0))
+            let pitch = simd_quatf(angle: deskPitch, axis: SIMD3(1, 0, 0))
+            cameraInWorld = simd_float4x4(yaw * pitch)
         }
         let step = Float(min(max(t2 - lastDrawTime, 0), 0.1)) / 0.5
         lastDrawTime = t2
@@ -278,16 +432,120 @@ final class Renderer {
         uniforms.floorHeight = floorHeight
         uniforms.passthroughBlend = settings.passthrough ? 1 : 0
 
+        lastHead = headInWorld
+        if settings.browserOpen && browser == nil && uiWindow != nil { openBrowser() }
+        if !settings.browserOpen && browser != nil { closeBrowser() }
+
         // The hands as of this frame, and the grab demo they drive.
         overlay.clear()
+        var tracked: [TrackedHandState] = []
         if let hands = source.hands {
-            let tracked = hands.hands(at: predictTo)
-            grabDemo.update(hands: tracked, time: predictTo)
+            tracked = hands.hands(at: predictTo)
             let eyeMid = headInWorld.columns.3.xyz
-            if settings.showHands {
+            if settings.showHandsLive {
                 for hand in tracked { overlay.addHand(hand, eye: eyeMid) }
             }
+            hands.hertz = settings.handHzLive
+        }
+        // Selects this frame: a pinch beginning, a screen tap, or a double tap on the viewer.
+        var pinchNow = [false, false]
+        for hand in tracked { pinchNow[hand.isRight ? 1 : 0] = pinchNow[hand.isRight ? 1 : 0] || hand.pinched }
+        var select = (0..<2).contains { pinchNow[$0] && !pinchWas[$0] }
+        pinchWas = pinchNow
+        let tap = tapRequests.value
+        if tap != 0 {
+            tapRequests.value = 0
+            if tap == 1 {
+                doubleTapPending = true
+                doubleTapTarget = browser?.window.gaze(from: headInWorld)?.uv
+            } else {
+                select = true
+            }
+        }
+        if browser == nil {
+            grabDemo.update(hands: tracked, time: predictTo)
             grabDemo.draw(into: &overlay)
+        }
+        var quads: [(MTLBuffer?, MTLTexture, SIMD4<Float>, Int)] = []
+        var toolbarQuads: [(MTLTexture, Int)] = []
+        if let toolbar, !(browser?.isImmersive ?? false) {
+            let origin = headInWorld.columns.3.xyz
+            let forward = -headInWorld.columns.2.xyz
+            var hit: (ScenePanel, SIMD2<Float>)?
+            if toolbar.menuOpen, let h = toolbar.menu.pane.hit(origin: origin, direction: forward) { hit = (toolbar.menu, h.uv) }
+            else if let h = toolbar.panel.pane.hit(origin: origin, direction: forward) { hit = (toolbar.panel, h.uv) }
+            _ = toolbar.panel.hover(hit?.0 === toolbar.panel ? hit?.1 : nil)
+            _ = toolbar.menu.hover(hit?.0 === toolbar.menu ? hit?.1 : nil)
+            if select, let (panel, _) = hit, let id = panel.hovered {
+                toolbar.press(id)
+                select = false
+            }
+            toolbar.render()
+            if let t = toolbar.panel.texture { toolbarQuads.append((t, 3)) }
+            if toolbar.menuOpen, let t = toolbar.menu.texture { toolbarQuads.append((t, 4)) }
+            if hit != nil, browser == nil || toolbar.menuOpen {
+                // The reticle on the toolbar when nothing else draws one.
+                let (panel, uv) = hit!
+                let at = panel.pane.centre + panel.pane.right * ((uv.x - 0.5) * panel.pane.widthMeters) + panel.pane.up * ((0.5 - uv.y) * panel.pane.heightMeters)
+                overlay.addSquare(at - forward * 0.01, size: 0.012, eye: origin, color: HandOverlay.pinchColor)
+            }
+        }
+        if let browser, let chrome, let keyboard {
+            // The gaze on the panels, before the page: a panel under the gaze takes the select.
+            let origin = headInWorld.columns.3.xyz
+            let forward = -headInWorld.columns.2.xyz
+            let eyeMid = origin
+            var panelHit: (ScenePanel, SIMD2<Float>)?
+            let showKeyboard = browser.keyboardShown || browser.fieldFocused || !browser.typed.isEmpty
+            for panel in [chrome.panel] + (showKeyboard ? [keyboard.panel] : []) {
+                if let hit = panel.pane.hit(origin: origin, direction: forward) { panelHit = (panel, hit.uv); break }
+            }
+            _ = chrome.panel.hover(panelHit?.0 === chrome.panel ? panelHit?.1 : nil)
+            _ = keyboard.panel.hover(panelHit?.0 === keyboard.panel ? panelHit?.1 : nil)
+            var pageSelect = select && !browser.isImmersive
+            if select, !browser.isImmersive, let (panel, _) = panelHit, let id = panel.hovered {
+                pageSelect = false
+                pressPanel(panel, id: id)
+            }
+            if doubleTapPending && select { doubleTapPending = false }
+            let gaze = browser.frame(head: headInWorld, hands: tracked, select: pageSelect || (select && browser.isImmersive), time: predictTo,
+                                     deltaTime: Float(min(max(t2 - lastDrawTime, 0), 0.1)))
+            if !browser.isImmersive {
+                chrome.update(browser: browser)
+                chrome.render(typing: !browser.typed.isEmpty)
+                keyboard.render()
+                layoutPanels()
+                if let texture = browser.current?.texture { quads.append((nil, texture, SIMD4(1, 1, 1, 1), 0)) }
+                if let texture = chrome.panel.texture { quads.append((nil, texture, SIMD4(1, 1, 1, 1), 1)) }
+                if showKeyboard, let texture = keyboard.panel.texture { quads.append((nil, texture, SIMD4(1, 1, 1, 1), 2)) }
+                // The reticle: a small ring where the gaze lands, on the page or a panel, else ahead.
+                let reticleAt: SIMD3<Float>
+                if let (panel, uv) = panelHit {
+                    reticleAt = panel.pane.centre + panel.pane.right * ((uv.x - 0.5) * panel.pane.widthMeters) + panel.pane.up * ((0.5 - uv.y) * panel.pane.heightMeters)
+                } else if let gaze {
+                    reticleAt = gaze.point
+                } else {
+                    reticleAt = origin + forward * 1.3
+                }
+                let hot = panelHit != nil || gaze != nil
+                overlay.addSquare(reticleAt - forward * 0.01, size: hot ? 0.012 : 0.008, eye: eyeMid, color: hot ? HandOverlay.pinchColor : SIMD4(1, 1, 1, 0.8))
+            }
+        }
+        var quadBuffer: MTLBuffer?
+        for (texture, slot) in toolbarQuads { quads.append((nil, texture, SIMD4(1, 1, 1, 1), slot)) }
+        if !quads.isEmpty {
+            // Five quads' vertices in one buffer: the window, the chrome, the keyboard, the toolbar, the menu.
+            var vertices: [QuadVertex] = []
+            vertices += browser?.window.quad ?? BrowserWindow().quad
+            vertices += chrome?.panel.pane.quad ?? BrowserWindow().quad
+            vertices += keyboard?.panel.pane.quad ?? BrowserWindow().quad
+            vertices += toolbar?.panel.pane.quad ?? BrowserWindow().quad
+            vertices += toolbar?.menu.pane.quad ?? BrowserWindow().quad
+            while quadBuffers.count < 3 { quadBuffers.append(device.makeBuffer(length: 8192, options: .storageModeShared)!) }
+            quadBufferIndex = (quadBufferIndex + 1) % quadBuffers.count
+            let buffer = quadBuffers[quadBufferIndex]
+            vertices.withUnsafeBytes { buffer.contents().copyMemory(from: $0.baseAddress!, byteCount: $0.count) }
+            quadBuffer = buffer
         }
         var overlayBuffer: MTLBuffer?
         if !overlay.vertices.isEmpty {
@@ -305,8 +563,9 @@ final class Renderer {
             }
         }
 
-        // Pass 1: the scene, both eyes at once (or one pass per eye without amplification).
-        let passes: [Int?] = amplifies ? [nil] : [0, 1]
+        // Pass 1: the scene, both eyes at once (or one pass per eye without amplification). In an
+        // immersive session the page has the screen, so the scene is skipped.
+        let passes: [Int?] = (browser?.isImmersive ?? false) ? [] : (amplifies ? [nil] : [0, 1])
         for slice in passes {
             let scenePass = MTLRenderPassDescriptor()
             scenePass.colorAttachments[0].texture = eyeTexture
@@ -341,6 +600,16 @@ final class Renderer {
                 encoder.setRenderPipelineState(floorPipeline)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
             }
+            if let quadBuffer {
+                encoder.setRenderPipelineState(quadPipeline)
+                encoder.setVertexBuffer(quadBuffer, offset: 0, index: 1)
+                for (_, texture, tint, slot) in quads {
+                    var tint = tint
+                    encoder.setFragmentTexture(texture, index: 0)
+                    encoder.setFragmentBytes(&tint, length: MemoryLayout<SIMD4<Float>>.stride, index: 2)
+                    encoder.drawPrimitives(type: .triangle, vertexStart: slot * 6, vertexCount: 6)
+                }
+            }
             if let overlayBuffer {
                 encoder.setRenderPipelineState(overlayPipeline)
                 encoder.setVertexBuffer(overlayBuffer, offset: 0, index: 1)
@@ -374,6 +643,13 @@ final class Renderer {
         if settings.ultraTestSeconds > 0 && ultraProbe == nil && t2 - launchTime >= Double(settings.ultraTestSeconds) {
             ultraProbe = UltraWideProbe()
             ultraProbe?.start()
+        }
+        runActions(now: t2)
+        if dumpNext && !dumped {
+            dumpNext = false
+            dumped = true
+            dumpEye(0, from: eyeTexture, in: commandBuffer)
+            dumpEye(1, from: eyeTexture, in: commandBuffer)
         }
         if settings.dumpAfterSeconds > 0 && !dumped && t2 - launchTime >= Double(settings.dumpAfterSeconds) {
             dumped = true
@@ -410,6 +686,38 @@ final class Renderer {
 }
 
 extension Renderer {
+    /// A press on a panel's button.
+    fileprivate func pressPanel(_ panel: ScenePanel, id: String) {
+        guard let browser else { return }
+        if let keyboard, panel === keyboard.panel {
+            switch keyboard.press(id) {
+            case .text(let t): browser.type(t)
+            case .key(let k): browser.key(k)
+            case .mic: onDictate?()
+            case .none: break
+            }
+            return
+        }
+        switch id {
+        case "new": browser.newTab(private: false, url: nil)
+        case "private": browser.newTab(private: true, url: nil)
+        case "back": browser.back()
+        case "forward": browser.forward()
+        case "reload": browser.reload()
+        case "home": browser.home()
+        case "star": browser.toggleBookmark()
+        case "size": browser.cycleSize(); layoutPanels()
+        case "place": browser.togglePlacing()
+        case "keys": browser.toggleKeyboard()
+        case "mic": onDictate?()
+        case "close": browser.closeTab()
+        case "yes": browser.answerPrompt(yes: true)
+        case "no": browser.answerPrompt(yes: false)
+        default:
+            if id.hasPrefix("tab:"), let i = Int(id.dropFirst(4)) { browser.switchTab(i) }
+        }
+    }
+
     /// Copies an eye's slice into a readable texture and writes it as a PNG once the GPU is done,
     /// for checking the picture from the Mac (`--ei dump 3`): eye-left.png and eye-right.png.
     fileprivate func dumpEye(_ slice: Int, from eyeTexture: MTLTexture, in commandBuffer: MTLCommandBuffer) {

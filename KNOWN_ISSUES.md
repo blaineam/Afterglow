@@ -267,6 +267,16 @@ the crossing can still read as one, and Vision sometimes drops the hand at the c
 image on the Neural Engine at 30 images/s whether or not a hand is in view, which is the one
 steady load the phase 1 run did not have; `handHz` lowers it.
 
+### The browser (native)
+
+The page is a snapshot, twelve a second (WebKit's `takeSnapshot`, rendered off the main thread),
+so video in the window plays at that rate and a fast scroll smears; the window is for reading and
+pages that need the screen take it through WebXR. An immersive session in the Simulator shows
+black for several seconds while software WebGL starts at the screen's full resolution; the phone
+has not been measured. The page's zoom (150 % for readable text) is set to 1:1 for a session, or
+one eye filled the screen and the other sat off its edge. Dictation has not been tried on the
+phone, and the double tap's accelerometer threshold (0.9 g) is a guess to be tuned on the viewer.
+
 ### Frames show about two frames after they are built
 
 With three drawables the frame loop runs ahead of the display and a frame is presented about

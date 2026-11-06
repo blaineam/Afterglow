@@ -180,12 +180,53 @@ foundation at all. The honest picture:
   the hands placed by LiDAR depth and `HandGeometry` (ported, tested), pinch with hysteresis held
   through hidden tips and fast moves, hands drawn over the view, a grab-a-cube demo. Also a
   3DoF mode on the ultra-wide (`dof 3`), since ARKit cannot use or run beside that camera on the
-  iPhone (measured). Next: phase 3, the browser and WebXR (the shim ports as is).
+  iPhone (measured).
+- **Phase 3 built 2026-11-06, proven in the Simulator**: the browser on WebKit with the shared
+  shim, helper and start page, tabs as web views of their own, private tabs, history and
+  bookmarks, logins in the Unity app's Keychain format, a gaze keyboard and chrome as panels
+  in the scene, dictation, the double tap on the viewer, and immersive WebXR sessions (both
+  eyes lens-warped by the shim, the pose and hands pushed). The toolbar (quick toggles, recent
+  apps, More) and the menu with the settings behind it are in. To be tried on the phone.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the
   ultra-wide camera) show what Unity can still give; if the phone still runs hot with those,
   the port is the answer rather than more tuning.
+
+## The native port's plan (owner's list, 2026-11-06)
+
+The owner's direction after phases 1 and 2 ran on the phone: 6DoF on the wide camera is fine in
+the viewer (the lens limits the view anyway), and the 3DoF ultra-wide mode stays as an option.
+Build the foundation starting with the **browser and full WebXR VR**, then expand into AR once VR
+works properly (passthrough already gives some of the AR feel). In the order to be built:
+
+1. **Browser + WebXR VR** (phase 3): a modern, clean browsing experience in the viewer with
+   multiple tabs, private browsing, history, bookmarks, usernames and passwords saved and
+   autofilled, text scaled to be readable on the 18 Pro Max inside the viewer, dictation (STT)
+   for input, and the WebXR shim from the Unity app for immersive sessions; WebXR AR features
+   where they can be given (passthrough as the AR layer). A **double tap on the viewer** selects
+   what the cursor was on when the tap began.
+2. **Surfaces and occlusion**: surface detection and interaction, occlusion by the real room,
+   and a foundation environment that renders the detected surfaces, in 6DoF and in a stationary
+   3DoF mode.
+3. **Media** (phase 4): the Photos library's albums with spatial photos and videos, panoramas,
+   and 360 content; XR video projections (180 mono, SBS, TB; 360 mono, SBS, TB), fisheye and
+   equirectangular; a **file browser** that streams from a bookmarked Files folder with search.
+4. **Recording and casting**: a flat 2D recording of the left or right eye, and casting what the
+   user sees, flat, to an Apple TV.
+5. **Home, settings and the toolbar** (phase 5): the toolbar carries quick toggles and is a
+   launcher of recently opened apps with a "more" button for the menu; settings live behind the
+   menu; a clean, modern, near-glassmorphic look (iOS 26's glass effects, if they serve).
+6. **Games** (phase 6): 3D painting; the vacuum surface-cleanup game; a portal into other
+   dimensions (several); a MusicKit rhythm game; a flying or roller-coaster ride; golf; a 3D
+   "toy box" of models that collide with surfaces and are occluded by the room; an alien-blob
+   shooter where a punch forward fires the blaster the way the head faces, defending the space
+   from monsters.
+7. **Controllers**: a Bluetooth controller or two that pair to the iPhone directly, 6DoF if any
+   exist, or 3DoF (gyro) with their position estimated from the headset's 6DoF pose; something
+   like Joy-Cons. To check: iOS 16+ pairs Joy-Cons through the GameController framework; whether
+   their motion data (`GCMotion`) comes through, as it does for DualSense and DualShock, decides
+   between 3DoF arms and buttons only. No controller pairs to an iPhone with camera-tracked 6DoF.
 
 ## Later
 

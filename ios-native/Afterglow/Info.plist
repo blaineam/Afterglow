@@ -23,7 +23,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Afterglow uses the camera to follow your head, and to show the room around you.</string>
+	<string>Afterglow uses the camera to follow your head and hands, and to show the room around you.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Afterglow listens only while you hold the dictate button, to type what you say into the browser.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Afterglow turns what you say into text for the browser. Recognition happens on this iPhone where it can, and your voice is not kept.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

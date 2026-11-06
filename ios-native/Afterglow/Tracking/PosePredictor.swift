@@ -47,6 +47,10 @@ final class PosePredictor: @unchecked Sendable {
     private var motionCount = 0
 
     var isRunning: Bool { motion.isDeviceMotionActive }
+    /// Taps on the viewer, read off the same motion samples.
+    let taps = HeadsetTapDetector()
+    /// Called on the motion queue with 1 for a first tap and 2 for a double tap.
+    var onTap: ((Int) -> Void)?
 
     // The 3DoF world: CoreMotion's reference frame (z up, x arbitrary) turned to y up, with the
     // heading at the first reading taken as straight ahead (-z), as ARKit's gravity alignment does.
@@ -104,6 +108,8 @@ final class PosePredictor: @unchecked Sendable {
             if self.samples.count > self.capacity { self.samples.removeFirst() }
             self.motionCount += 1
             self.lock.unlock()
+            let tap = self.taps.feed(data)
+            if tap != 0 { self.onTap?(tap) }
         }
         log("[Pose] Device motion at 100 Hz drives head prediction; camera axes = device axes turned 90 degrees about z")
     }
