@@ -45,6 +45,10 @@ final class HandTracker: @unchecked Sendable {
     private static let speedBlend: Float = 0.5
     private static let edgeMargin: Float = 0.04   // of the image's width, where a pinch may not start
     private static let sureTipConfidence: Float = 0.4   // a fingertip Vision was less sure of was hidden, and guessed
+    /// A palm reading smaller than this share of the hand's own flat-on size, at the measured
+    /// depth, is edge-on: the fingers are in line with the camera, which sees only the thumb and
+    /// guesses the index tip beside it, which read as a pinch (owner, 2026-11-06). No pinch starts.
+    private static let edgeOnOpenness: Float = 0.6
 
     private final class Slot {
         var state: TrackedHandState?
@@ -56,7 +60,17 @@ final class HandTracker: @unchecked Sendable {
         var pinch = PinchDetector()
         var handedness: Float = 0.5
         var acquiring = true
+        /// The largest palm size seen for this hand at a measured depth, metres, decaying slowly so
+        /// a one-off doesn't fix it for good.
+        var palmSizeSeen: Float = 0
+        /// When the hand was lost (its grace ran out), so a hand found soon after can be the same
+        /// one back in view, with its pinch and handedness kept.
+        var lostAt: Double = -1
     }
+
+    /// A hand found within this long of one being lost is that hand back in view: a pinch held out
+    /// of the camera's view and brought back stays the same pinch (owner, 2026-11-06).
+    private static let returnSeconds = 5.0
 
     private let queue = DispatchQueue(label: "afterglow.hands", qos: .userInteractive)
     private let request: VNDetectHumanHandPoseRequest
@@ -80,6 +94,7 @@ final class HandTracker: @unchecked Sendable {
     private var depthTaught = 0
     private var pinches = 0
     private var swaps = 0
+    private var edgeOn = 0
     private var loggedDepth = false
     private var lastLog: Double = 0
 
@@ -108,6 +123,7 @@ final class HandTracker: @unchecked Sendable {
             guard var state = slot.state else { continue }
             if time - slot.lastSeen > Self.graceSeconds {
                 slot.state = nil
+                slot.lostAt = time
                 continue
             }
             let dt = Float(min(max(time - slot.imageTime, 0), Self.maxPredictionSeconds)) * Self.predictionGain
@@ -234,11 +250,29 @@ final class HandTracker: @unchecked Sendable {
             }
         }
         for i in seen.indices where assigned[i] == nil {
-            if let free = slots.indices.first(where: { !used.contains($0) && slots[$0].state == nil }) {
-                assigned[i] = free
-                used.insert(free)
-                slots[free].acquiring = true
-                slots[free].pinch.reset()
+            let free = slots.indices.filter { !used.contains($0) && slots[$0].state == nil }
+            // A hand lost moments ago, by preference the one Vision's chirality matches: back in
+            // view with its pinch and handedness. Otherwise a fresh hand.
+            let seenRight: Float? = seen[i].chirality == .right ? 1 : seen[i].chirality == .left ? 0 : nil
+            let returning = free.filter { now - slots[$0].lostAt < Self.returnSeconds }
+                .sorted { a, b in
+                    guard let seenRight else { return slots[a].lostAt > slots[b].lostAt }
+                    return abs(slots[a].handedness - seenRight) < abs(slots[b].handedness - seenRight)
+                }
+            if let back = returning.first {
+                assigned[i] = back
+                used.insert(back)
+                slots[back].acquiring = false
+                slots[back].velocity = .zero
+                for j in slots[back].jointFilters.indices { slots[back].jointFilters[j].reset() }
+                slots[back].depthFilter.reset()
+                if slots[back].pinch.isPinched { log("[Pinch] Hand back in view, still pinched") }
+            } else if let fresh = free.first {
+                assigned[i] = fresh
+                used.insert(fresh)
+                slots[fresh].acquiring = true
+                slots[fresh].pinch.reset()
+                slots[fresh].palmSizeSeen = 0
             } else if let stale = slots.indices.first(where: { !used.contains($0) }) {
                 // Every slot is tracked and this hand matched none: the unmatched slot is the stale
                 // trace of a hand that moved, and this is where it went, so it keeps its pinch (a
@@ -267,6 +301,7 @@ final class HandTracker: @unchecked Sendable {
             // size for when there is no depth (too close, or a phone without LiDAR). Placing by the
             // fit alone pinned the learned size at its floor: a flat shape foreshortens with the
             // hand's tilt, which the size then absorbs (2026-11-06).
+            var measuredDepth: Float?
             if useDepth, let sceneDepth = frame.sceneDepth {
                 var centre = SIMD2<Float>.zero
                 for id in HandGeometry.palm { centre += hand.landmarks[id] }
@@ -282,12 +317,21 @@ final class HandTracker: @unchecked Sendable {
                     }
                     if jointsDepth >= 0.2 && jointsDepth <= 1.0 {
                         depth = jointsDepth
+                        measuredDepth = jointsDepth
                     }
                 }
                 if !loggedDepth {
                     loggedDepth = true
                     log("[Hands] Scene depth \(CVPixelBufferGetWidth(sceneDepth.depthMap))x\(CVPixelBufferGetHeight(sceneDepth.depthMap)), \(sceneDepth.confidenceMap != nil ? "with" : "without") confidence, teaches the palm size")
                 }
+            }
+            // How open to the camera the palm is: its size at the measured depth against the
+            // largest this hand has shown, 1 when flat-on and small when edge-on.
+            var openness: Float = 1
+            if measuredDepth != nil {
+                let apparent = HandGeometry.palmSpan(hand.landmarks) * depth / focal.x
+                slot.palmSizeSeen = max(slot.palmSizeSeen * 0.999, apparent)
+                if slot.palmSizeSeen > 0 { openness = apparent / slot.palmSizeSeen }
             }
             depth = slot.depthFilter.filter(SIMD3(0, 0, depth), time: now).z
             let cameraJoints = HandGeometry.placeJoints(imageLandmarks: hand.landmarks, metricLandmarks: shape, centerDepth: depth,
@@ -327,12 +371,17 @@ final class HandTracker: @unchecked Sendable {
             let wasPinched = slot.pinch.isPinched
             let tipsSure = hand.confidences[HandGeometry.thumbTip] >= Self.sureTipConfidence
                 && hand.confidences[HandGeometry.indexTip] >= Self.sureTipConfidence
-            let pinched = slot.pinch.update(tipDistance: simd_distance(thumb, index), allowStart: tipsInside, tipsSure: tipsSure)
+            let isEdgeOn = openness < Self.edgeOnOpenness
+            if isEdgeOn { edgeOn += 1 }
+            let pinched = slot.pinch.update(tipDistance: simd_distance(thumb, index), allowStart: tipsInside && !isEdgeOn,
+                                            tipsSure: tipsSure && !isEdgeOn)
             if pinched != wasPinched {
                 if pinched { pinches += 1 }
                 let p = (thumb + index) / 2
-                log(String(format: "[Pinch] %@ %@ hand at (%.2f, %.2f, %.2f), tips %.1f cm apart", pinched ? "Pinch" : "Release",
-                           slot.handedness >= 0.5 ? "right" : "left", p.x, p.y, p.z, simd_distance(thumb, index) * 100))
+                log(String(format: "[Pinch] %@ %@ hand at (%.2f, %.2f, %.2f), tips %.1f cm apart (confidence %.2f, %.2f), palm %.0f%% open",
+                           pinched ? "Pinch" : "Release", slot.handedness >= 0.5 ? "right" : "left", p.x, p.y, p.z,
+                           simd_distance(thumb, index) * 100, hand.confidences[HandGeometry.thumbTip],
+                           hand.confidences[HandGeometry.indexTip], openness * 100))
             }
 
             slot.state = TrackedHandState(joints: joints, pinched: pinched, pinchPoint: (thumb + index) / 2,
@@ -349,9 +398,7 @@ final class HandTracker: @unchecked Sendable {
         for (s, slot) in slots.enumerated() where !used.contains(s) && slot.state != nil {
             if now - slot.lastSeen > Self.graceSeconds {
                 slot.state = nil
-                slot.pinch.reset()
-                slot.depthFilter.reset()
-                for j in slot.jointFilters.indices { slot.jointFilters[j].reset() }
+                slot.lostAt = now
             }
         }
 
@@ -363,13 +410,13 @@ final class HandTracker: @unchecked Sendable {
             if handsSeen > 0 {
                 text += String(format: ", confidence %.2f-%.2f, %.2f-%.2f m away", confidenceMin, confidenceMax, distanceMin, distanceMax)
             }
-            text += String(format: ", palm %.1f cm (%d depth samples, %d taught), %d pinches, %d handedness swaps", palmSize * 100,
-                           depthSamples, depthTaught, pinches, swaps)
+            text += String(format: ", palm %.1f cm (%d depth samples, %d taught), %d pinches, %d handedness swaps, %d edge-on results", palmSize * 100,
+                           depthSamples, depthTaught, pinches, swaps, edgeOn)
             log(text)
             lastLog = now
             images = 0; visionMs = 0; handsSeen = 0
             confidenceMin = 1; confidenceMax = 0; distanceMin = 100; distanceMax = 0
-            depthSamples = 0; depthTaught = 0; pinches = 0; swaps = 0
+            depthSamples = 0; depthTaught = 0; pinches = 0; swaps = 0; edgeOn = 0
         }
     }
 

@@ -74,24 +74,31 @@ struct HandOverlay {
 }
 
 /// The grab demo: a pinch picks up a glowing cube (or makes one where nothing is within reach) and
-/// carries it; the release leaves it there. Enough to feel the hands before the games arrive.
+/// carries it; the release leaves it there. A hand that leaves the camera's view keeps its cube
+/// where it was until it is seen again open (or for ten seconds), as the Unity app does. Enough to
+/// feel the hands before the games arrive.
 struct GrabDemo {
     struct Cube {
         var position: SIMD3<Float>
         var color: SIMD4<Float>
     }
     private(set) var cubes: [Cube] = []
-    private var held: [Int: Int] = [:]      // hand slot (by handedness side) -> cube index
+    private var held: [Int: Int] = [:]      // hand side (0 left, 1 right) -> cube index
     private var wasPinched = [false, false]
+    private var lastSeen = [0.0, 0.0]
+    private static let keepSeconds = 10.0
     private static let size: Float = 0.06
     private static let grabRange: Float = 0.08
     private static let colors: [SIMD4<Float>] = [SIMD4(1.0, 0.3, 0.8, 1), SIMD4(0.3, 0.9, 1.0, 1), SIMD4(1.0, 0.8, 0.3, 1), SIMD4(0.6, 0.4, 1.0, 1)]
 
-    mutating func update(hands: [TrackedHandState]) {
+    mutating func update(hands: [TrackedHandState], time: Double) {
         var pinchedNow = [false, false]
+        var present = [false, false]
         for hand in hands {
             let side = hand.isRight ? 1 : 0
             pinchedNow[side] = hand.pinched
+            present[side] = true
+            lastSeen[side] = time
             if hand.pinched {
                 if let index = held[side] {
                     cubes[index].position = hand.pinchPoint
@@ -109,11 +116,15 @@ struct GrabDemo {
                 }
             }
         }
-        for side in 0..<2 where !pinchedNow[side] && held[side] != nil {
-            log("[Hands] Released cube \(held[side]!)")
-            held[side] = nil
+        for side in 0..<2 where held[side] != nil {
+            // Released when the hand is seen open, or has been gone too long; out of view it holds.
+            let gone = !present[side] && time - lastSeen[side] > Self.keepSeconds
+            if (present[side] && !pinchedNow[side]) || gone {
+                log("[Hands] Released cube \(held[side]!)\(gone ? " (hand gone)" : "")")
+                held[side] = nil
+            }
         }
-        wasPinched = pinchedNow
+        for side in 0..<2 where present[side] { wasPinched[side] = pinchedNow[side] }
     }
 
     func draw(into overlay: inout HandOverlay) {

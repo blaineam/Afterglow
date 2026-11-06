@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct AfterglowApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         _ = SessionLog.shared
@@ -15,7 +16,20 @@ struct AfterglowApp: App {
                 .statusBarHidden(true)
                 .persistentSystemOverlays(.hidden)
                 .preferredColorScheme(.dark)
+                .onAppear { Self.keepAwake() }
         }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Self.keepAwake() }
+        }
+    }
+
+    // The screen must not dim or lock in the viewer. Set whenever the scene becomes active: set
+    // once in init it did not hold, and the app delegate's activation callback is not called in a
+    // scene-based app, so the phone locked during runs (2026-11-06, twice).
+    @MainActor
+    static func keepAwake() {
+        UIApplication.shared.isIdleTimerDisabled = true
+        log("[Stereo] Idle timer off: the screen stays awake while the app is up (\(UIApplication.shared.isIdleTimerDisabled))")
     }
 }
 
@@ -26,12 +40,5 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
         .landscapeRight
-    }
-
-    // The screen must not dim or lock in the viewer. Set at every activation rather than once at
-    // launch: set in the App's init it did not hold, and the phone locked during a run (2026-11-06).
-    func applicationDidBecomeActive(_ application: UIApplication) {
-        application.isIdleTimerDisabled = true
-        log("[Stereo] Idle timer off: the screen stays awake while the app is up")
     }
 }

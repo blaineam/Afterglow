@@ -247,7 +247,9 @@ anything stereo from the Mac.
 The hand's 3D shape is flat: the joints sit at the palm's depth (LiDAR's where it has one), so a
 finger pointed at the camera reads as short, and the pinch distance is the tips' distance in the
 image at that depth. Vision's chirality flips now and then on a hand seen edge-on; the blended
-handedness settles it but a hand can still change colour for a moment. Vision takes 15–20 ms an
+handedness settles it but a hand can still change colour for a moment. An edge-on palm (fingers
+in line with the camera) is told by its apparent size at the LiDAR depth, so without LiDAR, or
+closer than 20 cm, that guard is off and the guessed index tip can read as a pinch. Vision takes 15–20 ms an
 image on the Neural Engine at 30 images/s whether or not a hand is in view, which is the one
 steady load the phase 1 run did not have; `handHz` lowers it.
 

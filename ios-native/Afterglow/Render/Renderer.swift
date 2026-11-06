@@ -258,7 +258,7 @@ final class Renderer {
         overlay.clear()
         if let hands = ar.hands {
             let tracked = hands.hands(at: predictTo)
-            grabDemo.update(hands: tracked)
+            grabDemo.update(hands: tracked, time: predictTo)
             let eyeMid = headInWorld.columns.3.xyz
             if settings.showHands {
                 for hand in tracked { overlay.addHand(hand, eye: eyeMid) }
