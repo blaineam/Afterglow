@@ -2,6 +2,15 @@
 
 ## Both platforms
 
+- **A tall photo sphere is drawn on a cylinder.** A GPano crop gives a panorama's exact span and
+  height, and the band is a cylinder, which is right up to about 90° tall; a sphere cropped to,
+  say, 360° × 150° stretches towards its top and bottom on it. The whole sphere (or near enough,
+  170° tall) goes on the sphere instead. A spherical cap mesh for the in-between is to do.
+- **Library videos aren't read for their spherical boxes.** A video in the Photos library is
+  classified by its shape (2:1 is 360) and the library's subtypes; its `st3d`/`sv3d` boxes would
+  need the file itself through `PHAssetResource`, a download for an iCloud item. Files in the
+  Media folder are read. The controls' Format button corrects a wrong guess either way.
+
 ### Hands leave the camera's view
 
 The hands are tracked in the rear camera's image, which covers about 68° across and only 42° up

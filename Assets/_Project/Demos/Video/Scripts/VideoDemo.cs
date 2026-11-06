@@ -65,6 +65,13 @@ namespace Afterglow.Demos.Video
         List<VideoEntry> m_All = new();
         List<VideoEntry> m_Library = new();
         MediaFilter m_Filter = MediaFilter.All;
+        // Which album the library part of the list comes from: the whole library, or one picked
+        // on the Albums page.
+        int m_Album = PhotoLibrary.k_WholeLibrary;
+        string m_AlbumTitle;
+        PhotoLibrary.Album[] m_Albums = System.Array.Empty<PhotoLibrary.Album>();
+        int m_AlbumPage;
+        const int k_AlbumRows = 5;
         int m_Current = -1;
         int m_Wanted = -1;
         Coroutine m_Download;
@@ -100,7 +107,13 @@ namespace Afterglow.Demos.Video
         RectTransform m_ControlsPage;
         TMP_Text m_Header;
         M3Button m_Import;
+        M3Button m_AlbumsButton;
         M3Button[] m_Chips;
+        RectTransform m_AlbumsPage;
+        M3Button[] m_AlbumRows;
+        TMP_Text m_AlbumsPageLabel;
+        M3Button m_AlbumsPrevious;
+        M3Button m_AlbumsNext;
         TMP_Text m_Title;
         TMP_Text m_FormatLine;
         TMP_Text m_Time;
@@ -126,6 +139,7 @@ namespace Afterglow.Demos.Video
         int m_Page;
         bool m_ShowingLibrary;
         bool m_ControlsShown;
+        bool m_ShowingAlbums;
 
         public override void OnDemoEnter(CoreServices core)
         {
@@ -144,10 +158,11 @@ namespace Afterglow.Demos.Video
 
             BuildPanel();
             m_FilesOnly = core.Demos != null && core.Demos.Argument == HomeScreen.k_FilesArgument;
-            m_Header.text = m_FilesOnly ? "Files" : "Media";
+            m_Header.text = HeaderText(m_FilesOnly, m_AlbumTitle);
             foreach (var chip in m_Chips)
                 chip.gameObject.SetActive(!m_FilesOnly);
             m_Import.gameObject.SetActive(FilePicker.Supported);
+            m_AlbumsButton.gameObject.SetActive(!m_FilesOnly && PhotoLibrary.Supported);
             // Put iOS's Photos question up as the demo opens rather than when a photo is picked, so
             // the library can list the user's photos alongside the files straight away.
             m_SpatialSettled = m_FilesOnly || !PhotoLibrary.Supported ||
@@ -225,17 +240,91 @@ namespace Afterglow.Demos.Video
             // rather than left at the index it used to be at: a file copied in or deleted meanwhile
             // shifts everything after it, and the controls would go on describing someone else.
             var playing = Current;
-            m_All = VideoLibrary.Find(m_Bundled, out var bundled);
+            m_All = VideoLibrary.Find(m_Bundled, out var bundled, m_FilesOnly ? PhotoLibrary.k_WholeLibrary : m_Album);
             if (m_FilesOnly)
                 m_All = VideoLibrary.FilesOnly(m_All, bundled);
+            else if (m_Album != PhotoLibrary.k_WholeLibrary)
+                m_All = VideoLibrary.LibraryOnly(m_All);
             // Thumbnails belong to library indexes, which a new scan can shift.
             ReleaseThumbnails();
             ApplyFilter(playing);
             m_Page = 0;
             Debug.Log(m_FilesOnly
                 ? $"[Video] {m_All.Count} files from {VideoLibrary.VideoFolder}"
-                : $"[Video] {m_All.Count} items: {bundled} bundled, the files from {VideoLibrary.VideoFolder}, " +
-                  $"the rest from the Photos library; {m_Library.Count} under {m_Filter}");
+                : m_AlbumTitle != null
+                    ? $"[Video] {m_All.Count} items in the album {m_AlbumTitle}; {m_Library.Count} under {m_Filter}"
+                    : $"[Video] {m_All.Count} items: {bundled} bundled, the files from {VideoLibrary.VideoFolder}, " +
+                      $"the rest from the Photos library; {m_Library.Count} under {m_Filter}");
+        }
+
+        // What the browser's header says: Files for that section, else the album, else Media.
+        // Pure, for testing.
+        public static string HeaderText(bool filesOnly, string albumTitle) =>
+            filesOnly ? "Files" : string.IsNullOrEmpty(albumTitle) ? "Media" : albumTitle;
+
+        // The Albums page: the library's albums with something in them, All photos first, a page
+        // of rows at a time. Picking one lists it in place of the whole library.
+        void ShowAlbums()
+        {
+            m_Albums = PhotoLibrary.Albums();
+            m_AlbumPage = 0;
+            m_ShowingLibrary = false;
+            m_ControlsShown = false;
+            m_ShowingAlbums = true;
+            m_LibraryPage.gameObject.SetActive(false);
+            m_ControlsPage.gameObject.SetActive(false);
+            m_AlbumsPage.gameObject.SetActive(true);
+            PlacePanel(-12f, k_LibrarySize);
+            Debug.Log($"[Video] Albums: {m_Albums.Length} with something in them");
+            UpdateAlbumRows();
+        }
+
+        // Row 0 of the list is the whole library; the albums follow.
+        int AlbumRowCount => m_Albums.Length + 1;
+
+        void UpdateAlbumRows()
+        {
+            var pages = Mathf.Max(1, (AlbumRowCount + k_AlbumRows - 1) / k_AlbumRows);
+            m_AlbumPage = Mathf.Clamp(m_AlbumPage, 0, pages - 1);
+            for (var i = 0; i < m_AlbumRows.Length; i++)
+            {
+                var index = m_AlbumPage * k_AlbumRows + i;
+                var row = m_AlbumRows[i];
+                row.gameObject.SetActive(index < AlbumRowCount);
+                if (index >= AlbumRowCount)
+                    continue;
+                var whole = index == 0;
+                row.Text = whole ? "All photos and videos" : VideoLibrary.AlbumLabel(m_Albums[index - 1].Title, m_Albums[index - 1].Count);
+                row.Selected = whole ? m_Album == PhotoLibrary.k_WholeLibrary : m_Albums[index - 1].Index == m_Album;
+            }
+            m_AlbumsPageLabel.text = pages > 1 ? $"{m_AlbumPage + 1} of {pages}" : "";
+            m_AlbumsPrevious.gameObject.SetActive(pages > 1);
+            m_AlbumsNext.gameObject.SetActive(pages > 1);
+            m_AlbumsPrevious.Interactable = m_AlbumPage > 0;
+            m_AlbumsNext.Interactable = m_AlbumPage < pages - 1;
+        }
+
+        void PickAlbumRow(int row)
+        {
+            var index = m_AlbumPage * k_AlbumRows + row;
+            if (index >= AlbumRowCount)
+                return;
+            if (index == 0)
+            {
+                m_Album = PhotoLibrary.k_WholeLibrary;
+                m_AlbumTitle = null;
+                Debug.Log("[Video] Album: the whole library");
+            }
+            else
+            {
+                var album = m_Albums[index - 1];
+                m_Album = album.Index;
+                m_AlbumTitle = album.Title;
+                Debug.Log($"[Video] Album {album.Title}: {album.Count} items");
+            }
+            m_Header.text = HeaderText(m_FilesOnly, m_AlbumTitle);
+            Refresh();
+            ShowLibrary();
         }
 
         void ApplyFilter(VideoEntry playing)
@@ -541,14 +630,14 @@ namespace Afterglow.Demos.Video
             if (m_PictureRight != null)
                 m_Sphere.Show(m_PictureLeft, VideoFormat.Stereo3D, m_PictureRight);
             else if (entry.Kind == MediaKind.Panorama)
-                m_Sphere.ShowPanorama(m_PictureLeft, PanoramaDegrees(entry), VideoLibrary.k_PanoramaHeightDegrees);
+                m_Sphere.ShowPanorama(m_PictureLeft, PanoramaDegrees(entry), VideoLibrary.PanoramaHeightDegrees(entry));
             else
                 m_Sphere.Show(m_PictureLeft, entry.Format);
         }
 
         float PanoramaDegrees(VideoEntry entry) =>
-            VideoLibrary.PanoramaDegrees(m_PictureLeft != null ? m_PictureLeft.width : entry.Width,
-                m_PictureLeft != null ? m_PictureLeft.height : entry.Height);
+            VideoLibrary.PanoramaDegrees(entry, m_PictureLeft != null ? m_PictureLeft.width : 0,
+                m_PictureLeft != null ? m_PictureLeft.height : 0);
 
         // A library video doesn't go through VideoPlayer: Unity's player can't open a file in
         // the Photos library, and a spatial one it would decode flat, one of the file's two layers.
@@ -805,8 +894,8 @@ namespace Afterglow.Demos.Video
 
         void OnVideoClicked()
         {
-            Debug.Log($"[Video] Picture clicked with the panel {(m_ShowingLibrary ? "on the browser" : m_ControlsShown ? "on the controls" : "away")}");
-            if (m_ShowingLibrary || m_ControlsShown)
+            Debug.Log($"[Video] Picture clicked with the panel {(m_ShowingLibrary ? "on the browser" : m_ControlsShown ? "on the controls" : m_ShowingAlbums ? "on the albums" : "away")}");
+            if (m_ShowingLibrary || m_ControlsShown || m_ShowingAlbums)
                 HidePanel();
             else
                 ShowControls();
@@ -816,8 +905,10 @@ namespace Afterglow.Demos.Video
         {
             m_ShowingLibrary = true;
             m_ControlsShown = false;
+            m_ShowingAlbums = false;
             m_LibraryPage.gameObject.SetActive(true);
             m_ControlsPage.gameObject.SetActive(false);
+            m_AlbumsPage.gameObject.SetActive(false);
             PlacePanel(-12f, k_LibrarySize);
             UpdateGrid();
         }
@@ -826,8 +917,10 @@ namespace Afterglow.Demos.Video
         {
             m_ShowingLibrary = false;
             m_ControlsShown = true;
+            m_ShowingAlbums = false;
             m_LibraryPage.gameObject.SetActive(false);
             m_ControlsPage.gameObject.SetActive(true);
+            m_AlbumsPage.gameObject.SetActive(false);
             PlacePanel(Mathf.Max(HeadPitch - k_ControlsBelowGaze, k_LowestPitch), k_ControlsSize);
             UpdateControls();
             Debug.Log($"[Video] Controls shown at {m_Panel.position}, head at {m_Core.Head.position} pitch {HeadPitch:F0}, " +
@@ -838,6 +931,7 @@ namespace Afterglow.Demos.Video
         {
             m_ShowingLibrary = false;
             m_ControlsShown = false;
+            m_ShowingAlbums = false;
             M3Fade.Hide(m_Panel.gameObject);
         }
 
@@ -867,7 +961,7 @@ namespace Afterglow.Demos.Video
                 return entry.Status;
             return entry.Kind switch
             {
-                MediaKind.Panorama => $"Panorama, {VideoLibrary.PanoramaDegrees(entry.Width, entry.Height):F0}°",
+                MediaKind.Panorama => $"Panorama, {VideoLibrary.PanoramaDegrees(entry):F0}°",
                 MediaKind.Still360 => "360 still",
                 MediaKind.Photo => "Photo",
                 MediaKind.SpatialPhoto => "Spatial photo",
@@ -950,6 +1044,8 @@ namespace Afterglow.Demos.Video
             }
             if (PhotoLibrary.Supported && PhotoLibrary.Authorize() != PhotoLibrary.Access.Granted)
                 return "Allow Photos in Settings to see your photos and videos here.";
+            if (m_AlbumTitle != null)
+                return $"Nothing in {m_AlbumTitle} under {m_Filter}.";
             return m_Filter switch
             {
                 MediaFilter.Spatial => "No spatial photos or videos. An iPhone 15 Pro or later takes them in the Camera app's Spatial mode.",
@@ -1094,8 +1190,12 @@ namespace Afterglow.Demos.Video
 
             // The browser: a header, the filter chips, a grid of thumbnails, and the page controls.
             m_LibraryPage = WorldUi.CreateGroup("Library", m_Panel);
-            m_Header = M3.Text("Header", m_LibraryPage, "Media", M3Theme.Type.TitleLarge, new Vector2(-130f, top - 16f), new Vector2(292f, 32f),
+            m_Header = M3.Text("Header", m_LibraryPage, "Media", M3Theme.Type.TitleLarge, new Vector2(-144f, top - 16f), new Vector2(264f, 32f),
                 alignment: TextAlignmentOptions.Left);
+            m_Header.textWrappingMode = TextWrappingModes.NoWrap;
+            m_Header.overflowMode = TextOverflowModes.Ellipsis;
+            // Albums lists the library's albums to pick from; hidden without a library.
+            m_AlbumsButton = M3.IconButton("Albums", m_LibraryPage, "photo_library", M3Button.Variant.Text, new Vector2(52f, top - 16f), ShowAlbums, 48f);
             // Import opens iOS's Files picker; hidden where there is none.
             m_Import = M3.Button("Import", m_LibraryPage, "Import", M3Button.Variant.Tonal, new Vector2(150f, top - 16f), Import, "add", 124f);
             M3.IconButton("Refresh", m_LibraryPage, "refresh", M3Button.Variant.Text, new Vector2(248f, top - 16f), () =>
@@ -1127,6 +1227,27 @@ namespace Afterglow.Demos.Video
                 M3Theme.OnSurfaceVariant);
             m_NextPage = M3.IconButton("Next page", m_LibraryPage, "chevron_right", M3Button.Variant.Text, new Vector2(84f, footerY),
                 () => Page(1), 48f);
+
+            // The albums: a header with the way back, a page of rows, and the page controls.
+            m_AlbumsPage = WorldUi.CreateGroup("Albums", m_Panel);
+            M3.IconButton("Back", m_AlbumsPage, "arrow_back", M3Button.Variant.Text, new Vector2(-k_LibrarySize.x / 2f + 16f + 24f, top - 16f),
+                ShowLibrary, 48f);
+            M3.Text("Albums Header", m_AlbumsPage, "Albums", M3Theme.Type.TitleLarge, new Vector2(0f, top - 16f), new Vector2(400f, 32f));
+            m_AlbumRows = new M3Button[k_AlbumRows];
+            var rowTop = top - 32f - 12f - 20f;
+            for (var i = 0; i < k_AlbumRows; i++)
+            {
+                var row = i;
+                m_AlbumRows[i] = M3.Button($"Album {i}", m_AlbumsPage, "", M3Button.Variant.Segment, new Vector2(0f, rowTop - i * 60f),
+                    () => PickAlbumRow(row), null, 552f);
+            }
+            m_AlbumsPrevious = M3.IconButton("Previous albums", m_AlbumsPage, "chevron_left", M3Button.Variant.Text, new Vector2(-84f, footerY),
+                () => { m_AlbumPage--; UpdateAlbumRows(); }, 48f);
+            m_AlbumsPageLabel = M3.Text("Albums Page", m_AlbumsPage, "", M3Theme.Type.BodyMedium, new Vector2(0f, footerY), new Vector2(100f, 24f),
+                M3Theme.OnSurfaceVariant);
+            m_AlbumsNext = M3.IconButton("Next albums", m_AlbumsPage, "chevron_right", M3Button.Variant.Text, new Vector2(84f, footerY),
+                () => { m_AlbumPage++; UpdateAlbumRows(); }, 48f);
+            m_AlbumsPage.gameObject.SetActive(false);
 
             // The controls: what's playing, a seek slider, transport, then the rest.
             m_ControlsPage = WorldUi.CreateGroup("Controls", m_Panel);

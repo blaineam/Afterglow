@@ -9,6 +9,9 @@ checked without a phone or anyone's own photos:
                           240 degrees it is meant to span, so the projection's angle can be judged
   fixture-flat.jpg        an ordinary 4:3 photo with a label, which belongs on the screen
   fixture-tall.jpg        a 3:4 portrait photo, which must come out upright
+  fixture-sphere.jpg      a 3:1 picture whose GPano XMP says it is the whole turn, 360 wide and
+                          120 tall, cropped from a sphere: by shape alone it would be a 180
+                          degree panorama, so it shows that the metadata is read (Media folder)
 
 The spatial photo is made by make_spatial_photo.swift, since ImageIO is what writes a stereo pair.
 Tools/sim_add_media.sh runs both and adds everything to the booted simulator.
@@ -89,6 +92,38 @@ def panorama(path, degrees=240):
     image.save(path, quality=90)
 
 
+GPANO = ("<?xpacket begin='\ufeff' id='W5M0MpCehiHzreSzNTczkc9d'?>"
+         "<x:xmpmeta xmlns:x='adobe:ns:meta/'><rdf:RDF xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#'>"
+         "<rdf:Description rdf:about='' xmlns:GPano='http://ns.google.com/photos/1.0/panorama/'>"
+         "<GPano:ProjectionType>equirectangular</GPano:ProjectionType>"
+         "<GPano:FullPanoWidthPixels>{fw}</GPano:FullPanoWidthPixels><GPano:FullPanoHeightPixels>{fh}</GPano:FullPanoHeightPixels>"
+         "<GPano:CroppedAreaImageWidthPixels>{cw}</GPano:CroppedAreaImageWidthPixels>"
+         "<GPano:CroppedAreaImageHeightPixels>{ch}</GPano:CroppedAreaImageHeightPixels>"
+         "<GPano:CroppedAreaLeftPixels>0</GPano:CroppedAreaLeftPixels><GPano:CroppedAreaTopPixels>{top}</GPano:CroppedAreaTopPixels>"
+         "</rdf:Description></rdf:RDF></x:xmpmeta><?xpacket end='w'?>")
+
+
+def photo_sphere(path):
+    # 360 degrees wide and 120 tall: a sphere 2500 x 1250 with the top and bottom sixth cropped.
+    w, h = 2500, 833
+    image = sky_and_ground(w, h, int(h * 0.6))
+    draw = ImageDraw.Draw(image)
+    for i, name in enumerate(["FRONT", "RIGHT", "BACK", "LEFT"]):
+        x = int(w * (0.5 + i * 0.25)) % w
+        draw.rectangle([(x - 8, h * 0.3), (x + 8, h * 0.75)], fill=(240, 200, 80))
+        label(draw, (x, h * 0.22), name, 56)
+    label(draw, (w / 2, h * 0.88), "Photo sphere by GPano: 360 wide, 120 tall", 44, (230, 230, 230))
+    import io
+    buffer = io.BytesIO()
+    image.save(buffer, format="JPEG", quality=90)
+    jpeg = buffer.getvalue()
+    xmp = GPANO.format(fw=w, fh=1250, cw=w, ch=h, top=208).encode("utf-8")
+    body = b"http://ns.adobe.com/xap/1.0/\0" + xmp
+    segment = b"\xff\xe1" + (len(body) + 2).to_bytes(2, "big") + body
+    with open(path, "wb") as f:
+        f.write(jpeg[:2] + segment + jpeg[2:])
+
+
 def flat(path, size, text):
     w, h = size
     image = sky_and_ground(w, h, int(h * 0.6))
@@ -109,6 +144,7 @@ def main():
     panorama(os.path.join(out, "fixture-panorama.jpg"))
     flat(os.path.join(out, "fixture-flat.jpg"), (1600, 1200), "Flat photo, 4:3")
     flat(os.path.join(out, "fixture-tall.jpg"), (1200, 1600), "Portrait photo, 3:4")
+    photo_sphere(os.path.join(out, "fixture-sphere.jpg"))
     for name in sorted(os.listdir(out)):
         if name.startswith("fixture-"):
             print(os.path.join(out, name))

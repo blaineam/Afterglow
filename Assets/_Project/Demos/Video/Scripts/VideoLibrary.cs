@@ -56,6 +56,10 @@ namespace Afterglow.Demos.Video
         public int Width;
         public int Height;
         public double Seconds;
+        // A panorama's span and height in degrees where its metadata said (a photo sphere's
+        // GPano crop); 0 to take them from its shape.
+        public float PanoramaSpan;
+        public float PanoramaHeight;
 
         public bool NeedsDownload => Url == null && DriveId != null;
 
@@ -101,8 +105,9 @@ namespace Afterglow.Demos.Video
         public static string VideoFolder => Path.Combine(Application.persistentDataPath, "Videos");
         public static string CacheFolder => Path.Combine(Application.temporaryCachePath, "DriveVideos");
 
-        // placeholders are the repository's own bundled videos; count is how many bundled videos were found.
-        public static List<VideoEntry> Find(IEnumerable<string> placeholders, out int count)
+        // placeholders are the repository's own bundled videos; count is how many bundled videos were
+        // found; album picks one of PhotoLibrary.Albums in place of the whole library.
+        public static List<VideoEntry> Find(IEnumerable<string> placeholders, out int count, int album = PhotoLibrary.k_WholeLibrary)
         {
             var entries = new List<VideoEntry>();
             var bundled = OrderBundled(StreamingAssetsFiles(), placeholders);
@@ -129,17 +134,27 @@ namespace Afterglow.Demos.Video
                     {
                         if (IsVideo(file))
                         {
+                            // The file's own spherical-video boxes first, then the tags in its name.
+                            var fromBoxes = MediaMetadata.TryReadVideoFormat(file, out var boxed);
+                            if (fromBoxes)
+                                Debug.Log($"[Video] {Path.GetFileName(file)} says it is {boxed} in its metadata");
                             entries.Add(new VideoEntry
                             {
                                 Title = Path.GetFileNameWithoutExtension(file),
-                                Format = VideoFormat.FromFileName(file),
+                                Format = fromBoxes ? boxed : VideoFormat.FromFileName(file),
                                 Url = file,
                             });
                         }
                         else if (IsImage(file))
                         {
                             PhotoLibrary.TryGetFileImageSize(file, out var width, out var height);
-                            entries.Add(FileImageEntry(file, width, height));
+                            MediaMetadata.PhotoSphere? sphere = null;
+                            if (IsJpeg(file) && MediaMetadata.TryReadPhotoSphere(file, out var found))
+                            {
+                                sphere = found;
+                                Debug.Log($"[Video] {Path.GetFileName(file)} is a photo sphere: {found.DegreesWide:F0} x {found.DegreesTall:F0} degrees");
+                            }
+                            entries.Add(FileImageEntry(file, width, height, sphere));
                         }
                     }
 
@@ -153,7 +168,7 @@ namespace Afterglow.Demos.Video
                 }
             }
 
-            entries.AddRange(LibraryEntries());
+            entries.AddRange(LibraryEntries(album));
             return entries;
         }
 
@@ -171,6 +186,10 @@ namespace Afterglow.Demos.Video
             return files;
         }
 
+        // What an album's page lists: the library's items alone, since an album is a view of the
+        // library and the bundled clips and the Media folder aren't in it. Pure, for testing.
+        public static List<VideoEntry> LibraryOnly(List<VideoEntry> entries) => entries.FindAll(entry => entry.IsLibrary);
+
         // A picture whose sides are this close to 2:1 is taken for a 360 still.
         public const float k_Still360Tolerance = 0.03f;
         // A picture at least this wide for its height is a panorama even when the library doesn't
@@ -184,13 +203,17 @@ namespace Afterglow.Demos.Video
         // The photos and videos in the Photos library, which need no copying in: the phone in the
         // viewer is the one that took them. Empty everywhere but an iPhone, and empty until the
         // user has allowed the library.
-        static IEnumerable<VideoEntry> LibraryEntries()
+        static IEnumerable<VideoEntry> LibraryEntries(int album)
         {
             if (!PhotoLibrary.Supported)
                 yield break;
-            foreach (var item in PhotoLibrary.Scan())
+            foreach (var item in PhotoLibrary.Scan(album))
                 yield return LibraryEntry(item);
         }
+
+        // An album's row in the picker: its name and what it holds.
+        public static string AlbumLabel(string title, int count) =>
+            count == 1 ? $"{title} · 1 item" : $"{title} · {count:N0} items";
 
         // An entry for one library item, named by when it was taken.
         public static VideoEntry LibraryEntry(PhotoLibrary.Item item)
@@ -267,6 +290,18 @@ namespace Afterglow.Demos.Video
             return Mathf.Clamp((float)width / height * heightDegrees, heightDegrees, 360f);
         }
 
+        // An entry's panorama span and height: what its metadata said, else from its shape (or
+        // the size given, the opened picture's, when that's known better than the entry's).
+        public static float PanoramaDegrees(VideoEntry entry, int width = 0, int height = 0)
+        {
+            if (entry.PanoramaSpan > 0f)
+                return entry.PanoramaSpan;
+            return PanoramaDegrees(width > 0 ? width : entry.Width, height > 0 ? height : entry.Height, PanoramaHeightDegrees(entry));
+        }
+
+        public static float PanoramaHeightDegrees(VideoEntry entry) =>
+            entry.PanoramaHeight > 0f ? entry.PanoramaHeight : k_PanoramaHeightDegrees;
+
         // Whether an entry belongs under a filter. 360 means anything wrapped round the viewer:
         // the stills, and the videos whose format isn't a flat screen.
         public static bool Matches(VideoEntry entry, MediaFilter filter) => filter switch
@@ -294,13 +329,24 @@ namespace Afterglow.Demos.Video
 
         public static bool IsImage(string path) => Array.IndexOf(k_ImageExtensions, Path.GetExtension(path).ToLowerInvariant()) >= 0;
 
+        public static bool IsJpeg(string path)
+        {
+            var extension = Path.GetExtension(path).ToLowerInvariant();
+            return extension == ".jpg" || extension == ".jpeg";
+        }
+
         // A picture file: its kind from its shape when the size is known (iOS reads the header),
         // else a photo until it's opened, when the player sizes and sorts it. A spatial HEIC among
         // them is found when it's opened, from the pair inside it. Pure, for testing.
-        public static VideoEntry FileImageEntry(string path, int width, int height)
+        public static VideoEntry FileImageEntry(string path, int width, int height) => FileImageEntry(path, width, height, null);
+
+        // The same with what the file's GPano said, which wins over its shape: the whole sphere
+        // is a 360 still, anything less a panorama of that span and height.
+        public static VideoEntry FileImageEntry(string path, int width, int height, MediaMetadata.PhotoSphere? sphere)
         {
-            var kind = Classify(false, false, false, width, height);
-            return new VideoEntry
+            var kind = sphere == null ? Classify(false, false, false, width, height)
+                : sphere.Value.IsFull ? MediaKind.Still360 : MediaKind.Panorama;
+            var entry = new VideoEntry
             {
                 Title = Path.GetFileNameWithoutExtension(path),
                 Format = DefaultFormat(kind, width, height),
@@ -309,6 +355,12 @@ namespace Afterglow.Demos.Video
                 Width = width,
                 Height = height,
             };
+            if (sphere != null && kind == MediaKind.Panorama)
+            {
+                entry.PanoramaSpan = sphere.Value.DegreesWide;
+                entry.PanoramaHeight = sphere.Value.DegreesTall;
+            }
+            return entry;
         }
 
         // The video files among present: your own first, by name, then the placeholders that are there,

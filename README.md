@@ -86,7 +86,8 @@ Simulator** (`Tools/ios_sim_build_and_run.sh`, which boots an iPhone 18 Pro Max 
 it running) a drag looks and a click taps; the Photos library works there, so spatial photos and
 videos can be added to it with `xcrun simctl addmedia booted photo.HEIC` (`Tools/sim_add_media.sh`
 draws a set of test media — a 360 still, a panorama, flat photos, a spatial photo and two videos —
-and adds them), and so do WKWebView and
+and adds them, and puts a GPano photo sphere and a video with spherical boxes in the app's Media
+folder; `Tools/inject_spherical.py` writes those boxes into any MP4), and so do WKWebView and
 video decoding. What neither has is ARKit: no passthrough, no surfaces and no camera-tracked hands.
 The app notices (`Capabilities`) and refuses those with a log line rather than waiting for tracking.
 
@@ -193,7 +194,9 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   If you rest your gaze on a button with no hand in the camera's view, a hint under the reticle says
   to raise it.
 - **Media** is a browser of your Photos library: a grid of thumbnails, newest first, with filters
-  *All · Spatial · Panoramas · 360 · Videos*, and the video files on the phone after them. Pick
+  *All · Spatial · Panoramas · 360 · Videos*, and the video files on the phone after them. The
+  *Albums* button lists the library's albums with something in them (Favorites, Recents, the
+  camera's own kinds, then yours) to list one in place of the whole library. Pick
   one and it shows the way its kind says: a **spatial photo or video** (an iPhone 15 Pro and later
   record a picture for each eye) with a picture per eye on a screen ahead of you, a **panorama**
   on a cylinder as wide as it was swept (about 240° for a 4:1 one), a **2:1 still** all the way
@@ -205,7 +208,11 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   the phone out of the viewer, and copies what you pick into the app's `Media` folder, which
   Finder's Files tab for the phone and the Files app can also drop things into (Afterglow > Media;
   on Android `adb push video.mp4 /storage/emulated/0/Android/data/com.wemiller.afterglow/files/Media`).
-  Photos there, a spatial HEIC included, are sorted by their shape like the library's. Two small
+  Photos there, a spatial HEIC included, are sorted by their shape like the library's, and a file
+  that says what it is wins over its name and shape: a video's spherical-video boxes (`st3d`,
+  `sv3d`, the v1 XML, as 360 cameras and the spatial-media injector write them) give its
+  projection and layout, and a JPEG's GPano says it is a photo sphere and how much of the sphere
+  it covers, which sizes the panorama exactly rather than guessing from its shape. Two small
   test clips are bundled; to bundle your own in local builds, put them in a `360` folder beside the
   project (or set `AFTERGLOW_VIDEOS`): the build scripts copy them into `Assets/StreamingAssets`,
   which git ignores apart from the test clips. Tags in a video's name set the format (`_360`,

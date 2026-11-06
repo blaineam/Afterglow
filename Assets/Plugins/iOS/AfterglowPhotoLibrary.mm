@@ -65,6 +65,9 @@ namespace
 
     PHFetchResult<PHAsset *> *g_Assets = nil;
     PHCachingImageManager *g_Thumbnails = nil;
+    // The albums from the last Afterglow_AlbumScan, and how many items each holds.
+    NSMutableArray<PHAssetCollection *> *g_Albums = nil;
+    NSMutableArray<NSNumber *> *g_AlbumCounts = nil;
 
     // The opened picture(s): one for a plain photo, two for a spatial one. Written on a library
     // queue and read by Unity's main thread, so the state is atomic rather than guarded: the
@@ -272,6 +275,75 @@ extern "C" int Afterglow_LibraryScan()
     if (g_Thumbnails == nil)
         g_Thumbnails = [PHCachingImageManager new];
     AGLog(@"[Photos] %lu photos and videos in the library", (unsigned long)g_Assets.count);
+    return (int)g_Assets.count;
+}
+
+// The albums worth offering: the smart albums with something in them that the browser's filters
+// don't already give (Favorites, Recents, the camera's own kinds), then the user's own albums,
+// each with its count. Returns how many, or -1 before the library can be read.
+extern "C" int Afterglow_AlbumScan()
+{
+    if (Afterglow_SpatialAuthorize() != 1)
+        return -1;
+    g_Albums = [NSMutableArray new];
+    g_AlbumCounts = [NSMutableArray new];
+    PHFetchOptions *assetOptions = [PHFetchOptions new];
+    assetOptions.predicate = [NSPredicate predicateWithFormat:@"mediaType == %d OR mediaType == %d",
+                              (int)PHAssetMediaTypeImage, (int)PHAssetMediaTypeVideo];
+    void (^add)(PHFetchResult<PHAssetCollection *> *) = ^(PHFetchResult<PHAssetCollection *> *collections) {
+        for (PHAssetCollection *collection in collections)
+        {
+            const NSUInteger count = [PHAsset fetchAssetsInAssetCollection:collection options:assetOptions].count;
+            if (count == 0)
+                continue;
+            [g_Albums addObject:collection];
+            [g_AlbumCounts addObject:@(count)];
+        }
+    };
+    const PHAssetCollectionSubtype smart[] = {
+        PHAssetCollectionSubtypeSmartAlbumFavorites, PHAssetCollectionSubtypeSmartAlbumRecentlyAdded,
+        PHAssetCollectionSubtypeSmartAlbumPanoramas, PHAssetCollectionSubtypeSmartAlbumVideos,
+        PHAssetCollectionSubtypeSmartAlbumLivePhotos, PHAssetCollectionSubtypeSmartAlbumTimelapses,
+        PHAssetCollectionSubtypeSmartAlbumSlomoVideos, PHAssetCollectionSubtypeSmartAlbumScreenshots,
+    };
+    for (size_t i = 0; i < sizeof(smart) / sizeof(smart[0]); i++)
+        add([PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeSmartAlbum subtype:smart[i] options:nil]);
+    PHFetchOptions *albumOptions = [PHFetchOptions new];
+    albumOptions.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"localizedTitle" ascending:YES]];
+    add([PHAssetCollection fetchAssetCollectionsWithType:PHAssetCollectionTypeAlbum subtype:PHAssetCollectionSubtypeAny options:albumOptions]);
+    AGLog(@"[Photos] %lu albums with something in them", (unsigned long)g_Albums.count);
+    return (int)g_Albums.count;
+}
+
+// One album from the last AlbumScan: its name and how many photos and videos it holds.
+extern "C" int Afterglow_Album(int index, char *title, int titleLength, int *count)
+{
+    if (g_Albums == nil || index < 0 || index >= (int)g_Albums.count)
+        return 0;
+    PHAssetCollection *collection = g_Albums[index];
+    if (title != nullptr && titleLength > 0)
+        strlcpy(title, (collection.localizedTitle ?: @"Album").UTF8String, (size_t)titleLength);
+    if (count != nullptr)
+        *count = [g_AlbumCounts[index] intValue];
+    return 1;
+}
+
+// Lists one album's photos and videos, newest first, in place of the whole library: the items'
+// indexes, thumbnails and opens then refer to this list until the next scan.
+extern "C" int Afterglow_LibraryScanAlbum(int index)
+{
+    if (Afterglow_SpatialAuthorize() != 1)
+        return -1;
+    if (g_Albums == nil || index < 0 || index >= (int)g_Albums.count)
+        return Afterglow_LibraryScan();
+    PHFetchOptions *options = [PHFetchOptions new];
+    options.predicate = [NSPredicate predicateWithFormat:@"mediaType == %d OR mediaType == %d",
+                         (int)PHAssetMediaTypeImage, (int)PHAssetMediaTypeVideo];
+    options.sortDescriptors = @[[NSSortDescriptor sortDescriptorWithKey:@"creationDate" ascending:NO]];
+    g_Assets = [PHAsset fetchAssetsInAssetCollection:g_Albums[index] options:options];
+    if (g_Thumbnails == nil)
+        g_Thumbnails = [PHCachingImageManager new];
+    AGLog(@"[Photos] %lu photos and videos in %@", (unsigned long)g_Assets.count, ((PHAssetCollection *)g_Albums[index]).localizedTitle);
     return (int)g_Assets.count;
 }
 

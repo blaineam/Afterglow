@@ -20,7 +20,7 @@ and the gap between them is most of the work.
 |---|---|
 | Spatial **photos** from the Photos library | Done (`AfterglowPhotoLibrary.mm`, HEIC stereo pair via ImageIO). Verified in the Simulator with a drawn stereo HEIC (2026-11-05); **not verified on the phone.** |
 | Spatial **video** from the Photos library | Done (`AfterglowSpatialVideo.mm`, MV-HEVC both layers via `AVPlayerVideoOutput`, zero-copy Metal, iOS 18+). Built 2026-11-04, **never launched on the phone.** |
-| **Media browser** | Since 2026-11-05: the whole Photos library as a thumbnail grid with filters (All, Spatial, Panoramas, 360, Videos); panoramas on a cylinder sized from the picture's shape; 2:1 stills on the sphere; flat photos and library videos on the screen; the kind comes from the library's subtypes and the aspect, and the Format button overrides it. Verified in the Simulator with drawn fixtures. The panorama's angular height (60°, so a 4:1 panorama spans 240°) is a guess until a real iPhone panorama is checked on the phone. Not yet: albums, 360 stills in the Files folder, formats from video metadata boxes. |
+| **Media browser** | Since 2026-11-05: the whole Photos library as a thumbnail grid with filters (All, Spatial, Panoramas, 360, Videos); panoramas on a cylinder sized from the picture's shape; 2:1 stills on the sphere; flat photos and library videos on the screen; the kind comes from the library's subtypes and the aspect, and the Format button overrides it. Since 2026-11-06: albums, and a file's own metadata (spherical-video boxes, GPano) read before its name or shape. Verified in the Simulator with drawn fixtures. The panorama's angular height (60°, so a 4:1 panorama spans 240°) is a guess until a real iPhone panorama is checked on the phone. |
 | **WebXR browser** | A working start: page on a quad at ~12 fps, gaze + pinch click, gaze-edge and gamepad scroll, back/forward/home/reload/resize, address bar, on-screen keys, Bluetooth keyboard, on-device dictation, `immersive-vr` full screen with page-side stereo and barrel distortion from the app's own lens numbers. Window verified on the phone; **an immersive session is not**. Missing: tabs, bookmarks, history, text selection, downloads, `immersive-ar`, hand input sources, floor-relative spaces from the real floor. iOS only. |
 | **Two hands** | Done (`723c064`, `aede100`): detector keeps both palms, two `TrackedHand` slots, XR Hands fed left and right. **Never run on the phone**; the last device log predates both commits. |
 | **UX** | A **home screen** since 2026-11-05: Media, Web, Files, Play and Settings above the settings panel, open as the app starts, with a Play page for the games and the old checkerboard lobby kept as *The Room*. The room scan no longer blocks the cold start: it runs, with its panel, when an app that places things opens. Still a prototype's inside Media: five text rows a page in the one player, which Files reuses filtered to the copied-in videos. |
@@ -30,7 +30,7 @@ and the gap between them is most of the work.
 | **Desk testing** | New: the Editor runs 6DoF in AR Foundation's XR Simulation (a synthetic room), and both the Editor without it and the iOS Simulator run 3DoF with drag-to-look (`DeskHeadLook`). `Tools/ios_sim_build_and_run.sh` builds and launches on a simulator — **verified 2026-11-05**: the app runs on an iPhone 18 Pro Max simulator, defaults to the printed viewer's optics and falls back to 3DoF. |
 | **Distribution** | Its own repository since 2026-11-05: [blaineam/Afterglow](https://github.com/blaineam/Afterglow), public (renamed from CardboardXR the same day; the old address redirects). CI runs the script and workflow checks on every push; the EditMode tests and the tag-triggered Android APK + unsigned iOS IPA builds are written but **wait on a Unity licence in the secrets**, so neither has run yet. Until then, Android via `Tools/release_android.sh` and iOS from source. |
 
-Unity 6000.6.0f1 is installed; the C# compiles and all 297 EditMode tests pass (2026-11-04).
+Unity 6000.6.0f1 is installed; the C# compiles and all 342 EditMode tests pass (2026-11-06).
 
 ---
 
@@ -81,16 +81,23 @@ Everything else sits on this, and three of the newest features have never run on
 
 - **Photos as a grid** — done 2026-11-05: thumbnails from `PHCachingImageManager`, filters
   *All · Spatial · Panoramas · 360 · Videos*, newest first, eight a page for a gaze
-  (`VideoDemo`, `PhotoLibrary`). To do: albums and smart albums.
+  (`VideoDemo`, `PhotoLibrary`). **Albums** — done 2026-11-06: an Albums page lists the smart
+  albums with something in them (Favorites, Recents, Panoramas, Videos, Live Photos, time-lapses,
+  slo-mo, screenshots) and the user's own, each with its count, and picking one lists it in place
+  of the whole library, filters and all. Verified in the Simulator.
 - **Panoramas** — done 2026-11-05: `PHAssetMediaSubtypePhotoPanorama` or a shape wider than
   2.4:1; a **cylindrical band** (`VideoSphere.ShowPanorama`) whose width follows the picture's
   aspect at 60° of height, so a 4:1 panorama spans 240°. The 60° wants checking against a real
   iPhone panorama on the phone.
-- **360 stills** — done for the library and the Media folder by a 2:1 shape (3 % tolerance). To
-  do: `GPano` XMP.
-- **One player**: format from **metadata** — MV-HEVC layers (done), the spherical-video v2 boxes
-  (`st3d`, `sv3d`), GPano — before falling back to filename tags. Library videos go by shape (2:1
-  is 360) and files by their name tags; the boxes are still to do.
+- **360 stills** — done for the library and the Media folder by a 2:1 shape (3 % tolerance), and
+  since 2026-11-06 by **GPano** XMP in a JPEG, which also gives a cropped sphere's exact span and
+  height (`MediaMetadata`), so a photo sphere wraps all the way round whatever its proportions.
+- **One player**: format from **metadata** — done 2026-11-06 for files: MV-HEVC layers (the
+  library's spatial videos), the spherical-video v2 boxes (`st3d`, `sv3d`/`proj`/`equi`, with the
+  bounds that make a VR180 file) and v1's `uuid` XML are read from a file in the Media folder
+  before its name tags are. Library videos still go by shape (2:1 is 360): their boxes would need
+  the file read through `PHAssetResource`, which is a download for an iCloud item, so that waits.
+  A cubemap or mesh projection is drawn as 360, the nearest the player has.
 - Flat photos and videos on the screen — done 2026-11-05, as the spatial ones are.
 
 ## Phase 3 — Files

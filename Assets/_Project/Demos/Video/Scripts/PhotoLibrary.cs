@@ -69,6 +69,26 @@ namespace Afterglow.Demos.Video
             public bool IsPanorama => (Kind & Kind.Panorama) != 0;
         }
 
+        // An album in the library: a smart album iOS keeps (Favorites, Recents, Panoramas...) or
+        // one of the user's own, with how many photos and videos it holds. Index is its place in
+        // Albums' list, what Scan takes.
+        public readonly struct Album
+        {
+            public readonly int Index;
+            public readonly string Title;
+            public readonly int Count;
+
+            public Album(int index, string title, int count)
+            {
+                Index = index;
+                Title = title;
+                Count = count;
+            }
+        }
+
+        // Scan's whole-library choice.
+        public const int k_WholeLibrary = -1;
+
         const int k_TitleLength = 64;
 
         public static bool Supported =>
@@ -89,21 +109,48 @@ namespace Afterglow.Demos.Video
 #endif
         }
 
-        // Every photo and video in the library, newest first. Empty when the library can't be read
-        // yet, which is not an error: Authorize may still be asking.
-        public static Item[] Scan()
+        // The albums with something in them, smart albums first. Empty until the library is allowed.
+        public static Album[] Albums()
         {
 #if UNITY_IOS && !UNITY_EDITOR
-            var count = Afterglow_LibraryScan();
+            var count = Afterglow_AlbumScan();
+            if (count <= 0)
+                return Array.Empty<Album>();
+            var albums = new Album[count];
+            var found = 0;
+            for (var index = 0; index < count; index++)
+            {
+                var title = new StringBuilder(k_TitleLength);
+                if (Afterglow_Album(index, title, title.Capacity, out var items) == 0)
+                    continue;
+                albums[found++] = new Album(index, title.ToString(), items);
+            }
+            if (found == albums.Length)
+                return albums;
+            var trimmed = new Album[found];
+            Array.Copy(albums, trimmed, found);
+            return trimmed;
+#else
+            return Array.Empty<Album>();
+#endif
+        }
+
+        // Every photo and video in the library, or in one album from Albums, newest first. Empty
+        // when the library can't be read yet, which is not an error: Authorize may still be
+        // asking. Indexes, thumbnails and opens refer to the latest scan.
+        public static Item[] Scan(int album = k_WholeLibrary)
+        {
+#if UNITY_IOS && !UNITY_EDITOR
+            var count = album == k_WholeLibrary ? Afterglow_LibraryScan() : Afterglow_LibraryScanAlbum(album);
             if (count <= 0)
                 return Array.Empty<Item>();
 
             var items = new Item[count];
             var found = 0;
-            var title = new StringBuilder(k_TitleLength);
             for (var index = 0; index < count; index++)
             {
-                title.Length = 0;
+                // A fresh builder each time: IL2CPP copies nothing back into one that was emptied.
+                var title = new StringBuilder(k_TitleLength);
                 if (Afterglow_LibraryItem(index, title, title.Capacity, out var kind, out var width, out var height, out var seconds) == 0)
                     continue;
                 items[found++] = new Item(index, title.ToString(), (Kind)kind, width, height, seconds);
@@ -279,6 +326,9 @@ namespace Afterglow.Demos.Video
 
         [DllImport("__Internal")] static extern int Afterglow_SpatialAuthorize();
         [DllImport("__Internal")] static extern int Afterglow_LibraryScan();
+        [DllImport("__Internal")] static extern int Afterglow_LibraryScanAlbum(int album);
+        [DllImport("__Internal")] static extern int Afterglow_AlbumScan();
+        [DllImport("__Internal")] static extern int Afterglow_Album(int index, StringBuilder title, int titleLength, out int count);
         [DllImport("__Internal")] static extern int Afterglow_LibraryItem(int index, StringBuilder title, int titleLength, out int kind, out int width, out int height, out double seconds);
         [DllImport("__Internal")] static extern int Afterglow_LibraryRequestThumbnail(int index, int pixels);
         [DllImport("__Internal")] static extern int Afterglow_LibraryThumbnail(int request, out IntPtr bytes, out int width, out int height);

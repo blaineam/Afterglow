@@ -68,6 +68,19 @@ namespace Afterglow.Stereo.Tests
         }
 
         [Test]
+        public void AlbumRowsAndTheHeaderSayWhereTheListComesFrom()
+        {
+            Assert.AreEqual("Favorites · 12 items", VideoLibrary.AlbumLabel("Favorites", 12));
+            Assert.AreEqual("Trip · 1 item", VideoLibrary.AlbumLabel("Trip", 1));
+            Assert.AreEqual("Recents · 1,204 items", VideoLibrary.AlbumLabel("Recents", 1204));
+            Assert.AreEqual("Media", VideoDemo.HeaderText(false, null));
+            Assert.AreEqual("Favorites", VideoDemo.HeaderText(false, "Favorites"));
+            Assert.AreEqual("Files", VideoDemo.HeaderText(true, "Favorites"), "Files never lists an album");
+            var mixed = new List<VideoEntry> { Entry(MediaKind.File, library: -1), Entry(MediaKind.Photo, library: 4), Entry(MediaKind.Drive, library: -1) };
+            CollectionAssert.AreEqual(new[] { "Photo" }, VideoLibrary.LibraryOnly(mixed).ConvertAll(entry => entry.Title), "an album lists the library alone");
+        }
+
+        [Test]
         public void PicturesHaveNoClockAndLibraryItemsNoFile()
         {
             Assert.IsTrue(Entry(MediaKind.Photo).IsPicture);
