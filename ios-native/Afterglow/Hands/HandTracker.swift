@@ -328,9 +328,13 @@ final class HandTracker: @unchecked Sendable {
             // How open to the camera the palm is: its size at the measured depth against the
             // largest this hand has shown, 1 when flat-on and small when edge-on.
             var openness: Float = 1
-            if measuredDepth != nil {
-                let apparent = HandGeometry.palmSpan(hand.landmarks) * depth / focal.x
-                slot.palmSizeSeen = max(slot.palmSizeSeen * 0.999, apparent)
+            if let measuredDepth, measuredDepth <= 0.8 {
+                let apparent = HandGeometry.palmSpan(hand.landmarks) * measuredDepth / focal.x
+                // The reference grows by at most 3% a result and decays by 0.5%, so one depth
+                // sample off the background cannot set it high and leave every normal reading
+                // "edge-on", which made a pinch impossible to release (owner, 2026-11-06).
+                let ceiling = slot.palmSizeSeen > 0 ? slot.palmSizeSeen * 1.03 : apparent
+                slot.palmSizeSeen = min(max(slot.palmSizeSeen * 0.995, apparent), ceiling)
                 if slot.palmSizeSeen > 0 { openness = apparent / slot.palmSizeSeen }
             }
             depth = slot.depthFilter.filter(SIMD3(0, 0, depth), time: now).z
@@ -373,8 +377,9 @@ final class HandTracker: @unchecked Sendable {
                 && hand.confidences[HandGeometry.indexTip] >= Self.sureTipConfidence
             let isEdgeOn = openness < Self.edgeOnOpenness
             if isEdgeOn { edgeOn += 1 }
+            // Edge-on only stops a pinch starting; a held one still follows the tips, so it can end.
             let pinched = slot.pinch.update(tipDistance: simd_distance(thumb, index), allowStart: tipsInside && !isEdgeOn,
-                                            tipsSure: tipsSure && !isEdgeOn)
+                                            tipsSure: tipsSure)
             if pinched != wasPinched {
                 if pinched { pinches += 1 }
                 let p = (thumb + index) / 2

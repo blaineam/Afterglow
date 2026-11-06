@@ -96,7 +96,7 @@ struct GrabDemo {
         var present = [false, false]
         for hand in hands {
             let side = hand.isRight ? 1 : 0
-            pinchedNow[side] = hand.pinched
+            pinchedNow[side] = pinchedNow[side] || hand.pinched
             present[side] = true
             lastSeen[side] = time
             if hand.pinched {
