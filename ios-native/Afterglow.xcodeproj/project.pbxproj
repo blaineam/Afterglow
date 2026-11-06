@@ -1,0 +1,507 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0113CE32E718FC51FC3EBD4B /* ARController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27D58785E652A50828B3FA73 /* ARController.swift */; };
+		11DE11B2F262E90405DBEE7D /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3675F8D2A8455F705C68C25 /* Renderer.swift */; };
+		16D3E9D0732259261E2D92C5 /* PosePredictor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9966FF18394C15E0D6C282F /* PosePredictor.swift */; };
+		3C5D52A1580439FA628A5336 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1558F78E920E5997115FF985 /* ContentView.swift */; };
+		4752687B06DCC27E53D2DE95 /* LensDistortionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */; };
+		80531BEAA4C2E3BD43B155AB /* FrameTimingLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42BBF82DA32DCFE7BA0AD50 /* FrameTimingLog.swift */; };
+		8600C1861C53352DF6521570 /* PolynomialRadialDistortion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 078E21E05BF54EC00E0F4308 /* PolynomialRadialDistortion.swift */; };
+		87FA55609E5C45D423B33A4C /* ViewerParams.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1258CEE15BE1B0F0A68046 /* ViewerParams.swift */; };
+		8A26420DC8EEC87E91BE44DA /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F383C9716F8214D0A4E65E7D /* Settings.swift */; };
+		998F8E4E9A185C881C5B74DC /* SessionLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97890D6EB3536CA74C71E09 /* SessionLog.swift */; };
+		B11BEA3C83C4B14B3E457065 /* LensDistortion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4402EC68CCA81B671B468EE8 /* LensDistortion.swift */; };
+		D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */; };
+		E1F20C8F70E32B1C44AA3A59 /* ScreenMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F27D509791361AD2011E47 /* ScreenMetrics.swift */; };
+		E386311B4A1748A01C31E880 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = F3791EB1A750663D58286739 /* Shaders.metal */; };
+		E7BA05E46A062EE88CE62A42 /* AfterglowApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A07A7A60E0764F6995F5B5 /* AfterglowApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		05B38E9EFDF5071110952205 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4B2DB3C43A750CB236E73B8A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A0902AD11CA646B49C201ADC;
+			remoteInfo = Afterglow;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		06F0D4D6403D9E0E7319F313 /* Afterglow.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Afterglow.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		078E21E05BF54EC00E0F4308 /* PolynomialRadialDistortion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PolynomialRadialDistortion.swift; sourceTree = "<group>"; };
+		1558F78E920E5997115FF985 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		27D58785E652A50828B3FA73 /* ARController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARController.swift; sourceTree = "<group>"; };
+		38B30CD74969D37109A6EC5B /* AfterglowTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AfterglowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4402EC68CCA81B671B468EE8 /* LensDistortion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensDistortion.swift; sourceTree = "<group>"; };
+		57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalLog.swift; sourceTree = "<group>"; };
+		67A818255D526B59948B967F /* ShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
+		937E65EAEBF6C26F50ED3B34 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		A3675F8D2A8455F705C68C25 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
+		A7F27D509791361AD2011E47 /* ScreenMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenMetrics.swift; sourceTree = "<group>"; };
+		B2A07A7A60E0764F6995F5B5 /* AfterglowApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AfterglowApp.swift; sourceTree = "<group>"; };
+		BB1258CEE15BE1B0F0A68046 /* ViewerParams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerParams.swift; sourceTree = "<group>"; };
+		C9966FF18394C15E0D6C282F /* PosePredictor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosePredictor.swift; sourceTree = "<group>"; };
+		D42BBF82DA32DCFE7BA0AD50 /* FrameTimingLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameTimingLog.swift; sourceTree = "<group>"; };
+		D97890D6EB3536CA74C71E09 /* SessionLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLog.swift; sourceTree = "<group>"; };
+		DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensDistortionTests.swift; sourceTree = "<group>"; };
+		F3791EB1A750663D58286739 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
+		F383C9716F8214D0A4E65E7D /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		1AFE8A8B31701757B0E378F8 /* AfterglowTests */ = {
+			isa = PBXGroup;
+			children = (
+				DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */,
+			);
+			path = AfterglowTests;
+			sourceTree = "<group>";
+		};
+		3ACA2A5303130431042030D6 = {
+			isa = PBXGroup;
+			children = (
+				9BFC2DC2C15F790660B215F4 /* Afterglow */,
+				1AFE8A8B31701757B0E378F8 /* AfterglowTests */,
+				B9BDD00DF717B7759B21B2AC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		3BCFD31138C584DC604CCC1A /* Tracking */ = {
+			isa = PBXGroup;
+			children = (
+				27D58785E652A50828B3FA73 /* ARController.swift */,
+				C9966FF18394C15E0D6C282F /* PosePredictor.swift */,
+			);
+			path = Tracking;
+			sourceTree = "<group>";
+		};
+		6977E4302D248A13F4C272D6 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				B2A07A7A60E0764F6995F5B5 /* AfterglowApp.swift */,
+				1558F78E920E5997115FF985 /* ContentView.swift */,
+				F383C9716F8214D0A4E65E7D /* Settings.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		86E626DEA1D101755C49D099 /* Stereo */ = {
+			isa = PBXGroup;
+			children = (
+				4402EC68CCA81B671B468EE8 /* LensDistortion.swift */,
+				078E21E05BF54EC00E0F4308 /* PolynomialRadialDistortion.swift */,
+				A7F27D509791361AD2011E47 /* ScreenMetrics.swift */,
+				BB1258CEE15BE1B0F0A68046 /* ViewerParams.swift */,
+			);
+			path = Stereo;
+			sourceTree = "<group>";
+		};
+		9BFC2DC2C15F790660B215F4 /* Afterglow */ = {
+			isa = PBXGroup;
+			children = (
+				937E65EAEBF6C26F50ED3B34 /* Info.plist */,
+				6977E4302D248A13F4C272D6 /* App */,
+				D8C250DD6830DB4EB6EA5DA9 /* Log */,
+				F7AE949468DC1E095BBA8ECB /* Render */,
+				86E626DEA1D101755C49D099 /* Stereo */,
+				3BCFD31138C584DC604CCC1A /* Tracking */,
+			);
+			path = Afterglow;
+			sourceTree = "<group>";
+		};
+		B9BDD00DF717B7759B21B2AC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				06F0D4D6403D9E0E7319F313 /* Afterglow.app */,
+				38B30CD74969D37109A6EC5B /* AfterglowTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D8C250DD6830DB4EB6EA5DA9 /* Log */ = {
+			isa = PBXGroup;
+			children = (
+				D42BBF82DA32DCFE7BA0AD50 /* FrameTimingLog.swift */,
+				D97890D6EB3536CA74C71E09 /* SessionLog.swift */,
+				57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */,
+			);
+			path = Log;
+			sourceTree = "<group>";
+		};
+		F7AE949468DC1E095BBA8ECB /* Render */ = {
+			isa = PBXGroup;
+			children = (
+				A3675F8D2A8455F705C68C25 /* Renderer.swift */,
+				F3791EB1A750663D58286739 /* Shaders.metal */,
+				67A818255D526B59948B967F /* ShaderTypes.h */,
+			);
+			path = Render;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		09AF2787337D30883BD5EB0D /* AfterglowTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 10EEC93A69A34964A523BC9D /* Build configuration list for PBXNativeTarget "AfterglowTests" */;
+			buildPhases = (
+				CB1FB0B0660E7FE02621D00E /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2AC368462162D8E7CC25C766 /* PBXTargetDependency */,
+			);
+			name = AfterglowTests;
+			packageProductDependencies = (
+			);
+			productName = AfterglowTests;
+			productReference = 38B30CD74969D37109A6EC5B /* AfterglowTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		A0902AD11CA646B49C201ADC /* Afterglow */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F5A1FADBF0E80FD073F6DB25 /* Build configuration list for PBXNativeTarget "Afterglow" */;
+			buildPhases = (
+				F3D3B77078171E5C5179C37B /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Afterglow;
+			packageProductDependencies = (
+			);
+			productName = Afterglow;
+			productReference = 06F0D4D6403D9E0E7319F313 /* Afterglow.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4B2DB3C43A750CB236E73B8A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					09AF2787337D30883BD5EB0D = {
+						ProvisioningStyle = Automatic;
+					};
+					A0902AD11CA646B49C201ADC = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = A696E43C7ABBFACE926FD9D6 /* Build configuration list for PBXProject "Afterglow" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 3ACA2A5303130431042030D6;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = B9BDD00DF717B7759B21B2AC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A0902AD11CA646B49C201ADC /* Afterglow */,
+				09AF2787337D30883BD5EB0D /* AfterglowTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		CB1FB0B0660E7FE02621D00E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4752687B06DCC27E53D2DE95 /* LensDistortionTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F3D3B77078171E5C5179C37B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0113CE32E718FC51FC3EBD4B /* ARController.swift in Sources */,
+				E7BA05E46A062EE88CE62A42 /* AfterglowApp.swift in Sources */,
+				3C5D52A1580439FA628A5336 /* ContentView.swift in Sources */,
+				80531BEAA4C2E3BD43B155AB /* FrameTimingLog.swift in Sources */,
+				B11BEA3C83C4B14B3E457065 /* LensDistortion.swift in Sources */,
+				8600C1861C53352DF6521570 /* PolynomialRadialDistortion.swift in Sources */,
+				16D3E9D0732259261E2D92C5 /* PosePredictor.swift in Sources */,
+				11DE11B2F262E90405DBEE7D /* Renderer.swift in Sources */,
+				E1F20C8F70E32B1C44AA3A59 /* ScreenMetrics.swift in Sources */,
+				998F8E4E9A185C881C5B74DC /* SessionLog.swift in Sources */,
+				8A26420DC8EEC87E91BE44DA /* Settings.swift in Sources */,
+				E386311B4A1748A01C31E880 /* Shaders.metal in Sources */,
+				D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */,
+				87FA55609E5C45D423B33A4C /* ViewerParams.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		2AC368462162D8E7CC25C766 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A0902AD11CA646B49C201ADC /* Afterglow */;
+			targetProxy = 05B38E9EFDF5071110952205 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		69742BA4ABB49075619F8392 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				MTL_TREAT_WARNINGS_AS_ERRORS = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		6ADD25A0D74B5657C4F34177 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow.native.tests;
+				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = Afterglow/Render/ShaderTypes.h;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Afterglow.app/Afterglow";
+			};
+			name = Release;
+		};
+		8BD4B527E3150FA9E7067FCF /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Afterglow/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow.native;
+				PRODUCT_NAME = Afterglow;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_OBJC_BRIDGING_HEADER = Afterglow/Render/ShaderTypes.h;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		90145677E7AA51CE7EE5EEC9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				MTL_TREAT_WARNINGS_AS_ERRORS = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		98ADA7886EE760C024817C4A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Afterglow/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow.native;
+				PRODUCT_NAME = Afterglow;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_OBJC_BRIDGING_HEADER = Afterglow/Render/ShaderTypes.h;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B5BCAA87FE17B8A2D96222A3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow.native.tests;
+				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = Afterglow/Render/ShaderTypes.h;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Afterglow.app/Afterglow";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		10EEC93A69A34964A523BC9D /* Build configuration list for PBXNativeTarget "AfterglowTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B5BCAA87FE17B8A2D96222A3 /* Debug */,
+				6ADD25A0D74B5657C4F34177 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A696E43C7ABBFACE926FD9D6 /* Build configuration list for PBXProject "Afterglow" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				69742BA4ABB49075619F8392 /* Debug */,
+				90145677E7AA51CE7EE5EEC9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F5A1FADBF0E80FD073F6DB25 /* Build configuration list for PBXNativeTarget "Afterglow" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				98ADA7886EE760C024817C4A /* Debug */,
+				8BD4B527E3150FA9E7067FCF /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 4B2DB3C43A750CB236E73B8A /* Project object */;
+}

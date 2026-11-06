@@ -1,0 +1,66 @@
+# The native Afterglow app's Xcode project, generated with xcodegen (brew install xcodegen):
+#   cd ios-native && xcodegen generate
+# Tools/native_build_and_run.sh regenerates it when this file is newer than the project.
+name: Afterglow
+options:
+  bundleIdPrefix: com.wemiller
+  deploymentTarget:
+    iOS: "26.0"
+  xcodeVersion: "27.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    # Warnings are errors here, as in the Unity app's C#.
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+    GCC_TREAT_WARNINGS_AS_ERRORS: YES
+    MTL_TREAT_WARNINGS_AS_ERRORS: YES
+    MTL_ENABLE_DEBUG_INFO: INCLUDE_SOURCE
+    CODE_SIGN_STYLE: Automatic
+    TARGETED_DEVICE_FAMILY: "1"
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+targets:
+  Afterglow:
+    type: application
+    platform: iOS
+    sources:
+      - path: Afterglow
+        excludes:
+          - "**/* 2.*"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wemiller.afterglow.native
+        PRODUCT_NAME: Afterglow
+        INFOPLIST_FILE: Afterglow/Info.plist
+        SWIFT_OBJC_BRIDGING_HEADER: Afterglow/Render/ShaderTypes.h
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
+  AfterglowTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: AfterglowTests
+        excludes:
+          - "**/* 2.*"
+    dependencies:
+      - target: Afterglow
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wemiller.afterglow.native.tests
+        SWIFT_OBJC_BRIDGING_HEADER: Afterglow/Render/ShaderTypes.h
+schemes:
+  Afterglow:
+    build:
+      targets:
+        Afterglow: all
+        AfterglowTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - AfterglowTests
