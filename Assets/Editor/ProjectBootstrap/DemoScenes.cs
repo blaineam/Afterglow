@@ -12,14 +12,17 @@ using UnityEngine.Rendering;
 
 namespace ProjectBootstrap
 {
-    // Creates the demo catalog, the lobby and the starter demo scenes, but only those that don't
-    // exist yet. Unlike Core, these are made once and then edited by hand in the Editor, so a build
-    // never overwrites them; delete one to have it made again. Their materials go in their own
-    // folders for the same reason, since Core's generated ones are replaced on every build.
+    // Creates the demo catalog, the Home scene, the Room and the starter app scenes, but only those
+    // that don't exist yet. Unlike Core, these are made once and then edited by hand in the Editor,
+    // so a build never overwrites them; delete one to have it made again. Their materials go in their
+    // own folders for the same reason, since Core's generated ones are replaced on every build.
     public static class DemoScenes
     {
         const string DemosFolder = "Assets/_Project/Demos";
         internal const string CatalogPath = DemosFolder + "/DemoCatalog.asset";
+        const string HomeFolder = DemosFolder + "/Home";
+        const string HomeScene = HomeFolder + "/Home.unity";
+        // The Room: the checkerboard lobby the app used to start in, now a Play entry.
         const string LobbyFolder = DemosFolder + "/Lobby";
         const string LobbyScene = LobbyFolder + "/Lobby.unity";
         const string SandboxFolder = DemosFolder + "/Sandbox";
@@ -45,6 +48,7 @@ namespace ProjectBootstrap
         {
             StereoBuilder.EnsureFolder(DemosFolder);
             var catalog = EnsureCatalog();
+            EnsureHome();
             EnsureLobby();
             EnsureSandbox();
             EnsureVideo();
@@ -65,39 +69,52 @@ namespace ProjectBootstrap
             }
 
             // Entries are added once each; after that the catalog is edited by hand, so a changed
-            // title or order stays.
+            // title or order stays. The order is the "demo" launch option's index, so new entries go
+            // at the end.
             EnsureEntry(catalog, "sandbox", "Cube Sandbox",
                 "Your own room, through the camera. Look at a table or the floor and tap or pinch to put a cube there, then pick cubes up with your hand and move them.",
-                SandboxScene, new DemoRequirements { SixDof = Need.On, Passthrough = Need.On, Hands = Need.On, ScanSurfaces = true });
-            EnsureEntry(catalog, "video", "360 Video",
-                "Watch 360 and VR180 videos, 2D or 3D, all around you. Tap the video for the controls. Plays videos copied to the phone or linked from Google Drive.",
-                VideoScene, new DemoRequirements
+                "Put cubes on your real tables and floor, and move them by hand", "view_in_ar", new Color(0.78f, 0.49f, 0.12f),
+                SandboxScene, DemoCatalog.Section.Play,
+                new DemoRequirements { SixDof = Need.On, Passthrough = Need.On, Hands = Need.On, ScanSurfaces = true });
+            EnsureEntry(catalog, "video", "Media",
+                "Spatial photos and videos from your Photos library, 360 and VR180 videos, 2D or 3D, all around you, and flat films on a screen. Tap the video for the controls. Plays videos copied to the phone or linked from Google Drive.",
+                "Spatial photos and videos, and 360 films", "photo_library", new Color(0.7f, 0.25f, 0.29f),
+                VideoScene, DemoCatalog.Section.Media, new DemoRequirements
                 {
                     SixDof = Need.Off, Passthrough = Need.Off, Hands = Need.Off,
                 });
             EnsureEntry(catalog, "paint", "Air Paint",
                 "Paint in the air around you with your hand, like Tilt Brush. Pinch to paint; look at the tool panel and pinch to change color, brush and size.",
-                PaintScene, new DemoRequirements
+                "Paint in the air with your hand", "brush", new Color(0.48f, 0.31f, 0.75f),
+                PaintScene, DemoCatalog.Section.Play, new DemoRequirements
                 {
                     SixDof = Need.On, Passthrough = Need.On, Hands = Need.On,
                 });
             EnsureEntry(catalog, "rush", "Orb Rush",
                 "Orbs fly toward you: hit them with your hand as they reach the rings. One hand, a minute a round, getting faster.",
-                RushScene, new DemoRequirements
+                "Hit the incoming orbs with your hand", "bolt", new Color(0.12f, 0.55f, 0.62f),
+                RushScene, DemoCatalog.Section.Play, new DemoRequirements
                 {
                     SixDof = Need.On, Passthrough = Need.Off, Hands = Need.On,
                 });
             EnsureEntry(catalog, "portal", "Portal",
                 "Open a doorway on your floor and walk through it into another world, then look back at your room through the door.",
-                PortalScene, new DemoRequirements
+                "A doorway on your floor into another world", "door_front", new Color(0.23f, 0.25f, 0.6f),
+                PortalScene, DemoCatalog.Section.Play, new DemoRequirements
                 {
                     SixDof = Need.On, Passthrough = Need.On, Hands = Need.On,
                 });
+            // The checkerboard lobby the app used to start in, kept as a room to look around: its
+            // straight edges and colored markers show whether the lenses, and the view, are right.
+            EnsureEntry(catalog, "room", "The Room",
+                "A quiet checkerboard room with colored markers in known directions, to look around in and to check that straight edges look straight through the lenses.",
+                "A quiet checkerboard room, to look around and check the lenses", "grid_view", new Color(0.29f, 0.36f, 0.54f),
+                LobbyScene, DemoCatalog.Section.Play, new DemoRequirements());
             return catalog;
         }
 
-        static void EnsureEntry(DemoCatalog catalog, string id, string title, string description, string scenePath,
-            DemoRequirements requirements)
+        static void EnsureEntry(DemoCatalog catalog, string id, string title, string description, string tagline, string icon, Color tint,
+            string scenePath, DemoCatalog.Section section, DemoRequirements requirements)
         {
             if (catalog.IndexOf(id) >= 0)
                 return;
@@ -108,7 +125,11 @@ namespace ProjectBootstrap
             entry.FindPropertyRelative("Id").stringValue = id;
             entry.FindPropertyRelative("Title").stringValue = title;
             entry.FindPropertyRelative("Description").stringValue = description;
+            entry.FindPropertyRelative("Tagline").stringValue = tagline;
+            entry.FindPropertyRelative("Icon").stringValue = icon;
+            entry.FindPropertyRelative("Tint").colorValue = tint;
             entry.FindPropertyRelative("ScenePath").stringValue = scenePath;
+            entry.FindPropertyRelative("Section").enumValueIndex = (int)section;
             var needs = entry.FindPropertyRelative("Requirements");
             needs.FindPropertyRelative("SixDof").enumValueIndex = (int)requirements.SixDof;
             needs.FindPropertyRelative("Passthrough").enumValueIndex = (int)requirements.Passthrough;
@@ -119,7 +140,34 @@ namespace ProjectBootstrap
             Debug.Log($"[DemoScenes] Added {id} to the catalog");
         }
 
-        // The checkerboard room with its colored markers, which passthrough hides, and the demo cards.
+        // Home: where the app starts and comes back to, with the home screen open in front of the
+        // user. In passthrough it's the user's own room; without it, a dark floor with a faint grid,
+        // so there's a sense of space and scale, and the hint about the palm.
+        static void EnsureHome()
+        {
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(HomeScene) != null)
+                return;
+            StereoBuilder.EnsureFolder(HomeFolder);
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            var unlit = Shader.Find(UnlitShaderName);
+
+            var environment = new GameObject("Environment");
+            environment.AddComponent<VirtualEnvironment>();
+            var grid = StereoBuilder.SaveAsset(CreateGridTexture(), $"{HomeFolder}/Grid.asset");
+            const float floorSize = 30f;
+            var floor = StereoBuilder.CreatePrimitive(PrimitiveType.Quad, "Floor", environment.transform,
+                StereoBuilder.CreateMaterial("Home Floor", unlit, Color.white, grid, floorSize / 0.5f, HomeFolder), keepCollider: true);
+            floor.transform.SetLocalPositionAndRotation(new Vector3(0f, -k_EyeHeight, 0f), Quaternion.Euler(90f, 0f, 0f));
+            floor.transform.localScale = new Vector3(floorSize, floorSize, 1f);
+
+            // Not part of the environment: the hint stays in passthrough.
+            new GameObject("Palm Hint").AddComponent<PalmHint>();
+
+            EditorSceneManager.SaveScene(scene, HomeScene);
+            Debug.Log($"[DemoScenes] Made {HomeScene}");
+        }
+
+        // The Room: the checkerboard room with its colored markers, which passthrough hides.
         // Straight checker edges should look straight through the viewer.
         static void EnsureLobby()
         {
@@ -142,7 +190,7 @@ namespace ProjectBootstrap
             BuildMarkers(environment.transform, unlit);
 
             // Not part of the environment: the hint stays in passthrough.
-            new GameObject("Lobby Hint").AddComponent<LobbyHint>();
+            new GameObject("Palm Hint").AddComponent<PalmHint>();
 
             EditorSceneManager.SaveScene(scene, LobbyScene);
             Debug.Log($"[DemoScenes] Made {LobbyScene}");

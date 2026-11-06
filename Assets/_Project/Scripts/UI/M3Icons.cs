@@ -61,6 +61,18 @@ namespace CardboardXR.UI
             ["front_hand"] = 0xe769,
             ["apps"] = 0xe5c3,
             ["bolt"] = 0xea0b,
+            // The settings panel's Settings and Browser items, and the settings screen's header and
+            // its minus and plus buttons: all four drew as nothing until they were listed here.
+            ["tune"] = 0xe429,
+            ["public"] = 0xe80b,
+            ["remove"] = 0xe15b,
+            ["add"] = 0xe145,
+            // The home screen: its sections, the Play page's back arrow, and the Room.
+            ["photo_library"] = 0xe413,
+            ["folder"] = 0xe2c7,
+            ["sports_esports"] = 0xea28,
+            ["arrow_back"] = 0xe5c4,
+            ["grid_view"] = 0xe9b0,
         };
 
         // The icon's character, for a TMP text set in the icon font; empty for an unknown name.

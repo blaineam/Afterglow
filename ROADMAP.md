@@ -23,7 +23,7 @@ and the gap between them is most of the work.
 | **Panoramas** | **Not built.** The Photos query asks only for `spatialMedia`; the player has no cylindrical projection; the file scanner lists only video extensions, so a 360 still is invisible too. |
 | **WebXR browser** | A working start: page on a quad at ~12 fps, gaze + pinch click, gaze-edge and gamepad scroll, back/forward/home/reload/resize, address bar, on-screen keys, Bluetooth keyboard, on-device dictation, `immersive-vr` full screen with page-side stereo and barrel distortion from the app's own lens numbers. Window verified on the phone; **an immersive session is not**. Missing: tabs, bookmarks, history, text selection, downloads, `immersive-ar`, hand input sources, floor-relative spaces from the real floor. iOS only. |
 | **Two hands** | Done (`723c064`, `aede100`): detector keeps both palms, two `TrackedHand` slots, XR Hands fed left and right. **Never run on the phone**; the last device log predates both commits. |
-| **UX** | A prototype's: a lobby and a library of *demos*; the media list is five text rows a page inside a demo called "360 Video"; every tuning knob is a Mac-side launch flag; a room scan blocks every cold start. |
+| **UX** | A **home screen** since 2026-11-05: Media, Web, Files, Play and Settings above the settings panel, open as the app starts, with a Play page for the games and the old checkerboard lobby kept as *The Room*. The room scan no longer blocks the cold start: it runs, with its panel, when an app that places things opens. Still a prototype's inside Media: five text rows a page in the one player, which Files reuses filtered to the copied-in videos. |
 | **Performance** | Last device log (iPhone 18 Pro Max, 2026-11-03): 55–77 fps against a 120 target, 13–26 % late frames, steady ~50 ms "present wait" hitches with the browser window up. Visible judder in a headset. |
 | **Optics** | Until 2026-11-05 the rig defaulted to **Cardboard v1** — the wrong lenses for every viewer this project knows — unless a QR code had been scanned. The printed viewer's profile is now the default, and the scan screen offers the built-ins. |
 | **Desk testing** | New: the Editor runs 6DoF in AR Foundation's XR Simulation (a synthetic room), and both the Editor without it and the iOS Simulator run 3DoF with drag-to-look (`DeskHeadLook`). `Tools/ios_sim_build_and_run.sh` builds and launches on a simulator — **verified 2026-11-05**: the app runs on an iPhone 18 Pro Max simulator, defaults to the printed viewer's optics and falls back to 3DoF. |
@@ -56,9 +56,14 @@ Everything else sits on this, and three of the newest features have never run on
   the Simulator 2026-11-05**: opens from the panel, pages, shows the saved values. To verify on the
   phone: that the rows read through the lenses, and that a frame-rate change really changes the
   display's refresh rate.
-- **Home**: replace the lobby + app library with a home screen of Media, Web, Files, Play and
-  Settings. The lobby becomes the Play section's room. The room scan moves to where 6DoF is first
-  needed instead of blocking the cold start.
+- **Home** — done 2026-11-05: `HomeScreen` replaces the lobby and app library with Media, Web,
+  Files, Play and Settings; the lobby is the Play section's *Room*; a new `Home` scene (a grid floor
+  under passthrough) is where the app starts and *Leave* returns to; the room scan moved into
+  `RoomScanPrompt`, shown when an app with `ScanSurfaces` opens in 6DoF. Web is disabled off iOS and
+  says so. **Verified in the Simulator 2026-11-05**: the screen opens over the Home scene at start,
+  Web opens the browser, Play turns the page and The Room loads from it. Not exercised there:
+  *Leave*, *Files* and the *Settings* tile (the Simulator's screen gear doesn't take injected taps,
+  and a palm needs a camera), and the scan prompt, which needs 6DoF and so the phone.
 - **A repository of its own, with CI** — done 2026-11-05: `github.com/blaineam/CardboardXR`
   (`origin`; brenpoly's stays as `upstream`). `ci.yml` checks scripts, workflows and the Unity
   version on every push and runs the EditMode tests when a licence is in the secrets; `release.yml`

@@ -134,9 +134,10 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
 
 | Option | Effect |
 |---|---|
-| `demo N` | Start in demo N (its index in `Assets/_Project/Demos/DemoCatalog.asset`, from 0) instead of the lobby |
+| `demo N` | Start in app N (its index in `Assets/_Project/Demos/DemoCatalog.asset`, from 0) instead of Home |
 | `pinch 0` | Pinch-to-click off in 3DoF, for measuring its heat (it's otherwise always on) |
-| `dof 3` | Start the lobby in 3DoF, with no room scan (it starts in 6DoF passthrough otherwise) |
+| `dof 3` | Start Home in 3DoF (it starts in 6DoF passthrough otherwise) |
+| `scan 0` | No room scan when an app that places things opens; 6DoF finds the floor only |
 | `passthrough 1` | Start with the camera passthrough view |
 | `mono 1` | One full-screen view with no lens distortion, for use without a viewer |
 | `boundaryCm N` | Turn on the boundary warning: in VR, a grid on real surfaces within N cm |
@@ -163,19 +164,21 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   brenpoly's both have), *Cardboard v2* or *Cardboard v1* — and the choice is remembered; *Phone
   view* / *Viewer view* switches between the viewer's split-screen view and a single full-screen
   phone view; *Open settings* opens the settings panel.
-- **The settings screen**, from the panel's *Settings* button, stands where the app library does
-  and has the knobs that used to need a launch from the Mac: frame rate, render scale,
-  anti-aliasing, the focus wheel's offset, screen brightness, UI size, hand tracking rate, whether
-  to start in 3DoF or 6DoF, the room scan at start, and the boundary warning. Look at the minus or
-  plus beside a value and pinch or tap. Most apply at once; UI size and the start mode wait for the
-  next launch, and the note at the bottom says so. *Defaults* puts everything back.
-- **The app library**, above the settings panel, has an icon for the lobby and each demo: look at
-  one to see what it is, and pinch or tap to open it, from anywhere, so you can go straight from one
-  demo to another. *Apps* on the settings panel shows and hides it. The lobby is a checkerboard room
-  to start from, and opens with the library showing. As the app starts, the lobby is in 6DoF
-  passthrough and first scans your room: look around at the floor and any tables until it says it's
-  done (or tap *Skip*), so the demos start with tracking running and surfaces found. Each demo switches on what it needs (6DoF,
-  passthrough, hands) and leaving puts back what you had.
+- **The home screen** is what the app opens on, above the settings panel: *Media*, *Web*, *Files*,
+  *Play* and *Settings*. Look at one to see what it is, and pinch or tap to open it, from anywhere,
+  so you can go straight from one app to another; a dot marks the one running, and *Leave* in the
+  header goes back to Home. *Play* turns the page to the games (Cube Sandbox, Air Paint, Orb Rush,
+  Portal) and *The Room*, a checkerboard room with colored markers for looking around and checking
+  the lenses. *Home* on the settings panel shows and hides the screen. The app starts in 6DoF
+  passthrough with the screen open in front of you; nothing waits on a room scan. Each app switches
+  on what it needs (6DoF, passthrough, hands) and leaving puts back what you had.
+- **The settings screen**, from the panel's *Settings* button or the home screen's *Settings* tile,
+  stands where the home screen does and has the knobs that used to need a launch from the Mac: frame
+  rate, render scale, anti-aliasing, the focus wheel's offset, screen brightness, UI size, hand
+  tracking rate, whether to start in 3DoF or 6DoF, whether apps scan the room, and the boundary
+  warning. Look at the minus or plus beside a value and pinch or tap. Most apply at once; UI size
+  and the start mode wait for the next launch, and the note at the bottom says so. *Defaults* puts
+  everything back.
 - **Input is gaze and pinch everywhere**: look at something and pinch in front of the camera to
   click it. A screen tap works too. The reticle turns light blue while the camera sees your hand.
   In 6DoF demos, hand tracking does it (and picks things up); in 3DoF, a lighter detector that only
@@ -184,11 +187,12 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   the gaze, then the demo's own use (painting, hitting orbs), then picking up, then a plain click.
   If you rest your gaze on a button with no hand in the camera's view, a hint under the reticle says
   to raise it.
-- **360 Video** plays 360 and VR180 videos, 2D or 3D, flat films on a screen ahead of you, and the
-  **spatial photos** already in your Photos library, which an iPhone 15 Pro and later record with a
-  picture for each eye. Pinch on the video for the controls. Two small test clips are bundled, and
-  the spatial photos need no copying in: allow Photos the first time the demo opens and they are
-  listed with the files. To bundle your own in local builds, put them in a `360` folder
+- **Media** plays 360 and VR180 videos, 2D or 3D, flat films on a screen ahead of you, and the
+  **spatial photos and videos** already in your Photos library, which an iPhone 15 Pro and later
+  record with a picture for each eye. Pinch on the video for the controls. Two small test clips are
+  bundled, and the spatial photos need no copying in: allow Photos the first time Media opens and
+  they are listed with the files. **Files** is the same player listing only what you copied in or
+  linked, and never asks about Photos. To bundle your own in local builds, put them in a `360` folder
   beside the project (or set `CARDBOARDXR_VIDEOS`): the build scripts copy them into
   `Assets/StreamingAssets`, which git ignores apart from the test clips. Or add your own to the app's `Videos` folder on the phone: on
   Android `adb push video.mp4 /storage/emulated/0/Android/data/com.brenpoly.cardboardxr/files/Videos`;
@@ -208,12 +212,16 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   through the door behind; walk back through to return. It's in passthrough, so all of it is flat.
 - **The settings panel**, in every scene: hold a hand up with its palm toward you and a gear button
   appears between your thumb and index finger; pinch to open the panel in front of you. It has
-  *Apps* (the app library), *Recenter* and *Scan Room* (in 6DoF: scans again, or ends a scan), and the toggles *6DoF* and *Passthrough*. It follows
+  *Home* (the home screen), *Settings* (the settings screen), *Browser*, *Recenter* and *Scan Room*
+  (in 6DoF: scans again, or ends a scan), and the toggles *6DoF* and *Passthrough*. It follows
   you lazily as you turn; the *X* below it closes it. Look at a button and tap the screen, or
   pinch. Holding a tap recenters.
-- **Surfaces** are found by the lobby's scan at launch, which runs until it finds nothing new. When
-  6DoF starts again later (after the 360 Video, say) a shorter scan runs until the floor is found,
-  to save CPU for the hand models; the Cube Sandbox scans the whole room if the lobby's didn't.
+- **Surfaces**: in 6DoF the floor is found by itself, with a short scan whenever 6DoF starts, to
+  save CPU for the hand models. An app that puts things on your tables (the Cube Sandbox) scans the
+  whole room as it opens, with a small panel counting the surfaces found: look around at the floor
+  and any tables until it says it's done, or tap *Skip* (*Done* once the floor is in). The scan
+  runs until it finds nothing new, and once the room is scanned no later app scans it again. The
+  *Scan the room for apps* setting turns this off, leaving the floor only.
 - **Placing and moving objects**: in 6DoF, look at a surface and tap or pinch to place a cube,
   which is anchored there. Your head aims and a pinch clicks; your hand, or its ray, picks cubes
   up. A cube turns cyan when a pinch would grab it. Held, it turns with your hand and knocks other
@@ -302,20 +310,24 @@ Code is in `Assets/_Project/Scripts`, one assembly per area:
 - **Interaction** — gaze pointing and highlighting
 - **UI** — a Material Design for XR kit (Material 3's baseline dark scheme, Roboto, Material
   Icons) sized in Android XR's dp, which every scene's UI is built from
-- **Demos** — moving between the lobby and the demos, and what each demo needs from Core
+- **Demos** — the home screen, moving between Home and the apps, the room scan's prompt, and what
+  each app needs from Core
 - **Tracking** — sensor fusion and filters with no Unity dependencies
 
-**The app is one Core scene with the lobby and demos loaded on top.** Core holds everything that
-has to keep running across demos: the rig, head tracking, AR, hands, gaze and the settings panel. The lobby
-and each demo are scenes loaded additively and unloaded on leaving; `DemoManager` switches between
-them and demo scripts reach Core through `CoreServices`. A demo's scene, assets and scripts live in
-`Assets/_Project/Demos/<Name>/`, and its entry in `DemoCatalog.asset` names its scene and what it
-needs.
+**The app is one Core scene with Home and the apps loaded on top.** Core holds everything that
+has to keep running across apps: the rig, head tracking, AR, hands, gaze, the settings panel and
+the home screen above it. Home and each app are scenes loaded additively and unloaded on leaving;
+`DemoManager` switches between them and app scripts reach Core through `CoreServices`. An app's
+scene, assets and scripts live in `Assets/_Project/Demos/<Name>/`, and its entry in
+`DemoCatalog.asset` names its scene, its section of the home screen (Play, or Media for the player)
+and what it needs. The home screen's Media and Files tiles both open the Media entry; Files passes
+it a word (`DemoManager.Argument`) that makes it list only the files.
 
 **Core is generated**, not edited by hand: `Assets/Editor/ProjectBootstrap/StereoBuilder.cs`
 builds `Core.unity` and its materials on every build, so changes made to them in the Editor are
-lost. **The lobby and demos are edited by hand**: `DemoScenes.cs` makes a starter scene or catalog
-entry only when it's missing, and never overwrites one. `ProjectSetup.Apply` sets the player and XR settings for both platforms.
+lost. **Home, the Room and the apps are edited by hand**: `DemoScenes.cs` makes a starter scene or
+catalog entry only when it's missing, and never overwrites one. `ProjectSetup.Apply` sets the
+player and XR settings for both platforms.
 
 See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for current limitations and
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for ported code and models.

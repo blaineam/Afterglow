@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Runs the EditMode tests, builds the app (Core, the lobby and the demos), installs it on the phone and launches it, then
+# Runs the EditMode tests, builds the app (Core, Home and the apps), installs it on the phone and launches it, then
 # prints ~30 s of the app's tagged logs, the display's refresh-rate votes and the phone's
 # temperatures. Extra arguments go to `am start`, for launch options:
 #   zsh Tools/build_and_run.sh --ei dof 6 --ei passthrough 1

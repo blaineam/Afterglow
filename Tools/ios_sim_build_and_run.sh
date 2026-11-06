@@ -85,8 +85,15 @@ if [ -z "$BOOTED" ]; then
     xcrun simctl boot $UDID || exit 1
     xcrun simctl bootstatus $UDID -b >/dev/null
 fi
-# The Simulator app shows the booted device; opening it again only brings it to the front.
-open -a "$(xcode-select -p)/Applications/Simulator.app" --args -CurrentDeviceUDID $UDID
+# The Simulator app shows the booted device; opening it again only brings it to the front. Xcode 27
+# no longer ships it inside Xcode.app, so a missing one is not an error: the device still runs, and
+# any viewer that attaches to a booted simulator shows it.
+SIM_APP="$(xcode-select -p)/Applications/Simulator.app"
+if [ -d "$SIM_APP" ]; then
+    open -a "$SIM_APP" --args -CurrentDeviceUDID $UDID
+else
+    echo "(no Simulator.app in this Xcode; the simulator runs without its window)"
+fi
 
 if [ $STAGE != launch ]; then
     echo "== install"

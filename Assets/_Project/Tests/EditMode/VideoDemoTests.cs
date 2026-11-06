@@ -32,6 +32,24 @@ namespace CardboardXR.Stereo.Tests
         }
 
         [Test]
+        public void FilesLeaveOutTheBundledClipsAndThePhotosLibrary()
+        {
+            var entries = new System.Collections.Generic.List<VideoEntry>
+            {
+                new() { Title = "Sample_360", Url = "/app/Sample_360.mp4" },
+                new() { Title = "Sample_180_sbs", Url = "/app/Sample_180_sbs.mp4" },
+                new() { Title = "beach", Url = "/data/Videos/beach.mp4" },
+                new() { Title = "concert", DriveId = "1AbC" },
+                new() { Title = "Spatial photo, 3 Nov", SpatialIndex = 0 },
+                new() { Title = "Spatial video, 4 Nov", SpatialIndex = 1, SpatialIsVideo = true },
+            };
+            var files = VideoLibrary.FilesOnly(entries, bundledCount: 2);
+            CollectionAssert.AreEqual(new[] { "beach", "concert" }, files.ConvertAll(entry => entry.Title));
+            Assert.IsEmpty(VideoLibrary.FilesOnly(entries.GetRange(0, 2), 2));
+            Assert.IsEmpty(VideoLibrary.FilesOnly(new System.Collections.Generic.List<VideoEntry>(), 0));
+        }
+
+        [Test]
         public void EachEyeSeesItsOwnPartOfTheFrame()
         {
             var sideBySide = new VideoFormat(Projection.Half180, StereoLayout.SideBySide);

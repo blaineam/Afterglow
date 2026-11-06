@@ -239,7 +239,7 @@ namespace CardboardXR.Stereo
                 ScanRoom();
         }
 
-        // Ends a scan now, as the lobby's Skip does.
+        // Ends a scan now, as the scan prompt's Skip does.
         public void FinishScan()
         {
             if (m_Scanning)
@@ -262,7 +262,7 @@ namespace CardboardXR.Stereo
         void StopScan(string how)
         {
             m_Scanning = false;
-            // Ended early still counts once the floor's in: that's the lobby's Done.
+            // Ended early still counts once the floor's in: that's the scan prompt's Done.
             if (!m_StopWhenFloorFound && (how != "ended early" || m_Floor.HasValue))
                 HasScannedRoom = true;
             Debug.Log($"[Room] Scan {how} after {m_ScanTime:F0} s of tracking ({Time.unscaledTime - m_ScanStart:F0} s in all): " +

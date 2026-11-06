@@ -15,7 +15,7 @@ namespace CardboardXR.Demos.Rush
     // faster. The best score is kept on the phone. Pinches during a round are swallowed, so hitting
     // can't click anything, except on the Pause button above the track; between rounds they work
     // the menus as usual. Paused, the game's clock stops and the orbs hide; the pause menu resumes,
-    // restarts or quits the round (the lobby is on the settings panel). Hit tests use the hand's
+    // restarts or quits the round (Home is on the settings panel). Hit tests use the hand's
     // joints as HandTracker predicts them for this frame, which makes up for most of its delay.
     // The track's position eases after the head during a round (k_FollowSeconds), while its facing
     // stays put, so orbs keep arriving within reach however the player shifts, and however head
@@ -118,7 +118,7 @@ namespace CardboardXR.Demos.Rush
                 PinchRouter.Clear();
             if (core.Settings != null)
                 core.Settings.OpenChanged -= OnSettingsOpenChanged;
-            // Out of the round first: the settings panel's Lobby can leave mid-round, and Update would
+            // Out of the round first: the home screen's Leave can leave mid-round, and Update would
             // otherwise run once more on the cleared track before the scene unloads.
             if (m_State == State.Playing || m_State == State.Paused)
                 Debug.Log($"[Rush] Left mid-round at {m_Clock - m_RoundStart:F0} s, score {m_Score}");

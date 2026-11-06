@@ -71,6 +71,15 @@ assembly, and the build report counting each as an error. The messages name the 
 so nothing is actually duplicated; the export, the Xcode build and the app are fine. Real failures
 still say `error CS` in the log and `Build Failed` in the summary, which the scripts check for.
 
+### An incremental player build can crash at launch after a script's serialized fields change
+
+Seen 2026-11-05 after `DemoCatalog.Entry` gained a field: the Simulator export took 31 s, the app
+crashed at launch in `CachedReader::OutOfBoundsError` while reading a MonoBehaviour's string array,
+and no session log was written. The exported IL2CPP code was current; the serialized data was not.
+Deleting `Builds/<target>`, its derived data and `Library/BuildPlayerData` and exporting again fixed
+it. If an app crashes before its first `[Stereo]` line after a change to serialized fields, do that
+before looking for a bug.
+
 ### CI's Unity jobs have never run
 
 `ci.yml`'s EditMode tests and all of `release.yml` need a Unity licence in the repository's secrets
@@ -91,10 +100,16 @@ Photos library, video decoding and WKWebView do work; dictation reports itself u
 
 ### Panels are hidden by nearer objects
 
-The settings panel, the app library and the settings screen are world-space canvases at 1.25 m,
-drawn with depth: a scene object nearer than that, such as the lobby's floating cubes, draws over
-them. Seen in the Simulator on 2026-11-05 with the lobby's white cube over the settings screen's
+The settings panel, the home screen and the settings screen are world-space canvases at 1.25 m,
+drawn with depth: a scene object nearer than that, such as the Room's floating cubes, draws over
+them. Seen in the Simulator on 2026-11-05 with the Room's white cube over the settings screen's
 title. The fix is to draw the panels last, over everything, as the gaze reticle already is.
+
+### The browser's page shows faintly behind the stereo view
+
+With the browser window open in the Simulator (2026-11-05), the page itself is also visible, very
+faintly and at full screen, behind the two eye views: the web view sits in the view hierarchy under
+Unity's and is not fully covered. Not checked on the phone. The window on the quad is unaffected.
 
 ## iPhone 18 Pro Max
 

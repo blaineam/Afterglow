@@ -7,27 +7,28 @@ using UnityEngine;
 
 namespace CardboardXR.Demos
 {
-    // What the lobby does when it's entered. The first time, as the app starts (in 6DoF passthrough,
-    // DemoCatalog.LobbyRequirements), it scans the room: a small panel asks the user to look around
-    // at the floor and any tables while the surfaces appear in the scan's wave, and counts what's
-    // been found. The scan ends by itself once nothing new turns up (RoomBoundary.ScanRoom), or with
-    // Done or Skip; it waits for tracking to start however long that takes (the phone may still be
-    // face down), and gives up only if 6DoF itself ends. So demos start with
-    // tracking running and the floor and tables known. Then, and on every later visit, the settings
-    // panel opens with the app library showing. Hand tracking pauses for the scan's first seconds
-    // (RoomBoundary.PausesHands), so the panel's button may need a screen tap at first. The panel follows the head lazily, as the user looks
-    // around. Lives in the Core scene. Logs [Demos].
-    public class LobbyFlow : MonoBehaviour
+    // The room scan's panel, shown over an app that scans the room as it opens (DemoManager, for a
+    // catalog entry with ScanSurfaces, in 6DoF, when the room hasn't been scanned since 6DoF began):
+    // it asks the user to look around at the floor and any tables while the surfaces appear in the
+    // scan's wave, and counts what's been found. The scan ends by itself once nothing new turns up
+    // (RoomBoundary.ScanRoom), or with Done or Skip; it waits for tracking to start however long
+    // that takes (the phone may still be face down), and gives up only if 6DoF itself ends. The app
+    // runs meanwhile, so nothing waits on the scan; the panel goes when the scan does, or when
+    // another scene loads. Hand tracking pauses for the scan's first seconds (RoomBoundary.PausesHands),
+    // so a button may need a screen tap at first. The panel follows the head lazily, as the user
+    // looks around. Before the home screen, this scan ran in the lobby and blocked every cold start.
+    // Lives in the Core scene. Logs [Scan].
+    public class RoomScanPrompt : MonoBehaviour
     {
         const float k_Distance = 1.5f;
-        const float k_Pitch = -6f;
+        // Below the line of sight, so it covers less of what the app itself shows.
+        const float k_Pitch = -14f;
         const float k_DeadZone = 35f;
 
         [SerializeField] CoreServices m_Core;
-        [SerializeField] AppLibrary m_Library;
 
-        bool m_Scanned;
         bool m_Ending;
+        Coroutine m_Running;
         RectTransform m_Panel;
         TMP_Text m_Status;
         M3Button m_Button;
@@ -35,7 +36,13 @@ namespace CardboardXR.Demos
         bool m_Following;
         float m_YawSpeed;
 
-        void Awake() => m_Core.Demos.Loaded += OnLoaded;
+        public bool IsShowing => m_Running != null;
+
+        void Awake()
+        {
+            if (m_Core != null && m_Core.Demos != null)
+                m_Core.Demos.Loaded += OnLoaded;
+        }
 
         void OnDestroy()
         {
@@ -43,38 +50,38 @@ namespace CardboardXR.Demos
                 m_Core.Demos.Loaded -= OnLoaded;
         }
 
-        void OnLoaded(DemoCatalog.Entry entry)
-        {
-            if (entry != null)
-            {
-                // Left mid-scan, from the library: nothing more to show.
-                StopAllCoroutines();
-                if (m_Panel != null)
-                    M3Fade.Hide(m_Panel.gameObject);
-                return;
-            }
-            // Unless the "scan" setting turned the scan at start off: 6DoF then finds the floor on
-            // its own, and the Cube Sandbox scans the room when it is entered.
-            if (!m_Scanned && m_Core.Fusion.CurrentMode == HeadPoseFusion.Mode.SixDof && Settings.Int("scan", 1) != 0)
-                StartCoroutine(ScanThenOpen());
-            else
-                m_Library.Open();
-        }
+        // Another scene: the scan this was for is over, whatever it found.
+        void OnLoaded(DemoCatalog.Entry entry) => Hide();
 
-        IEnumerator ScanThenOpen()
+        // Shows the panel for a scan RoomBoundary.ScanRoom has started.
+        public void Show()
         {
-            m_Scanned = true;
-            m_Ending = false;
-            var boundary = m_Core.Boundary;
-            boundary.ScanRoom();
+            Hide();
             Build();
+            m_Ending = false;
             m_Yaw = HeadYaw();
             m_Following = false;
             m_YawSpeed = 0f;
+            UpdatePanel(false);
             M3Fade.Show(m_Panel.gameObject);
+            m_Running = StartCoroutine(Run());
+        }
+
+        public void Hide()
+        {
+            if (m_Running != null)
+                StopCoroutine(m_Running);
+            m_Running = null;
+            if (m_Panel != null)
+                M3Fade.Hide(m_Panel.gameObject);
+        }
+
+        IEnumerator Run()
+        {
+            var boundary = m_Core.Boundary;
             var started = Time.unscaledTime;
             var tracked = false;
-            Debug.Log("[Demos] Scanning the room in the lobby");
+            Debug.Log("[Scan] Scanning the room");
 
             string how;
             while (true)
@@ -100,10 +107,10 @@ namespace CardboardXR.Demos
                 UpdatePanel(tracked);
                 yield return null;
             }
-            Debug.Log($"[Demos] Room scan in the lobby {how} after {Time.unscaledTime - started:F0} s: " +
+            Debug.Log($"[Scan] Room scan {how} after {Time.unscaledTime - started:F0} s: " +
                       $"{boundary.SurfaceCount} surfaces, {boundary.SurfaceArea:F1} m2, {(boundary.HasFloor ? "floor found" : "no floor")}");
+            m_Running = null;
             M3Fade.Hide(m_Panel.gameObject);
-            m_Library.Open();
         }
 
         // Done once the floor's found, Skip before.

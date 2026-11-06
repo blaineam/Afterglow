@@ -168,7 +168,7 @@ namespace CardboardXR.Hands
         }
 
         // How far the head can turn from the panel before it follows: past its edge, as seen from the
-        // head, by k_FollowMargin. It narrows in the lobby, where the toolbar has fewer items.
+        // head, by k_FollowMargin. It narrows where the toolbar has fewer items showing.
         float DeadZone()
         {
             var halfWidth = m_Panel.rect.width / 2f * m_Panel.lossyScale.x;

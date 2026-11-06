@@ -9,7 +9,7 @@ namespace CardboardXR.Demos.Paint
     // the point between your thumb and index fingertip for as long as the pinch lasts. A small ball
     // there shows the brush's color and size before you start. The tool panel, floating to your left,
     // picks the color, brush (Ink, Tube, Glow) and size, and has Undo, Reset (press twice), the room
-    // (VR or passthrough); look at it and pinch. The lobby is on the settings panel. A pinch looking at the
+    // (VR or passthrough); look at it and pinch. Home is on the settings panel. A pinch looking at the
     // panel clicks rather than paints, so Core's own panel is hidden: a stroke drawn in front of it
     // would otherwise press its buttons. Strokes are kept in the room's space (under the XR Origin),
     // so they stay put as tracking corrects itself, and are removed on leaving. Runs in 6DoF, starting

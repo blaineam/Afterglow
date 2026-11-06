@@ -6,22 +6,26 @@ using UnityEngine.SceneManagement;
 
 namespace CardboardXR.Demos
 {
-    // Moves between the lobby and the demos. The Core scene (rig, AR, hands, gaze) stays loaded the
-    // whole time, so tracking, placed anchors and the viewer's calibration carry across; the lobby
-    // and each demo are scenes loaded on top of it and unloaded on leaving. Entering a demo switches
-    // Core to what the demo needs (DemoRequirements) and leaving puts back what was on before, so the
-    // lobby is as the user left it. Going straight from one demo to another goes straight from one's
-    // needs to the next's, from what was on before the first: putting the lobby's 3DoF back in between
-    // turned AR off and on again, which restarted tracking. The "demo" launch option (an index into the catalog) starts in a
-    // demo instead of the lobby. Demos are picked in the app library (AppLibrary), from the lobby or
-    // from another demo. Nothing is placed on surfaces in the lobby, and entering a demo starts it with
-    // no objects placed. Lives in the Core scene.
+    // Moves between the Home scene and the apps. The Core scene (rig, AR, hands, gaze) stays loaded
+    // the whole time, so tracking, placed anchors and the viewer's calibration carry across; Home and
+    // each app are scenes loaded on top of it and unloaded on leaving. Entering an app switches Core
+    // to what the app needs (DemoRequirements) and leaving puts back what was on before, so Home is as
+    // the user left it. Going straight from one app to another goes straight from one's needs to the
+    // next's, from what was on before the first: putting Home's 3DoF back in between turned AR off
+    // and on again, which restarted tracking. The "demo" launch option (an index into the catalog)
+    // starts in an app instead of Home. Apps are picked on the home screen (HomeScreen), from Home or
+    // from another app. An app that needs the room's surfaces (ScanSurfaces) scans the room as it
+    // opens, with RoomScanPrompt showing what's found; nothing waits on the scan, which used to block
+    // every cold start in the lobby. Nothing is placed on surfaces at Home, and entering an app starts
+    // it with no objects placed. Lives in the Core scene.
     public class DemoManager : MonoBehaviour
     {
         [SerializeField] DemoCatalog m_Catalog;
         [SerializeField] CoreServices m_Core;
         [Tooltip("The view fades through black between scenes, rather than cutting.")]
         [SerializeField] ScreenFade m_Fade;
+        [Tooltip("Optional: shows the room scan's progress over an app that scans as it opens.")]
+        [SerializeField] RoomScanPrompt m_ScanPrompt;
 
         string m_LoadedScene;
         DemoCatalog.Entry m_Current;
@@ -35,20 +39,23 @@ namespace CardboardXR.Demos
         const float k_FadeInSeconds = 0.5f;
 
         public DemoCatalog Catalog => m_Catalog;
-        // The demo running now, or null in the lobby.
+        // The app running now, or null at Home.
         public DemoCatalog.Entry Current => m_Current;
+        // What the app running now was entered with (Enter), or null: a word from the home screen,
+        // such as HomeScreen.k_FilesArgument, which the app reads in OnDemoEnter.
+        public string Argument { get; private set; }
 
-        // A demo (or the lobby, null) finished loading.
+        // An app (or Home, null) finished loading.
         public event System.Action<DemoCatalog.Entry> Loaded;
 
         // A frame after Core's own Start, so the launch options for 6DoF and passthrough have applied
-        // before a demo overrides them.
+        // before an app overrides them.
         IEnumerator Start()
         {
             yield return null;
             if (m_Catalog == null)
             {
-                Debug.LogError("[Demos] No demo catalog, so no lobby or demos");
+                Debug.LogError("[Demos] No demo catalog, so no Home or apps");
                 yield break;
             }
             m_DefaultPrefab = m_Core.Placer.ObjectPrefab;
@@ -57,21 +64,20 @@ namespace CardboardXR.Demos
             if (m_Catalog.TryGet(index, out var entry))
             {
                 Debug.Log($"[Demos] Starting in demo {index} ({entry.Id}), from the launch option");
-                yield return Switch(entry);
+                yield return Switch(entry, null);
             }
             else
             {
                 if (index >= 0)
                     Debug.LogWarning($"[Demos] No demo {index}: the catalog has {m_Catalog.Demos.Count}");
-                // The lobby starts in 6DoF passthrough, where LobbyFlow scans the room, unless the "dof 3"
-                // launch option asks for 3DoF.
+                // Home starts in 6DoF passthrough unless the "dof 3" setting asks for 3DoF.
                 if (Settings.Int("dof", 6) == 6)
                 {
-                    var state = CoreState.Resolve(m_Core.State, m_Catalog.LobbyRequirements);
-                    Debug.Log($"[Demos] Starting the lobby in {state}");
+                    var state = CoreState.Resolve(m_Core.State, m_Catalog.HomeRequirements);
+                    Debug.Log($"[Demos] Starting Home in {state}");
                     m_Core.Apply(state);
                 }
-                yield return Switch(null);
+                yield return Switch(null, null);
             }
         }
 
@@ -81,23 +87,30 @@ namespace CardboardXR.Demos
                 Enter(entry);
         }
 
-        public void Enter(DemoCatalog.Entry entry)
+        // argument: a word for the app, kept in Argument while it runs.
+        public void Enter(DemoCatalog.Entry entry, string argument = null)
         {
-            if (m_Busy || entry == m_Current)
+            if (m_Busy || (entry == m_Current && argument == Argument))
                 return;
-            StartCoroutine(Switch(entry));
+            StartCoroutine(Switch(entry, argument));
         }
 
-        // The app library's Lobby, and a demo's own way out.
-        public void ExitToLobby()
+        // The home screen's Leave, and an app's own way out.
+        public void ExitToHome()
         {
             if (m_Busy || m_Current == null)
                 return;
-            StartCoroutine(Switch(null));
+            StartCoroutine(Switch(null, null));
         }
 
-        // Unloads what's loaded and loads the demo, or the lobby for null.
-        IEnumerator Switch(DemoCatalog.Entry next)
+        // Whether entering an app should scan the room: it asks for surfaces, 6DoF is on to find them,
+        // the room hasn't been scanned since 6DoF began, and the "scan" setting allows it. Pure, for
+        // testing.
+        public static bool WantsScan(DemoRequirements needs, CoreState state, bool hasScannedRoom, bool scanSetting) =>
+            needs.ScanSurfaces && state.SixDof && !hasScannedRoom && scanSetting;
+
+        // Unloads what's loaded and loads the app, or Home for null.
+        IEnumerator Switch(DemoCatalog.Entry next, string argument)
         {
             m_Busy = true;
             var started = Time.realtimeSinceStartup;
@@ -113,24 +126,28 @@ namespace CardboardXR.Demos
             var fromDemo = m_Current != null;
             yield return Unload(restore: next == null);
 
+            var scanning = false;
             if (next != null)
             {
-                // From the lobby, what to put back on leaving; from another demo, that's kept.
+                // From Home, what to put back on leaving; from another app, that's kept.
                 if (!fromDemo)
                     m_BeforeDemo = m_Core.State;
                 var state = CoreState.Resolve(m_BeforeDemo, next.Requirements);
                 Debug.Log($"[Demos] Entering {next.Id}: {state} (was {m_BeforeDemo})");
-                // Anything a demo kept on leaving doesn't carry into the next one.
+                // Anything an app kept on leaving doesn't carry into the next one.
                 m_Core.Placer.RemoveAll();
-                // Cubes, unless the demo chooses something else in OnDemoEnter.
+                // Cubes, unless the app chooses something else in OnDemoEnter.
                 m_Core.Placer.ObjectPrefab = m_DefaultPrefab;
                 m_Core.Apply(state);
-                // Unless the lobby's scan already covered the room.
-                if (next.Requirements.ScanSurfaces && state.SixDof && !m_Core.Boundary.HasScannedRoom)
+                // Unless an earlier scan already covered the room.
+                if (WantsScan(next.Requirements, state, m_Core.Boundary.HasScannedRoom, Settings.Int("scan", 1) != 0))
+                {
                     m_Core.Boundary.ScanRoom();
+                    scanning = true;
+                }
             }
 
-            var path = next != null ? next.ScenePath : m_Catalog.LobbyScenePath;
+            var path = next != null ? next.ScenePath : m_Catalog.HomeScenePath;
             var loading = SceneManager.LoadSceneAsync(path, LoadSceneMode.Additive);
             if (loading == null)
             {
@@ -143,15 +160,20 @@ namespace CardboardXR.Demos
             yield return loading;
 
             var scene = SceneManager.GetSceneByPath(path);
-            // What the demo creates goes into its own scene, so unloading it cleans up.
+            // What the app creates goes into its own scene, so unloading it cleans up.
             SceneManager.SetActiveScene(scene);
             m_LoadedScene = path;
             m_Current = next;
+            Argument = next != null ? argument : null;
             foreach (var demo in Demos(scene))
                 demo.OnDemoEnter(m_Core);
-            Debug.Log($"[Demos] {(next != null ? next.Title : "Lobby")} loaded in {Time.realtimeSinceStartup - started:F1} s");
+            Debug.Log($"[Demos] {(next != null ? next.Title : "Home")} loaded in {Time.realtimeSinceStartup - started:F1} s" +
+                      (Argument != null ? $" with \"{Argument}\"" : ""));
             m_Busy = false;
             Loaded?.Invoke(next);
+            // After Loaded: the prompt hides on any load, then shows for this one.
+            if (scanning && m_ScanPrompt != null)
+                m_ScanPrompt.Show();
             if (m_Fade != null)
                 m_Fading = StartCoroutine(FadeIn());
         }
@@ -172,7 +194,7 @@ namespace CardboardXR.Demos
             m_Fading = null;
         }
 
-        // restore: put back what was on before the demo being left; not when another demo follows.
+        // restore: put back what was on before the app being left; not when another app follows.
         IEnumerator Unload(bool restore)
         {
             // The settings panel was opened for the scene being left.
@@ -187,6 +209,7 @@ namespace CardboardXR.Demos
 
             var leaving = m_Current;
             m_Current = null;
+            Argument = null;
             m_LoadedScene = null;
             if (leaving != null)
             {
@@ -207,7 +230,7 @@ namespace CardboardXR.Demos
 
             SceneManager.SetActiveScene(gameObject.scene);
             yield return SceneManager.UnloadSceneAsync(scene);
-            // Demo assets, such as a video's textures, are only unloaded once nothing refers to them.
+            // App assets, such as a video's textures, are only unloaded once nothing refers to them.
             yield return Resources.UnloadUnusedAssets();
         }
 

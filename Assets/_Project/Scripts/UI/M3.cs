@@ -113,6 +113,10 @@ namespace CardboardXR.UI
             text.overflowMode = TextOverflowModes.Overflow;
             text.raycastTarget = false;
             text.text = M3Icons.Glyph(icon);
+            // An icon the table lacks draws as nothing, silently; the toolbar's Settings and Browser
+            // items shipped that way.
+            if (!string.IsNullOrEmpty(icon) && text.text.Length == 0)
+                Debug.LogWarning($"[UI] No icon named \"{icon}\" in M3Icons, so {name} has none");
             return text;
         }
 

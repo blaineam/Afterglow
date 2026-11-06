@@ -12,9 +12,11 @@ namespace CardboardXR.Demos.Video
     // around you, or, for a spatial one, on a screen ahead of you with a picture per eye. Pinch (or tap the screen) anywhere on the
     // video to bring up the controls, a little below where you're looking: play and pause, jump back
     // or ahead 10 s, seek by clicking the bar, the next video, the format (when a file's name doesn't
-    // say it), and the library (the lobby is on the settings panel). Pinch on the video again to
+    // say it), and the library (Home is on the settings panel). Pinch on the video again to
     // put them away. They stay where they appeared rather than following the head, so they can be
-    // looked at.
+    // looked at. Opened from the home screen's Files tile (DemoManager.Argument is
+    // HomeScreen.k_FilesArgument) it lists only the files the user copied in or linked, and leaves
+    // the Photos library alone.
     // The demo runs in 3DoF with the AR session and hand tracking off; PinchInput's light pinch
     // detector runs, slowing down with no hand in view, leaving most of the heat to the video
     // decoder. Logs [Video].
@@ -53,10 +55,13 @@ namespace CardboardXR.Demos.Video
         bool m_SpatialVideoShown;
         // Whether the Photos library question has been settled, either way, so it is asked once.
         bool m_SpatialSettled;
+        // Opened as Files: only what the user copied in or linked, and no Photos question.
+        bool m_FilesOnly;
 
         RectTransform m_Panel;
         RectTransform m_LibraryPage;
         RectTransform m_ControlsPage;
+        TMP_Text m_Header;
         TMP_Text m_Title;
         TMP_Text m_FormatLine;
         TMP_Text m_Time;
@@ -87,9 +92,11 @@ namespace CardboardXR.Demos.Video
             m_Sphere.Clicked += OnVideoClicked;
 
             BuildPanel();
+            m_FilesOnly = core.Demos != null && core.Demos.Argument == HomeScreen.k_FilesArgument;
+            m_Header.text = m_FilesOnly ? "Files" : "Media";
             // Put iOS's Photos question up as the demo opens rather than when a photo is picked, so
             // the library can list the user's spatial photos alongside the files straight away.
-            m_SpatialSettled = !SpatialPhotos.Supported ||
+            m_SpatialSettled = m_FilesOnly || !SpatialPhotos.Supported ||
                                SpatialPhotos.Authorize() != SpatialPhotos.Access.Asking;
             Refresh();
             ShowLibrary();
@@ -160,9 +167,13 @@ namespace CardboardXR.Demos.Video
             // shifts everything after it, and the controls would go on describing someone else.
             var playing = Current;
             m_Library = VideoLibrary.Find(m_Bundled, out var bundled);
+            if (m_FilesOnly)
+                m_Library = VideoLibrary.FilesOnly(m_Library, bundled);
             m_Current = playing == null ? -1 : m_Library.FindIndex(entry => Same(entry, playing));
             m_Page = 0;
-            Debug.Log($"[Video] {m_Library.Count} videos: {bundled} bundled, the rest from {VideoLibrary.VideoFolder}");
+            Debug.Log(m_FilesOnly
+                ? $"[Video] {m_Library.Count} files from {VideoLibrary.VideoFolder}"
+                : $"[Video] {m_Library.Count} videos: {bundled} bundled, the rest from {VideoLibrary.VideoFolder}");
         }
 
         // What's playing, or null. The library can be rebuilt underneath it (Refresh, and the
@@ -611,7 +622,7 @@ namespace CardboardXR.Demos.Video
 
             // The library: a list of videos, a page at a time.
             m_LibraryPage = WorldUi.CreateGroup("Library", m_Panel);
-            M3.Text("Header", m_LibraryPage, "Videos", M3Theme.Type.TitleLarge, new Vector2(-60f, 220f), new Vector2(432f, 32f),
+            m_Header = M3.Text("Header", m_LibraryPage, "Media", M3Theme.Type.TitleLarge, new Vector2(-60f, 220f), new Vector2(432f, 32f),
                 alignment: TextAlignmentOptions.Left);
             M3.IconButton("Refresh", m_LibraryPage, "refresh", M3Button.Variant.Text, new Vector2(248f, 220f), () =>
             {

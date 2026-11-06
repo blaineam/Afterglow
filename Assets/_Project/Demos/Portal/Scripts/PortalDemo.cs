@@ -97,7 +97,7 @@ namespace CardboardXR.Demos.Portal
         }
 
         // A small Material panel ahead and a little above, clear of the floor where the portal goes:
-        // what to do next, and Move portal. The lobby is on the settings panel.
+        // what to do next, and Move portal. Home is on the settings panel.
         void BuildPanel()
         {
             const float distance = 1.5f;

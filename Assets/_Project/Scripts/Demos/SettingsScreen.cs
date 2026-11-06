@@ -10,8 +10,8 @@ namespace CardboardXR.Demos
 {
     // The settings screen: the knobs that used to be launch options from a Mac, as rows a gaze can
     // change -- look at the minus or plus beside a value and pinch or tap. It stands above the
-    // settings panel where the app library does, shown by the panel's Settings button; the two
-    // share the spot, so showing one hides the other. Everything is saved (Settings) and most of it
+    // settings panel where the home screen does, shown by the panel's Settings button or the home
+    // screen's Settings tile; the two share the spot, so showing one hides the other. Everything is saved (Settings) and most of it
     // applies at once; the rest says so in the note at the bottom. Logs [Settings].
     public class SettingsScreen : MonoBehaviour
     {
@@ -27,7 +27,7 @@ namespace CardboardXR.Demos
         const string k_NextLaunch = "Takes effect at the next launch";
 
         [SerializeField] SettingsSummoner m_Settings;
-        [SerializeField] AppLibrary m_Library;
+        [SerializeField] HomeScreen m_Home;
         [SerializeField] StereoRig m_Rig;
         [Tooltip("The settings panel's Settings button, shown selected while the screen shows.")]
         [SerializeField] M3Button m_Button;
@@ -88,16 +88,16 @@ namespace CardboardXR.Demos
         {
             if (m_Settings != null)
                 m_Settings.OpenChanged += OnSettingsOpenChanged;
-            if (m_Library != null)
-                m_Library.Shown += OnLibraryShown;
+            if (m_Home != null)
+                m_Home.Shown += OnHomeShown;
         }
 
         void OnDestroy()
         {
             if (m_Settings != null)
                 m_Settings.OpenChanged -= OnSettingsOpenChanged;
-            if (m_Library != null)
-                m_Library.Shown -= OnLibraryShown;
+            if (m_Home != null)
+                m_Home.Shown -= OnHomeShown;
         }
 
         // The panel's Settings button.
@@ -108,8 +108,8 @@ namespace CardboardXR.Demos
             if (show)
             {
                 Build();
-                if (m_Library != null && m_Library.IsShown)
-                    m_Library.Show(false);
+                if (m_Home != null && m_Home.IsShown)
+                    m_Home.Show(false);
                 if (m_Settings != null)
                     m_Settings.Above = m_Root;
             }
@@ -131,8 +131,8 @@ namespace CardboardXR.Demos
                 Show(false);
         }
 
-        // The library took the spot above the panel.
-        void OnLibraryShown(bool shown)
+        // The home screen took the spot above the panel.
+        void OnHomeShown(bool shown)
         {
             if (shown && IsShown)
                 Show(false);
@@ -197,8 +197,10 @@ namespace CardboardXR.Demos
             });
             m_Rows.Add(new Setting
             {
-                Key = "scan", Label = "Scan the room at start", Choices = new[] { 0, 1 }, Fallback = 1,
-                Show = v => v != 0 ? "On" : "Off", Note = k_NextLaunch,
+                // Scanning the whole room when an app that places things on it opens (DemoManager);
+                // off, 6DoF still finds the floor by itself.
+                Key = "scan", Label = "Scan the room for apps", Choices = new[] { 0, 1 }, Fallback = 1,
+                Show = v => v != 0 ? "On" : "Floor only",
             });
             m_Rows.Add(new Setting
             {

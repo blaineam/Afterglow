@@ -99,7 +99,8 @@ namespace CardboardXR.UI
         {
             if (!target.activeSelf)
                 return;
-            if (!target.activeInHierarchy || !target.TryGetComponent<M3Fade>(out var fade) || !fade.enabled)
+            // No group means Awake hasn't run (the Editor, outside play mode): nothing to fade with.
+            if (!target.activeInHierarchy || !target.TryGetComponent<M3Fade>(out var fade) || !fade.enabled || fade.m_Group == null)
             {
                 target.SetActive(false);
                 return;

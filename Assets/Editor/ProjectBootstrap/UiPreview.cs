@@ -8,7 +8,7 @@ using UnityEngine;
 namespace ProjectBootstrap
 {
     // Renders the Material UI as the phone's mono view would show it, without a phone: Core's settings
-    // panel and app library as built for the app, each demo's panels, and scanned surfaces, seen from
+    // panel and home screen as built for the app, each demo's panels, and scanned surfaces, seen from
     // the head's starting point. For reviewing
     // spacing, shapes, type and icons. Writes PNGs to the folder given after -previewPath.
     // Invoke with: -executeMethod ProjectBootstrap.UiPreview.Capture -previewPath <folder>
@@ -26,18 +26,24 @@ namespace ProjectBootstrap
             camera.fieldOfView = 60f;
             camera.nearClipPlane = 0.05f;
 
-            // The settings panel as SettingsSummoner opens it, below eye level, with the app library at
-            // eye level above it, one app looked at.
+            // The settings panel as SettingsSummoner opens it, below eye level, with the home screen at
+            // eye level above it: the sections, one looked at, then the Play page.
             var panel = (RectTransform)GameObject.Find("Gaze Panel").transform;
-            var above = (RectTransform)panel.Find("App Library");
+            var above = (RectTransform)panel.Find("Home Screen");
             CardboardXR.Hands.SettingsSummoner.Place(panel, above, Vector3.zero, 0f);
             Render(camera, Path.Combine(folder, "toolbar.png"), -12f, 0f);
-            var library = Object.FindAnyObjectByType<AppLibrary>();
-            library.Show(true);
-            Render(camera, Path.Combine(folder, "library.png"), -6f, 0f);
-            var tagline = panel.Find("App Library/Tagline").GetComponent<TMP_Text>();
-            tagline.text = "Paint in the air with your hand";
-            Render(camera, Path.Combine(folder, "library-gaze.png"), -6f, 0f);
+            var home = Object.FindAnyObjectByType<HomeScreen>();
+            home.Show(true);
+            Render(camera, Path.Combine(folder, "home.png"), -6f, 0f);
+            var tagline = panel.Find("Home Screen/Tagline").GetComponent<TMP_Text>();
+            tagline.text = "Spatial photos and videos from your Photos library, and 360 films";
+            Render(camera, Path.Combine(folder, "home-gaze.png"), -6f, 0f);
+            home.ShowPlay();
+            Render(camera, Path.Combine(folder, "home-play.png"), -6f, 0f);
+            var settings = Object.FindAnyObjectByType<SettingsScreen>();
+            settings.Show(true);
+            CardboardXR.Hands.SettingsSummoner.Place(panel, (RectTransform)panel.Find("Settings Screen"), Vector3.zero, 0f);
+            Render(camera, Path.Combine(folder, "settings.png"), -6f, 0f);
             panel.gameObject.SetActive(false);
             RenderDemoPanels(camera, folder);
             RenderSurfaces(camera, folder);
@@ -90,7 +96,6 @@ namespace ProjectBootstrap
             if (paint != null)
             {
                 Call(paint, "BuildPanel");
-                ((TMP_Text)Get(paint, "m_Status")).text = "3 strokes. Pinch in the air to paint; look here and pinch to choose.";
                 ((M3Button)((System.Collections.IList)Get(paint, "m_Swatches"))[5]).Selected = true;
                 ((M3Button[])Get(paint, "m_BrushButtons"))[0].Selected = true;
                 ((M3Button[])Get(paint, "m_SizeButtons"))[1].Selected = true;

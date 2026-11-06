@@ -29,8 +29,8 @@ using UnityEngine.XR.Interaction.Toolkit.Interactors.Casters;
 namespace ProjectBootstrap
 {
     // Builds the app headlessly: the Core scene, which holds the stereo rig, head tracking, AR,
-    // hands, gaze and the gaze panel, followed by the lobby and the demos (see DemoScenes), which load
-    // on top of it. Core is generated from scratch on every build; the lobby and demos are not.
+    // hands, gaze and the gaze panel, followed by Home and the apps (see DemoScenes), which load
+    // on top of it. Core is generated from scratch on every build; Home and the apps are not.
     public static class StereoBuilder
     {
         const string ScenesFolder = "Assets/_Project/Scenes";
@@ -194,7 +194,7 @@ namespace ProjectBootstrap
             return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
         }
 
-        // Core first, since it's the scene the app starts in, then the lobby and the demos.
+        // Core first, since it's the scene the app starts in, then Home and the apps.
         internal static string[] BuildScenes()
         {
             MaterialAssets.Ensure();
@@ -202,7 +202,7 @@ namespace ProjectBootstrap
             var catalog = BuildCoreScene();
             if (catalog == null)
                 return new[] { CoreScene };
-            var scenes = new System.Collections.Generic.List<string> { CoreScene, catalog.LobbyScenePath };
+            var scenes = new System.Collections.Generic.List<string> { CoreScene, catalog.HomeScenePath };
             foreach (var demo in catalog.Demos)
                 scenes.Add(demo.ScenePath);
             return scenes.ToArray();
@@ -281,7 +281,7 @@ namespace ProjectBootstrap
             BuildHands(origin, fusion, poseSource, arCamera, passthrough, unlit);
             ArrangeToolbar(panel, toolbar);
             var settings = BuildSettings(origin, fusion, panel);
-            BuildLibrary(panel, demos, settings, toolbar[0], catalog);
+            BuildHome(panel, demos, settings, toolbar[0], catalog);
             BuildSettingsScreen(panel, demos, settings, toolbar[6], rig);
             BuildArDebugView(origin, rig, fusion, boundary, arCamera, arViewOnly);
             BuildPassthrough(passthrough, fusion, rig, arCamera, head.transform, passthroughToggle, passthroughShader);
@@ -367,7 +367,7 @@ namespace ProjectBootstrap
             return (poseSource, origin.gameObject, arCamera, new Behaviour[] { background, poseDriver });
         }
 
-        // What the lobby and demo scenes reach Core through, and what loads them.
+        // What the Home and app scenes reach Core through, and what loads them.
         static void BuildDemos(GameObject demosObject, DemoManager demos, DemoCatalog catalog, HeadPoseFusion fusion,
             StereoRig rig, PassthroughController passthrough, RoomBoundary boundary, GameObject origin, SettingsSummoner settings)
         {
@@ -391,12 +391,13 @@ namespace ProjectBootstrap
             serializedDemos.FindProperty("m_Core").objectReferenceValue = core;
             serializedDemos.ApplyModifiedPropertiesWithoutUndo();
 
-            // The lobby's first visit scans the room, then every visit opens the app library.
-            var flow = demosObject.AddComponent<LobbyFlow>();
-            var serializedFlow = new SerializedObject(flow);
-            serializedFlow.FindProperty("m_Core").objectReferenceValue = core;
-            serializedFlow.FindProperty("m_Library").objectReferenceValue = demosObject.GetComponent<AppLibrary>();
-            serializedFlow.ApplyModifiedPropertiesWithoutUndo();
+            // The room scan's panel, over an app that scans the room as it opens.
+            var prompt = demosObject.AddComponent<RoomScanPrompt>();
+            var serializedPrompt = new SerializedObject(prompt);
+            serializedPrompt.FindProperty("m_Core").objectReferenceValue = core;
+            serializedPrompt.ApplyModifiedPropertiesWithoutUndo();
+            serializedDemos.FindProperty("m_ScanPrompt").objectReferenceValue = prompt;
+            serializedDemos.ApplyModifiedPropertiesWithoutUndo();
         }
 
         // Plane detection for 6DoF: RoomBoundary lines the virtual floor up with the real one and
@@ -834,11 +835,12 @@ namespace ProjectBootstrap
         }
 
         // Core's controls, as a Material floating toolbar: icon-and-label items on a pill-shaped surface,
-        // in three groups split by dividers: Apps, which shows the app library above it; the actions,
-        // Recenter and Scan Room (6DoF only); and the toggles, 6DoF and Passthrough, shown selected
-        // while on. (Pinching is always on: see PinchInput.) M3Toolbar lays out only the items
-        // showing. Scan Room is added once the room boundary exists, then ArrangeToolbar finishes it.
-        // Returns the items (Apps, Recenter, 6DoF, Passthrough, then one empty for Scan Room) and the panel.
+        // in three groups split by dividers: Home, Settings and Browser, the first two showing their
+        // screens above the panel; the actions, Recenter and Scan Room (6DoF only); and the toggles,
+        // 6DoF and Passthrough, shown selected while on. (Pinching is always on: see PinchInput.)
+        // M3Toolbar lays out only the items showing. Scan Room is added once the room boundary exists,
+        // then ArrangeToolbar finishes it. Returns the items (Home, Recenter, 6DoF, Passthrough, one
+        // empty for Scan Room, Browser, Settings) and the panel.
         static (M3Button[] items, RectTransform panel) BuildToolbar(HeadPoseFusion fusion,
             PassthroughController passthrough, DemoManager demos, WebBrowserSession browser)
         {
@@ -854,11 +856,11 @@ namespace ProjectBootstrap
             // The view switch isn't here: it's on the screen itself, in the settings menu, since it's
             // pressed with the phone in hand where this panel can't be reached.
             var items = new M3Button[7];
-            // Apps shows the app library above the panel (BuildLibrary), the way to the lobby and
-            // between demos; Settings shows the settings screen in the same place (BuildSettingsScreen).
-            var library = demos.gameObject.AddComponent<AppLibrary>();
+            // Home shows the home screen above the panel (BuildHome), the way between the apps;
+            // Settings shows the settings screen in the same place (BuildSettingsScreen).
+            var home = demos.gameObject.AddComponent<HomeScreen>();
             var screen = demos.gameObject.AddComponent<SettingsScreen>();
-            items[0] = ToolbarItem(panel, "Apps", "apps", "Apps", library.Toggle);
+            items[0] = ToolbarItem(panel, "Home", "home", "Home", home.Toggle);
             items[6] = ToolbarItem(panel, "Settings", "tune", "Settings", screen.Toggle);
             items[1] = ToolbarItem(panel, "Recenter", "my_location", "Recenter", fusion.Recenter);
             items[2] = ToolbarItem(panel, "Tracking Mode", "view_in_ar", "6DoF", fusion.ToggleMode);
@@ -902,44 +904,43 @@ namespace ProjectBootstrap
             return summoner;
         }
 
-        // The app library: a surface above the settings panel, part of it, so it follows and closes
-        // with it, hidden until Apps shows it. AppLibrary puts the tiles in at runtime, from the catalog.
-        // How opaque the library's surface is: enough to keep the names readable over a busy room.
-        const float k_LibraryOpacity = 0.6f;
+        // The home screen: a surface above the settings panel, part of it, so it follows and closes
+        // with it, hidden until Home shows it. HomeScreen puts the header and tiles in at runtime,
+        // from its sections and the catalog.
+        // How opaque the home screen's surface is: enough to keep the names readable over a busy room.
+        const float k_HomeOpacity = 0.6f;
         // The settings screen is rows of text, which a room showing through makes hard to read
-        // where the library's icons are not; so it is nearly solid.
+        // where the home screen's icons are not; so it is nearly solid.
         const float k_SettingsOpacity = 0.94f;
 
-        static void BuildLibrary(RectTransform panel, DemoManager demos, SettingsSummoner settings, M3Button appsButton,
+        static void BuildHome(RectTransform panel, DemoManager demos, SettingsSummoner settings, M3Button homeButton,
             DemoCatalog catalog)
         {
-            var size = AppLibrary.Size(catalog.Demos.Count + 1);
+            // Sized for the larger of its two pages.
+            var size = HomeScreen.Size(Mathf.Max(HomeScreen.k_SectionCount, catalog.InSection(DemoCatalog.Section.Play).Count));
             // Translucent, like visionOS's glass: the room (or scene) shows through behind the icons. Part
             // of the panel, but placed by SettingsSummoner at eye level, upright, with the panel below.
-            var root = M3.Surface("App Library", panel, Vector2.zero, size, M3Theme.WithAlpha(M3Theme.SurfaceContainer, k_LibraryOpacity),
+            var root = M3.Surface("Home Screen", panel, Vector2.zero, size, M3Theme.WithAlpha(M3Theme.SurfaceContainer, k_HomeOpacity),
                 M3Theme.k_ShapePanel, raycastTarget: true).rectTransform;
             root.gameObject.AddComponent<M3Fade>();
-            var grid = M3.Group("Grid", root, Vector2.zero, size);
-            var tagline = M3.Text("Tagline", root, "", M3Theme.Type.BodyMedium, new Vector2(0f, -size.y / 2f + 16f + 14f),
-                new Vector2(size.x - 32f, 28f), M3Theme.OnSurfaceVariant);
             root.gameObject.SetActive(false);
 
             var serializedSettings = new SerializedObject(settings);
             serializedSettings.FindProperty("m_Above").objectReferenceValue = root;
             serializedSettings.ApplyModifiedPropertiesWithoutUndo();
 
-            var library = demos.GetComponent<AppLibrary>();
-            var serialized = new SerializedObject(library);
+            var home = demos.GetComponent<HomeScreen>();
+            var serialized = new SerializedObject(home);
             serialized.FindProperty("m_Demos").objectReferenceValue = demos;
             serialized.FindProperty("m_Settings").objectReferenceValue = settings;
-            serialized.FindProperty("m_AppsButton").objectReferenceValue = appsButton;
+            serialized.FindProperty("m_SettingsScreen").objectReferenceValue = demos.GetComponent<SettingsScreen>();
+            serialized.FindProperty("m_Browser").objectReferenceValue = demos.GetComponent<WebBrowserSession>();
+            serialized.FindProperty("m_HomeButton").objectReferenceValue = homeButton;
             serialized.FindProperty("m_Root").objectReferenceValue = root;
-            serialized.FindProperty("m_Grid").objectReferenceValue = grid;
-            serialized.FindProperty("m_Tagline").objectReferenceValue = tagline;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        // The settings screen: a surface above the panel in the library's spot, hidden until the
+        // The settings screen: a surface above the panel in the home screen's spot, hidden until the
         // panel's Settings button shows it. SettingsScreen builds its rows at runtime.
         static void BuildSettingsScreen(RectTransform panel, DemoManager demos, SettingsSummoner settings, M3Button settingsButton,
             StereoRig rig)
@@ -953,7 +954,7 @@ namespace ProjectBootstrap
             var screen = demos.GetComponent<SettingsScreen>();
             var serialized = new SerializedObject(screen);
             serialized.FindProperty("m_Settings").objectReferenceValue = settings;
-            serialized.FindProperty("m_Library").objectReferenceValue = demos.GetComponent<AppLibrary>();
+            serialized.FindProperty("m_Home").objectReferenceValue = demos.GetComponent<HomeScreen>();
             serialized.FindProperty("m_Rig").objectReferenceValue = rig;
             serialized.FindProperty("m_Button").objectReferenceValue = settingsButton;
             serialized.FindProperty("m_Root").objectReferenceValue = root;
@@ -963,7 +964,7 @@ namespace ProjectBootstrap
         // Orders the items into their groups, with a divider before each group after the first.
         static void ArrangeToolbar(RectTransform panel, M3Button[] items)
         {
-            // Apps, Settings, Browser | Recenter, Scan Room | 6DoF, Passthrough.
+            // Home, Settings, Browser | Recenter, Scan Room | 6DoF, Passthrough.
             var order = new[] { items[0], items[6], items[5], items[1], items[4], items[2], items[3] };
             var groups = new[] { 0, 0, 0, 1, 1, 2, 2 };
             var dividers = new Image[3];

@@ -99,6 +99,20 @@ namespace CardboardXR.Demos.Video
             return entries;
         }
 
+        // What the home screen's Files section lists: the videos the user copied in or linked, which
+        // is everything but the first bundledCount entries (the repository's own clips) and the Photos
+        // library's spatial items. Pure, for testing.
+        public static List<VideoEntry> FilesOnly(List<VideoEntry> entries, int bundledCount)
+        {
+            var files = new List<VideoEntry>();
+            for (var i = bundledCount; i < entries.Count; i++)
+            {
+                if (!entries[i].IsSpatial)
+                    files.Add(entries[i]);
+            }
+            return files;
+        }
+
         // The spatial photos and videos in the Photos library, which need no copying in: the phone
         // in the viewer is the one that took them. Empty everywhere but an iPhone, and empty until
         // the user has allowed the library.
