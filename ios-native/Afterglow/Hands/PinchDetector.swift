@@ -15,7 +15,7 @@ struct PinchDetector {
     private var openRun = 0
     private var closeRun = 0
 
-    init(closeDistance: Float = 0.025, openDistance: Float = 0.045, releaseResults: Int = 3, startResults: Int = 3) {
+    init(closeDistance: Float = 0.025, openDistance: Float = 0.045, releaseResults: Int = 3, startResults: Int = 4) {
         self.closeDistance = closeDistance
         self.openDistance = openDistance
         self.releaseResults = releaseResults

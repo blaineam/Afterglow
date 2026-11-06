@@ -28,7 +28,7 @@ struct TrackedHandState: Sendable {
 final class HandTracker: @unchecked Sendable {
     // The Unity app's constants.
     private static let minHandConfidence: Float = 0.3
-    private static let graceSeconds = 0.3
+    private static let graceSeconds = 0.6   // the Unity app's 0.3 showed a hand vanish while its tips crossed
     /// A hand Vision stops reporting while the other hand is right beside it is hidden behind
     /// (or clasped with) that hand, not gone: Vision gives one observation for two hands together
     /// (owner, 2026-11-06; the Unity app notes the same). It is kept this long, where it was.
@@ -57,6 +57,9 @@ final class HandTracker: @unchecked Sendable {
     /// Fingertips whose LiDAR depths differ by more than this, metres, are apart along the camera's
     /// axis however close they look: a C-shaped hand turned so its tips cross in the image.
     private static let maxTipDepthGap: Float = 0.02
+    /// Results the tips must have been level for: at the moment they cross in the image both read
+    /// the nearer depth, so the gap before the crossing is what tells a turning C from a pinch.
+    private static let levelResults = 5
 
     private final class Slot {
         var state: TrackedHandState?
@@ -74,6 +77,8 @@ final class HandTracker: @unchecked Sendable {
         /// When the hand was lost (its grace ran out), so a hand found soon after can be the same
         /// one back in view, with its pinch and handedness kept.
         var lostAt: Double = -1
+        /// The last few results' depth gaps between the thumb and index tips, metres.
+        var tipGaps: [Float] = []
     }
 
     /// A hand found within this long of one being lost is that hand back in view: a pinch held out
@@ -288,6 +293,7 @@ final class HandTracker: @unchecked Sendable {
                 slots[fresh].acquiring = true
                 slots[fresh].pinch.reset()
                 slots[fresh].palmSizeSeen = 0
+                slots[fresh].tipGaps = []
             } else if let stale = slots.indices.first(where: { !used.contains($0) }) {
                 // Every slot is tracked and this hand matched none: the unmatched slot is the stale
                 // trace of a hand that moved, and this is where it went, so it keeps its pinch (a
@@ -391,7 +397,9 @@ final class HandTracker: @unchecked Sendable {
                     tipDepthGap = abs(dt - di)
                 }
             }
-            let tipsLevel = (tipDepthGap ?? 0) <= Self.maxTipDepthGap
+            slot.tipGaps.append(tipDepthGap ?? 0)
+            if slot.tipGaps.count > Self.levelResults { slot.tipGaps.removeFirst() }
+            let tipsLevel = slot.tipGaps.allSatisfy { $0 <= Self.maxTipDepthGap }
             let margin = Self.edgeMargin * Float(width)
             let tipsInside = [hand.landmarks[HandGeometry.thumbTip], hand.landmarks[HandGeometry.indexTip]].allSatisfy {
                 $0.x > margin && $0.x < Float(width) - margin && $0.y > margin && $0.y < Float(height) - margin

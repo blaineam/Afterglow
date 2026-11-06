@@ -253,8 +253,9 @@ closer than 20 cm, that guard is off and the guessed index tip can read as a pin
 together come back from Vision as one observation (as in the Unity app): the hand it stops
 reporting is kept where it was for two seconds while the other is beside it, then dropped, and
 takes its slot back when the hands part. A C-shaped hand turned so its tips cross in the image
-is told from a pinch by the tips' LiDAR depths and by needing three close results in a row, so a
-pinch begins about 150 ms after the tips meet. Vision takes 15–20 ms an
+is told from a pinch by the tips' LiDAR depths over the last five results and by needing four
+close results in a row, so a pinch begins about 200 ms after the tips meet; a slow turn that holds
+the crossing can still read as one, and Vision sometimes drops the hand at the crossing. Vision takes 15–20 ms an
 image on the Neural Engine at 30 images/s whether or not a hand is in view, which is the one
 steady load the phase 1 run did not have; `handHz` lowers it.
 

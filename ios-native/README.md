@@ -41,7 +41,7 @@ Unity app's code.
   `HandGeometry.cs`: a flat hand at the learned palm size, fitted to the palm's pixels; where the
   phone has LiDAR, ARKit's scene depth at the palm places the hand where the sensor saw it and
   teaches the palm size for when there is no depth. The joints are smoothed with One Euro filters
-  (the Unity app's settings), held for 0.3 s through a missed image, and moved on by the palm's
+  (the Unity app's settings), held for 0.6 s through a missed image, and moved on by the palm's
   speed for the time since their image.
 - **Pinch**: the thumb and index tips within 2.5 cm, open again past 4.5 cm for three results in
   a row, never started with a tip at the image's edge, and held as it is while a tip is hidden
@@ -51,9 +51,9 @@ Unity app's code.
   and Vision guesses the index tip beside it. A hand that leaves the view keeps its pinch and
   handedness for five seconds, so a pinch carried out of the camera's view and back is the same
   pinch, and the grab demo keeps the cube until the hand is seen open. A pinch begins only after
-  three close results in a row with the tips at the same LiDAR depth (within 2 cm): a C-shaped
-  hand turned so its tips cross in the image is apart along the camera's axis and passes through
-  in less time. Two hands held together come back from Vision as one; the hand it stops reporting
+  four close results in a row with the tips at the same LiDAR depth (within 2 cm) over the last
+  five: a C-shaped hand turned so its tips cross in the image is apart along the camera's axis
+  until the crossing, where both tips read the nearer depth, and passes through in less time. Two hands held together come back from Vision as one; the hand it stops reporting
   is kept where it was for two seconds while the other is beside it.
 - **Drawn** as bones and joints over the view, cyan for a left hand and green-tinted for a right,
   the tips magenta while pinching; `showHands 0` hides them. In passthrough the eyes sit at the
