@@ -4,8 +4,9 @@ using UnityEngine.EventSystems;
 
 namespace Afterglow.Demos.Video
 {
-    // The surface a video is drawn on: a large sphere around the viewer, its front half, or a flat
-    // screen ahead of them, textured from the inside. A 3D video gets one per eye, each on a layer only that eye's
+    // The surface a video or picture is drawn on: a large sphere around the viewer, its front half,
+    // a flat screen ahead of them, or, for a panorama, a band of a cylinder (ShowPanorama), all
+    // textured from the inside. A 3D video gets one per eye, each on a layer only that eye's
     // camera draws (StereoRig.LeftEyeOnlyLayer and RightEyeOnlyLayer) and showing that eye's part
     // of the frame. It stays centered on the head, turning with nothing, so moving the phone never
     // shows the video as a ball around you: only turning looks around. While a video shows, the
@@ -30,6 +31,10 @@ namespace Afterglow.Demos.Video
         Mesh m_Full;
         Mesh m_Half;
         Mesh m_Flat;
+        // The last panorama's cylinder, rebuilt when one of a different span is shown.
+        Mesh m_Cylinder;
+        float m_CylinderSpan;
+        float m_CylinderHeight;
         GameObject m_ClickSurface;
 
         // A tap or pinch with the gaze on the video, rather than on a panel.
@@ -69,6 +74,84 @@ namespace Afterglow.Demos.Video
             Destroy(m_Full);
             Destroy(m_Half);
             Destroy(m_Flat);
+            if (m_Cylinder != null)
+                Destroy(m_Cylinder);
+        }
+
+        // A panorama: one picture on the inside of a cylinder spanning spanDegrees round the
+        // viewer and heightDegrees tall, seen by both eyes. Straight lines in the room stay straight
+        // across it, which is what a swept panorama is.
+        public void ShowPanorama(Texture texture, float spanDegrees, float heightDegrees)
+        {
+            if (texture == null)
+            {
+                Show(null, default);
+                return;
+            }
+            if (m_Cylinder == null || !Mathf.Approximately(m_CylinderSpan, spanDegrees) || !Mathf.Approximately(m_CylinderHeight, heightDegrees))
+            {
+                if (m_Cylinder != null)
+                    Destroy(m_Cylinder);
+                m_Cylinder = BuildCylinderMesh(spanDegrees, heightDegrees, m_Radius);
+                m_CylinderSpan = spanDegrees;
+                m_CylinderHeight = heightDegrees;
+            }
+            m_ClickSurface.SetActive(true);
+            m_Eyes[1].gameObject.SetActive(false);
+            var eye = m_Eyes[0];
+            eye.gameObject.SetActive(true);
+            eye.gameObject.layer = 0;
+            eye.GetComponent<MeshFilter>().sharedMesh = m_Cylinder;
+            eye.transform.localScale = Vector3.one;
+            m_Materials[0].mainTexture = texture;
+            m_Materials[0].mainTextureScale = Vector2.one;
+            m_Materials[0].mainTextureOffset = Vector2.zero;
+        }
+
+        // The inside of a cylinder's band: spanDegrees round, centered ahead, and as tall as a
+        // heightDegrees view at its radius; the picture runs left to right across it and bottom
+        // to top up it.
+        public static Mesh BuildCylinderMesh(float spanDegrees, float heightDegrees, float radius)
+        {
+            var span = Mathf.Clamp(spanDegrees, 1f, 360f) * Mathf.Deg2Rad;
+            var halfHeight = radius * Mathf.Tan(0.5f * Mathf.Clamp(heightDegrees, 1f, 170f) * Mathf.Deg2Rad);
+            var segments = Mathf.Max(8, Mathf.RoundToInt(k_Segments * span / (2f * Mathf.PI)));
+            var vertices = new Vector3[2 * (segments + 1)];
+            var uvs = new Vector2[vertices.Length];
+            for (var segment = 0; segment <= segments; segment++)
+            {
+                var angle = -span / 2f + span * segment / segments;
+                var u = (float)segment / segments;
+                var around = new Vector3(Mathf.Sin(angle) * radius, 0f, Mathf.Cos(angle) * radius);
+                vertices[segment] = around + Vector3.down * halfHeight;
+                vertices[segments + 1 + segment] = around + Vector3.up * halfHeight;
+                uvs[segment] = new Vector2(u, 0f);
+                uvs[segments + 1 + segment] = new Vector2(u, 1f);
+            }
+            var triangles = new int[segments * 6];
+            var t = 0;
+            for (var segment = 0; segment < segments; segment++)
+            {
+                var a = segment;
+                var b = segments + 1 + segment;
+                // Clockwise as seen from the center, which Unity draws as the front.
+                triangles[t++] = a;
+                triangles[t++] = b;
+                triangles[t++] = a + 1;
+                triangles[t++] = a + 1;
+                triangles[t++] = b;
+                triangles[t++] = b + 1;
+            }
+            var mesh = new Mesh
+            {
+                name = "Panorama Cylinder",
+                vertices = vertices,
+                uv = uvs,
+                triangles = triangles,
+            };
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            return mesh;
         }
 
         void LateUpdate()

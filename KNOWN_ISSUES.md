@@ -105,6 +105,22 @@ drawn with depth: a scene object nearer than that, such as the Room's floating c
 them. Seen in the Simulator on 2026-11-05 with the Room's white cube over the settings screen's
 title. The fix is to draw the panels last, over everything, as the gaze reticle already is.
 
+### A panorama's height is a guess
+
+A panorama is drawn on a cylinder 60° tall, so its width in degrees is its aspect times 60 (a 4:1
+panorama spans 240°). That is about right for an iPhone's camera but has only been checked against
+a drawn fixture in the Simulator; a real iPhone panorama on the phone may want a different height
+(`VideoLibrary.k_PanoramaHeightDegrees`). The controls' *Format* button offers the other wrappings
+meanwhile.
+
+### The Simulator's Photos alert and corner gear ignore injected taps
+
+The "Allow Afterglow to access your photo library?" alert, and the app's own corner gear button and
+its menu, don't respond to taps injected by simctl-driven tools (2026-11-05); gaze clicks on
+world-space panels do. Grant the library instead with
+`xcrun simctl privacy booted grant photos com.wemiller.afterglow`, then relaunch. On a real phone
+both are ordinary taps.
+
 ### The browser's page shows faintly behind the stereo view
 
 With the browser window open in the Simulator (2026-11-05), the page itself is also visible, very

@@ -42,7 +42,7 @@ namespace ProjectBootstrap
             // iOS kills the app the moment the Photos library is read unless it can say why. There
             // is no PlayerSettings option for this one, unlike the camera's.
             plist.root.SetString("NSPhotoLibraryUsageDescription",
-                "Afterglow shows the spatial photos in your library in 3D through the viewer.");
+                "Afterglow shows the photos and videos in your library through the viewer: spatial photos in 3D, panoramas and 360 stills all around you.");
             // Dictation into the browser, which needs both: recognition and the microphone that
             // feeds it. Said here rather than through PlayerSettings because the build method
             // does not run ProjectSetup.Apply, so anything set there can be missing from a build.

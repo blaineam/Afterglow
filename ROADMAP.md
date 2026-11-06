@@ -18,9 +18,9 @@ and the gap between them is most of the work.
 
 | Asked for | State |
 |---|---|
-| Spatial **photos** from the Photos library | Done (`AfterglowSpatialPhotos.mm`, HEIC stereo pair via ImageIO). **Not verified on the phone.** |
+| Spatial **photos** from the Photos library | Done (`AfterglowPhotoLibrary.mm`, HEIC stereo pair via ImageIO). Verified in the Simulator with a drawn stereo HEIC (2026-11-05); **not verified on the phone.** |
 | Spatial **video** from the Photos library | Done (`AfterglowSpatialVideo.mm`, MV-HEVC both layers via `AVPlayerVideoOutput`, zero-copy Metal, iOS 18+). Built 2026-11-04, **never launched on the phone.** |
-| **Panoramas** | **Not built.** The Photos query asks only for `spatialMedia`; the player has no cylindrical projection; the file scanner lists only video extensions, so a 360 still is invisible too. |
+| **Media browser** | Since 2026-11-05: the whole Photos library as a thumbnail grid with filters (All, Spatial, Panoramas, 360, Videos); panoramas on a cylinder sized from the picture's shape; 2:1 stills on the sphere; flat photos and library videos on the screen; the kind comes from the library's subtypes and the aspect, and the Format button overrides it. Verified in the Simulator with drawn fixtures. The panorama's angular height (60°, so a 4:1 panorama spans 240°) is a guess until a real iPhone panorama is checked on the phone. Not yet: albums, 360 stills in the Files folder, formats from video metadata boxes. |
 | **WebXR browser** | A working start: page on a quad at ~12 fps, gaze + pinch click, gaze-edge and gamepad scroll, back/forward/home/reload/resize, address bar, on-screen keys, Bluetooth keyboard, on-device dictation, `immersive-vr` full screen with page-side stereo and barrel distortion from the app's own lens numbers. Window verified on the phone; **an immersive session is not**. Missing: tabs, bookmarks, history, text selection, downloads, `immersive-ar`, hand input sources, floor-relative spaces from the real floor. iOS only. |
 | **Two hands** | Done (`723c064`, `aede100`): detector keeps both palms, two `TrackedHand` slots, XR Hands fed left and right. **Never run on the phone**; the last device log predates both commits. |
 | **UX** | A **home screen** since 2026-11-05: Media, Web, Files, Play and Settings above the settings panel, open as the app starts, with a Play page for the games and the old checkerboard lobby kept as *The Room*. The room scan no longer blocks the cold start: it runs, with its panel, when an app that places things opens. Still a prototype's inside Media: five text rows a page in the one player, which Files reuses filtered to the copied-in videos. |
@@ -37,15 +37,19 @@ Unity 6000.6.0f1 is installed; the C# compiles and all 297 EditMode tests pass (
 
 Everything else sits on this, and three of the newest features have never run on the device.
 
-- **Verify on the phone**: two hands, spatial photo and video playback, an immersive WebXR
-  session. Each gets a session-log line that proves it, and a KNOWN_ISSUES entry for what it
-  does badly.
+- **Verify on the phone**: two hands, spatial photo and video playback, the media browser and a
+  real panorama, an immersive WebXR session. Each gets a session-log line that proves it, and a
+  KNOWN_ISSUES entry for what it does badly. The current build was installed on the iPhone 18 Pro
+  Max on 2026-11-05 but not launched: the phone was locked (`zsh Tools/ios_launch.sh` once it
+  isn't).
 - **Default optics** — done: `ViewerParams.AfterglowViewer` (Cardboard v2 lenses centred on the
   phone's width, which is where brenpoly's carriage puts them: bores at x = 0.0 in the STEP,
   64.0 mm apart) is the rig's default; the scan screen offers *Printed viewer*, *Cardboard v2*,
   *Cardboard v1* and remembers the pick.
-- **Desk mode** — done in code, see below. To do: fixture media for the simulator's Photos
-  library, and the Editor's XR Simulation environment checked against the room scan.
+- **Desk mode** — done in code, see below. Fixture media for the simulator's Photos library:
+  done 2026-11-05 (`Tools/sim_add_media.sh` draws and adds a 360 still, a panorama, flat photos,
+  a spatial HEIC and two videos). To do: the Editor's XR Simulation environment checked against
+  the room scan.
 - **Frame pacing**: find the ~50 ms present-wait hitches (they are *not* CPU time: main 0.6 ms,
   GPU 1.5 ms, present wait 51 ms), then choose a frame target that holds — 120 only if it really
   does with the browser or a hand in view, else 90 or 60, and say which in the log.
@@ -73,14 +77,19 @@ Everything else sits on this, and three of the newest features have never run on
 
 ## Phase 2 — Media browser
 
-- **Photos as a grid**: thumbnails from `PHCachingImageManager`, albums and smart albums, filters
-  *Spatial · Panoramas · 360 · Videos · All*, newest first, paged for a gaze.
-- **Panoramas**: list `PHAssetMediaSubtypePhotoPanorama`; a **cylindrical projection** sized from
-  the asset's aspect (iPhone panoramas are cylindrical, not equirectangular, and run to about 240°).
-- **360 stills**: by `GPano` XMP or a 2:1 aspect; JPEG, HEIC and PNG in the Files folder too.
-- **One player**: format from **metadata** — MV-HEVC layers, the spherical-video v2 boxes (`st3d`,
-  `sv3d`), GPano — before falling back to filename tags.
-- Flat photos and videos on the screen, as the spatial ones are already.
+- **Photos as a grid** — done 2026-11-05: thumbnails from `PHCachingImageManager`, filters
+  *All · Spatial · Panoramas · 360 · Videos*, newest first, eight a page for a gaze
+  (`VideoDemo`, `PhotoLibrary`). To do: albums and smart albums.
+- **Panoramas** — done 2026-11-05: `PHAssetMediaSubtypePhotoPanorama` or a shape wider than
+  2.4:1; a **cylindrical band** (`VideoSphere.ShowPanorama`) whose width follows the picture's
+  aspect at 60° of height, so a 4:1 panorama spans 240°. The 60° wants checking against a real
+  iPhone panorama on the phone.
+- **360 stills** — done for the library by a 2:1 shape (3 % tolerance). To do: `GPano` XMP, and
+  JPEG, HEIC and PNG in the Files folder.
+- **One player**: format from **metadata** — MV-HEVC layers (done), the spherical-video v2 boxes
+  (`st3d`, `sv3d`), GPano — before falling back to filename tags. Library videos go by shape (2:1
+  is 360) and files by their name tags; the boxes are still to do.
+- Flat photos and videos on the screen — done 2026-11-05, as the spatial ones are.
 
 ## Phase 3 — Files
 

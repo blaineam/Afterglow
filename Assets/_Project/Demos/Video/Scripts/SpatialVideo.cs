@@ -6,7 +6,7 @@ namespace Afterglow.Demos.Video
 {
     // Spatial video from the user's Photos library (Plugins/iOS/AfterglowSpatialVideo.mm): a
     // moving picture per eye, from the same iPhone that goes in the viewer. It opens by its place in
-    // SpatialPhotos.Scan's list, which both plugins share.
+    // PhotoLibrary.Scan's list, which both plugins share.
     //
     // Unlike a spatial photo this has a clock, and the clock is the plugin's: AVPlayer keeps the
     // time, the audio and the looping, so playing, pausing and seeking are asked of it rather than

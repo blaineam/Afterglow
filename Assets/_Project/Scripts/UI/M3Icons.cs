@@ -73,6 +73,9 @@ namespace Afterglow.UI
             ["sports_esports"] = 0xea28,
             ["arrow_back"] = 0xe5c4,
             ["grid_view"] = 0xe9b0,
+            // The media browser's tiles.
+            ["panorama"] = 0xe40b,
+            ["photo"] = 0xe410,
         };
 
         // The icon's character, for a TMP text set in the icon font; empty for an unknown name.

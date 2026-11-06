@@ -3,23 +3,26 @@ using System.Collections.Generic;
 using TMPro;
 using Afterglow.UI;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.Video;
 
 namespace Afterglow.Demos.Video
 {
-    // Watch 360 and VR180 videos, 2D or 3D, and the spatial photos and videos the phone itself
-    // took. It opens on a library of what's on the phone (see VideoLibrary); pick one and it plays
-    // around you, or, for a spatial one, on a screen ahead of you with a picture per eye. Pinch (or tap the screen) anywhere on the
-    // video to bring up the controls, a little below where you're looking: play and pause, jump back
-    // or ahead 10 s, seek by clicking the bar, the next video, the format (when a file's name doesn't
-    // say it), and the library (Home is on the settings panel). Pinch on the video again to
-    // put them away. They stay where they appeared rather than following the head, so they can be
-    // looked at. Opened from the home screen's Files tile (DemoManager.Argument is
-    // HomeScreen.k_FilesArgument) it lists only the files the user copied in or linked, and leaves
-    // the Photos library alone.
+    // The media player and its browser: the photos and videos in the phone's Photos library, as a
+    // grid of thumbnails filtered by kind (All, Spatial, Panoramas, 360, Videos), and the video
+    // files copied to the phone or linked from Google Drive. Pick one and it plays or shows around
+    // you: a 360 or VR180 video on the sphere, a panorama on a cylinder as wide as it was swept,
+    // a flat photo or film on a screen ahead, and a spatial photo or video with a picture per eye.
+    // Pinch (or tap the screen) anywhere on the picture to bring up the controls, a little below
+    // where you're looking: play and pause, jump back or ahead 10 s, seek by clicking the bar, the
+    // next item, the format (when a file's name or shape doesn't say), and the browser (Home is on
+    // the settings panel). Pinch on the picture again to put them away. They stay where they
+    // appeared rather than following the head, so they can be looked at.
     // The demo runs in 3DoF with the AR session and hand tracking off; PinchInput's light pinch
     // detector runs, slowing down with no hand in view, leaving most of the heat to the video
-    // decoder. Logs [Video].
+    // decoder. Opened from the home screen's Files tile (DemoManager.Argument is
+    // HomeScreen.k_FilesArgument) it lists only the files the user copied in or linked, and leaves
+    // the Photos library alone. Logs [Video].
     [RequireComponent(typeof(VideoPlayer))]
     public class VideoDemo : Demo
     {
@@ -29,8 +32,24 @@ namespace Afterglow.Demos.Video
         const float k_LowestPitch = -60f;
         const float k_PanelDistance = 1.5f;
         const float k_SkipSeconds = 10f;
-        const int k_EntriesPerPage = 5;
         const float k_StatusSeconds = 5f;
+        // The grid: cells of a thumbnail over a name, in dp, and how many a page holds.
+        public const int k_Columns = 4;
+        public const int k_Rows = 2;
+        public const int k_EntriesPerPage = k_Columns * k_Rows;
+        const float k_CellWidth = 128f;
+        const float k_CellHeight = 118f;
+        const float k_ThumbHeight = 92f;
+        const float k_Gap = 8f;
+        // Thumbnails are asked for at this many pixels across: a cell is 128 dp, and the phone's
+        // screen puts about two pixels in a dp through the lens.
+        const int k_ThumbnailPixels = 256;
+        // How many thumbnails are kept once their page has been left, before the oldest go.
+        const int k_ThumbnailCache = 96;
+        // A picture is decoded no bigger than this on its longer side: a panorama is wide and
+        // deserves more, a photo is seen on a screen that is a fraction of the view.
+        const int k_PhotoPixels = 4096;
+        const int k_PanoramaPixels = 8192;
 
         [SerializeField] VideoSphere m_Sphere;
         // The repository's placeholders. Any other videos in StreamingAssets (Tools/make_videos.sh copies
@@ -41,15 +60,21 @@ namespace Afterglow.Demos.Video
         CoreServices m_Core;
         VideoPlayer m_Player;
         RenderTexture m_Texture;
+        // Everything found, and the part of it under the filter, which is what the grid shows and
+        // what Next steps through.
+        List<VideoEntry> m_All = new();
         List<VideoEntry> m_Library = new();
+        MediaFilter m_Filter = MediaFilter.All;
         int m_Current = -1;
         int m_Wanted = -1;
         Coroutine m_Download;
+        Coroutine m_VideoPath;
         int m_Dropped;
         float m_NextStatus;
-        Texture2D m_SpatialLeft;
-        Texture2D m_SpatialRight;
-        bool m_WaitingForSpatial;
+        // The opened picture's eyes (the right one only for a spatial photo).
+        Texture2D m_PictureLeft;
+        Texture2D m_PictureRight;
+        bool m_WaitingForPicture;
         // A spatial video the plugin has open, and whether its first frame has reached the screen.
         bool m_SpatialVideoOpen;
         bool m_SpatialVideoShown;
@@ -58,10 +83,23 @@ namespace Afterglow.Demos.Video
         // Opened as Files: only what the user copied in or linked, and no Photos question.
         bool m_FilesOnly;
 
+        // Thumbnails by library index: the request while it loads, then the texture.
+        class Thumbnail
+        {
+            public int Request;
+            public Texture2D Texture;
+            public bool Failed;
+            public int LastShown;
+        }
+
+        readonly Dictionary<int, Thumbnail> m_Thumbnails = new();
+        int m_PageShows;
+
         RectTransform m_Panel;
         RectTransform m_LibraryPage;
         RectTransform m_ControlsPage;
         TMP_Text m_Header;
+        M3Button[] m_Chips;
         TMP_Text m_Title;
         TMP_Text m_FormatLine;
         TMP_Text m_Time;
@@ -71,7 +109,19 @@ namespace Afterglow.Demos.Video
         M3Button m_PreviousPage;
         M3Button m_NextPage;
         TMP_Text m_EmptyMessage;
-        readonly List<(M3Button item, TMP_Text supporting)> m_EntryButtons = new();
+
+        // One cell of the grid.
+        class Tile
+        {
+            public GameObject Root;
+            public RawImage Picture;
+            public TMP_Text Icon;
+            public TMP_Text Badge;
+            public GameObject BadgePill;
+            public TMP_Text Name;
+        }
+
+        readonly List<Tile> m_Tiles = new();
         int m_Page;
         bool m_ShowingLibrary;
         bool m_ControlsShown;
@@ -94,10 +144,12 @@ namespace Afterglow.Demos.Video
             BuildPanel();
             m_FilesOnly = core.Demos != null && core.Demos.Argument == HomeScreen.k_FilesArgument;
             m_Header.text = m_FilesOnly ? "Files" : "Media";
+            foreach (var chip in m_Chips)
+                chip.gameObject.SetActive(!m_FilesOnly);
             // Put iOS's Photos question up as the demo opens rather than when a photo is picked, so
-            // the library can list the user's spatial photos alongside the files straight away.
-            m_SpatialSettled = m_FilesOnly || !SpatialPhotos.Supported ||
-                               SpatialPhotos.Authorize() != SpatialPhotos.Access.Asking;
+            // the library can list the user's photos alongside the files straight away.
+            m_SpatialSettled = m_FilesOnly || !PhotoLibrary.Supported ||
+                               PhotoLibrary.Authorize() != PhotoLibrary.Access.Asking;
             Refresh();
             ShowLibrary();
         }
@@ -106,6 +158,8 @@ namespace Afterglow.Demos.Video
         {
             if (m_Download != null)
                 StopCoroutine(m_Download);
+            if (m_VideoPath != null)
+                StopCoroutine(m_VideoPath);
             m_Player.prepareCompleted -= OnPrepared;
             m_Player.errorReceived -= OnError;
             m_Player.frameDropped -= OnFrameDropped;
@@ -113,26 +167,28 @@ namespace Afterglow.Demos.Video
             m_Player.Stop();
             m_Sphere.Show(null, default);
             ReleaseTexture();
-            ReleaseSpatial();
+            ReleasePicture();
+            ReleaseThumbnails();
         }
 
         void OnDestroy()
         {
             ReleaseTexture();
-            ReleaseSpatial();
+            ReleasePicture();
+            ReleaseThumbnails();
         }
 
         void Update()
         {
             if (m_Core == null)
                 return;
-            if (m_WaitingForSpatial)
-                UpdateSpatialPhoto();
+            if (m_WaitingForPicture)
+                UpdatePicture();
             if (m_SpatialVideoOpen)
                 UpdateSpatialVideo();
             // The Photos question is answered after the demo has opened, so once it is, the library
-            // is listed again with the spatial photos in it.
-            if (!m_SpatialSettled && SpatialPhotos.Authorize() != SpatialPhotos.Access.Asking)
+            // is listed again with the photos in it.
+            if (!m_SpatialSettled && PhotoLibrary.Authorize() != PhotoLibrary.Access.Asking)
             {
                 m_SpatialSettled = true;
                 Refresh();
@@ -141,7 +197,7 @@ namespace Afterglow.Demos.Video
             }
 
             if (m_ShowingLibrary)
-                UpdateLibraryLabels();
+                UpdateThumbnails();
             else if (m_ControlsShown)
                 UpdateControls();
 
@@ -166,14 +222,35 @@ namespace Afterglow.Demos.Video
             // rather than left at the index it used to be at: a file copied in or deleted meanwhile
             // shifts everything after it, and the controls would go on describing someone else.
             var playing = Current;
-            m_Library = VideoLibrary.Find(m_Bundled, out var bundled);
+            m_All = VideoLibrary.Find(m_Bundled, out var bundled);
             if (m_FilesOnly)
-                m_Library = VideoLibrary.FilesOnly(m_Library, bundled);
-            m_Current = playing == null ? -1 : m_Library.FindIndex(entry => Same(entry, playing));
+                m_All = VideoLibrary.FilesOnly(m_All, bundled);
+            // Thumbnails belong to library indexes, which a new scan can shift.
+            ReleaseThumbnails();
+            ApplyFilter(playing);
             m_Page = 0;
             Debug.Log(m_FilesOnly
-                ? $"[Video] {m_Library.Count} files from {VideoLibrary.VideoFolder}"
-                : $"[Video] {m_Library.Count} videos: {bundled} bundled, the rest from {VideoLibrary.VideoFolder}");
+                ? $"[Video] {m_All.Count} files from {VideoLibrary.VideoFolder}"
+                : $"[Video] {m_All.Count} items: {bundled} bundled, the files from {VideoLibrary.VideoFolder}, " +
+                  $"the rest from the Photos library; {m_Library.Count} under {m_Filter}");
+        }
+
+        void ApplyFilter(VideoEntry playing)
+        {
+            m_Library = VideoLibrary.Filter(m_All, m_Filter);
+            m_Current = playing == null ? -1 : m_Library.FindIndex(entry => Same(entry, playing));
+        }
+
+        // A filter chip: the grid shows that kind from its first page.
+        void SetFilter(MediaFilter filter)
+        {
+            if (filter == m_Filter)
+                return;
+            m_Filter = filter;
+            ApplyFilter(Current);
+            m_Page = 0;
+            Debug.Log($"[Video] Filter {filter}: {m_Library.Count} items");
+            UpdateGrid();
         }
 
         // What's playing, or null. The library can be rebuilt underneath it (Refresh, and the
@@ -182,8 +259,8 @@ namespace Afterglow.Demos.Video
         VideoEntry Current => m_Current >= 0 && m_Current < m_Library.Count ? m_Library[m_Current] : null;
 
         // Whether two entries from different scans of the library are the same item. Nothing is
-        // shared across the three kinds, so one kind is never the same as another.
-        //   A spatial photo or video goes by its title, which is its creation date: its index is a
+        // shared across the kinds, so one kind is never the same as another.
+        //   A library item goes by its title, which is its kind and creation date: its index is a
         // place in a scan of the Photos library, and a scan that picks up a newly taken photo
         // shifts every index after it. A Drive video goes by its file id, which is what it is, and
         // a file by its path.
@@ -191,14 +268,15 @@ namespace Afterglow.Demos.Video
         {
             if (a == null || b == null)
                 return false;
-            if (a.IsSpatial || b.IsSpatial)
-                return a.IsSpatial == b.IsSpatial && a.SpatialIsVideo == b.SpatialIsVideo && a.Title == b.Title;
+            if (a.IsLibrary || b.IsLibrary)
+                return a.IsLibrary == b.IsLibrary && a.Kind == b.Kind && a.Title == b.Title;
             if (a.DriveId != null || b.DriveId != null)
                 return a.DriveId == b.DriveId;
             return a.Url != null && a.Url == b.Url;
         }
 
-        // Plays an entry, downloading it first if it's a Drive video not yet in the cache.
+        // Opens an entry: a file plays, a Drive video downloads first, a picture is decoded and shown,
+        // a library video's file is asked for and then played.
         void Play(int index)
         {
             if (index < 0 || index >= m_Library.Count)
@@ -212,22 +290,39 @@ namespace Afterglow.Demos.Video
                 return;
             }
 
-            if (entry.IsSpatialPhoto)
+            switch (entry.Kind)
             {
-                PlaySpatialPhoto(entry, index);
-                return;
+                case MediaKind.SpatialPhoto:
+                case MediaKind.Photo:
+                case MediaKind.Still360:
+                case MediaKind.Panorama:
+                    OpenPicture(entry, index);
+                    return;
+                case MediaKind.SpatialVideo:
+                    PlaySpatialVideo(entry, index);
+                    return;
+                case MediaKind.LibraryVideo when entry.Url == null:
+                    if (m_VideoPath != null)
+                        StopCoroutine(m_VideoPath);
+                    m_VideoPath = StartCoroutine(FetchThenPlay(entry, index));
+                    return;
             }
-            if (entry.IsSpatialVideo)
-            {
-                PlaySpatialVideo(entry, index);
-                return;
-            }
+            PlayFile(entry, index);
+        }
 
+        // Stops whatever was showing, so nothing is drawn from buffers about to go.
+        void StopShowing()
+        {
             m_Player.Stop();
             // Off the screen before the pictures go: a spatial video's textures are views of the
             // decoder's own memory, and one left on the quad would be drawn from freed buffers.
             m_Sphere.Show(null, default);
-            ReleaseSpatial();
+            ReleasePicture();
+        }
+
+        void PlayFile(VideoEntry entry, int index)
+        {
+            StopShowing();
             m_Current = index;
             m_Player.url = entry.Url;
             m_Player.Prepare();
@@ -236,88 +331,116 @@ namespace Afterglow.Demos.Video
             Debug.Log($"[Video] Opening {entry.Title} ({entry.Format})");
         }
 
-        // A spatial photo is two pictures rather than a stream, so it doesn't go through
-        // VideoPlayer at all: the plugin decodes both of the file's eyes and Update picks them up
-        // when they're ready.
-        void PlaySpatialPhoto(VideoEntry entry, int index)
+        // A picture is decoded by the plugin off the main thread, and Update picks it up when it's
+        // ready: a spatial photo as two pictures, anything else as one.
+        void OpenPicture(VideoEntry entry, int index)
         {
-            m_Player.Stop();
-            // Off the screen before the pictures go: a spatial video's textures are views of the
-            // decoder's own memory, and one left on the quad would be drawn from freed buffers.
-            m_Sphere.Show(null, default);
-            ReleaseSpatial();
+            StopShowing();
             m_Current = index;
             m_Title.text = entry.Title;
 
-            if (SpatialPhotos.Authorize() != SpatialPhotos.Access.Granted)
+            if (PhotoLibrary.Authorize() != PhotoLibrary.Access.Granted)
             {
                 entry.Status = "Allow Photos to show this";
-                Debug.Log("[Video] The Photos library isn't allowed yet, so the spatial photo stays shut");
+                Debug.Log("[Video] The Photos library isn't allowed yet, so the picture stays shut");
                 return;
             }
-            if (!SpatialPhotos.OpenPhoto(entry.SpatialIndex))
+            var ok = entry.Kind == MediaKind.SpatialPhoto
+                ? PhotoLibrary.OpenSpatialPhoto(entry.LibraryIndex)
+                : PhotoLibrary.OpenImage(entry.LibraryIndex, entry.Kind == MediaKind.Panorama ? k_PanoramaPixels : k_PhotoPixels);
+            if (!ok)
             {
                 m_Current = -1;
-                entry.Status = "Couldn't open that spatial photo";
+                entry.Status = "Couldn't open that picture";
                 Debug.LogWarning($"[Video] Couldn't open {entry.Title}");
                 ShowLibrary();
                 return;
             }
             entry.Status = "Loading";
-            m_WaitingForSpatial = true;
-            Debug.Log($"[Video] Opening {entry.Title} ({entry.Format})");
+            m_WaitingForPicture = true;
+            Debug.Log($"[Video] Opening {entry.Title} ({entry.Width}x{entry.Height})");
         }
 
-        // Polled while a spatial photo loads, since the plugin decodes it off the main thread.
-        void UpdateSpatialPhoto()
+        // Polled while a picture loads.
+        void UpdatePicture()
         {
-            switch (SpatialPhotos.PhotoState)
+            switch (PhotoLibrary.PhotoState)
             {
-                case SpatialPhotos.State.Loading:
+                case PhotoLibrary.State.Loading:
                     return;
-                case SpatialPhotos.State.Ready:
-                    m_WaitingForSpatial = false;
-                    if (!SpatialPhotos.TryTakeTextures(out m_SpatialLeft, out m_SpatialRight))
+                case PhotoLibrary.State.Ready:
+                    m_WaitingForPicture = false;
+                    if (!PhotoLibrary.TryTakeTextures(out m_PictureLeft, out m_PictureRight))
                     {
-                        FailSpatial("That spatial photo's pictures couldn't be uploaded");
+                        FailPicture("That picture couldn't be uploaded");
                         return;
                     }
-                    // A picture each, so the format's halves aren't used: the eyes are whole.
-                    m_Sphere.Show(m_SpatialLeft, VideoFormat.Stereo3D, m_SpatialRight);
-                    if (Current != null)
-                        Current.Status = null;
-                    Debug.Log($"[Video] Spatial photo shown: {m_SpatialLeft.width}x{m_SpatialLeft.height} per eye");
+                    var entry = Current;
+                    if (entry == null)
+                    {
+                        ReleasePicture();
+                        return;
+                    }
+                    if (entry.Kind == MediaKind.SpatialPhoto && m_PictureRight == null)
+                    {
+                        FailPicture("That spatial photo gave only one eye");
+                        return;
+                    }
+                    // A file the library didn't mark as spatial turned out to hold a pair.
+                    if (m_PictureRight != null && entry.Kind != MediaKind.SpatialPhoto)
+                    {
+                        entry.Kind = MediaKind.SpatialPhoto;
+                        entry.Format = VideoFormat.Stereo3D;
+                    }
+                    ShowPicture(entry);
+                    entry.Status = null;
+                    Debug.Log($"[Video] {VideoLibrary.Describe(entry.Kind)} shown: {m_PictureLeft.width}x{m_PictureLeft.height}" +
+                              (m_PictureRight != null ? " per eye" : "") +
+                              (entry.Kind == MediaKind.Panorama ? $", {PanoramaDegrees(entry):F0} degrees round" : ""));
                     HidePanel();
                     // The pictures are in textures now, so the plugin needn't keep its buffers.
-                    SpatialPhotos.Close();
+                    PhotoLibrary.Close();
                     return;
                 default:
-                    FailSpatial(SpatialPhotos.PhotoError);
+                    FailPicture(PhotoLibrary.PhotoError);
                     return;
             }
         }
 
-        // A spatial video doesn't go through VideoPlayer either, and for a different reason: it
-        // would decode one of the file's two layers and play the result flat. The plugin decodes
-        // both and keeps the clock and the audio, so the controls ask it rather than VideoPlayer
-        // (see OnSpatialVideo), and Update picks up each frame's two pictures.
+        // Draws the opened picture the way its kind says, and again when the user changes the kind.
+        void ShowPicture(VideoEntry entry)
+        {
+            if (m_PictureLeft == null)
+                return;
+            if (m_PictureRight != null)
+                m_Sphere.Show(m_PictureLeft, VideoFormat.Stereo3D, m_PictureRight);
+            else if (entry.Kind == MediaKind.Panorama)
+                m_Sphere.ShowPanorama(m_PictureLeft, PanoramaDegrees(entry), VideoLibrary.k_PanoramaHeightDegrees);
+            else
+                m_Sphere.Show(m_PictureLeft, entry.Format);
+        }
+
+        float PanoramaDegrees(VideoEntry entry) =>
+            VideoLibrary.PanoramaDegrees(m_PictureLeft != null ? m_PictureLeft.width : entry.Width,
+                m_PictureLeft != null ? m_PictureLeft.height : entry.Height);
+
+        // A spatial video doesn't go through VideoPlayer, and for a different reason than a photo:
+        // it would decode one of the file's two layers and play the result flat. The plugin
+        // decodes both and keeps the clock and the audio, so the controls ask it rather than
+        // VideoPlayer (see OnSpatialVideo), and Update picks up each frame's two pictures.
         void PlaySpatialVideo(VideoEntry entry, int index)
         {
-            m_Player.Stop();
-            // Off the screen before the pictures go: a spatial video's textures are views of the
-            // decoder's own memory, and one left on the quad would be drawn from freed buffers.
-            m_Sphere.Show(null, default);
-            ReleaseSpatial();
+            StopShowing();
             m_Current = index;
             m_Title.text = entry.Title;
 
-            if (SpatialPhotos.Authorize() != SpatialPhotos.Access.Granted)
+            if (PhotoLibrary.Authorize() != PhotoLibrary.Access.Granted)
             {
                 entry.Status = "Allow Photos to show this";
                 Debug.Log("[Video] The Photos library isn't allowed yet, so the spatial video stays shut");
                 return;
             }
-            if (!SpatialVideo.Open(entry.SpatialIndex))
+            if (!SpatialVideo.Open(entry.LibraryIndex))
             {
                 var why = SpatialVideo.Error;
                 m_Current = -1;
@@ -355,42 +478,71 @@ namespace Afterglow.Demos.Video
                     HidePanel();
                     return;
                 default:
-                    FailSpatial(SpatialVideo.Error);
+                    FailPicture(SpatialVideo.Error);
                     return;
             }
         }
 
-        void FailSpatial(string message)
+        void FailPicture(string message)
         {
-            var kind = Current != null && Current.IsSpatialVideo ? "video" : "photo";
+            var kind = Current != null ? VideoLibrary.Describe(Current.Kind).ToLowerInvariant() : "picture";
             if (Current != null)
-                Current.Status = string.IsNullOrEmpty(message) ? $"Couldn't show that spatial {kind}" : message;
-            Debug.LogWarning($"[Video] Spatial {kind} failed: {(string.IsNullOrEmpty(message) ? "no reason given" : message)}");
+                Current.Status = string.IsNullOrEmpty(message) ? $"Couldn't show that {kind}" : message;
+            Debug.LogWarning($"[Video] {kind} failed: {(string.IsNullOrEmpty(message) ? "no reason given" : message)}");
             m_Current = -1;
             m_Sphere.Show(null, default);
-            ReleaseSpatial();
+            ReleasePicture();
             ShowLibrary();
         }
 
-        void ReleaseSpatial()
+        void ReleasePicture()
         {
-            m_WaitingForSpatial = false;
+            m_WaitingForPicture = false;
             m_SpatialVideoOpen = false;
             m_SpatialVideoShown = false;
-            SpatialPhotos.Close();
+            PhotoLibrary.Close();
             // Closing lets go of the decoder's buffers, and with them the textures that were views
             // of them, so nothing is left pointing into freed memory.
             SpatialVideo.Close();
-            if (m_SpatialLeft != null)
-                Destroy(m_SpatialLeft);
-            if (m_SpatialRight != null)
-                Destroy(m_SpatialRight);
-            m_SpatialLeft = m_SpatialRight = null;
+            if (m_PictureLeft != null)
+                Destroy(m_PictureLeft);
+            if (m_PictureRight != null)
+                Destroy(m_PictureRight);
+            m_PictureLeft = m_PictureRight = null;
+        }
+
+        // A library video's file is fetched by Photos, which may have to download it.
+        IEnumerator FetchThenPlay(VideoEntry entry, int index)
+        {
+            m_Current = index;
+            m_Title.text = entry.Title;
+            entry.Status = "Fetching";
+            var request = PhotoLibrary.RequestVideoPath(entry.LibraryIndex);
+            var state = request == 0 ? PhotoLibrary.State.Failed : PhotoLibrary.State.Loading;
+            while (state == PhotoLibrary.State.Loading)
+            {
+                yield return null;
+                state = PhotoLibrary.TryGetVideoPath(request, out var path);
+                if (state == PhotoLibrary.State.Ready)
+                    entry.Url = path;
+            }
+            m_VideoPath = null;
+            if (m_Wanted != index)
+                yield break;
+            if (entry.Url == null)
+            {
+                entry.Status = "That video isn't on the phone";
+                Debug.LogWarning($"[Video] No file for {entry.Title}");
+                m_Current = -1;
+                ShowLibrary();
+                yield break;
+            }
+            PlayFile(entry, index);
         }
 
         // Whatever is playing, asked through one set of questions rather than a branch at every
         // button. A file goes through Unity's VideoPlayer and a spatial video through the plugin;
-        // a spatial photo has no clock at all, and VideoPlayer, stopped, answers for it as a still.
+        // a picture has no clock at all, and VideoPlayer, stopped, answers for it as a still.
         bool OnSpatialVideo => Current is { IsSpatialVideo: true };
 
         bool PlaybackReady => OnSpatialVideo
@@ -499,14 +651,28 @@ namespace Afterglow.Demos.Video
                 Play((Mathf.Max(m_Current, 0) + 1) % m_Library.Count);
         }
 
+        // The Format button: for a video, the next layout; for a picture from the library, the next
+        // way of wrapping it (a screen, all the way round, a panorama), since the shape it was
+        // guessed from can mislead. A spatial photo or video already has a picture per eye, so
+        // there's no layout to guess.
         void CycleFormat()
         {
             var entry = Current;
-            if (entry == null)
+            if (entry == null || entry.IsSpatial)
                 return;
-            // A spatial photo or video already has a picture per eye, so there's no layout to guess.
-            if (entry.IsSpatial)
+            if (entry.IsPicture)
+            {
+                entry.Kind = entry.Kind switch
+                {
+                    MediaKind.Photo => MediaKind.Still360,
+                    MediaKind.Still360 => MediaKind.Panorama,
+                    _ => MediaKind.Photo,
+                };
+                entry.Format = VideoLibrary.DefaultFormat(entry.Kind, entry.Width, entry.Height);
+                ShowPicture(entry);
+                Debug.Log($"[Video] {entry.Title} shown as {VideoLibrary.Describe(entry.Kind).ToLowerInvariant()}");
                 return;
+            }
             entry.Format = entry.Format.Next();
             if (m_Player.isPrepared)
                 m_Sphere.Show(m_Texture, entry.Format);
@@ -524,12 +690,9 @@ namespace Afterglow.Demos.Video
             m_Texture = null;
         }
 
-        // Where the head is looking, in degrees above (+) or below (-) the horizon.
-        float HeadPitch => Mathf.Asin(Mathf.Clamp(m_Core.Head.forward.y, -1f, 1f)) * Mathf.Rad2Deg;
-
-        // A tap on the video toggles the controls. It also closes the library, back to the video.
         void OnVideoClicked()
         {
+            Debug.Log($"[Video] Picture clicked with the panel {(m_ShowingLibrary ? "on the browser" : m_ControlsShown ? "on the controls" : "away")}");
             if (m_ShowingLibrary || m_ControlsShown)
                 HidePanel();
             else
@@ -543,7 +706,7 @@ namespace Afterglow.Demos.Video
             m_LibraryPage.gameObject.SetActive(true);
             m_ControlsPage.gameObject.SetActive(false);
             PlacePanel(-12f, k_LibrarySize);
-            UpdateLibraryLabels();
+            UpdateGrid();
         }
 
         void ShowControls()
@@ -554,6 +717,8 @@ namespace Afterglow.Demos.Video
             m_ControlsPage.gameObject.SetActive(true);
             PlacePanel(Mathf.Max(HeadPitch - k_ControlsBelowGaze, k_LowestPitch), k_ControlsSize);
             UpdateControls();
+            Debug.Log($"[Video] Controls shown at {m_Panel.position}, head at {m_Core.Head.position} pitch {HeadPitch:F0}, " +
+                      $"panel {(m_Panel.gameObject.activeInHierarchy ? "active" : "inactive")}");
         }
 
         void HidePanel()
@@ -572,6 +737,32 @@ namespace Afterglow.Demos.Video
             M3Fade.Show(m_Panel.gameObject);
         }
 
+        float HeadPitch
+        {
+            get
+            {
+                var forward = m_Core.Head.forward;
+                return Mathf.Asin(Mathf.Clamp(forward.y, -1f, 1f)) * Mathf.Rad2Deg;
+            }
+        }
+
+        // What the controls say about the item: its state while something is wrong, else its kind
+        // and shape.
+        static string Describe(VideoEntry entry)
+        {
+            if (entry.Status != null)
+                return entry.Status;
+            return entry.Kind switch
+            {
+                MediaKind.Panorama => $"Panorama, {VideoLibrary.PanoramaDegrees(entry.Width, entry.Height):F0}°",
+                MediaKind.Still360 => "360 still",
+                MediaKind.Photo => "Photo",
+                MediaKind.SpatialPhoto => "Spatial photo",
+                MediaKind.SpatialVideo => "Spatial video",
+                _ => entry.Format.ToString(),
+            };
+        }
+
         void UpdateControls()
         {
             var entry = Current;
@@ -579,14 +770,27 @@ namespace Afterglow.Demos.Video
             if (entry != null)
             {
                 m_Title.text = entry.Title;
-                m_FormatLine.text = entry.Status ?? entry.Format.ToString();
+                m_FormatLine.text = Describe(entry);
             }
             m_Play.Icon = ready && PlaybackPlaying ? "pause" : "play_arrow";
             m_Time.text = ready ? $"{Clock(PlaybackTime)} / {Clock(PlaybackLength)}" : "";
             m_Seek.Value = ready && PlaybackLength > 0 ? (float)(PlaybackTime / PlaybackLength) : 0f;
         }
 
-        void UpdateLibraryLabels()
+        // The icon on a tile, for what the thumbnail doesn't show.
+        static string Icon(VideoEntry entry) => entry.Kind switch
+        {
+            MediaKind.SpatialPhoto => "view_in_ar",
+            MediaKind.SpatialVideo => "view_in_ar",
+            MediaKind.Panorama => "panorama",
+            MediaKind.Still360 => "360",
+            MediaKind.Photo => "photo",
+            MediaKind.Drive => entry.NeedsDownload ? "cloud_download" : "movie",
+            _ => "movie",
+        };
+
+        // Fills the page's tiles from the filtered list, asking for the thumbnails it lacks.
+        void UpdateGrid()
         {
             var pages = Mathf.Max(1, (m_Library.Count + k_EntriesPerPage - 1) / k_EntriesPerPage);
             m_Page = Mathf.Clamp(m_Page, 0, pages - 1);
@@ -594,59 +798,199 @@ namespace Afterglow.Demos.Video
             m_PreviousPage.Interactable = m_Page > 0;
             m_NextPage.Interactable = m_Page < pages - 1;
             m_EmptyMessage.gameObject.SetActive(m_Library.Count == 0);
-            for (var i = 0; i < m_EntryButtons.Count; i++)
+            m_EmptyMessage.text = EmptyMessage();
+            for (var i = 0; i < m_Chips.Length; i++)
+                m_Chips[i].Selected = (MediaFilter)i == m_Filter;
+            m_PageShows++;
+            for (var i = 0; i < m_Tiles.Count; i++)
             {
                 var index = m_Page * k_EntriesPerPage + i;
-                var (item, supporting) = m_EntryButtons[i];
-                item.gameObject.SetActive(index < m_Library.Count);
+                var tile = m_Tiles[i];
+                tile.Root.SetActive(index < m_Library.Count);
                 if (index >= m_Library.Count)
                     continue;
                 var entry = m_Library[index];
-                item.Text = entry.Title;
-                // The library's own spatial items are marked apart from the files, since they
-                // arrive without being copied in and are the ones that are 3D.
-                item.Icon = entry.NeedsDownload ? "cloud_download" : entry.IsSpatial ? "view_in_ar" : "movie";
-                supporting.text = entry.Status ?? (entry.NeedsDownload ? "Google Drive: pinch to download" : entry.Format.ToString());
-                if (item.Selected != (index == m_Current))
-                    item.Selected = index == m_Current;
+                tile.Name.text = entry.Title;
+                tile.Name.color = index == m_Current ? M3Theme.Primary : M3Theme.OnSurface;
+                tile.Icon.text = M3Icons.Glyph(Icon(entry));
+                var video = entry.IsVideo && entry.Seconds > 0;
+                tile.BadgePill.SetActive(entry.IsLibrary);
+                tile.Badge.text = video ? Clock(entry.Seconds) : M3Icons.Glyph(Icon(entry));
+                tile.Badge.font = video ? M3Assets.Instance.Medium : M3Assets.Instance.Icons;
+                SetThumbnail(tile, entry.IsLibrary ? Thumb(entry.LibraryIndex) : null);
+            }
+            TrimThumbnails();
+        }
+
+        string EmptyMessage()
+        {
+            if (m_FilesOnly || m_All.Count == 0)
+            {
+                var folder = Application.platform == RuntimePlatform.IPhonePlayer
+                    ? "On a Mac, open the iPhone in Finder, then Files > Afterglow > Videos, and drag videos in."
+                    : $"Copy videos with: adb push video.mp4 {VideoLibrary.VideoFolder}";
+                return "No videos yet.\n\n" + folder +
+                       "\n\nName tags set the format: _360, _180, _sbs, _tb. For Google Drive, list share links in videos.txt in that folder.";
+            }
+            if (PhotoLibrary.Supported && PhotoLibrary.Authorize() != PhotoLibrary.Access.Granted)
+                return "Allow Photos in Settings to see your photos and videos here.";
+            return m_Filter switch
+            {
+                MediaFilter.Spatial => "No spatial photos or videos. An iPhone 15 Pro or later takes them in the Camera app's Spatial mode.",
+                MediaFilter.Panoramas => "No panoramas in the library.",
+                MediaFilter.Still360 => "Nothing 360 here: a 2:1 still, or a video whose name or shape says 360 or 180.",
+                MediaFilter.Videos => "No videos in the library or the Videos folder.",
+                _ => "Nothing to show yet.",
+            };
+        }
+
+        // The thumbnail for a library item, asking for it the first time.
+        Thumbnail Thumb(int libraryIndex)
+        {
+            if (!m_Thumbnails.TryGetValue(libraryIndex, out var thumb))
+            {
+                thumb = new Thumbnail { Request = PhotoLibrary.RequestThumbnail(libraryIndex, k_ThumbnailPixels) };
+                thumb.Failed = thumb.Request == 0;
+                m_Thumbnails[libraryIndex] = thumb;
+            }
+            thumb.LastShown = m_PageShows;
+            return thumb;
+        }
+
+        // Puts a thumbnail on a tile, or the kind's icon while there isn't one.
+        static void SetThumbnail(Tile tile, Thumbnail thumb)
+        {
+            var texture = thumb?.Texture;
+            tile.Picture.texture = texture;
+            tile.Picture.gameObject.SetActive(texture != null);
+            tile.Icon.gameObject.SetActive(texture == null);
+            if (texture != null)
+                tile.Picture.uvRect = CoverRect(texture.width, texture.height, k_CellWidth, k_ThumbHeight);
+        }
+
+        // The part of a picture that fills a frame of another shape, cropped evenly from the sides
+        // that overhang. Pure, for testing.
+        public static Rect CoverRect(float width, float height, float frameWidth, float frameHeight)
+        {
+            if (width <= 0f || height <= 0f || frameWidth <= 0f || frameHeight <= 0f)
+                return new Rect(0f, 0f, 1f, 1f);
+            var picture = width / height;
+            var frame = frameWidth / frameHeight;
+            if (picture > frame)
+            {
+                var w = frame / picture;
+                return new Rect((1f - w) / 2f, 0f, w, 1f);
+            }
+            var h = picture / frame;
+            return new Rect(0f, (1f - h) / 2f, 1f, h);
+        }
+
+        // Collects thumbnails that have arrived and puts them on the tiles showing them.
+        void UpdateThumbnails()
+        {
+            foreach (var (libraryIndex, thumb) in m_Thumbnails)
+            {
+                if (thumb.Texture != null || thumb.Failed || thumb.Request == 0)
+                    continue;
+                var state = PhotoLibrary.TryTakeThumbnail(thumb.Request, out var texture);
+                if (state == PhotoLibrary.State.Loading)
+                    continue;
+                thumb.Request = 0;
+                if (state == PhotoLibrary.State.Failed)
+                {
+                    thumb.Failed = true;
+                    continue;
+                }
+                thumb.Texture = texture;
+                for (var i = 0; i < m_Tiles.Count; i++)
+                {
+                    var index = m_Page * k_EntriesPerPage + i;
+                    if (index < m_Library.Count && m_Library[index].LibraryIndex == libraryIndex)
+                        SetThumbnail(m_Tiles[i], thumb);
+                }
             }
         }
 
+        // Lets the oldest thumbnails go once there are more than a few pages' worth.
+        void TrimThumbnails()
+        {
+            if (m_Thumbnails.Count <= k_ThumbnailCache)
+                return;
+            var stale = new List<int>();
+            foreach (var (libraryIndex, thumb) in m_Thumbnails)
+            {
+                if (thumb.LastShown != m_PageShows)
+                    stale.Add(libraryIndex);
+            }
+            stale.Sort((a, b) => m_Thumbnails[a].LastShown.CompareTo(m_Thumbnails[b].LastShown));
+            for (var i = 0; i < stale.Count && m_Thumbnails.Count > k_ThumbnailCache; i++)
+            {
+                ReleaseThumbnail(m_Thumbnails[stale[i]]);
+                m_Thumbnails.Remove(stale[i]);
+            }
+        }
+
+        static void ReleaseThumbnail(Thumbnail thumb)
+        {
+            if (thumb.Request != 0)
+                PhotoLibrary.ReleaseThumbnail(thumb.Request);
+            if (thumb.Texture != null)
+                Destroy(thumb.Texture);
+            thumb.Request = 0;
+            thumb.Texture = null;
+        }
+
+        void ReleaseThumbnails()
+        {
+            foreach (var thumb in m_Thumbnails.Values)
+                ReleaseThumbnail(thumb);
+            m_Thumbnails.Clear();
+            foreach (var tile in m_Tiles)
+                SetThumbnail(tile, null);
+        }
+
         // Both pages share one Material panel, k_PanelDistance away, sized to the page showing. Sizes in dp.
-        static readonly Vector2 k_LibrarySize = new(600f, 536f);
+        static readonly Vector2 k_LibrarySize = new(600f, 452f);
         static readonly Vector2 k_ControlsSize = new(600f, 352f);
 
         void BuildPanel()
         {
             m_Panel = WorldUi.Panel("Video Panel", transform, k_LibrarySize, k_PanelDistance);
+            var top = k_LibrarySize.y / 2f - 16f;
 
-            // The library: a list of videos, a page at a time.
+            // The browser: a header, the filter chips, a grid of thumbnails, and the page controls.
             m_LibraryPage = WorldUi.CreateGroup("Library", m_Panel);
-            m_Header = M3.Text("Header", m_LibraryPage, "Media", M3Theme.Type.TitleLarge, new Vector2(-60f, 220f), new Vector2(432f, 32f),
+            m_Header = M3.Text("Header", m_LibraryPage, "Media", M3Theme.Type.TitleLarge, new Vector2(-60f, top - 16f), new Vector2(432f, 32f),
                 alignment: TextAlignmentOptions.Left);
-            M3.IconButton("Refresh", m_LibraryPage, "refresh", M3Button.Variant.Text, new Vector2(248f, 220f), () =>
+            M3.IconButton("Refresh", m_LibraryPage, "refresh", M3Button.Variant.Text, new Vector2(248f, top - 16f), () =>
             {
                 Refresh();
-                UpdateLibraryLabels();
+                UpdateGrid();
             });
+            var chipsY = top - 32f - 8f - 20f;
+            m_Chips = M3.Segments("Filters", m_LibraryPage, new[] { "All", "Spatial", "Panoramas", "360", "Videos" },
+                new Vector2(0f, chipsY), 104f, index => SetFilter((MediaFilter)index));
+
+            var gridTop = chipsY - 20f - k_Gap;
             for (var i = 0; i < k_EntriesPerPage; i++)
             {
+                var column = i % k_Columns;
+                var row = i / k_Columns;
+                var x = -k_LibrarySize.x / 2f + 16f + k_CellWidth / 2f + column * (k_CellWidth + k_Gap);
+                var y = gridTop - k_CellHeight / 2f - row * (k_CellHeight + k_Gap);
                 var slot = i;
-                m_EntryButtons.Add(M3.ListItem($"Entry {i}", m_LibraryPage, "movie", new Vector2(0f, 152f - i * 68f), 552f,
-                    () => Play(m_Page * k_EntriesPerPage + slot)));
+                m_Tiles.Add(BuildTile(i, new Vector2(x, y), () => Play(m_Page * k_EntriesPerPage + slot)));
             }
-            var folder = Application.platform == RuntimePlatform.IPhonePlayer
-                ? "On a Mac, open the iPhone in Finder, then Files > Afterglow > Videos, and drag videos in."
-                : $"Copy videos with: adb push video.mp4 {VideoLibrary.VideoFolder}";
-            m_EmptyMessage = M3.Text("Empty", m_LibraryPage, "No videos yet.\n\n" + folder +
-                "\n\nName tags set the format: _360, _180, _sbs, _tb. For Google Drive, list share links in videos.txt in that folder.",
-                M3Theme.Type.BodyMedium, new Vector2(0f, 16f), new Vector2(520f, 300f), M3Theme.OnSurfaceVariant);
-            m_PreviousPage = M3.IconButton("Previous page", m_LibraryPage, "chevron_left", M3Button.Variant.Text, new Vector2(-84f, -212f),
-                () => Page(-1));
-            m_PageLabel = M3.Text("Page", m_LibraryPage, "", M3Theme.Type.BodyMedium, new Vector2(0f, -212f), new Vector2(100f, 24f),
+            var gridBottom = gridTop - k_Rows * k_CellHeight - (k_Rows - 1) * k_Gap;
+            m_EmptyMessage = M3.Text("Empty", m_LibraryPage, "", M3Theme.Type.BodyMedium,
+                new Vector2(0f, (gridTop + gridBottom) / 2f), new Vector2(520f, gridTop - gridBottom - 16f), M3Theme.OnSurfaceVariant);
+            var footerY = -k_LibrarySize.y / 2f + 16f + 24f;
+            m_PreviousPage = M3.IconButton("Previous page", m_LibraryPage, "chevron_left", M3Button.Variant.Text, new Vector2(-84f, footerY),
+                () => Page(-1), 48f);
+            m_PageLabel = M3.Text("Page", m_LibraryPage, "", M3Theme.Type.BodyMedium, new Vector2(0f, footerY), new Vector2(100f, 24f),
                 M3Theme.OnSurfaceVariant);
-            m_NextPage = M3.IconButton("Next page", m_LibraryPage, "chevron_right", M3Button.Variant.Text, new Vector2(84f, -212f),
-                () => Page(1));
+            m_NextPage = M3.IconButton("Next page", m_LibraryPage, "chevron_right", M3Button.Variant.Text, new Vector2(84f, footerY),
+                () => Page(1), 48f);
 
             // The controls: what's playing, a seek slider, transport, then the rest.
             m_ControlsPage = WorldUi.CreateGroup("Controls", m_Panel);
@@ -670,17 +1014,60 @@ namespace Afterglow.Demos.Video
                 () => Skip(k_SkipSeconds));
 
             const float width = 168f;
-            M3.Button("Library", m_ControlsPage, "Library", M3Button.Variant.Tonal, new Vector2(-176f, -128f), ShowLibrary, "video_library",
+            M3.Button("Library", m_ControlsPage, "Browse", M3Button.Variant.Tonal, new Vector2(-176f, -128f), ShowLibrary, "video_library",
                 width);
             M3.Button("Next video", m_ControlsPage, "Next", M3Button.Variant.Tonal, new Vector2(0f, -128f), Next, "skip_next", width);
             M3.Button("Format", m_ControlsPage, "Format", M3Button.Variant.Tonal, new Vector2(176f, -128f), CycleFormat, "aspect_ratio",
                 width);
         }
 
+        // One cell: a rounded frame holding the thumbnail (or the kind's icon until it arrives),
+        // a badge in its corner saying what it is, and the name under it; the whole cell the
+        // target, with a state layer for the gaze.
+        Tile BuildTile(int index, Vector2 position, UnityEngine.Events.UnityAction onClick)
+        {
+            var cell = M3.Group($"Tile {index}", m_LibraryPage, position, new Vector2(k_CellWidth, k_CellHeight));
+            var state = M3.Surface("State Layer", cell, Vector2.zero, cell.sizeDelta, Color.clear, M3Theme.k_ShapeLarge, raycastTarget: true);
+            var button = cell.gameObject.AddComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.targetGraphic = state;
+            button.onClick.AddListener(onClick);
+            cell.gameObject.AddComponent<M3StateLayer>().Initialize(state, button, M3Theme.OnSurface);
+
+            var frameY = k_CellHeight / 2f - k_ThumbHeight / 2f;
+            var frame = M3.Surface("Frame", cell, new Vector2(0f, frameY), new Vector2(k_CellWidth, k_ThumbHeight),
+                M3Theme.SurfaceContainerHighest, M3Theme.k_ShapeCard);
+            // The frame's rounded shape clips the picture to it.
+            frame.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+            var pictureObject = new GameObject("Picture", typeof(RectTransform), typeof(RawImage));
+            var pictureRect = (RectTransform)pictureObject.transform;
+            pictureRect.SetParent(frame.rectTransform, false);
+            pictureRect.anchorMin = Vector2.zero;
+            pictureRect.anchorMax = Vector2.one;
+            pictureRect.offsetMin = pictureRect.offsetMax = Vector2.zero;
+            var picture = pictureObject.GetComponent<RawImage>();
+            picture.raycastTarget = false;
+            pictureObject.SetActive(false);
+            var icon = M3.Icon("Icon", cell, "movie", 36f, new Vector2(0f, frameY), M3Theme.OnSurfaceVariant);
+
+            // The badge: a dark pill in the frame's corner with the kind's icon, or a video's length.
+            var pill = M3.Surface("Badge", cell, new Vector2(-k_CellWidth / 2f + 6f + 22f, frameY - k_ThumbHeight / 2f + 6f + 10f),
+                new Vector2(44f, 20f), M3Theme.WithAlpha(Color.black, 0.6f), M3Theme.k_ShapeFull);
+            var badge = M3.Text("Label", pill.rectTransform, "", M3Theme.Type.LabelLarge, Vector2.zero, new Vector2(44f, 20f), Color.white);
+            badge.fontSize = 14f;
+            pill.gameObject.SetActive(false);
+
+            var name = M3.Text("Name", cell, "", M3Theme.Type.BodyMedium, new Vector2(0f, -k_CellHeight / 2f + 10f),
+                new Vector2(k_CellWidth - 4f, 20f));
+            name.textWrappingMode = TextWrappingModes.NoWrap;
+            name.overflowMode = TextOverflowModes.Ellipsis;
+            return new Tile { Root = cell.gameObject, Picture = picture, Icon = icon, Badge = badge, BadgePill = pill.gameObject, Name = name };
+        }
+
         void Page(int step)
         {
             m_Page += step;
-            UpdateLibraryLabels();
+            UpdateGrid();
         }
 
         static string Clock(double seconds)

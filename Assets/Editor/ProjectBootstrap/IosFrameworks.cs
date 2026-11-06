@@ -16,7 +16,7 @@ namespace ProjectBootstrap
     // tests, not Unity's export -- says a word about it.
     //
     //   WebKit        the in-app browser's WKWebView (AfterglowWebXR.mm)
-    //   Photos        the spatial photo and video library (AfterglowSpatialPhotos.mm)
+    //   Photos        the photo and video library (AfterglowPhotoLibrary.mm)
     //   Speech        dictation into the browser (AfterglowDictation.mm)
     //   AVFoundation  the microphone that feeds it, and the player that decodes both layers of a
     //                 spatial video (AfterglowSpatialVideo.mm)

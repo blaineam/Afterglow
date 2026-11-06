@@ -1,6 +1,6 @@
 // Spatial video from the user's Photos library: both eyes of an MV-HEVC file, as Metal textures
 // Unity draws from without ever copying the pixels. SpatialVideo.cs is the C# side, and
-// AfterglowSpatialPhotos.mm owns the library scan whose indexes this takes.
+// AfterglowPhotoLibrary.mm owns the library scan whose indexes this takes.
 //
 // An iPhone 15 Pro and later record a spatial video as one MV-HEVC track whose two views are
 // separate layers. An ordinary decode hands back one layer -- whichever the file calls the hero eye

@@ -84,7 +84,9 @@ arrow keys look around (2° a press, steady when held), W A S D move, Q and E go
 R faces forward again. **In the iOS
 Simulator** (`Tools/ios_sim_build_and_run.sh`, which boots an iPhone 18 Pro Max simulator and leaves
 it running) a drag looks and a click taps; the Photos library works there, so spatial photos and
-videos can be added to it with `xcrun simctl addmedia booted photo.HEIC`, and so do WKWebView and
+videos can be added to it with `xcrun simctl addmedia booted photo.HEIC` (`Tools/sim_add_media.sh`
+draws a set of test media — a 360 still, a panorama, flat photos, a spatial photo and two videos —
+and adds them), and so do WKWebView and
 video decoding. What neither has is ARKit: no passthrough, no surfaces and no camera-tracked hands.
 The app notices (`Capabilities`) and refuses those with a log line rather than waiting for tracking.
 
@@ -187,19 +189,25 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
   the gaze, then the demo's own use (painting, hitting orbs), then picking up, then a plain click.
   If you rest your gaze on a button with no hand in the camera's view, a hint under the reticle says
   to raise it.
-- **Media** plays 360 and VR180 videos, 2D or 3D, flat films on a screen ahead of you, and the
-  **spatial photos and videos** already in your Photos library, which an iPhone 15 Pro and later
-  record with a picture for each eye. Pinch on the video for the controls. Two small test clips are
-  bundled, and the spatial photos need no copying in: allow Photos the first time Media opens and
-  they are listed with the files. **Files** is the same player listing only what you copied in or
-  linked, and never asks about Photos. To bundle your own in local builds, put them in a `360` folder
-  beside the project (or set `AFTERGLOW_VIDEOS`): the build scripts copy them into
-  `Assets/StreamingAssets`, which git ignores apart from the test clips. Or add your own to the app's `Videos` folder on the phone: on
-  Android `adb push video.mp4 /storage/emulated/0/Android/data/com.wemiller.afterglow/files/Videos`;
-  on iPhone, Finder's Files tab for the phone, then Afterglow > Videos. Tags in the name set the
+- **Media** is a browser of your Photos library: a grid of thumbnails, newest first, with filters
+  *All · Spatial · Panoramas · 360 · Videos*, and the video files on the phone after them. Pick
+  one and it shows the way its kind says: a **spatial photo or video** (an iPhone 15 Pro and later
+  record a picture for each eye) with a picture per eye on a screen ahead of you, a **panorama**
+  on a cylinder as wide as it was swept (about 240° for a 4:1 one), a **2:1 still** all the way
+  round, a plain photo or film on the screen, and a 360 or VR180 video on the sphere. The kind is
+  read from the library and the picture's shape; the controls' *Format* button changes it when
+  that guess is wrong. Pinch on the picture for the controls. Allow Photos the first time Media
+  opens. **Files** is the same browser listing only the video files you copied in or linked, and
+  never asks about Photos. Two small test clips are bundled; to bundle your own in local builds,
+  put them in a `360` folder beside the project (or set `AFTERGLOW_VIDEOS`): the build scripts
+  copy them into `Assets/StreamingAssets`, which git ignores apart from the test clips. Or add
+  your own to the app's `Videos` folder on the phone: on Android
+  `adb push video.mp4 /storage/emulated/0/Android/data/com.wemiller.afterglow/files/Videos`; on
+  iPhone, Finder's Files tab for the phone, then Afterglow > Videos. Tags in the name set the
   format (`_360`, `_180`, `_flat`, `_sbs`, `_tb`, `_mono`); `_flat` (or `_screen`, `_cinema`) is a
-  film on a screen rather than anything wrapped around you, which is what a 3D film wants. For Google Drive, put share links in
-  `videos.txt` in that folder, one per line; each downloads on first play.
+  film on a screen rather than anything wrapped around you, which is what a 3D film wants. For
+  Google Drive, put share links in `videos.txt` in that folder, one per line; each downloads on
+  first play.
 - **Air Paint** paints strokes in the air with your hand, like Tilt Brush, starting in passthrough
   so you paint in your own room: pinch to paint, and look at the tool panel on your left and pinch
   to pick a color, brush (Ink, Tube, Glow) and size, or to undo, reset (press twice), or switch

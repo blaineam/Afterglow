@@ -61,25 +61,38 @@ namespace ProjectBootstrap
                 Call(video, "BuildPanel");
                 var library = (System.Collections.IList)Get(video, "m_Library");
                 var entryType = library.GetType().GetGenericArguments()[0];
-                foreach (var (title, file, drive) in new[]
+                var kindType = entryType.GetField("Kind").FieldType;
+                foreach (var (title, file, kind) in new[]
                          {
-                             ("Sample_360", "Sample_360.mp4", false), ("Sample_180_sbs", "Sample_180_sbs.mp4", false),
-                             ("Beach walk", "beach_360_tb.mp4", false), ("Concert", "concert_180.mp4", true),
+                             ("Sample_360", "Sample_360.mp4", "File"), ("Sample_180_sbs", "Sample_180_sbs.mp4", "File"),
+                             ("Beach walk", "beach_360_tb.mp4", "File"), ("Concert", "concert_180.mp4", "Drive"),
+                             ("Spatial photo, 5 Nov 2026", null, "SpatialPhoto"), ("Panorama, 4 Nov 2026", null, "Panorama"),
+                             ("360 still, 3 Nov 2026", null, "Still360"), ("Photo, 2 Nov 2026", null, "Photo"),
                          })
                 {
                     var entry = System.Activator.CreateInstance(entryType);
                     entryType.GetField("Title").SetValue(entry, title);
-                    var format = entryType.GetField("Format").FieldType.GetMethod("FromFileName")?.Invoke(null, new object[] { file });
-                    if (format != null)
-                        entryType.GetField("Format").SetValue(entry, format);
-                    entryType.GetField(drive ? "DriveId" : "Url").SetValue(entry, file);
+                    entryType.GetField("Kind").SetValue(entry, System.Enum.Parse(kindType, kind));
+                    if (file != null)
+                    {
+                        var format = entryType.GetField("Format").FieldType.GetMethod("FromFileName")?.Invoke(null, new object[] { file });
+                        if (format != null)
+                            entryType.GetField("Format").SetValue(entry, format);
+                        entryType.GetField(kind == "Drive" ? "DriveId" : "Url").SetValue(entry, file);
+                    }
+                    else
+                    {
+                        entryType.GetField("LibraryIndex").SetValue(entry, library.Count);
+                        entryType.GetField("Width").SetValue(entry, 4096);
+                        entryType.GetField("Height").SetValue(entry, 1024);
+                    }
                     library.Add(entry);
                 }
                 Set(video, "m_Current", 1);
                 ((RectTransform)Get(video, "m_ControlsPage")).gameObject.SetActive(false);
-                Call(video, "UpdateLibraryLabels");
+                Call(video, "UpdateGrid");
                 var panel = Show(video, "m_Panel", 1.5f, -12f);
-                panel.sizeDelta = new Vector2(600f, 536f);
+                panel.sizeDelta = new Vector2(600f, 452f);
                 Render(camera, Path.Combine(folder, "video-library.png"), -12f, 0f);
                 ((RectTransform)Get(video, "m_LibraryPage")).gameObject.SetActive(false);
                 ((RectTransform)Get(video, "m_ControlsPage")).gameObject.SetActive(true);

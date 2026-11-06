@@ -5,38 +5,81 @@ using UnityEngine;
 
 namespace Afterglow.Demos.Video
 {
-    // One video the player can show.
+    // What one item is, which says how it's opened and what it's drawn on.
+    public enum MediaKind
+    {
+        // A video file: bundled, copied into the Videos folder, or a Drive download.
+        File,
+        // A Google Drive link, downloaded into the cache before it plays.
+        Drive,
+        // A plain photo from the Photos library, shown on a screen ahead.
+        Photo,
+        // A 2:1 still from the library, wrapped all the way round.
+        Still360,
+        // A panorama from the library, on a cylinder as wide as it was shot.
+        Panorama,
+        // An ordinary video from the library, played from its file.
+        LibraryVideo,
+        // A spatial photo: one picture per eye, decoded by the plugin.
+        SpatialPhoto,
+        // A spatial video: two views in one file, decoded by the plugin.
+        SpatialVideo,
+    }
+
+    // The media browser's filters.
+    public enum MediaFilter
+    {
+        All,
+        Spatial,
+        Panoramas,
+        Still360,
+        Videos,
+    }
+
+    // One photo or video the player can show.
     public class VideoEntry
     {
         public string Title;
         public VideoFormat Format;
         // Something VideoPlayer.url takes: a file path, or a StreamingAssets path (inside the APK on
-        // Android). Null until a Drive video is downloaded.
+        // Android). Null until a Drive video is downloaded or a library video's file is asked for.
         public string Url;
         // A Google Drive file, downloaded into the cache before it plays.
         public string DriveId;
         // Where a download stands, while one runs or after one failed.
         public string Status;
-        // A spatial photo or video in the Photos library, by its place in SpatialPhotos.Scan's
-        // list; -1 for anything with a file. These have no Url: the library only hands them over
-        // whole, so their two views are decoded by a plugin instead.
-        public int SpatialIndex = -1;
-        // Whether that item is a video rather than a photo. The two are opened by different
-        // plugins, and only one of them has a clock to play, pause and seek.
-        public bool SpatialIsVideo;
+        public MediaKind Kind = MediaKind.File;
+        // An item in the Photos library, by its place in PhotoLibrary.Scan's list; -1 for anything
+        // with a file of its own.
+        public int LibraryIndex = -1;
+        // The picture's or video's size in pixels, where the library says.
+        public int Width;
+        public int Height;
+        public double Seconds;
 
         public bool NeedsDownload => Url == null && DriveId != null;
 
-        public bool IsSpatial => SpatialIndex >= 0;
+        public bool IsLibrary => LibraryIndex >= 0;
 
-        public bool IsSpatialPhoto => IsSpatial && !SpatialIsVideo;
+        public bool IsSpatial => Kind == MediaKind.SpatialPhoto || Kind == MediaKind.SpatialVideo;
 
-        public bool IsSpatialVideo => IsSpatial && SpatialIsVideo;
+        public bool IsSpatialPhoto => Kind == MediaKind.SpatialPhoto;
+
+        public bool IsSpatialVideo => Kind == MediaKind.SpatialVideo;
+
+        // A still of any kind: nothing to play, pause or seek.
+        public bool IsPicture => Kind == MediaKind.Photo || Kind == MediaKind.Still360 || Kind == MediaKind.Panorama ||
+                                 Kind == MediaKind.SpatialPhoto;
+
+        public bool IsVideo => !IsPicture;
+
+        // The picture's shape, for the aspect-based kinds.
+        public float Aspect => Width > 0 && Height > 0 ? (float)Width / Height : 0f;
     }
 
-    // Finds the videos to offer: the ones bundled with the app, files the user copied into the
+    // Finds the media to offer: the videos bundled with the app, files the user copied into the
     // Videos folder, Google Drive links listed in videos.txt in that folder, and, on an iPhone,
-    // the spatial photos and videos already in the user's Photos library.
+    // the photos and videos already in the user's Photos library.
     //   Android: /storage/emulated/0/Android/data/com.wemiller.afterglow/files/Videos
     //            (adb push beach_360.mp4 there; no storage permission needed)
     //   iPhone:  the app's Documents/Videos, which Finder (the phone's Files tab) and the Files app
@@ -95,41 +138,141 @@ namespace Afterglow.Demos.Video
                 Debug.LogWarning($"[Video] Couldn't read {VideoFolder}: {e.Message}");
             }
 
-            entries.AddRange(SpatialEntries());
+            entries.AddRange(LibraryEntries());
             return entries;
         }
 
         // What the home screen's Files section lists: the videos the user copied in or linked, which
         // is everything but the first bundledCount entries (the repository's own clips) and the Photos
-        // library's spatial items. Pure, for testing.
+        // library's items. Pure, for testing.
         public static List<VideoEntry> FilesOnly(List<VideoEntry> entries, int bundledCount)
         {
             var files = new List<VideoEntry>();
             for (var i = bundledCount; i < entries.Count; i++)
             {
-                if (!entries[i].IsSpatial)
+                if (!entries[i].IsLibrary)
                     files.Add(entries[i]);
             }
             return files;
         }
 
-        // The spatial photos and videos in the Photos library, which need no copying in: the phone
-        // in the viewer is the one that took them. Empty everywhere but an iPhone, and empty until
-        // the user has allowed the library.
-        static IEnumerable<VideoEntry> SpatialEntries()
+        // A picture whose sides are this close to 2:1 is taken for a 360 still.
+        public const float k_Still360Tolerance = 0.03f;
+        // A picture at least this wide for its height is a panorama even when the library doesn't
+        // say so: an imported one carries no subtype, only its shape.
+        public const float k_PanoramaAspect = 2.4f;
+        // How tall a panorama's cylinder looks, in degrees: about the phone camera's view across
+        // its short side, which is what a panorama is swept with. Its width follows from the
+        // picture's shape (PanoramaDegrees).
+        public const float k_PanoramaHeightDegrees = 60f;
+
+        // The photos and videos in the Photos library, which need no copying in: the phone in the
+        // viewer is the one that took them. Empty everywhere but an iPhone, and empty until the
+        // user has allowed the library.
+        static IEnumerable<VideoEntry> LibraryEntries()
         {
-            if (!SpatialPhotos.Supported)
+            if (!PhotoLibrary.Supported)
                 yield break;
-            foreach (var item in SpatialPhotos.Scan())
+            foreach (var item in PhotoLibrary.Scan())
+                yield return LibraryEntry(item);
+        }
+
+        // An entry for one library item, named by when it was taken.
+        public static VideoEntry LibraryEntry(PhotoLibrary.Item item)
+        {
+            var kind = Classify(item.IsVideo, item.IsSpatial, item.IsPanorama, item.Width, item.Height);
+            return new VideoEntry
             {
-                yield return new VideoEntry
-                {
-                    Title = $"Spatial {(item.IsVideo ? "video" : "photo")}, {item.Title}",
-                    Format = VideoFormat.Stereo3D,
-                    SpatialIndex = item.Index,
-                    SpatialIsVideo = item.IsVideo,
-                };
+                Title = $"{Describe(kind)}, {item.Title}",
+                Format = DefaultFormat(kind, item.Width, item.Height),
+                Kind = kind,
+                LibraryIndex = item.Index,
+                Width = item.Width,
+                Height = item.Height,
+                Seconds = item.Seconds,
+            };
+        }
+
+        // What a library item is, from what the library says and the picture's shape. Pure, for
+        // testing.
+        public static MediaKind Classify(bool isVideo, bool isSpatial, bool isPanorama, int width, int height)
+        {
+            if (isSpatial)
+                return isVideo ? MediaKind.SpatialVideo : MediaKind.SpatialPhoto;
+            if (isVideo)
+                return MediaKind.LibraryVideo;
+            var aspect = width > 0 && height > 0 ? (float)width / height : 0f;
+            if (isPanorama || aspect >= k_PanoramaAspect)
+                return MediaKind.Panorama;
+            if (Mathf.Abs(aspect - 2f) <= 2f * k_Still360Tolerance)
+                return MediaKind.Still360;
+            return MediaKind.Photo;
+        }
+
+        // How a kind is drawn unless the user changes it: a 2:1 video is taken for 360, any other
+        // for a film on the screen.
+        public static VideoFormat DefaultFormat(MediaKind kind, int width, int height)
+        {
+            var aspect = width > 0 && height > 0 ? (float)width / height : 0f;
+            switch (kind)
+            {
+                case MediaKind.Still360:
+                    return VideoFormat.Mono360;
+                case MediaKind.SpatialPhoto:
+                case MediaKind.SpatialVideo:
+                    return VideoFormat.Stereo3D;
+                case MediaKind.LibraryVideo:
+                    return Mathf.Abs(aspect - 2f) <= 2f * k_Still360Tolerance
+                        ? VideoFormat.Mono360
+                        : new VideoFormat(Projection.Flat, StereoLayout.Mono);
+                default:
+                    return new VideoFormat(Projection.Flat, StereoLayout.Mono);
             }
+        }
+
+        public static string Describe(MediaKind kind) => kind switch
+        {
+            MediaKind.Photo => "Photo",
+            MediaKind.Still360 => "360 still",
+            MediaKind.Panorama => "Panorama",
+            MediaKind.LibraryVideo => "Video",
+            MediaKind.SpatialPhoto => "Spatial photo",
+            MediaKind.SpatialVideo => "Spatial video",
+            MediaKind.Drive => "Drive video",
+            _ => "Video file",
+        };
+
+        // How far round a panorama's cylinder goes, in degrees, from the picture's shape: its
+        // width in units of its height, each as tall as k_PanoramaHeightDegrees. An iPhone's
+        // panorama runs to about 240 degrees; nothing goes past a full turn.
+        public static float PanoramaDegrees(int width, int height, float heightDegrees = k_PanoramaHeightDegrees)
+        {
+            if (width <= 0 || height <= 0)
+                return 180f;
+            return Mathf.Clamp((float)width / height * heightDegrees, heightDegrees, 360f);
+        }
+
+        // Whether an entry belongs under a filter. 360 means anything wrapped round the viewer:
+        // the stills, and the videos whose format isn't a flat screen.
+        public static bool Matches(VideoEntry entry, MediaFilter filter) => filter switch
+        {
+            MediaFilter.Spatial => entry.IsSpatial,
+            MediaFilter.Panoramas => entry.Kind == MediaKind.Panorama,
+            MediaFilter.Still360 => entry.Kind == MediaKind.Still360 ||
+                                    (entry.IsVideo && entry.Format.Projection != Projection.Flat),
+            MediaFilter.Videos => entry.IsVideo,
+            _ => true,
+        };
+
+        public static List<VideoEntry> Filter(IEnumerable<VideoEntry> entries, MediaFilter filter)
+        {
+            var found = new List<VideoEntry>();
+            foreach (var entry in entries)
+            {
+                if (Matches(entry, filter))
+                    found.Add(entry);
+            }
+            return found;
         }
 
         static bool IsVideo(string path) => Array.IndexOf(k_Extensions, Path.GetExtension(path).ToLowerInvariant()) >= 0;
@@ -212,6 +355,7 @@ namespace Afterglow.Demos.Video
                     Format = VideoFormat.FromFileName(fileName),
                     Url = cached,
                     DriveId = id,
+                    Kind = MediaKind.Drive,
                 });
             }
             return entries;

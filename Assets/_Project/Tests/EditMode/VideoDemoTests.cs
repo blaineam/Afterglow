@@ -39,9 +39,9 @@ namespace Afterglow.Stereo.Tests
                 new() { Title = "Sample_360", Url = "/app/Sample_360.mp4" },
                 new() { Title = "Sample_180_sbs", Url = "/app/Sample_180_sbs.mp4" },
                 new() { Title = "beach", Url = "/data/Videos/beach.mp4" },
-                new() { Title = "concert", DriveId = "1AbC" },
-                new() { Title = "Spatial photo, 3 Nov", SpatialIndex = 0 },
-                new() { Title = "Spatial video, 4 Nov", SpatialIndex = 1, SpatialIsVideo = true },
+                new() { Title = "concert", DriveId = "1AbC", Kind = MediaKind.Drive },
+                new() { Title = "Spatial photo, 3 Nov", Kind = MediaKind.SpatialPhoto, LibraryIndex = 0 },
+                new() { Title = "Photo, 4 Nov", Kind = MediaKind.Photo, LibraryIndex = 1 },
             };
             var files = VideoLibrary.FilesOnly(entries, bundledCount: 2);
             CollectionAssert.AreEqual(new[] { "beach", "concert" }, files.ConvertAll(entry => entry.Title));
@@ -222,7 +222,7 @@ namespace Afterglow.Stereo.Tests
         [Test]
         public void ASpatialVideoIsSpatialAndIsNotAPhoto()
         {
-            var entry = new VideoEntry { SpatialIndex = 4, SpatialIsVideo = true, Format = VideoFormat.Stereo3D };
+            var entry = new VideoEntry { Kind = MediaKind.SpatialVideo, LibraryIndex = 4, Format = VideoFormat.Stereo3D };
             Assert.IsTrue(entry.IsSpatial);
             Assert.IsTrue(entry.IsSpatialVideo);
             Assert.IsFalse(entry.IsSpatialPhoto);
@@ -236,7 +236,7 @@ namespace Afterglow.Stereo.Tests
         [Test]
         public void ASpatialPhotoIsSpatialAndIsNotAVideo()
         {
-            var entry = new VideoEntry { SpatialIndex = 0, SpatialIsVideo = false };
+            var entry = new VideoEntry { Kind = MediaKind.SpatialPhoto, LibraryIndex = 0 };
             Assert.IsTrue(entry.IsSpatial);
             Assert.IsTrue(entry.IsSpatialPhoto);
             Assert.IsFalse(entry.IsSpatialVideo);
@@ -293,19 +293,19 @@ namespace Afterglow.Stereo.Tests
         {
             // A photo taken between the two scans pushes everything after it down one, so the index
             // an entry carries is a place in a list rather than a name for the item.
-            var before = new VideoEntry { Title = "Spatial video, 4 Nov 2026, 14:32", SpatialIndex = 3, SpatialIsVideo = true };
-            var after = new VideoEntry { Title = "Spatial video, 4 Nov 2026, 14:32", SpatialIndex = 4, SpatialIsVideo = true };
+            var before = new VideoEntry { Title = "Spatial video, 4 Nov 2026, 14:32", Kind = MediaKind.SpatialVideo, LibraryIndex = 3 };
+            var after = new VideoEntry { Title = "Spatial video, 4 Nov 2026, 14:32", Kind = MediaKind.SpatialVideo, LibraryIndex = 4 };
             Assert.IsTrue(VideoDemo.Same(before, after));
 
-            var other = new VideoEntry { Title = "Spatial video, 2 Nov 2026, 09:15", SpatialIndex = 3, SpatialIsVideo = true };
+            var other = new VideoEntry { Title = "Spatial video, 2 Nov 2026, 09:15", Kind = MediaKind.SpatialVideo, LibraryIndex = 3 };
             Assert.IsFalse(VideoDemo.Same(before, other), "the same index, a different item");
         }
 
         [Test]
         public void NothingMatchesAcrossTheKinds()
         {
-            var photo = new VideoEntry { Title = "Spatial, 4 Nov 2026, 14:32", SpatialIndex = 2, SpatialIsVideo = false };
-            var video = new VideoEntry { Title = "Spatial, 4 Nov 2026, 14:32", SpatialIndex = 2, SpatialIsVideo = true };
+            var photo = new VideoEntry { Title = "Spatial, 4 Nov 2026, 14:32", Kind = MediaKind.SpatialPhoto, LibraryIndex = 2 };
+            var video = new VideoEntry { Title = "Spatial, 4 Nov 2026, 14:32", Kind = MediaKind.SpatialVideo, LibraryIndex = 2 };
             Assert.IsFalse(VideoDemo.Same(photo, video), "a photo and a video at one moment are two items");
 
             var file = new VideoEntry { Title = "Spatial, 4 Nov 2026, 14:32", Url = "/videos/x.mp4" };
