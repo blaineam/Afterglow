@@ -61,6 +61,7 @@ final class Renderer {
     /// which is drawn as if seen from there. Eased over half a second, as the Unity app does.
     private var eyesAtCamera: Float = 0
     private var lastDrawTime: Double = 0
+    private var ultraProbe: UltraWideProbe?
 
     init?(settings: Settings, thermal: ThermalLog, screen uiScreen: UIScreen) {
         guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue(),
@@ -346,6 +347,10 @@ final class Renderer {
         commandBuffer.addCompletedHandler { buffer in
             lastGpuMs.value = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
             inflight.signal()
+        }
+        if settings.ultraTestSeconds > 0 && ultraProbe == nil && t2 - launchTime >= Double(settings.ultraTestSeconds) {
+            ultraProbe = UltraWideProbe()
+            ultraProbe?.start()
         }
         if settings.dumpAfterSeconds > 0 && !dumped && t2 - launchTime >= Double(settings.dumpAfterSeconds) {
             dumped = true

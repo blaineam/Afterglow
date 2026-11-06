@@ -217,7 +217,7 @@ Unity's and is not fully covered. Not checked on the phone. The window on the qu
 
 ## The native port (`ios-native/`, phase 1)
 
-### No ultra-wide world-tracking format on the iPhone 18 Pro Max
+### No ultra-wide with 6DoF on the iPhone 18 Pro Max
 
 ARKit's `supportedVideoFormats` on this phone lists 22 formats, every one from the wide camera
 (the list looks doubled because the HDR variants come first); there is no
@@ -225,6 +225,14 @@ ARKit's `supportedVideoFormats` on this phone lists 22 formats, every one from t
 native app says so in the log and uses the wide camera's 1920×1440 at 60 fps, a 69° × 55° window
 in the eye's view. The same applies to the Unity app's `camUltraWide` default, which can only
 fall back to the main camera here.
+
+Nor can the ultra-wide run beside ARKit: `--ei ultraTest 8` opens it through AVFoundation eight
+seconds in (`UltraWideProbe.swift`), and the moment it started ARKit logged "Session interrupted"
+and delivered no more frames while it ran (measured 2026-11-06; the ultra-wide itself reported
+106° and ran, and the phone says multi-cam is supported, but ARKit is not an AVFoundation
+session). So 6DoF comes from the wide camera, and the ultra-wide's view is only reachable in a
+mode without ARKit: 3DoF from the motion sensors, passthrough and hands from an AVFoundation
+session, as the Unity app's 3DoF mode did.
 
 ### The camera image is 10-bit video range
 

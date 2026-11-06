@@ -22,6 +22,7 @@
 		AED9AC2DB5CA264371AF1869 /* HandGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */; };
 		B11BEA3C83C4B14B3E457065 /* LensDistortion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4402EC68CCA81B671B468EE8 /* LensDistortion.swift */; };
 		BC2DD9993B328B9BFE55C0D8 /* PinchDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E2E0B57207F4DEAA2DF268C /* PinchDetector.swift */; };
+		C803CA1BEC03B79551EFB51B /* UltraWideProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */; };
 		D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */; };
 		E1F20C8F70E32B1C44AA3A59 /* ScreenMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F27D509791361AD2011E47 /* ScreenMetrics.swift */; };
 		E386311B4A1748A01C31E880 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = F3791EB1A750663D58286739 /* Shaders.metal */; };
@@ -64,6 +65,7 @@
 		D42BBF82DA32DCFE7BA0AD50 /* FrameTimingLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameTimingLog.swift; sourceTree = "<group>"; };
 		D97890D6EB3536CA74C71E09 /* SessionLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLog.swift; sourceTree = "<group>"; };
 		DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensDistortionTests.swift; sourceTree = "<group>"; };
+		E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UltraWideProbe.swift; sourceTree = "<group>"; };
 		F3791EB1A750663D58286739 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
 		F383C9716F8214D0A4E65E7D /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -92,6 +94,7 @@
 			children = (
 				27D58785E652A50828B3FA73 /* ARController.swift */,
 				C9966FF18394C15E0D6C282F /* PosePredictor.swift */,
+				E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */,
 			);
 			path = Tracking;
 			sourceTree = "<group>";
@@ -279,6 +282,7 @@
 				8A26420DC8EEC87E91BE44DA /* Settings.swift in Sources */,
 				E386311B4A1748A01C31E880 /* Shaders.metal in Sources */,
 				D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */,
+				C803CA1BEC03B79551EFB51B /* UltraWideProbe.swift in Sources */,
 				87FA55609E5C45D423B33A4C /* ViewerParams.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

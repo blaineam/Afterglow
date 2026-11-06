@@ -35,6 +35,9 @@ final class Settings: ObservableObject {
     let handHz: Int
     let handDepth: Bool
     let showHands: Bool
+    /// An experiment: open the ultra-wide camera through AVFoundation this many seconds after
+    /// ARKit starts, to see whether ARKit keeps tracking beside it (0: never).
+    let ultraTestSeconds: Int
 
     private var loading = true
     private var options: [String: String] = [:]
@@ -58,6 +61,7 @@ final class Settings: ObservableObject {
         handHz = min(max(Self.read("handHz", options: options, default: 20), 1), 60)
         handDepth = Self.read("handDepth", options: options, default: 1) != 0
         showHands = Self.read("showHands", options: options, default: 1) != 0
+        ultraTestSeconds = Self.read("ultraTest", options: options, default: 0)
         loading = false
         let given = options.keys.sorted().map { "\($0) \(options[$0]!)" }.joined(separator: ", ")
         log("[Stereo] Launch options: \(given.isEmpty ? "none" : given)")

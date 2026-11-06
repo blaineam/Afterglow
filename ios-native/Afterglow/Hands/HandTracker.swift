@@ -128,6 +128,7 @@ final class HandTracker: @unchecked Sendable {
     private var swaps = 0
     private var edgeOn = 0
     private var rejected = 0
+    private var lastBlockedLog: Double = 0
     private var loggedDepth = false
     private var lastLog: Double = 0
 
@@ -471,8 +472,23 @@ final class HandTracker: @unchecked Sendable {
             let isEdgeOn = openness < Self.edgeOnOpenness
             if isEdgeOn { edgeOn += 1 }
             // Edge-on only stops a pinch starting; a held one still follows the tips, so it can end.
-            let pinched = slot.pinch.update(tipDistance: simd_distance(thumb, index), allowStart: tipsInside && !isEdgeOn && tipsLevel,
+            let tipDistance = simd_distance(thumb, index)
+            let pinched = slot.pinch.update(tipDistance: tipDistance, allowStart: tipsInside && !isEdgeOn && tipsLevel,
                                             tipsSure: tipsSure)
+            // A pinch the tips are making that cannot start: say why, once a second, so a real pinch
+            // that fails to register can be read off the log.
+            if !pinched && tipDistance < 0.025 && !(tipsInside && !isEdgeOn && tipsLevel && tipsSure) && now - lastBlockedLog > 1 {
+                lastBlockedLog = now
+                var reasons: [String] = []
+                if !tipsInside { reasons.append("tips at the image's edge") }
+                if isEdgeOn { reasons.append(String(format: "palm edge-on (%.0f%% open)", openness * 100)) }
+                if !tipsLevel {
+                    reasons.append("tip depths " + slot.tipGaps.map { $0.isFinite ? String(format: "%.1f", $0 * 100) : "none" }.joined(separator: "/") + " cm")
+                }
+                if !tipsSure { reasons.append(String(format: "tips unsure (%.2f, %.2f)", hand.confidences[HandGeometry.thumbTip], hand.confidences[HandGeometry.indexTip])) }
+                log(String(format: "[Pinch] %@ hand's tips %.1f cm apart but no start: %@", slot.handedness >= 0.5 ? "right" : "left",
+                           tipDistance * 100, reasons.joined(separator: ", ")))
+            }
             if pinched != wasPinched {
                 if pinched { pinches += 1 }
                 let p = (thumb + index) / 2

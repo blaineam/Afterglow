@@ -119,7 +119,8 @@ screen shows a control strip for the first four, whose values are kept between r
 | `camUltraWide` | 1 | prefer the ultra-wide camera's format when ARKit lists one |
 | `thermalCap` | 1 | hold render scale to 80 % at "serious" and 60 %/30 fps at "critical", as the Unity app does |
 | `eyesX`, `eyesY`, `eyesZ` | 60, -10, 66 | the eyes' midpoint relative to the camera, mm, camera axes (x right, y up, z back) |
-| `dump` | 0 | save the left eye's texture to `Documents/eye-left.png` this many seconds after launch |
+| `dump` | 0 | save both eyes' textures to `Documents/eye-left.png` and `eye-right.png` this many seconds after launch |
+| `ultraTest` | 0 | an experiment: open the ultra-wide through AVFoundation this many seconds in and log what ARKit does (it stops) |
 | `cold` | 0 | 1 vouches the phone is cold, so `[Thermal]` times the run from cold despite a recent run |
 | `hands`, `handHz`, `handDepth`, `showHands` | 1, 20, 1, 1 | hand tracking on, its image rate, LiDAR depth for the hands, the hands drawn |
 
