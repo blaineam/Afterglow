@@ -138,6 +138,7 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
 | Option | Effect |
 |---|---|
 | `demo N` | Start in app N (its index in `Assets/_Project/Demos/DemoCatalog.asset`, from 0) instead of Home |
+| `web 1` | Open the browser as soon as Home is up, with its tabs as they were left |
 | `pinch 0` | Pinch-to-click off in 3DoF, for measuring its heat (it's otherwise always on) |
 | `dof 3` | Start Home in 3DoF (it starts in 6DoF passthrough otherwise) |
 | `scan 0` | No room scan when an app that places things opens; 6DoF finds the floor only |

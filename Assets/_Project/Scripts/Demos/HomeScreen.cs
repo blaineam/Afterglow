@@ -220,10 +220,21 @@ namespace Afterglow.Demos
         void OnLoaded(DemoCatalog.Entry entry)
         {
             if (entry == null)
+            {
                 Open();
+                // The "web 1" launch option: straight into the browser, with its tabs as they were
+                // left, for working on a page from the Mac without aiming at the Web button first.
+                if (!m_WebOpenedAtStart && m_Browser != null && LaunchOptions.GetInt("web", 0) == 1)
+                {
+                    m_WebOpenedAtStart = true;
+                    Debug.Log("[Home] Opening the browser from the launch option");
+                    m_Browser.Open();
+                }
+            }
             else if (IsShown)
                 ShowSections();
         }
+        bool m_WebOpenedAtStart;
 
         // Closed with the panel, so it opens next time as the panel alone.
         void OnSettingsOpenChanged(bool open)

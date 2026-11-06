@@ -782,7 +782,14 @@ extern "C" int Afterglow_WebOpen(const char *url, const char *configJson, const 
 
     WKUserContentController *content = [WKUserContentController new];
     [content addScriptMessageHandler:host name:@"afterglow"];
-    // The config first, then the shim, both before the page's own scripts: a page that looks for
+    // The helper first: it forwards the page's console to the app's log, and the shim's own
+    // first words (its ready line, with what WebKit exposes natively) should reach it too. Main
+    // frame only: pointing, clicking and scrolling reach into child frames themselves, and
+    // evaluateJavaScript runs in the main frame.
+    [content addUserScript:[[WKUserScript alloc] initWithSource:[NSString stringWithUTF8String:kHelperSource]
+                                                  injectionTime:WKUserScriptInjectionTimeAtDocumentStart
+                                               forMainFrameOnly:YES]];
+    // Then the config and the shim, all before the page's own scripts: a page that looks for
     // navigator.xr on load has to find it already there.
     NSString *config = [NSString stringWithFormat:@"window.__afterglowConfig = %s;",
                         configJson];
@@ -792,11 +799,6 @@ extern "C" int Afterglow_WebOpen(const char *url, const char *configJson, const 
     [content addUserScript:[[WKUserScript alloc] initWithSource:[NSString stringWithUTF8String:shim]
                                                   injectionTime:WKUserScriptInjectionTimeAtDocumentStart
                                                forMainFrameOnly:NO]];
-    // Pointing, clicking and scrolling. Main frame only: they reach into child frames themselves,
-    // and evaluateJavaScript runs in the main frame.
-    [content addUserScript:[[WKUserScript alloc] initWithSource:[NSString stringWithUTF8String:kHelperSource]
-                                                  injectionTime:WKUserScriptInjectionTimeAtDocumentStart
-                                               forMainFrameOnly:YES]];
 
     WKWebViewConfiguration *configuration = [WKWebViewConfiguration new];
     configuration.userContentController = content;

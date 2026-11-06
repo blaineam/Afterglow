@@ -18,15 +18,17 @@
   image, the detector's input and the landmarker's crops to `HandDumps` in its Documents folder
   (Finder's Files tab, or `devicectl device copy from`), with a log line per crop.
 
-- **A 360 video page drew its video flat during an immersive WebXR session** (2026-11-06,
-  fix to be confirmed on the phone). The session held and the page's renderer presented to the
-  shim's layer every frame (its log said so: layer bound, pose given, a callback a frame), yet the
-  screen showed the raw video with two icons top right and nothing else, the app's gear included.
-  That is the iPhone's own full-screen video player: unless a `<video>` carries the `playsinline`
-  attribute, WebKit hands it to that player the moment it plays, a view over the whole window.
-  The browser now marks every video inline before it can play and the player's entry point does
-  nothing; a video that reaches the native player anyway logs a warning. A long press on the
-  screen (a second and a half) still ends a session.
+- **A WebXR page drew wrong from its second session frame** (fixed 2026-11-06, Simulator-verified;
+  to be confirmed on the phone). The session held and the page's renderer presented every frame,
+  yet the screen never showed the stereo scene. The shim's lens-distortion pass changed GL state
+  (program, buffers, the attribute pointers of whatever vertex array three.js had bound, texture
+  unit 0, enables, clear colour) and never put it back; three.js remembers the state it sets and
+  skips calls it thinks redundant, so from frame two it drew with the shim's program, buffers and
+  texture. The pass now draws through its own vertex arrays and saves and restores every piece of
+  state it touches, as does the layer setup. A three.js 360-video page renders in stereo through
+  the lenses in the Simulator past a thousand frames. A long press on the screen (a second and a
+  half) still ends a session, and the browser keeps every video inline rather than letting the
+  phone's own full-screen player over it.
 - **A tall photo sphere is drawn on a cylinder.** A GPano crop gives a panorama's exact span and
   height, and the band is a cylinder, which is right up to about 90° tall; a sphere cropped to,
   say, 360° × 150° stretches towards its top and bottom on it. The whole sphere (or near enough,

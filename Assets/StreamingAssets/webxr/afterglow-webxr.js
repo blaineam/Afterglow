@@ -365,6 +365,62 @@
         return s;
     }
 
+    // Vertex array objects keep the distortion meshes' attribute state (and their index buffer,
+    // which in GL belongs to the vertex array) apart from the page's. WebGL2 has them built in,
+    // WebGL1 through an extension every iPhone offers.
+    function vertexArrays(gl) {
+        if (window.WebGL2RenderingContext && gl instanceof WebGL2RenderingContext)
+            return { create: function () { return gl.createVertexArray(); },
+                     bind: function (v) { gl.bindVertexArray(v); },
+                     binding: gl.VERTEX_ARRAY_BINDING };
+        var ext = gl.getExtension('OES_vertex_array_object');
+        if (!ext) return null;
+        return { create: function () { return ext.createVertexArrayOES(); },
+                 bind: function (v) { ext.bindVertexArrayOES(v); },
+                 binding: ext.VERTEX_ARRAY_BINDING_OES };
+    }
+
+    // The GL state the shim touches, taken before it draws and put back after. three.js and its
+    // kind remember the state they set and skip a call they think redundant, so a program,
+    // buffer, texture or vertex array changed behind their back is what they draw with next
+    // frame -- the page's scene then goes wrong from the second frame on, with nothing in its
+    // own code to blame.
+    function saveState(gl, vao) {
+        var s = {
+            fbo: gl.getParameter(gl.FRAMEBUFFER_BINDING),
+            program: gl.getParameter(gl.CURRENT_PROGRAM),
+            vao: vao ? gl.getParameter(vao.binding) : null,
+            arrayBuffer: gl.getParameter(gl.ARRAY_BUFFER_BINDING),
+            renderbuffer: gl.getParameter(gl.RENDERBUFFER_BINDING),
+            activeTexture: gl.getParameter(gl.ACTIVE_TEXTURE),
+            viewport: gl.getParameter(gl.VIEWPORT),
+            clearColor: gl.getParameter(gl.COLOR_CLEAR_VALUE),
+            depth: gl.isEnabled(gl.DEPTH_TEST),
+            cull: gl.isEnabled(gl.CULL_FACE),
+            blend: gl.isEnabled(gl.BLEND),
+            scissor: gl.isEnabled(gl.SCISSOR_TEST)
+        };
+        gl.activeTexture(gl.TEXTURE0);
+        s.texture0 = gl.getParameter(gl.TEXTURE_BINDING_2D);
+        return s;
+    }
+    function restoreState(gl, vao, s) {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, s.texture0);
+        gl.activeTexture(s.activeTexture);
+        if (vao) vao.bind(s.vao);
+        gl.bindBuffer(gl.ARRAY_BUFFER, s.arrayBuffer);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, s.renderbuffer);
+        gl.useProgram(s.program);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, s.fbo);
+        gl.viewport(s.viewport[0], s.viewport[1], s.viewport[2], s.viewport[3]);
+        gl.clearColor(s.clearColor[0], s.clearColor[1], s.clearColor[2], s.clearColor[3]);
+        (s.depth ? gl.enable : gl.disable).call(gl, gl.DEPTH_TEST);
+        (s.cull ? gl.enable : gl.disable).call(gl, gl.CULL_FACE);
+        (s.blend ? gl.enable : gl.disable).call(gl, gl.BLEND);
+        (s.scissor ? gl.enable : gl.disable).call(gl, gl.SCISSOR_TEST);
+    }
+
     function createDistortion(gl) {
         var p = gl.createProgram();
         gl.attachShader(p, compile(gl, gl.VERTEX_SHADER, VERT));
@@ -377,32 +433,47 @@
             aPos: gl.getAttribLocation(p, 'aPos'),
             aUv: gl.getAttribLocation(p, 'aUv'),
             uTex: gl.getUniformLocation(p, 'uTex'),
+            vao: vertexArrays(gl),
             eyes: []
         };
+        function buffer(target, data) {
+            var b = gl.createBuffer();
+            gl.bindBuffer(target, b);
+            gl.bufferData(target, data, gl.STATIC_DRAW);
+            return b;
+        }
+        // A mesh: its buffers and, where there are vertex arrays, one holding its attributes.
+        function mesh(posData, uvData, idxData) {
+            var m = { pos: null, uv: null, idx: null, count: idxData ? idxData.length : 4, array: null };
+            if (d.vao) { m.array = d.vao.create(); d.vao.bind(m.array); }
+            m.pos = buffer(gl.ARRAY_BUFFER, posData);
+            if (d.vao) { gl.enableVertexAttribArray(d.aPos); gl.vertexAttribPointer(d.aPos, 2, gl.FLOAT, false, 0, 0); }
+            m.uv = buffer(gl.ARRAY_BUFFER, uvData);
+            if (d.vao) { gl.enableVertexAttribArray(d.aUv); gl.vertexAttribPointer(d.aUv, 2, gl.FLOAT, false, 0, 0); }
+            if (idxData) m.idx = buffer(gl.ELEMENT_ARRAY_BUFFER, idxData);
+            if (d.vao) d.vao.bind(null);
+            return m;
+        }
         // Phone view draws through this instead: the framebuffer straight onto the screen, with
         // no warp, because there is no lens in front of it.
-        var flatPos = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, flatPos);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
-        var flatUv = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, flatUv);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,0, 1,0, 0,1, 1,1]), gl.STATIC_DRAW);
-        d.flat = { pos: flatPos, uv: flatUv };
-
+        d.flat = mesh(new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), new Float32Array([0,0, 1,0, 0,1, 1,1]), null);
         for (var eye = 0; eye < 2; eye++) {
             var m = distortionMesh(eye);
-            var pos = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, pos);
-            gl.bufferData(gl.ARRAY_BUFFER, m.pos, gl.STATIC_DRAW);
-            var uv = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, uv);
-            gl.bufferData(gl.ARRAY_BUFFER, m.uv, gl.STATIC_DRAW);
-            var idx = gl.createBuffer();
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idx);
-            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, m.idx, gl.STATIC_DRAW);
-            d.eyes.push({ pos: pos, uv: uv, idx: idx, count: m.idx.length });
+            d.eyes.push(mesh(m.pos, m.uv, m.idx));
         }
         return d;
+    }
+
+    // Binds a mesh for drawing: its vertex array, or its attributes one by one without one.
+    function bindMesh(gl, d, m) {
+        if (d.vao) { d.vao.bind(m.array); return; }
+        gl.bindBuffer(gl.ARRAY_BUFFER, m.pos);
+        gl.enableVertexAttribArray(d.aPos);
+        gl.vertexAttribPointer(d.aPos, 2, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, m.uv);
+        gl.enableVertexAttribArray(d.aUv);
+        gl.vertexAttribPointer(d.aUv, 2, gl.FLOAT, false, 0, 0);
+        if (m.idx) gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.idx);
     }
 
     // ---------------------------------------------------------------- session lifecycle
@@ -425,9 +496,14 @@
         this._fbWidth = w;
         this._fbHeight = h;
 
+        // Made with the page's GL state put back afterwards: three.js is in the middle of its own
+        // setup when it makes the layer, with its own vertex array and textures bound.
+        var vao = vertexArrays(gl);
+        var saved = saveState(gl, vao);
         var target = createTarget(gl, w, h);
         if (target) { this._fbo = target.fbo; this._tex = target.tex; this._depth = target.depth; }
         this._distort = createDistortion(gl);
+        restoreState(gl, vao, saved);
         this.renderState.baseLayer = layer;
         console.log('[Afterglow] eye buffer ' + w + 'x' + h + (target ? ' ready' : ' FAILED') + ', distortion ' + (this._distort ? 'ready' : 'missing'));
     };
@@ -482,10 +558,12 @@
         if (this._callbacks.length) this._schedule();
     };
 
-    // Warps both halves of the eye framebuffer onto the screen through the lens meshes.
+    // Warps both halves of the eye framebuffer onto the screen through the lens meshes, and
+    // leaves the page's GL state exactly as it found it.
     XRSession.prototype._composite = function () {
         var gl = this._gl, d = this._distort;
         if (!d) return;
+        var saved = saveState(gl, d.vao);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.viewport(0, 0, this._fbWidth, this._fbHeight);
         gl.disable(gl.DEPTH_TEST);
@@ -501,27 +579,17 @@
         gl.uniform1i(d.uTex, 0);
 
         if (cfg.mono) {
-            gl.bindBuffer(gl.ARRAY_BUFFER, d.flat.pos);
-            gl.enableVertexAttribArray(d.aPos);
-            gl.vertexAttribPointer(d.aPos, 2, gl.FLOAT, false, 0, 0);
-            gl.bindBuffer(gl.ARRAY_BUFFER, d.flat.uv);
-            gl.enableVertexAttribArray(d.aUv);
-            gl.vertexAttribPointer(d.aUv, 2, gl.FLOAT, false, 0, 0);
+            bindMesh(gl, d, d.flat);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-            return;
+        } else {
+            for (var eye = 0; eye < 2; eye++) {
+                var m = d.eyes[eye];
+                bindMesh(gl, d, m);
+                gl.drawElements(gl.TRIANGLES, m.count, gl.UNSIGNED_SHORT, 0);
+            }
         }
-
-        for (var eye = 0; eye < 2; eye++) {
-            var m = d.eyes[eye];
-            gl.bindBuffer(gl.ARRAY_BUFFER, m.pos);
-            gl.enableVertexAttribArray(d.aPos);
-            gl.vertexAttribPointer(d.aPos, 2, gl.FLOAT, false, 0, 0);
-            gl.bindBuffer(gl.ARRAY_BUFFER, m.uv);
-            gl.enableVertexAttribArray(d.aUv);
-            gl.vertexAttribPointer(d.aUv, 2, gl.FLOAT, false, 0, 0);
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.idx);
-            gl.drawElements(gl.TRIANGLES, m.count, gl.UNSIGNED_SHORT, 0);
-        }
+        if (d.vao) d.vao.bind(null);
+        restoreState(gl, d.vao, saved);
     };
 
     XRSession.prototype.end = function () {
