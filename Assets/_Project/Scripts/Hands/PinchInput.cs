@@ -71,17 +71,21 @@ namespace Afterglow.Hands
         void Update()
         {
             var threeDof = m_Fusion.CurrentMode == HeadPoseFusion.Mode.ThreeDof;
-            var wanted = m_On && threeDof && m_Sensor.HasCamera && Time.unscaledTime - m_ThreeDofSince >= k_HandoffSeconds;
+            // With the tracker following hands in 3DoF as well (HandTracker.TracksInThreeDof), the
+            // plain sensor stays off: the two can't share the camera, and the tracker's pinch is
+            // the better one, with the hand placed and both hands told apart.
+            var trackerTracks = m_Tracker != null && m_Tracker.isActiveAndEnabled && (!threeDof || HandTracker.TracksInThreeDof);
+            var wanted = m_On && threeDof && !trackerTracks && m_Sensor.HasCamera && Time.unscaledTime - m_ThreeDofSince >= k_HandoffSeconds;
             if (m_Sensor.enabled != wanted)
                 m_Sensor.enabled = wanted;
 
-            var handSeen = threeDof
-                ? m_Sensor.enabled && m_Sensor.SeesHand
-                : m_Tracker.isActiveAndEnabled && m_Tracker.IsTracking;
+            var handSeen = trackerTracks
+                ? m_Tracker.IsTracking
+                : m_Sensor.enabled && m_Sensor.SeesHand;
             if (m_Gaze.Reticle != null)
                 m_Gaze.Reticle.HandSeen = handSeen;
 
-            var pinchRunning = threeDof ? m_Sensor.enabled : m_Tracker.isActiveAndEnabled && !m_Tracker.IsPaused;
+            var pinchRunning = trackerTracks ? !m_Tracker.IsPaused : m_Sensor.enabled;
             var deltaTime = Time.unscaledDeltaTime;
             m_NoHandFor = handSeen ? 0f : m_NoHandFor + deltaTime;
             m_OnButtonFor = PinchRouter.IsButton(m_Gaze.Target) ? m_OnButtonFor + deltaTime : 0f;

@@ -17,7 +17,8 @@ namespace Afterglow.Demos
     {
         public Need SixDof;
         public Need Passthrough;
-        // Hand tracking, the largest part of the app's heat. It only runs in 6DoF.
+        // Hand tracking, the largest part of the app's heat. In 6DoF it reads ARKit's camera; in
+        // 3DoF the rear camera as a plain feed (HandTracker.TracksInThreeDof).
         public Need Hands;
         // Scan the whole room for surfaces on entering, not just for the floor as 6DoF does: for a
         // demo that puts things on tables and walls.

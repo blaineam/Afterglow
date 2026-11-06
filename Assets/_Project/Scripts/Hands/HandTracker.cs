@@ -272,6 +272,25 @@ namespace Afterglow.Hands
         bool m_LoggedVisionFailure;
         int m_FlatShapes;
         int m_LandmarkerRuns;
+
+        // 3DoF: there is no ARKit and so no camera manager, so the rear camera is read as a plain
+        // feed (WebCamTexture), the way PinchSensor does, the head pose at the image's time is the
+        // fusion's own, and the intrinsics come from the sensor's field of view. Vision and the
+        // landmarker then run as in 6DoF, so hands, pinches and pointing work without the room
+        // tracked. "hands3dof 0" switches it off (the plain pinch sensor runs instead).
+        public static bool TracksInThreeDof { get; private set; } = true;
+        [Tooltip("3DoF: the plain camera feed's size and rate.")]
+        [SerializeField] Vector2Int m_WebCamSize = new(640, 480);
+        [SerializeField] int m_WebCamFps = 30;
+        [Tooltip("3DoF: the rear camera's horizontal field of view, in degrees, which stands in for its intrinsics.")]
+        [SerializeField] float m_WebCamFieldOfView = 70f;
+        const float k_WebCamNoFrameSeconds = 3f;
+        WebCamTexture m_WebCam;
+        Color32[] m_WebCamPixels;
+        float m_WebCamLastFrame;
+        bool m_LoggedWebCam;
+        // Whether the image being worked on came from the plain feed rather than ARKit.
+        bool m_WebCamImage;
         float m_LastTrackedTime = float.NegativeInfinity;
         const float k_HandGraceSeconds = 3f;
         // Vision's mean joint confidence below which what it saw isn't a hand, and a joint's
@@ -376,6 +395,7 @@ namespace Afterglow.Hands
             // The models are the largest part of the app's heat, so their rate is a setting (and a
             // launch option): "handHz 10" runs the landmarker at most ten times a second, 0 on every image.
             ApplyRate(Settings.Int("handHz", 0));
+            TracksInThreeDof = Settings.Int("hands3dof", 1) != 0;
             Settings.Changed += OnSetting;
             m_CameraManager.frameReceived += OnCameraFrame;
             // Only on iOS for now, where environment depth comes from the Pro models' LiDAR. ARCore
@@ -410,7 +430,106 @@ namespace Afterglow.Hands
             if (m_Occlusion != null)
                 m_Occlusion.enabled = false;
             LoseAll();
+            StopWebCam();
             PassthroughController.HandsBusy = false;
+        }
+
+        bool EnsureWebCam()
+        {
+            if (m_WebCam != null)
+                return true;
+            string name = null;
+            foreach (var device in WebCamTexture.devices)
+            {
+                if (!device.isFrontFacing)
+                {
+                    name = device.name;
+                    break;
+                }
+            }
+            if (name == null)
+            {
+                if (!m_LoggedWebCam)
+                {
+                    m_LoggedWebCam = true;
+                    Debug.Log("[Hands] 3DoF: no rear camera to read, so no hands until 6DoF");
+                }
+                return false;
+            }
+            m_WebCam = new WebCamTexture(name, m_WebCamSize.x, m_WebCamSize.y, m_WebCamFps);
+            m_WebCam.Play();
+            m_WebCamLastFrame = Time.unscaledTime;
+            Debug.Log($"[Hands] 3DoF: reading the rear camera as a plain feed, asked for {m_WebCamSize.x}x{m_WebCamSize.y} at {m_WebCamFps} fps");
+            return true;
+        }
+
+        void StopWebCam()
+        {
+            if (m_WebCam == null)
+                return;
+            m_WebCam.Stop();
+            Destroy(m_WebCam);
+            m_WebCam = null;
+            m_WebCamImage = false;
+            Debug.Log("[Hands] 3DoF camera feed closed");
+        }
+
+        // The newest plain-feed frame as RGBA with the first row the top, with intrinsics from the
+        // field of view. The rows come bottom first and, when the sensor is turned 180 degrees,
+        // each row reversed as well (PinchSensor found the same on the iPhone).
+        bool TryTakeWebCamImage(out long timestampNs)
+        {
+            timestampNs = 0;
+            if (m_WebCam == null)
+                return false;
+            if (!m_WebCam.isPlaying || Time.unscaledTime - m_WebCamLastFrame > k_WebCamNoFrameSeconds)
+            {
+                if (m_WebCam.isPlaying)
+                    m_WebCam.Stop();
+                m_WebCam.Play();
+                m_WebCamLastFrame = Time.unscaledTime;
+                return false;
+            }
+            if (!m_WebCam.didUpdateThisFrame || m_WebCam.width < 32)
+                return false;
+            m_WebCamLastFrame = Time.unscaledTime;
+            var width = m_WebCam.width;
+            var height = m_WebCam.height;
+            if (m_WebCamPixels == null || m_WebCamPixels.Length != width * height)
+                m_WebCamPixels = new Color32[width * height];
+            m_WebCam.GetPixels32(m_WebCamPixels);
+            var length = width * height * 4;
+            if (!m_Image.IsCreated || m_Image.Length != length)
+            {
+                if (m_Image.IsCreated)
+                    m_Image.Dispose();
+                m_Image = new NativeArray<byte>(length, Allocator.Persistent);
+            }
+            var turned = Mathf.RoundToInt(m_WebCam.videoRotationAngle) % 360 == 180;
+            var pixels = m_Image.Reinterpret<Color32>(1);
+            for (var y = 0; y < height; y++)
+            {
+                var row = (turned ? y : height - 1 - y) * width;
+                NativeArray<Color32>.Copy(m_WebCamPixels, row, pixels, y * width, width);
+                if (!turned)
+                    continue;
+                for (int left = y * width, right = left + width - 1; left < right; left++, right--)
+                    (pixels[left], pixels[right]) = (pixels[right], pixels[left]);
+            }
+            m_ImageWidth = width;
+            m_ImageHeight = height;
+            var focal = width / 2f / Mathf.Tan(m_WebCamFieldOfView * 0.5f * Mathf.Deg2Rad);
+            m_FocalLength = new Vector2(focal, focal);
+            m_PrincipalPoint = new Vector2(width / 2f, height / 2f);
+            m_WebCamImage = true;
+            timestampNs = NativeImu.NowNs();
+            if (!m_LoggedWebCam)
+            {
+                m_LoggedWebCam = true;
+                Debug.Log($"[Hands] 3DoF camera gives {width}x{height}, turned {m_WebCam.videoRotationAngle:F0} deg; " +
+                          $"focal {focal:F0} px from a {m_WebCamFieldOfView:F0} deg field of view");
+            }
+            return true;
         }
 
         void OnCameraFrame(ARCameraFrameEventArgs args)
@@ -723,7 +842,16 @@ namespace Afterglow.Hands
         // Runs the newest camera image through the models. False if there was no new image to run.
         async Awaitable<bool> TrackImage()
         {
-            if (m_Fusion.CurrentMode != HeadPoseFusion.Mode.SixDof || !m_CameraManager.enabled || IsPaused)
+            var sixDof = m_Fusion.CurrentMode == HeadPoseFusion.Mode.SixDof;
+            if (IsPaused || (sixDof && !m_CameraManager.enabled) || (!sixDof && !TracksInThreeDof))
+            {
+                LoseAll();
+                StopWebCam();
+                return false;
+            }
+            if (sixDof)
+                StopWebCam();
+            else if (!EnsureWebCam())
             {
                 LoseAll();
                 return false;
@@ -740,7 +868,9 @@ namespace Afterglow.Hands
                 wantsTrack |= candidate.region != null && Time.unscaledTime >= candidate.nextTrack;
             if (!wantsSearch && !wantsTrack)
                 return false;
-            if (!TryTakeImage(out var imageNs))
+            long imageNs;
+            var taken = sixDof ? TryTakeImage(out imageNs) : TryTakeWebCamImage(out imageNs);
+            if (!taken)
                 return false;
 
             m_Images++;
@@ -1110,12 +1240,15 @@ namespace Afterglow.Hands
             m_FarthestHand = Mathf.Max(m_FarthestHand, distance);
             LogDistanceJump(hand, distance, position.z, HandGeometry.PalmSpan(hand.imageLandmarks), fitError, presence, region.size, palmSize);
 
-            if (!m_HasAxes || !TryFindPose(imageNs, out var pose))
+            if ((!m_HasAxes && !m_WebCamImage) || !TryFindPose(imageNs, out var pose))
             {
                 m_WithoutPose++;
                 hand.isTracking = false;
                 return;
             }
+            // The plain feed comes upright: its x runs along the screen and its y down it.
+            var imageX = m_WebCamImage ? Vector2.right : m_ImageXOnScreen;
+            var imageY = m_WebCamImage ? Vector2.down : m_ImageYOnScreen;
 
             // A speed needs the previous result to be of this hand and recent.
             var gap = (imageNs - hand.resultImageNs) * 1e-9;
@@ -1128,7 +1261,7 @@ namespace Afterglow.Hands
             {
                 var joint = hand.cameraJoints[i];
                 // The AR camera's local space has x right, y up and z forward on the screen.
-                var across = m_ImageXOnScreen * joint.x + m_ImageYOnScreen * joint.y;
+                var across = imageX * joint.x + imageY * joint.y;
                 var session = pose.position + pose.rotation * new Vector3(across.x, across.y, joint.z);
                 hand.resultJoints[i] = hand.jointFilters[i].Filter(transform.TransformPoint(session), imageNs * 1e-9);
             }
@@ -1165,6 +1298,7 @@ namespace Afterglow.Hands
                 if (timestampNs == m_LastImageNs || !m_CameraManager.TryGetIntrinsics(out var intrinsics))
                     return false;
                 m_LastImageNs = timestampNs;
+                m_WebCamImage = false;
                 if (m_UseDepth)
                     TakeDepth(timestampNs);
 
@@ -1208,6 +1342,19 @@ namespace Afterglow.Hands
 
         bool TryFindPose(long timestampNs, out ArPoseSource.Sample pose)
         {
+            // From the plain feed there is no pose per image: the head's own pose now, in the
+            // tracker's space, stands in. The camera sits at the head within a few centimetres.
+            if (m_WebCamImage)
+            {
+                var head = m_Fusion.transform;
+                pose = new ArPoseSource.Sample
+                {
+                    position = transform.InverseTransformPoint(head.position),
+                    rotation = Quaternion.Inverse(transform.rotation) * head.rotation,
+                    timestampNs = timestampNs,
+                };
+                return true;
+            }
             for (var i = m_Poses.Count - 1; i >= 0; i--)
             {
                 if (Math.Abs(m_Poses[i].timestampNs - timestampNs) <= k_PoseMatchNs)

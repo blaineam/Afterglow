@@ -150,6 +150,7 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
 | `renderScale N` | Eye texture resolution in percent (default 100); also sizes a WebXR page's eye buffer, which is otherwise the screen's own pixels |
 | `msaa N` | Anti-aliasing samples: 1, 2, 4 or 8 (default 2) |
 | `handHz N` | Run the hand landmark model at most N times a second (default 0: every camera image) |
+| `hands3dof 0` | iPhone: in 3DoF, run the plain pinch sensor instead of full hand tracking from the rear camera feed |
 | `handModel 1` | iPhone: find hands with MediaPipe's palm detector on the CPU instead of Apple's Vision hand pose on the Neural Engine (the default) |
 | `handOrientation N` | iPhone: how the camera image is turned for Vision (CGImagePropertyOrientation 1–8; default 1, upright, which it is in the viewer) |
 | `showHands 1` | Draw the tracked hand joints over the camera image too (also in Settings), to see how well the tracking follows your hands |
