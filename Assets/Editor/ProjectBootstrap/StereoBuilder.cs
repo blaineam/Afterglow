@@ -881,6 +881,9 @@ namespace ProjectBootstrap
         // with it, hidden until Apps shows it. AppLibrary puts the tiles in at runtime, from the catalog.
         // How opaque the library's surface is: enough to keep the names readable over a busy room.
         const float k_LibraryOpacity = 0.6f;
+        // The settings screen is rows of text, which a room showing through makes hard to read
+        // where the library's icons are not; so it is nearly solid.
+        const float k_SettingsOpacity = 0.94f;
 
         static void BuildLibrary(RectTransform panel, DemoManager demos, SettingsSummoner settings, M3Button appsButton,
             DemoCatalog catalog)
@@ -917,7 +920,7 @@ namespace ProjectBootstrap
             StereoRig rig)
         {
             var size = SettingsScreen.Size;
-            var root = M3.Surface("Settings Screen", panel, Vector2.zero, size, M3Theme.WithAlpha(M3Theme.SurfaceContainer, k_LibraryOpacity),
+            var root = M3.Surface("Settings Screen", panel, Vector2.zero, size, M3Theme.WithAlpha(M3Theme.SurfaceContainer, k_SettingsOpacity),
                 M3Theme.k_ShapePanel, raycastTarget: true).rectTransform;
             root.gameObject.AddComponent<M3Fade>();
             root.gameObject.SetActive(false);

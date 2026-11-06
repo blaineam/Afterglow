@@ -81,6 +81,13 @@ and hand tracking are refused with a `[Pose]` or `[Demos]` log line, demos that 
 in 3DoF, and `DeskHeadLook` moves the head from the mouse, touch and keyboard. The Simulator's
 Photos library, video decoding and WKWebView do work; dictation reports itself unavailable.
 
+### Panels are hidden by nearer objects
+
+The settings panel, the app library and the settings screen are world-space canvases at 1.25 m,
+drawn with depth: a scene object nearer than that, such as the lobby's floating cubes, draws over
+them. Seen in the Simulator on 2026-11-05 with the lobby's white cube over the settings screen's
+title. The fix is to draw the panels last, over everything, as the gaze reticle already is.
+
 ## iPhone 18 Pro Max
 
 ### Frames are late with the browser window up

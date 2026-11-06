@@ -10,15 +10,23 @@ namespace CardboardXR.Stereo
     //
     // Look with a right-button drag (a mouse) or any drag (a touch screen, which is what the
     // Simulator's mouse is). The left button stays a tap, so clicking still clicks; GazePointer
-    // treats a drag as not-a-tap, so a look does not also press whatever the gaze crosses. Move with
-    // W A S D or the arrows, Q and E for down and up, and R to face forward again. The point is to
-    // run the app's screens, media and browser without a phone, not to stand in for ARKit.
+    // treats a drag as not-a-tap, so a look does not also press whatever the gaze crosses. The
+    // arrows also turn the head, k_ArrowStep a press and then steadily while held: a drag has to
+    // travel further than a tap to count as one, so the last few degrees onto a button are the
+    // arrows' job. Move with W A S D, Q and E for down and up, and R to face forward again. The
+    // point is to run the app's screens, media and browser without a phone, not to stand in for
+    // ARKit.
     [DefaultExecutionOrder(-99)]
     public class DeskHeadLook : MonoBehaviour
     {
         const float k_DegreesPerPixel = 0.15f;
         const float k_MetersPerSecond = 1.2f;
         const float k_MaxPitch = 85f;
+        // An arrow press turns this far at once; held past k_ArrowHoldSeconds it keeps turning.
+        const float k_ArrowStep = 2f;
+        const float k_ArrowDegreesPerSecond = 45f;
+        // Long enough that a simulated key press, which can hold for half a second, stays one step.
+        const float k_ArrowHoldSeconds = 0.7f;
 
         [SerializeField] GyroHeadTracker m_Tracker;
 
@@ -31,6 +39,7 @@ namespace CardboardXR.Stereo
         bool m_Dragging;
         Vector2 m_LastPointer;
         Vector2 m_DragStart;
+        float m_ArrowHeldFor;
 
         // Whether this is what moves the head right now.
         public bool IsActive => (m_Tracker == null || !m_Tracker.HasSensors) && (m_Tracker == null || m_Tracker.DrivesTransform);
@@ -41,6 +50,26 @@ namespace CardboardXR.Stereo
                 m_Tracker = GetComponent<GyroHeadTracker>();
         }
 
+        // The arrows: a step on the press, then a steady turn once held.
+        void Turn(Keyboard keyboard)
+        {
+            var yaw = (keyboard.rightArrowKey.isPressed ? 1f : 0f) - (keyboard.leftArrowKey.isPressed ? 1f : 0f);
+            var pitch = (keyboard.downArrowKey.isPressed ? 1f : 0f) - (keyboard.upArrowKey.isPressed ? 1f : 0f);
+            if (yaw == 0f && pitch == 0f)
+            {
+                m_ArrowHeldFor = 0f;
+                return;
+            }
+            var stepped = keyboard.rightArrowKey.wasPressedThisFrame || keyboard.leftArrowKey.wasPressedThisFrame ||
+                          keyboard.downArrowKey.wasPressedThisFrame || keyboard.upArrowKey.wasPressedThisFrame;
+            var degrees = stepped ? k_ArrowStep
+                : m_ArrowHeldFor >= k_ArrowHoldSeconds ? k_ArrowDegreesPerSecond * Time.unscaledDeltaTime
+                : 0f;
+            m_ArrowHeldFor += Time.unscaledDeltaTime;
+            m_Yaw += yaw * degrees;
+            m_Pitch = Mathf.Clamp(m_Pitch + pitch * degrees, -k_MaxPitch, k_MaxPitch);
+        }
+
         void Update()
         {
             if (!IsActive)
@@ -48,8 +77,8 @@ namespace CardboardXR.Stereo
             if (!m_Announced)
             {
                 m_Announced = true;
-                Debug.Log("[Stereo] Desk mode: no motion sensors, so drag to look (right button on a mouse), " +
-                          "W A S D / arrows to move, Q E down and up, R to face forward");
+                Debug.Log("[Stereo] Desk mode: no motion sensors, so drag to look (right button on a mouse) or " +
+                          "turn with the arrows, W A S D to move, Q E down and up, R to face forward");
             }
 
             var delta = Vector2.zero;
@@ -89,10 +118,11 @@ namespace CardboardXR.Stereo
             var keyboard = Keyboard.current;
             if (keyboard != null)
             {
-                if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed) move.z += 1f;
-                if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed) move.z -= 1f;
-                if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) move.x += 1f;
-                if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) move.x -= 1f;
+                Turn(keyboard);
+                if (keyboard.wKey.isPressed) move.z += 1f;
+                if (keyboard.sKey.isPressed) move.z -= 1f;
+                if (keyboard.dKey.isPressed) move.x += 1f;
+                if (keyboard.aKey.isPressed) move.x -= 1f;
                 if (keyboard.eKey.isPressed) move.y += 1f;
                 if (keyboard.qKey.isPressed) move.y -= 1f;
                 if (keyboard.rKey.wasPressedThisFrame)

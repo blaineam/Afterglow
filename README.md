@@ -71,8 +71,9 @@ zsh Tools/ios_sim_build_and_run.sh                           # iOS Simulator, fo
 
 Most of the app can be worked on at a desk. **In the Editor**, play mode runs 6DoF in AR
 Foundation's XR Simulation (a synthetic room, driven from the keyboard and mouse) once
-`ProjectSetup.Apply` has run; without a provider it runs 3DoF, where a right-button drag looks
-around, W A S D or the arrows move, Q and E go down and up, and R faces forward again. **In the iOS
+`ProjectSetup.Apply` has run; without a provider it runs 3DoF, where a right-button drag or the
+arrow keys look around (2° a press, steady when held), W A S D move, Q and E go down and up, and
+R faces forward again. **In the iOS
 Simulator** (`Tools/ios_sim_build_and_run.sh`, which boots an iPhone 18 Pro Max simulator and leaves
 it running) a drag looks and a click taps; the Photos library works there, so spatial photos and
 videos can be added to it with `xcrun simctl addmedia booted photo.HEIC`, and so do WKWebView and
