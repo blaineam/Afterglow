@@ -97,6 +97,51 @@ static const char *kHelperSource = R"JS(
     }
   })();
 
+  // Video stays in the page. An iPhone hands any <video> without the playsinline attribute to
+  // its own full-screen player the moment it plays: a view over the whole window that hides the
+  // stereo output, the page's own controls and the app's menu button alike, and leaves a
+  // WebGL scene drawing to a texture nobody can see. A page that draws video into a sphere
+  // never wants that, and a flat page is a window in the scene, so every video is marked inline
+  // before it can play and the player's own entry point does nothing.
+  (function () {
+    function inline(v) {
+      if (!v || v.tagName !== 'VIDEO' || v.hasAttribute('playsinline')) return;
+      v.setAttribute('playsinline', '');
+      v.setAttribute('webkit-playsinline', '');
+      post({ event: 'console', level: 'log', text: '[Afterglow] video kept inline' });
+    }
+    function sweep(root) {
+      if (!root) return;
+      if (root.tagName === 'VIDEO') inline(root);
+      if (!root.querySelectorAll) return;
+      var vs = root.querySelectorAll('video');
+      for (var i = 0; i < vs.length; i++) inline(vs[i]);
+    }
+    try {
+      var play = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function () { inline(this); return play.apply(this, arguments); };
+    } catch (e) { /* no media */ }
+    try {
+      if (HTMLVideoElement.prototype.webkitEnterFullscreen) {
+        HTMLVideoElement.prototype.webkitEnterFullscreen = function () {
+          post({ event: 'console', level: 'log', text: '[Afterglow] video asked for the native player: refused' });
+        };
+      }
+    } catch (e) { /* no video */ }
+    try {
+      new MutationObserver(function (ms) {
+        for (var i = 0; i < ms.length; i++) {
+          var added = ms[i].addedNodes;
+          for (var j = 0; j < added.length; j++) sweep(added[j]);
+        }
+      }).observe(document.documentElement, { childList: true, subtree: true });
+    } catch (e) { /* no observer */ }
+    document.addEventListener('webkitbeginfullscreen', function () {
+      post({ event: 'console', level: 'warn', text: '[Afterglow] a video went to the native player anyway' });
+    }, true);
+    sweep(document);
+  })();
+
   // Logins: a form with a password field that is submitted hands its username and password to
   // the app, which offers to keep them in the phone's Keychain; a page that shows a password
   // field is announced, so the app can offer a saved login; __afterglowFill puts one in.
