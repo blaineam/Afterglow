@@ -126,16 +126,29 @@ namespace CardboardXR.Stereo
 
         void OnEnable()
         {
-            // The "boundaryCm" launch option turns the warning on, at that distance.
-            var boundaryCm = LaunchOptions.GetInt("boundaryCm", 0);
-            if (boundaryCm > 0)
-            {
-                m_WarnWhenNear = true;
-                m_WarningDistance = boundaryCm / 100f;
-            }
+            // The "boundaryCm" setting (or launch option) turns the warning on, at that distance.
+            ApplyWarning(Settings.Int("boundaryCm", 0));
+            Settings.Changed += OnSetting;
         }
 
-        void OnDisable() => Shader.SetGlobalFloat(k_RadiusId, 0f);
+        void ApplyWarning(int boundaryCm)
+        {
+            m_WarnWhenNear = boundaryCm > 0;
+            if (boundaryCm > 0)
+                m_WarningDistance = boundaryCm / 100f;
+        }
+
+        void OnSetting(string name)
+        {
+            if (name == "boundaryCm")
+                ApplyWarning(Settings.Saved("boundaryCm", 0));
+        }
+
+        void OnDisable()
+        {
+            Settings.Changed -= OnSetting;
+            Shader.SetGlobalFloat(k_RadiusId, 0f);
+        }
 
         void Update()
         {

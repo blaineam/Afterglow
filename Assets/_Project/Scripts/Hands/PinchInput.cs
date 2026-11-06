@@ -71,7 +71,7 @@ namespace CardboardXR.Hands
         void Update()
         {
             var threeDof = m_Fusion.CurrentMode == HeadPoseFusion.Mode.ThreeDof;
-            var wanted = m_On && threeDof && Time.unscaledTime - m_ThreeDofSince >= k_HandoffSeconds;
+            var wanted = m_On && threeDof && m_Sensor.HasCamera && Time.unscaledTime - m_ThreeDofSince >= k_HandoffSeconds;
             if (m_Sensor.enabled != wanted)
                 m_Sensor.enabled = wanted;
 

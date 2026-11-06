@@ -58,6 +58,7 @@ namespace CardboardXR.Stereo
 
         readonly PositionFilter m_Filter = new();
         readonly YawAligner m_Yaw = new();
+        bool m_WarnedNoAr;
         // Learns the gyroscope bias behind the heading drift; kept across modes, since it applies in
         // 3DoF too.
         readonly GyroDriftEstimator m_Drift = new();
@@ -146,7 +147,7 @@ namespace CardboardXR.Stereo
             Application.onBeforeRender += UpdatePose;
             m_StatsStart = Time.unscaledTime;
             m_UseAccelerometer = LaunchOptions.GetInt("imuPosition", 1) != 0;
-            var sixDof = LaunchOptions.GetInt("dof", m_Mode == Mode.SixDof ? 6 : 3) == 6;
+            var sixDof = Settings.Int("dof", m_Mode == Mode.SixDof ? 6 : 3) == 6;
             SetMode(sixDof ? Mode.SixDof : Mode.ThreeDof, force: true);
         }
 
@@ -162,6 +163,18 @@ namespace CardboardXR.Stereo
 
         void SetMode(Mode mode, bool force)
         {
+            // Without an AR provider 6DoF would wait forever for tracking that never starts, so it
+            // is refused here, once for every path that asks: the launch option, the panel's
+            // toggle and a demo's needs.
+            if (mode == Mode.SixDof && !Capabilities.SixDof)
+            {
+                if (!m_WarnedNoAr)
+                {
+                    m_WarnedNoAr = true;
+                    Debug.Log($"[Pose] 6DoF asked for, but {Capabilities.Describe()}; staying in 3DoF");
+                }
+                mode = Mode.ThreeDof;
+            }
             if (mode == m_Mode && !force)
                 return;
 
@@ -212,6 +225,13 @@ namespace CardboardXR.Stereo
 
         void Update()
         {
+            // The AR session can only say it is unsupported once it has been asked, which is after
+            // 6DoF was switched on; when it does, 6DoF ends here rather than waiting forever.
+            if (m_Mode == Mode.SixDof && !Capabilities.SixDof)
+            {
+                Debug.Log($"[Pose] 6DoF ending: {Capabilities.Describe()}");
+                SetMode(Mode.ThreeDof, force: true);
+            }
             UpdatePose();
             LogStats();
         }

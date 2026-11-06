@@ -84,6 +84,14 @@ namespace CardboardXR.Hands
 
         public bool IsOpen => m_Panel != null && M3Fade.IsShown(m_Panel.gameObject);
 
+        // What stands above the panel at eye level, and so how far the panel drops to clear it: the
+        // app library or the settings screen, whichever was shown last.
+        public RectTransform Above
+        {
+            get => m_Above;
+            set => m_Above = value;
+        }
+
         // Whether the panel is open, for PinchRouter: demos don't take pinches meanwhile.
         public static bool IsPanelOpen => s_Instance != null && s_Instance.IsOpen;
 

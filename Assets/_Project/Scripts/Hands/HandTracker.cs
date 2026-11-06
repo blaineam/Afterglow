@@ -347,11 +347,10 @@ namespace CardboardXR.Hands
         void OnEnable()
         {
             m_AxesVariant = LaunchOptions.GetInt("handAxes", 0);
-            // The models are the largest part of the app's heat, so their rate is a launch option:
-            // "handHz 10" runs the landmarker at most ten times a second, 0 on every image.
-            var handHz = LaunchOptions.GetInt("handHz", 0);
-            if (handHz > 0)
-                m_TrackInterval = 1f / handHz;
+            // The models are the largest part of the app's heat, so their rate is a setting (and a
+            // launch option): "handHz 10" runs the landmarker at most ten times a second, 0 on every image.
+            ApplyRate(Settings.Int("handHz", 0));
+            Settings.Changed += OnSetting;
             m_CameraManager.frameReceived += OnCameraFrame;
             // Only on iOS for now, where environment depth comes from the Pro models' LiDAR. ARCore
             // offers it through the same API, but a Pixel 9 Pro has no depth sensor, so its depth is
@@ -366,8 +365,20 @@ namespace CardboardXR.Hands
                 RunLoop();
         }
 
+        void ApplyRate(int handHz)
+        {
+            m_TrackInterval = handHz > 0 ? 1f / handHz : 0f;
+        }
+
+        void OnSetting(string name)
+        {
+            if (name == "handHz")
+                ApplyRate(Settings.Saved("handHz", 0));
+        }
+
         void OnDisable()
         {
+            Settings.Changed -= OnSetting;
             m_Running = false;
             m_CameraManager.frameReceived -= OnCameraFrame;
             if (m_Occlusion != null)

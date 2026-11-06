@@ -109,8 +109,17 @@ namespace CardboardXR.Hands
         public Vector2 ImageSize => new(m_Width, m_Height);
         public float RightHandScore { get; private set; } = 0.5f;
 
+        // False once the phone turned out to have no rear camera (the Simulator, a desk), so
+        // PinchInput stops asking: switching this on again would only find the same nothing.
+        public bool HasCamera { get; private set; } = true;
+
         void OnEnable()
         {
+            if (!HasCamera)
+            {
+                enabled = false;
+                return;
+            }
             if (m_Fusion != null && m_Fusion.CurrentMode == HeadPoseFusion.Mode.SixDof)
             {
                 Debug.LogWarning("[Pinch] Not starting in 6DoF: the AR session has the camera. Hand tracking covers pinches there");
@@ -186,7 +195,8 @@ namespace CardboardXR.Hands
             }
             if (name == null)
             {
-                Debug.LogWarning("[Pinch] No rear camera");
+                Debug.LogWarning("[Pinch] No rear camera, so no pinch to click; a screen tap still clicks");
+                HasCamera = false;
                 enabled = false;
                 return false;
             }

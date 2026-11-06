@@ -39,6 +39,7 @@ namespace ProjectBootstrap
         const string AndroidApk = "Builds/CardboardXR.apk";
         // Xcode projects are folders, and Xcode builds and signs them from there.
         const string XcodeProject = "Builds/iOS";
+        const string XcodeProjectSimulator = "Builds/iOS-Simulator";
         const string DistortionShaderPath = "Assets/_Project/Shaders/Distortion.shader";
         const string ReticleShaderPath = "Assets/_Project/Shaders/Reticle.shader";
         const string BoundaryShaderPath = "Assets/_Project/Shaders/Boundary.shader";
@@ -67,16 +68,28 @@ namespace ProjectBootstrap
 
         // The same scenes as an Xcode project for the iPhone, which Xcode then builds and signs.
         // Invoke with: -buildTarget iOS -executeMethod ProjectBootstrap.StereoBuilder.BuildIos
+        //
+        // CARDBOARDXR_SIMULATOR=1 exports for the iOS Simulator instead (Tools/ios_sim_build_and_run.sh):
+        // the arm64 simulator, which is the one the ARKit plug-in ships a slice for, into its own
+        // Xcode project so a device export beside it is left alone. The SDK choice is put back
+        // afterwards, so the setting in the repository stays the device's.
         public static void BuildIos()
         {
-            BuildAndExit(BuildScenes(), XcodeProject, BuildTarget.iOS);
+            var simulator = System.Environment.GetEnvironmentVariable("CARDBOARDXR_SIMULATOR") == "1";
+            var sdk = PlayerSettings.iOS.sdkVersion;
+            PlayerSettings.iOS.sdkVersion = simulator ? iOSSdkVersion.SimulatorSDK : iOSSdkVersion.DeviceSDK;
+            if (simulator)
+                PlayerSettings.iOS.simulatorSdkArchitecture = AppleMobileArchitectureSimulator.ARM64;
+            Debug.Log($"[Build] iOS SDK: {(simulator ? "Simulator, arm64" : "Device")}");
+            BuildAndExit(BuildScenes(), simulator ? XcodeProjectSimulator : XcodeProject, BuildTarget.iOS,
+                () => PlayerSettings.iOS.sdkVersion = sdk);
         }
 
         // A release build unless CARDBOARDXR_DEVELOPMENT=1: a development build is debuggable on
         // Android and lets the Unity Profiler connect over the local network. CARDBOARDXR_BUNDLE_ID
         // builds under another app id, since an iOS bundle id belongs to the Apple team that first
         // signed it. The first scene is the one the app starts in.
-        static void BuildAndExit(string[] scenePaths, string outputPath, BuildTarget target)
+        static void BuildAndExit(string[] scenePaths, string outputPath, BuildTarget target, System.Action restore = null)
         {
             var bundleId = System.Environment.GetEnvironmentVariable("CARDBOARDXR_BUNDLE_ID");
             if (!string.IsNullOrWhiteSpace(bundleId))
@@ -106,6 +119,7 @@ namespace ProjectBootstrap
             PlayerSettings.Android.useCustomKeystore = false;
             PlayerSettings.Android.keystoreName = "";
             PlayerSettings.Android.keyaliasName = "";
+            restore?.Invoke();
 
             var summary = report.summary;
             Debug.Log($"[Build] {(development ? "Development build" : "Build")} {summary.result}: {outputPath} " +
@@ -204,6 +218,8 @@ namespace ProjectBootstrap
             serializedRig.FindProperty("m_DistortionShader").objectReferenceValue = distortionShader;
             serializedRig.ApplyModifiedPropertiesWithoutUndo();
             var tracker = head.AddComponent<GyroHeadTracker>();
+            // Moves the head where there are no sensors to: the Editor and the iOS Simulator.
+            head.AddComponent<DeskHeadLook>();
             head.AddComponent<FrameTimingLog>();
             head.AddComponent<PerformanceLog>();
             var (poseSource, origin, arCamera, arViewOnly) = BuildViewerSetup(rig);
@@ -241,6 +257,7 @@ namespace ProjectBootstrap
             ArrangeToolbar(panel, toolbar);
             var settings = BuildSettings(origin, fusion, panel);
             BuildLibrary(panel, demos, settings, toolbar[0], catalog);
+            BuildSettingsScreen(panel, demos, settings, toolbar[6], rig);
             BuildArDebugView(origin, rig, fusion, boundary, arCamera, arViewOnly);
             BuildPassthrough(passthrough, fusion, rig, arCamera, head.transform, passthroughToggle, passthroughShader);
             BuildLighting(origin, fusion, passthrough, arCamera);
@@ -811,11 +828,13 @@ namespace ProjectBootstrap
 
             // The view switch isn't here: it's on the screen itself, in the settings menu, since it's
             // pressed with the phone in hand where this panel can't be reached.
-            var items = new M3Button[6];
+            var items = new M3Button[7];
             // Apps shows the app library above the panel (BuildLibrary), the way to the lobby and
-            // between demos.
+            // between demos; Settings shows the settings screen in the same place (BuildSettingsScreen).
             var library = demos.gameObject.AddComponent<AppLibrary>();
+            var screen = demos.gameObject.AddComponent<SettingsScreen>();
             items[0] = ToolbarItem(panel, "Apps", "apps", "Apps", library.Toggle);
+            items[6] = ToolbarItem(panel, "Settings", "tune", "Settings", screen.Toggle);
             items[1] = ToolbarItem(panel, "Recenter", "my_location", "Recenter", fusion.Recenter);
             items[2] = ToolbarItem(panel, "Tracking Mode", "view_in_ar", "6DoF", fusion.ToggleMode);
             items[3] = ToolbarItem(panel, "Passthrough", "visibility", "Passthrough", passthrough.Toggle);
@@ -892,12 +911,33 @@ namespace ProjectBootstrap
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
+        // The settings screen: a surface above the panel in the library's spot, hidden until the
+        // panel's Settings button shows it. SettingsScreen builds its rows at runtime.
+        static void BuildSettingsScreen(RectTransform panel, DemoManager demos, SettingsSummoner settings, M3Button settingsButton,
+            StereoRig rig)
+        {
+            var size = SettingsScreen.Size;
+            var root = M3.Surface("Settings Screen", panel, Vector2.zero, size, M3Theme.WithAlpha(M3Theme.SurfaceContainer, k_LibraryOpacity),
+                M3Theme.k_ShapePanel, raycastTarget: true).rectTransform;
+            root.gameObject.AddComponent<M3Fade>();
+            root.gameObject.SetActive(false);
+
+            var screen = demos.GetComponent<SettingsScreen>();
+            var serialized = new SerializedObject(screen);
+            serialized.FindProperty("m_Settings").objectReferenceValue = settings;
+            serialized.FindProperty("m_Library").objectReferenceValue = demos.GetComponent<AppLibrary>();
+            serialized.FindProperty("m_Rig").objectReferenceValue = rig;
+            serialized.FindProperty("m_Button").objectReferenceValue = settingsButton;
+            serialized.FindProperty("m_Root").objectReferenceValue = root;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
         // Orders the items into their groups, with a divider before each group after the first.
         static void ArrangeToolbar(RectTransform panel, M3Button[] items)
         {
-            // Apps, Browser | Recenter, Scan Room | 6DoF, Passthrough.
-            var order = new[] { items[0], items[5], items[1], items[4], items[2], items[3] };
-            var groups = new[] { 0, 0, 1, 1, 2, 2 };
+            // Apps, Settings, Browser | Recenter, Scan Room | 6DoF, Passthrough.
+            var order = new[] { items[0], items[6], items[5], items[1], items[4], items[2], items[3] };
+            var groups = new[] { 0, 0, 0, 1, 1, 2, 2 };
             var dividers = new Image[3];
             for (var g = 1; g < dividers.Length; g++)
             {

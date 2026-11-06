@@ -71,3 +71,7 @@ crashlytics-build.properties
 /[Aa]ssets/StreamingAssets/*.mp4.meta
 !/[Aa]ssets/StreamingAssets/Sample_*.mp4
 !/[Aa]ssets/StreamingAssets/Sample_*.mp4.meta
+
+# Written by the test runner on every run; nothing of ours.
+/Assets/Resources/PerformanceTestRun*
+/Assets/Resources.meta

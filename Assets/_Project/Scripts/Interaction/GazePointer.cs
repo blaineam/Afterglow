@@ -39,6 +39,10 @@ namespace CardboardXR.Interaction
         bool m_ClickCancelled;
         bool m_TapOnScreenUi;
         float m_PressTime;
+        Vector2 m_PressPosition;
+        // A press that travels further than this, in inches on the screen, was a drag, not a tap:
+        // on a desk that is a drag to look around (DeskHeadLook), and it should press nothing.
+        const float k_DragInches = 0.15f;
 
         public UnityEvent OnHold => m_OnHold;
 
@@ -155,9 +159,20 @@ namespace CardboardXR.Interaction
 
             if (pointer.press.wasPressedThisFrame)
             {
-                m_TapOnScreenUi = IsOverScreenUi(pointer.position.ReadValue());
+                m_PressPosition = pointer.position.ReadValue();
+                m_TapOnScreenUi = IsOverScreenUi(m_PressPosition);
                 if (!m_TapOnScreenUi)
                     TriggerDown();
+            }
+
+            if (m_Held && !m_ClickCancelled)
+            {
+                var dragPixels = (Screen.dpi > 0f ? Screen.dpi : 160f) * k_DragInches;
+                if ((pointer.position.ReadValue() - m_PressPosition).sqrMagnitude > dragPixels * dragPixels)
+                {
+                    m_ClickCancelled = true;
+                    Debug.Log("[Gaze] Dragged, so not a tap");
+                }
             }
 
             if (m_Held && !m_ClickCancelled && Time.unscaledTime - m_PressTime >= m_HoldSeconds)

@@ -57,6 +57,9 @@ namespace CardboardXR.Demos
 
         public bool IsShown => m_Root != null && M3Fade.IsShown(m_Root.gameObject);
 
+        // Shown (true) or hidden (false), for what shares its spot above the panel (SettingsScreen).
+        public event System.Action<bool> Shown;
+
         // The library's size in dp for this many apps, and the y of the tagline's middle from the top.
         public static Vector2 Size(int apps)
         {
@@ -96,7 +99,10 @@ namespace CardboardXR.Demos
                 Build();
             if (show && !IsShown)
                 m_ShownAt = Time.unscaledTime;
+            if (show && m_Settings != null)
+                m_Settings.Above = m_Root;
             M3Fade.SetShown(m_Root.gameObject, show);
+            Shown?.Invoke(show);
             if (m_AppsButton != null)
                 m_AppsButton.Selected = show;
             if (show)

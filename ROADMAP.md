@@ -1,23 +1,123 @@
-# Expansion roadmap
+# Roadmap: from a demo lobby to a product
 
 Fork of [brenpoly/CardboardXR](https://github.com/brenpoly/CardboardXR) (upstream `v1.0.0`,
-Apache-2.0). Goal: first-class **iPhone 18 Pro Max** support, plus WebXR browsing, spatial
-media from Photos, more mini games, prebuilt installers, and — as stretch goals — SteamVR
-streaming and HDMI capture.
+Apache-2.0), built for the **iPhone 18 Pro Max** in brenpoly's printed viewer. Upstream is a
+very good prototype: 6DoF, passthrough, camera-tracked hands and a handful of demos in a Cardboard
+viewer. The goal here is a **free, open-source product** that people can install, use every day
+and trust: a home screen with three browsers — **Media** (the Photos library and files), **Web**
+(WebXR pages Safari cannot show) and **Files** — plus the games, on a foundation that is measured,
+not assumed.
 
-Upstream already does more than it looks. Before adding anything, know what's there:
+This file is the plan and the honest state. Where it says *done* there is code; where it says
+*verified* that code has run on the phone and the session log says so. The two are not the same,
+and the gap between them is most of the work.
 
-| Asked for | Upstream state |
+---
+
+## Where it stands (2026-11-05)
+
+| Asked for | State |
 |---|---|
-| Stereoscopic video | **Mostly done.** 360/VR180, mono + side-by-side + top/bottom, format from filename tags |
-| Mini games | **Four exist.** Air Paint, Orb Rush, Portal, Cube Sandbox, on an additive-scene `DemoCatalog` |
-| Prebuilt APK | **Done.** `Tools/release_android.sh` signs and drafts a GitHub release |
-| Prebuilt IPA | Missing. iOS is build-from-source only |
-| 3D printed viewer | On MakerWorld: iPhone 15 Pro, iPhone 16 Pro, Pixel 9 Pro. **Print files only, no CAD source** |
-| WebXR, spatial photos/video, SteamVR, HDMI capture | None of it exists |
+| Spatial **photos** from the Photos library | Done (`CardboardXRSpatialPhotos.mm`, HEIC stereo pair via ImageIO). **Not verified on the phone.** |
+| Spatial **video** from the Photos library | Done (`CardboardXRSpatialVideo.mm`, MV-HEVC both layers via `AVPlayerVideoOutput`, zero-copy Metal, iOS 18+). Built 2026-11-04, **never launched on the phone.** |
+| **Panoramas** | **Not built.** The Photos query asks only for `spatialMedia`; the player has no cylindrical projection; the file scanner lists only video extensions, so a 360 still is invisible too. |
+| **WebXR browser** | A working start: page on a quad at ~12 fps, gaze + pinch click, gaze-edge and gamepad scroll, back/forward/home/reload/resize, address bar, on-screen keys, Bluetooth keyboard, on-device dictation, `immersive-vr` full screen with page-side stereo and barrel distortion from the app's own lens numbers. Window verified on the phone; **an immersive session is not**. Missing: tabs, bookmarks, history, text selection, downloads, `immersive-ar`, hand input sources, floor-relative spaces from the real floor. iOS only. |
+| **Two hands** | Done (`723c064`, `aede100`): detector keeps both palms, two `TrackedHand` slots, XR Hands fed left and right. **Never run on the phone**; the last device log predates both commits. |
+| **UX** | A prototype's: a lobby and a library of *demos*; the media list is five text rows a page inside a demo called "360 Video"; every tuning knob is a Mac-side launch flag; a room scan blocks every cold start. |
+| **Performance** | Last device log (iPhone 18 Pro Max, 2026-11-03): 55–77 fps against a 120 target, 13–26 % late frames, steady ~50 ms "present wait" hitches with the browser window up. Visible judder in a headset. |
+| **Optics** | Until 2026-11-05 the rig defaulted to **Cardboard v1** — the wrong lenses for every viewer this project knows — unless a QR code had been scanned. The printed viewer's profile is now the default, and the scan screen offers the built-ins. |
+| **Desk testing** | New: the Editor runs 6DoF in AR Foundation's XR Simulation (a synthetic room), and both the Editor without it and the iOS Simulator run 3DoF with drag-to-look (`DeskHeadLook`). `Tools/ios_sim_build_and_run.sh` builds and launches on a simulator — **verified 2026-11-05**: the app runs on an iPhone 18 Pro Max simulator, defaults to the printed viewer's optics and falls back to 3DoF. |
+| **Distribution** | Android APK via `Tools/release_android.sh`. iOS is build-from-source. No repository of this fork's own yet, no CI. |
 
-So the work splits into *retuning what's there for a bigger, cooler-running phone* and
-*four genuinely new subsystems*.
+Unity 6000.6.0f1 is installed; the C# compiles and all 297 EditMode tests pass (2026-11-04).
+
+---
+
+## Phase 1 — Foundation
+
+Everything else sits on this, and three of the newest features have never run on the device.
+
+- **Verify on the phone**: two hands, spatial photo and video playback, an immersive WebXR
+  session. Each gets a session-log line that proves it, and a KNOWN_ISSUES entry for what it
+  does badly.
+- **Default optics** — done: `ViewerParams.CardboardXRViewer` (Cardboard v2 lenses centred on the
+  phone's width, which is where brenpoly's carriage puts them: bores at x = 0.0 in the STEP,
+  64.0 mm apart) is the rig's default; the scan screen offers *Printed viewer*, *Cardboard v2*,
+  *Cardboard v1* and remembers the pick.
+- **Desk mode** — done in code, see below. To do: fixture media for the simulator's Photos
+  library, and the Editor's XR Simulation environment checked against the room scan.
+- **Frame pacing**: find the ~50 ms present-wait hitches (they are *not* CPU time: main 0.6 ms,
+  GPU 1.5 ms, present wait 51 ms), then choose a frame target that holds — 120 only if it really
+  does with the browser or a hand in view, else 90 or 60, and say which in the log.
+- **Settings in the app** — done in code: `SettingsScreen`, from the panel's Settings button, with
+  frame rate, render scale, MSAA, focus-wheel offset, brightness, UI size, hand rate, 3DoF/6DoF
+  start, room scan at start and the boundary warning, saved through `Settings` (`PlayerPrefs`
+  under the launch option's own name; a launch flag still overrides for one run). To verify on the
+  phone: that the rows read through the lenses, and that a frame-rate change really changes the
+  display's refresh rate.
+- **Home**: replace the lobby + app library with a home screen of Media, Web, Files, Play and
+  Settings. The lobby becomes the Play section's room. The room scan moves to where 6DoF is first
+  needed instead of blocking the cold start.
+- **A repository of its own, with CI**: push this fork to GitHub (the only remote today is
+  brenpoly's upstream, which is not ours to push to), run the EditMode tests on every push, and
+  build the Android APK and an unsigned iOS archive on tags.
+
+## Phase 2 — Media browser
+
+- **Photos as a grid**: thumbnails from `PHCachingImageManager`, albums and smart albums, filters
+  *Spatial · Panoramas · 360 · Videos · All*, newest first, paged for a gaze.
+- **Panoramas**: list `PHAssetMediaSubtypePhotoPanorama`; a **cylindrical projection** sized from
+  the asset's aspect (iPhone panoramas are cylindrical, not equirectangular, and run to about 240°).
+- **360 stills**: by `GPano` XMP or a 2:1 aspect; JPEG, HEIC and PNG in the Files folder too.
+- **One player**: format from **metadata** — MV-HEVC layers, the spherical-video v2 boxes (`st3d`,
+  `sv3d`), GPano — before falling back to filename tags.
+- Flat photos and videos on the screen, as the spatial ones are already.
+
+## Phase 3 — Files
+
+- iOS document picker (`UIDocumentPickerViewController`) and the app's own Documents folder, which
+  Finder and the Files app can already copy into; Android's SAF picker.
+- Images and videos both, into the same player.
+
+## Phase 4 — Web
+
+- Tabs, bookmarks, history; a start page of WebXR-capable sites.
+- `immersive-ar` over the passthrough, which exists and is wasted on a browser that only does VR.
+- **Hand input sources**: the tracker's 21 joints as WebXR Hand Input, so pages see hands, not a
+  bare gaze `select`.
+- `local-floor` from the floor ARKit found rather than a fixed 1.6 m.
+- Measure an immersive session's frame rate honestly and say in the start page what to expect.
+
+## Phase 5 — Distribution
+
+- **TestFlight** for iOS, with the unsigned IPA on GitHub releases for people who sideload.
+- The Android APK on releases as today; Play later.
+- App Store as a bonus. The browser is `WKWebView`, which is WebKit, so guideline 2.5.6 is met;
+  the risk is reviewers' view of an app that is a window onto arbitrary content.
+
+## Later
+
+- Gamepad support for the games (a Bluetooth controller already scrolls the browser).
+- SteamVR streaming as an ALVR client: seated and gamepad games only, since there are no
+  controllers.
+- HDMI capture is **not possible on iPhone** (no UVC); a network encoder to the flat screen is the
+  route.
+
+---
+
+## Desk mode: testing without the phone
+
+| Where | Tracking | Camera, passthrough, hands | Photos, video, WKWebView |
+|---|---|---|---|
+| **Editor, XR Simulation on** (default after `ProjectSetup.Apply`) | 6DoF in a synthetic room, keyboard and mouse | A synthetic camera; planes are found; no hands | Photos: none (not iOS). Video files and the Editor's fallbacks only |
+| **Editor, no provider** | 3DoF: right-drag to look, W A S D / arrows / Q E to move, R to face forward (`DeskHeadLook`) | None | As above |
+| **iOS Simulator** (`Tools/ios_sim_build_and_run.sh`) | 3DoF: drag to look (the Simulator's mouse is a touch), click to tap | None: ARKit does not run in the Simulator | Photos **yes** — `xcrun simctl addmedia booted photo.HEIC`; MV-HEVC decode and WKWebView run; dictation reports unavailable |
+| **Phone** | Everything | Everything | Everything |
+
+`Capabilities.SixDof` is the one question everything asks: whether XR Plug-in Management started
+an AR provider. Without one, 6DoF, passthrough and hands are refused with a log line instead of
+waiting for tracking that never starts, and a drag on the screen is a look rather than a tap
+(`GazePointer` cancels a press that travels more than 0.15 in).
 
 ---
 
@@ -31,269 +131,22 @@ Verified against Apple's spec sheet, not assumed:
 | Mass | 187 g | **249 g** |
 | Display | 6.1", 2556 × 1179 @ 460 ppi | **6.9" (6.86" rect), 2868 × 1320 @ 460 ppi** |
 | Active area | 141.1 × 65.1 mm | **158.4 × 72.9 mm** |
-| Per-eye half-width | 70.6 mm | **79.2 mm** |
 
-Three consequences that drive everything below:
+With Cardboard v2 lenses the horizontal view is lens-limited on both phones (the lens renders 60°;
+the 6.9" screen subtends 72.5°, and the surplus is thrown away). Vertically the taller screen
+reaches the lens's full 60° where the 6.1" ran out at about 52°, and centring the lenses on the
+screen — which brenpoly's carriage does — gives 57.6° each way. That is why the printed-viewer
+profile is `VerticalAlignment.Center`.
 
-1. **+8.6 mm of screen per eye — most of which cannot be used.** This was wrong in the first
-   draft of this file, and the arithmetic is worth keeping. With Cardboard v2 lenses the
-   horizontal view is *already* lens-limited on a 6.1" phone: its screen subtends 61° and the
-   profile allows 60°, so the 6.9" phone's 72.5° of screen falls outside what the lens renders
-   and is thrown away. The 60° is Google's statement about that lens, not an arbitrary cap, so
-   raising it only pushes the picture past the lens's usable field.
-   **Vertically there is a real gain**: the 6.1" screen runs out at about 52°, short of the lens,
-   where the taller screen reaches the full 60°. So a bigger phone buys a taller view, not a wider
-   one — and centring the lenses on the screen instead of standing them above a tray buys more
-   still (57.6° each way, 115.2° total, against the tray's 50.0/60.0 and 110.0). That is why
-   `Hardware/viewer.scad` centres them and ships its own viewer profile.
-2. **+62 g (+33%) of phone mass**, on a lever arm in front of the face. This is a comfort and
-   strap problem, not just a bigger pocket in the tray.
-3. **A20 Pro + vapour chamber.** The premise of this whole expansion. Upstream's limits
-   (`fps 120`, hand models at 7–31 ms/frame, "fair" thermal state in ~3½ min on a 15 Pro)
-   were measured on an air-cooled A17 Pro and must be **re-measured, not assumed better**.
+## Licensing
 
----
+The code is Apache-2.0. brenpoly's printed viewer on MakerWorld is **CC BY-NC-SA**, so everything
+in `Hardware/upstream-stretch/` that is derived from it is non-commercial and share-alike, and the
+generated STLs are not committed. `Hardware/viewer.scad` is this project's own.
 
-## Phase 1 — Make the 18 Pro Max correct — **done except the thermal retune**
+## Platforms
 
-Nothing else is worth doing while the stereo geometry is wrong.
-
-### 1.1 Physical screen size on iOS *(bug, not a feature)* — **done**
-
-`Assets/_Project/Scripts/Stereo/ScreenMetrics.cs` reads real per-axis DPI from
-`DisplayMetrics` on Android, but on iOS falls through to `Screen.dpi` — which comes from
-Unity's own device table. **Unity 6000.6.0f1 predates the iPhone 18 Pro Max**, so that lookup
-may return a wrong value or the 160 dpi fallback. Physical screen size feeds the lens
-distortion directly, so a wrong number means wrong stereo scale and wrong distortion on
-every frame, silently.
-
-Fix: a native plugin beside `Plugins/iOS/CardboardXRDeviceState.mm` reporting
-`UIScreen.nativeBounds` × scale and a `hw.machine` → ppi table, with the Unity value as
-last resort. Log which source won, as `ScreenMetrics` already does.
-
-### 1.2 Viewer profile for brenpoly's own viewer — **done**
-
-The only built-in profile is **Cardboard v1** (42 mm screen-to-lens, 60 mm inter-lens,
-K₁ 0.441 / K₂ 0.156) — but the printed viewer uses **Cardboard v2 lenses**. Unless a QR code
-is scanned, the app runs v2 optics through v1 math.
-
-Worse, the viewer has a **focus wheel that moves the lens carriage**, and
-`screenToLensDistance` is a single fixed number in `ViewerParams` with no way to tell the app
-where the carriage actually is. On a thicker phone the carriage sits differently again.
-
-Fix: ship a built-in profile per printed variant, and add a focus-offset control to the
-settings panel that adjusts `screenToLensDistance` live, so the software can be matched to
-where the wheel actually is.
-
-### 1.3 Thermal and frame-rate retune — **not started; needs a device**
-
-Re-measure first, then raise budgets: hand-model main-thread cost, time-to-`fair` from cold,
-and what frame rate actually holds with a hand in view. Replace the global
-`fps`/`renderScale`/`msaa` defaults with per-device tiers so the 18 Pro Max isn't capped by
-15 Pro numbers. Update `KNOWN_ISSUES.md` with the new figures — several of its entries are
-device-specific and will read as false on the new phone.
-
-### 1.4 Housekeeping
-
-Add the 18 Pro Max to `Tools/record_eye.py`'s `--phone` profiles.
-
----
-
-## Phase 2 — The printed viewer
-
-**There is no CAD source anywhere.** The MakerWorld listing publishes per-phone print files
-(3MF) for three phones; the repo has no `.scad`, `.step` or `.f3d` at all. A fourth phone
-therefore means either getting the source from brenpoly, or authoring a parametric model.
-
-Recommendation: **author a parametric OpenSCAD model in this fork**, under `Hardware/`,
-driven by a phone table (width, height, thickness, camera-island cutout, port clearance) and
-a lens block. Four phone variants already exist and users on the listing are asking for
-more — a parametric model makes each new phone a data row instead of a redraw.
-
-Design points specific to this phone:
-
-- Tray grows +16.8 mm long, +7.4 mm wide, +0.5 mm deep over the 15 Pro.
-- **The rear camera must stay fully clear.** It drives passthrough, hand tracking and QR
-  scanning — an occluding cutout doesn't just look wrong, it breaks tracking. The 18 Pro's
-  camera island differs from the 15 Pro's.
-- **+62 g needs addressing**, by a top strap, a counterweight pocket at the rear, or both.
-- Lens carriage travel should be re-checked against the thicker body and the new
-  screen-to-lens distance.
-
-### Licensing — important
-
-The code is Apache-2.0, but the MakerWorld model is **CC BY-NC-SA**: attribution,
-**non-commercial**, share-alike. Any model derived from it inherits those terms. A model
-authored from scratch here is yours to license, but if it's a port of brenpoly's geometry it
-is a derivative. Worth deciding deliberately before publishing print files.
-
-### Bill of materials
-
-`Hardware/BOM.md`, with sourcing links for everything not printed: Cardboard v2 lenses, head
-strap, face foam, magnets, fasteners, and the optional extras Phase 5 needs. **Blocked on one
-input**: the exact lens part the design assumes. "Cardboard v2 lens" is a 34 mm focal length
-convention, not a part number, and guessing it would make the whole BOM wrong — it needs to
-come from the MakerWorld `README.pdf` assembly guide or from brenpoly.
-
----
-
-## Phase 3 — Media
-
-### 3.1 Flat screen projection — **done**
-
-`VideoFormat.Projection` is only `Full360` or `Half180`; both wrap the video on a sphere.
-There is no **flat rectilinear screen**. Adding `Projection.Flat` — a quad at a settable
-size and distance, honouring the existing `StereoLayout` so side-by-side 3D films work —
-gives "a massive screen in a virtual room", and is also the display surface for HDMI capture
-(5.2) and desktop streaming (5.1). Cheapest high-value item on the list.
-
-### 3.2 Spatial photos — **done**. Spatial video — **not started**
-
-The strongest new feature, and the one that only works properly on this hardware. iPhone
-15 Pro and later shoot **MV-HEVC**, which carries both eyes as separate layers in one file.
-
-- Photos access via `PHPhotoLibrary`, filtering on `.spatialMedia`.
-- A plain decode gives only layer 0, the "hero" eye. Both eyes need VideoToolbox told
-  explicitly to decode both layers (iOS 17.2+).
-- Unity's `VideoPlayer` cannot do this, so this is a native AVFoundation + VideoToolbox
-  plugin writing both eye textures into Metal textures Unity samples — the same shape as the
-  existing `VideoSphere` eye-rect split, but fed per-eye instead of by cropping one frame.
-- Spatial **photos** (HEIC stereo pairs) are the easy half and worth doing first.
-
-### 3.3 More mini games
-
-The `DemoCatalog` + additive-scene pattern is good and adding demos is cheap. The real
-constraint is input, not engine: gaze + pinch + one hand that, per `KNOWN_ISSUES.md`, leaves
-the 68° × 42° camera cone often (4 of 8 cube drags in one test). Games should keep hands low
-and central and never require two. Candidates: a whack-a-mole on detected surfaces, a
-gaze-aimed tower defence on the real floor, a catch/juggle game, a room-scale hide-and-seek
-using found planes.
-
----
-
-## Phase 4 — Distribution
-
-### 4.1 Prebuilt IPA
-
-`Tools/release_ios.sh`, mirroring `release_android.sh`. The build is the easy part; **how a
-stranger installs it is not.** An IPA is not a double-clickable APK:
-
-| Route | Reach | Cost |
-|---|---|---|
-| **TestFlight** | 10,000 testers, no sideloading | Paid developer account; each build reviewed |
-| **AltStore / Sideloadly** | Anyone, their own Apple ID | **7-day expiry** on a free account; fiddly |
-| **Developer-signed IPA** | 100 registered UDIDs | Collecting UDIDs by hand |
-| **EU alternative distribution** | EU only | Notarisation, developer terms |
-
-TestFlight is the honest answer for "users can self-install". Plan for it, and ship the
-unsigned IPA alongside for people who sideload.
-
-### 4.2 App Store — stretch
-
-Realistic risks, in order: **2.5.6** (web content must use WebKit) hits the WebXR browser
-hardest, since it is a browser built on an injected polyfill; arbitrary desktop streaming and
-capture-card input are both "app as a window onto uncurated content" problems. The headset
-form factor itself is fine.
-
-Treat TestFlight + sideload as the shipping path and the App Store as a bonus. Submitting a
-build with the browser and streaming features **disabled** is the plausible route in.
-
----
-
-## Phase 5 — Stretch goals
-
-### 5.1 WebXR browsing — **not started**; architecture settled, see below
-
-**iOS Safari does not support WebXR.** Not in 26, not in 27; `immersive-vr` is Vision Pro
-only, and Apple has published no iOS timeline. So this cannot be "open a WebXR page in a web
-view" — there is no WebXR to open.
-
-What works instead: a native `WKWebView` rendered into a Metal texture, with the **WebXR
-polyfill** injected into the page and fed head pose, eye matrices and pinch from this app's
-own tracking, which already produces all three. The page renders its two eye views into its
-canvas and this app composites them.
-
-Expect: fine for well-behaved three.js/A-Frame content; broken on anything touching native XR
-sessions; and a real performance cost, since a browser compositing two eye views is now
-competing with the hand models for the same thermal budget. Scope it as "view WebXR scenes",
-not "a VR web browser".
-
-### 5.2 HDMI capture — **blocked on iPhone**
-
-Worth saying plainly: **iPhone does not support UVC external cameras.**
-`AVCaptureDevice.DeviceType.external` is iPad-only, and the iPhone 15 Pro's USB-C port did not
-change that. No capture card will enumerate. I found nothing indicating iOS 26 or 27 changed
-it; this is the one request on the list I think is simply unavailable on the target device.
-
-Two ways to still get Switch gameplay onto a giant virtual screen:
-
-- **Network encoder (works on iPhone, recommended).** HDMI → a small RTSP/SRT encoder box →
-  Wi-Fi → the app plays the stream on the Phase 3.1 flat screen. Adds ~50–150 ms, fine for
-  anything that isn't twitch-competitive, and needs no new platform capability.
-- **Android build.** USB-host UVC does work there. Real, but it only helps the Android target,
-  and the printed viewer is sized for an iPhone.
-
-### 5.3 SteamVR streaming — the biggest single item
-
-Don't invent a protocol: be an **ALVR client**. The server side already exists as a SteamVR
-driver, the visionOS client is open source, and a (now deprecated, ARKit-based) iOS client
-proves the path. Work is binding `alvr_client_core` into Unity, HEVC decode through
-VideoToolbox, and pushing pose upstream.
-
-The honest caveat is **input, not video**: ALVR expects two 6DoF controllers. This headset has
-gaze, one hand, and no controllers, so most SteamVR titles are unplayable regardless of how
-good the streaming is. Seated, gamepad-driven and cockpit games are the realistic target.
-Bluetooth gamepad support is a cheap, large win here and should land before the streaming
-work.
-
----
-
-## Suggested order
-
-1. **Phase 1** — screen metrics, viewer profile, thermal retune. Everything depends on it.
-2. **Phase 3.1** — flat screen. Small, and unblocks 3 later features.
-3. **Phase 2** — parametric model + BOM, so the thing is printable.
-4. **Phase 3.2** — spatial media from Photos. Best new feature on the list.
-5. **Phase 4.1** — IPA + TestFlight.
-6. **Phase 3.3** — more mini games, as filler between the heavier items.
-7. **Phase 5**, in order: gamepad support → 5.2 network encoder → 5.1 WebXR → 5.3 SteamVR.
-
-## Where it stands
-
-| | State |
-|---|---|
-| Screen measured without Unity's device table | Done, unbuilt |
-| Cardboard v2 profile + focus-wheel offset | Done, unbuilt. Set with `focus N`; no settings-panel control yet |
-| Flat screen projection | Done, unbuilt |
-| Spatial photos from Photos | Done, unbuilt |
-| Printable viewer + BOM | Done and **rendered**: three manifold STLs, checked by 21 solid/empty probes and an interference pass |
-| Thermal retune, spatial video, WebXR | Not started |
-
-**None of the C# has been compiled.** Unity 6000.6.0f1 is not installed on this machine, so no C#
-has been through a compiler, no EditMode test has run, and no `.mm` has been through clang. The
-code was written against the repo's own idioms and the arithmetic in it was checked by hand, but
-that is not the same as building. Installing Unity is the single thing standing between this and a
-real test.
-
-The hardware is a different matter: `Hardware/` renders, and the geometry has been checked rather
-than eyeballed. Rendering caught a real bug the arithmetic had not — the phone's pocket stopped at
-the phone's own thickness instead of reaching the screen plane, leaving a 2.4 mm slab across the
-screen. The model reported itself genus 0, a closed box, where a viewer has to be a tube.
-
-### WebXR, when it is picked up
-
-The approach is settled and worth writing down, because the obvious one does not work. iOS Safari
-has no WebXR, and rendering a `WKWebView` into a Unity texture at headset frame rates is not
-possible with public API. So: overlay a full-screen `WKWebView` above Unity's view and let the
-*page* draw the stereo pair and the barrel distortion itself, with a WebXR shim injected into it
-and fed this app's own fused head pose — which is better than the `DeviceOrientation` a page could
-get for itself. Unity hides its own view while the browser is up. The open question is whether to
-vendor `webxr-polyfill` (MIT, battle-tested, but its cardboard path wants `DeviceOrientation`) or
-write a small shim for the subset that matters; vendoring is the lower-risk start.
-
-## Open inputs
-
-- The exact **Cardboard v2 lens part** the viewer assumes (blocks the BOM).
-- Whether to ask brenpoly for **CAD source** or author the parametric model from scratch.
-- Whether **Android** stays a first-class target, which decides if the printed viewer needs
-  non-iPhone trays.
+iPhone first-class: the browser, spatial media and dictation are iOS-only, and the only test
+device is an iPhone. Android keeps compiling and keeps what it has (6DoF, passthrough, hands, the
+games, 360 video); parity for the iOS-only features is not planned until there is an Android
+device to test on.

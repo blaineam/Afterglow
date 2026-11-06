@@ -61,6 +61,40 @@ farther out still places one.
 They're passed by the scripts (intent extras on Android, environment variables on iOS), so opening
 the app from the phone's home screen uses the defaults.
 
+## Building
+
+### The build report counts thousands of "errors" on a successful build
+
+`[Build] Build Succeeded: … 14466 errors` is Unity 6000.6's TypeDB logging `Class 'X' was already
+registered, previous declaration was in 'A', current declaration is in 'A'` once per class in every
+assembly, and the build report counting each as an error. The messages name the same assembly twice,
+so nothing is actually duplicated; the export, the Xcode build and the app are fine. Real failures
+still say `error CS` in the log and `Build Failed` in the summary, which the scripts check for.
+
+## Editor and iOS Simulator
+
+### No ARKit, so no 6DoF, passthrough, surfaces or hands
+
+The iOS Simulator has no ARKit, and the Editor has 6DoF only through AR Foundation's XR Simulation
+(a synthetic room). Where no AR provider starts, `Capabilities.SixDof` is false: 6DoF, passthrough
+and hand tracking are refused with a `[Pose]` or `[Demos]` log line, demos that need them open flat
+in 3DoF, and `DeskHeadLook` moves the head from the mouse, touch and keyboard. The Simulator's
+Photos library, video decoding and WKWebView do work; dictation reports itself unavailable.
+
+## iPhone 18 Pro Max
+
+### Frames are late with the browser window up
+
+Measured 2026-11-03 (session log, 3DoF, browser window in the scene): 55–77 fps against a 120
+target, 13–26 % of frames late, and a steady run of 42–53 ms hitches with the time in **present
+wait** (main thread 0.5–11 ms, GPU 1.0–1.6 ms). The work is not the app's; the frame is waiting on
+the display. Not yet diagnosed; see ROADMAP.md, Phase 1.
+
+### Not yet verified on this phone
+
+Two-hand tracking, spatial photo and video playback, and an immersive WebXR session have been
+built but had not run on the device as of 2026-11-05.
+
 ## iPhone 15 Pro
 
 ### 120 fps doesn't hold with hand tracking, or when the phone is hot

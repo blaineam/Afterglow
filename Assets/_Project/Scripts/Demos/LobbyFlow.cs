@@ -53,7 +53,9 @@ namespace CardboardXR.Demos
                     M3Fade.Hide(m_Panel.gameObject);
                 return;
             }
-            if (!m_Scanned && m_Core.Fusion.CurrentMode == HeadPoseFusion.Mode.SixDof)
+            // Unless the "scan" setting turned the scan at start off: 6DoF then finds the floor on
+            // its own, and the Cube Sandbox scans the room when it is entered.
+            if (!m_Scanned && m_Core.Fusion.CurrentMode == HeadPoseFusion.Mode.SixDof && Settings.Int("scan", 1) != 0)
                 StartCoroutine(ScanThenOpen());
             else
                 m_Library.Open();

@@ -9,14 +9,26 @@ using UnityEngine.XR.ARFoundation;
 
 namespace CardboardXR.Stereo
 {
-    // Lets the user pick their viewer by scanning the QR code printed on it, like the Cardboard apps'
-    // "switch viewer" flow, and remembers it between launches. A button at the top right, where
-    // Cardboard apps put their settings gear, opens a full-screen camera view. The stereo view is
-    // paused while scanning, and the AR session and camera are switched on for it, then put back as
-    // they were: off, unless ArPoseSource is tracking with them.
+    // Lets the user pick their viewer: one of the built-in profiles, or any Cardboard viewer by
+    // scanning the QR code printed on it, like the Cardboard apps' "switch viewer" flow. The choice
+    // is remembered between launches. A button at the top right, where Cardboard apps put their
+    // settings gear, opens a full-screen camera view with the built-in choices along its bottom. The
+    // stereo view is paused while scanning, and the AR session and camera are switched on for it,
+    // then put back as they were: off, unless ArPoseSource is tracking with them.
     public class ViewerSetupController : MonoBehaviour
     {
         const string k_SavedViewerKey = "CardboardXR.ViewerUrl";
+        // A built-in profile picked by hand, by its key below. A scanned code replaces it.
+        const string k_BuiltInKey = "CardboardXR.ViewerBuiltIn";
+
+        // The profiles on offer without a code, in the order the scan screen shows them. The printed
+        // viewer first, since it is the rig's default and the one this app is built for.
+        static readonly (string key, string label, System.Func<ViewerParams> make)[] k_BuiltIn =
+        {
+            ("printed", "Printed viewer", () => ViewerParams.CardboardXRViewer),
+            ("v2", "Cardboard v2", () => ViewerParams.CardboardV2),
+            ("v1", "Cardboard v1", () => ViewerParams.CardboardV1),
+        };
         const string k_ScanPrompt = "Point the camera at the QR code on your viewer.";
         const float k_RetryDelaySeconds = 2.5f;
         const float k_ToastSeconds = 3f;
@@ -74,21 +86,33 @@ namespace CardboardXR.Stereo
                 UpdateViewLabel();
         }
 
+        // A scanned code wins, then a built-in picked by hand; with neither the rig keeps its own
+        // default, the printed viewer.
         void LoadSavedViewer()
         {
             var url = PlayerPrefs.GetString(k_SavedViewerKey, "");
-            if (url.Length == 0)
-                return;
-
-            if (ViewerParamsCodec.TryDecodeUrl(url, out var viewer))
+            if (url.Length > 0)
             {
-                m_Rig.Viewer = viewer;
-                Debug.Log($"[Viewer] Using saved viewer {viewer.vendor} {viewer.model}");
-            }
-            else
-            {
+                if (ViewerParamsCodec.TryDecodeUrl(url, out var viewer))
+                {
+                    m_Rig.Viewer = viewer;
+                    Debug.Log($"[Viewer] Using saved viewer {viewer.vendor} {viewer.model}");
+                    return;
+                }
                 PlayerPrefs.DeleteKey(k_SavedViewerKey);
             }
+
+            var key = PlayerPrefs.GetString(k_BuiltInKey, "");
+            foreach (var (builtInKey, _, make) in k_BuiltIn)
+            {
+                if (builtInKey != key)
+                    continue;
+                var viewer = make();
+                m_Rig.Viewer = viewer;
+                Debug.Log($"[Viewer] Using built-in viewer {viewer.vendor} {viewer.model}");
+                return;
+            }
+            Debug.Log($"[Viewer] Default viewer {m_Rig.Viewer.vendor} {m_Rig.Viewer.model}");
         }
 
         void SetScanning(bool scanning)
@@ -171,6 +195,7 @@ namespace CardboardXR.Stereo
             if (status == ViewerUrlResolver.Status.Ok && ViewerParamsCodec.TryDecodeUrl(url, out var viewer))
             {
                 PlayerPrefs.SetString(k_SavedViewerKey, url);
+                PlayerPrefs.DeleteKey(k_BuiltInKey);
                 PlayerPrefs.Save();
                 m_Rig.Viewer = viewer;
                 SetScanning(false);
@@ -190,13 +215,15 @@ namespace CardboardXR.Stereo
             }
         }
 
-        void UseCardboardV1()
+        void UseBuiltIn(string key, ViewerParams viewer)
         {
             PlayerPrefs.DeleteKey(k_SavedViewerKey);
+            PlayerPrefs.SetString(k_BuiltInKey, key);
             PlayerPrefs.Save();
-            m_Rig.Viewer = ViewerParams.CardboardV1;
+            m_Rig.Viewer = viewer;
             SetScanning(false);
-            ShowToast("Viewer: Cardboard v1");
+            ShowToast($"Viewer: {viewer.vendor} {viewer.model}");
+            Debug.Log($"[Viewer] Switched to built-in {viewer.vendor} {viewer.model}");
         }
 
         void ShowToast(string message)
@@ -269,10 +296,23 @@ namespace CardboardXR.Stereo
             var statusBar = M3.Surface("Status Bar", top, Vector2.zero, new Vector2(600f, 64f), M3Theme.SurfaceContainerHigh,
                 M3Theme.k_ShapeLarge);
             m_Status = M3.Text("Status", statusBar.rectTransform, "", M3Theme.Type.BodyLarge, Vector2.zero, new Vector2(568f, 56f));
-            var actions = Frame("Actions", scanRect, new Vector2(0.5f, 0f), new Vector2(0f, 16f), new Vector2(420f, 56f));
-            M3.Button("Cancel", actions, "Cancel", M3Button.Variant.Tonal, new Vector2(-110f, 0f), () => SetScanning(false), "close", 180f);
-            M3.Button("Use Cardboard v1", actions, "Use Cardboard v1", M3Button.Variant.Filled, new Vector2(100f, 0f), UseCardboardV1,
-                null, 210f);
+            // Cancel, then the built-in profiles for anyone without a code to scan, laid out left to
+            // right from the frame's edge with a gap between each.
+            const float gap = 12f, cancelWidth = 140f, printedWidth = 190f, otherWidth = 170f;
+            var actions = Frame("Actions", scanRect, new Vector2(0.5f, 0f), new Vector2(0f, 16f), new Vector2(720f, 56f));
+            var x = -360f;
+            M3.Button("Cancel", actions, "Cancel", M3Button.Variant.Tonal, new Vector2(x + cancelWidth / 2f, 0f),
+                () => SetScanning(false), "close", cancelWidth);
+            x += cancelWidth + gap;
+            foreach (var (key, label, make) in k_BuiltIn)
+            {
+                var width = key == "printed" ? printedWidth : otherWidth;
+                var pick = make;
+                var pickKey = key;
+                M3.Button(label, actions, label, key == "printed" ? M3Button.Variant.Filled : M3Button.Variant.Tonal,
+                    new Vector2(x + width / 2f, 0f), () => UseBuiltIn(pickKey, pick()), null, width);
+                x += width + gap;
+            }
 
             // A Material snackbar: inverse colors, low on the screen.
             var bottom = Frame("Snackbar Frame", root, new Vector2(0.5f, 0f), new Vector2(0f, 72f), new Vector2(560f, 56f));

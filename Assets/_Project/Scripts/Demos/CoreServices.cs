@@ -55,6 +55,13 @@ namespace CardboardXR.Demos
         // then 6DoF, which passthrough needs; then passthrough, as a choice 6DoF won't undo.
         public void Apply(CoreState state)
         {
+            // Everything here needs the camera, which only an AR provider gives. Without one a
+            // demo still opens, flat, rather than waiting on tracking that never starts.
+            if (!Capabilities.SixDof && (state.SixDof || state.Passthrough || state.Hands))
+            {
+                Debug.Log($"[Demos] Asked for {state}, but {Capabilities.Describe()}");
+                state = new CoreState(false, false, false);
+            }
             m_HandTracker.enabled = state.Hands;
             if (!state.Passthrough)
                 m_Passthrough.Choose(false);

@@ -26,9 +26,8 @@ namespace CardboardXR.Stereo
         {
             if (!Application.isMobilePlatform)
                 return;
-            var percent = LaunchOptions.GetInt("brightness", k_DefaultPercent);
-            if (percent <= 0)
-                return;
+            var percent = Settings.Int("brightness", k_DefaultPercent);
+            // Made even at 0, so a level set later from the settings screen has something to apply it.
             var holder = new GameObject("Screen Brightness");
             DontDestroyOnLoad(holder);
             holder.AddComponent<ScreenBrightness>().m_Level = Mathf.Clamp01(percent / 100f);
@@ -36,7 +35,24 @@ namespace CardboardXR.Stereo
 
         void Start()
         {
-            if (m_UsersLevel < 0f)
+            if (m_Level > 0f && m_UsersLevel < 0f)
+                Brighten();
+        }
+
+        void OnEnable() => Settings.Changed += OnSetting;
+
+        void OnDisable() => Settings.Changed -= OnSetting;
+
+        // The settings screen moved the level: 0 hands the screen back to the user's own.
+        void OnSetting(string name)
+        {
+            if (name != "brightness")
+                return;
+            var percent = Settings.Saved("brightness", k_DefaultPercent);
+            m_Level = Mathf.Clamp01(percent / 100f);
+            if (m_Level <= 0f)
+                Restore();
+            else
                 Brighten();
         }
 
@@ -45,7 +61,7 @@ namespace CardboardXR.Stereo
         {
             if (paused)
                 Restore();
-            else if (m_UsersLevel < 0f)
+            else if (m_Level > 0f && m_UsersLevel < 0f)
                 Brighten();
         }
 

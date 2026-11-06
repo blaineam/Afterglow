@@ -64,7 +64,20 @@ zsh Tools/build_and_run.sh                                   # Android
 zsh Tools/ios_build_and_run.sh                               # iOS
 zsh Tools/ios_build_and_run.sh --xcode                       # iOS, reusing the last Unity export
 zsh Tools/ios_launch.sh                                      # iOS, relaunch without rebuilding
+zsh Tools/ios_sim_build_and_run.sh                           # iOS Simulator, for work that needs no phone
 ```
+
+### Without a phone
+
+Most of the app can be worked on at a desk. **In the Editor**, play mode runs 6DoF in AR
+Foundation's XR Simulation (a synthetic room, driven from the keyboard and mouse) once
+`ProjectSetup.Apply` has run; without a provider it runs 3DoF, where a right-button drag looks
+around, W A S D or the arrows move, Q and E go down and up, and R faces forward again. **In the iOS
+Simulator** (`Tools/ios_sim_build_and_run.sh`, which boots an iPhone 18 Pro Max simulator and leaves
+it running) a drag looks and a click taps; the Photos library works there, so spatial photos and
+videos can be added to it with `xcrun simctl addmedia booted photo.HEIC`, and so do WKWebView and
+video decoding. What neither has is ARKit: no passthrough, no surfaces and no camera-tracked hands.
+The app notices (`Capabilities`) and refuses those with a log line rather than waiting for tracking.
 
 Builds are release builds. For a development build (debuggable, with the Unity Profiler able to
 connect over the local network), set `CARDBOARDXR_DEVELOPMENT=1`. The app id is
@@ -90,7 +103,9 @@ says where the keystore and its password go.
 
 ### Launch options
 
-Development overrides, given the same way on both platforms after the script's own arguments:
+Development overrides, given the same way on both platforms after the script's own arguments.
+The ones a user would want are also **settings** (the panel's *Settings* button, see below), saved
+on the phone; a launch option overrides the saved setting for that run only.
 
 ```sh
 zsh Tools/build_and_run.sh --ei dof 3 --ei mono 1
@@ -126,9 +141,18 @@ phone's home screen. The app logs the options it received at startup (`[Stereo] 
 
 ## Using the app
 
-- **The screen's gear button**, top right, opens a small menu: *Set viewer* scans a viewer's QR
-  code; *Phone view* / *Viewer view* switches between the viewer's split-screen view and a single
-  full-screen phone view; *Open settings* opens the settings panel.
+- **The screen's gear button**, top right, opens a small menu: *Set viewer* opens the viewer
+  screen, where you scan a viewer's QR code or pick a built-in profile — *Printed viewer* (the
+  default: Cardboard v2 lenses centred on the screen, which is what this project's viewer and
+  brenpoly's both have), *Cardboard v2* or *Cardboard v1* — and the choice is remembered; *Phone
+  view* / *Viewer view* switches between the viewer's split-screen view and a single full-screen
+  phone view; *Open settings* opens the settings panel.
+- **The settings screen**, from the panel's *Settings* button, stands where the app library does
+  and has the knobs that used to need a launch from the Mac: frame rate, render scale,
+  anti-aliasing, the focus wheel's offset, screen brightness, UI size, hand tracking rate, whether
+  to start in 3DoF or 6DoF, the room scan at start, and the boundary warning. Look at the minus or
+  plus beside a value and pinch or tap. Most apply at once; UI size and the start mode wait for the
+  next launch, and the note at the bottom says so. *Defaults* puts everything back.
 - **The app library**, above the settings panel, has an icon for the lobby and each demo: look at
   one to see what it is, and pinch or tap to open it, from anywhere, so you can go straight from one
   demo to another. *Apps* on the settings panel shows and hides it. The lobby is a checkerboard room
@@ -236,7 +260,8 @@ stereo views, with lens distortion ported from the Cardboard SDK.
 Code is in `Assets/_Project/Scripts`, one assembly per area:
 
 - **Stereo** — the stereo rig and lens distortion, head tracking (a gyroscope fusion corrected by
-  AR poses), passthrough, surfaces, anchors, frame timing and the session log
+  AR poses, or `DeskHeadLook` where there are no sensors), what the build can do (`Capabilities`),
+  passthrough, surfaces, anchors, frame timing and the session log
 - **Hands** — hand tracking with MediaPipe's BlazeHand models on Unity Inference Engine, placed in
   3D and fed to XR Hands and the XR Interaction Toolkit; on iOS, LiDAR depth teaches the hand's size
 - **Interaction** — gaze pointing and highlighting

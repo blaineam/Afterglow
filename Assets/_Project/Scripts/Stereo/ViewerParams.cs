@@ -67,7 +67,12 @@ namespace CardboardXR.Stereo
             primaryButton = ButtonType.IndirectTouch,
         };
 
-        // The printed viewer in this project's Hardware folder. Cardboard v2's lenses and spacing,
+        // The printed viewers: this project's Hardware folder and brenpoly's, which this app's own
+        // hardware is stretched from. Both put Cardboard v2's lenses centred on the phone's
+        // width: in brenpoly's STEP assembly the carriage's bores sit at x = 0.0, exactly on the
+        // door bay's centre line (walls at x = -38.6 and +38.6), 64.0 mm apart. So this is the
+        // right default for every viewer this project knows, and Cardboard v2 (bottom aligned)
+        // is only for a real Google viewer. Cardboard v2's lenses and spacing,
         // but with them centred on the screen rather than above a bottom tray: Cardboard's bottom
         // alignment puts the optical axis 32 mm up a 73 mm screen, costing vertical view below
         // (about 50 degrees against the lens's 60), where centred reaches about 58 both ways.

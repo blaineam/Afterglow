@@ -19,7 +19,10 @@ namespace CardboardXR.Stereo
         public const int LeftEyeOnlyLayer = 27;
         public const int RightEyeOnlyLayer = 28;
 
-        [SerializeField] ViewerParams m_Viewer = ViewerParams.CardboardV1;
+        // The printed viewer's optics unless a QR code or the viewer picker says otherwise. Not
+        // Cardboard v1's: the Cardboard SDK's own fallback, but the wrong lenses for every viewer
+        // this project ships with, and running them silently was the default until 2026-11.
+        [SerializeField] ViewerParams m_Viewer = ViewerParams.CardboardXRViewer;
         [Tooltip("Physical landscape screen size in meters. Zero uses the size the device reports.")]
         [SerializeField] Vector2 m_ScreenSizeOverride;
         [SerializeField] Shader m_DistortionShader;
@@ -96,18 +99,46 @@ namespace CardboardXR.Stereo
             }
         }
 
-        void OnEnable()
+        // The serialized defaults, kept so a setting put back to its default really goes back.
+        float m_DefaultRenderScale;
+        int m_DefaultMsaa;
+        bool m_DefaultsTaken;
+
+        // The frame rate, render scale and anti-aliasing: the user's saved settings (SettingsScreen),
+        // or a launch option for this run. Both cost fill rate and bandwidth, which is heat, so a
+        // run can be compared against another without a rebuild, while the phone is unplugged.
+        // Returns the frame rate, which the display's refresh rate is asked to match separately.
+        int ReadQuality()
         {
-            var frameRate = LaunchOptions.GetInt("fps", m_TargetFrameRate);
+            if (!m_DefaultsTaken)
+            {
+                m_DefaultRenderScale = m_RenderScale;
+                m_DefaultMsaa = m_Msaa;
+                m_DefaultsTaken = true;
+            }
+            var frameRate = Settings.Int("fps", m_TargetFrameRate);
             Application.targetFrameRate = frameRate;
-            // Both cost fill rate and bandwidth, which is heat: they're launch options so a run can be
-            // compared against another without a rebuild, while the phone is unplugged.
-            var renderScale = LaunchOptions.GetInt("renderScale", 0);
-            if (renderScale > 0)
-                m_RenderScale = Mathf.Clamp(renderScale / 100f, 0.25f, 2f);
-            var samples = LaunchOptions.GetInt("msaa", m_Msaa);
+            var renderScale = Settings.Int("renderScale", 0);
+            m_RenderScale = renderScale > 0 ? Mathf.Clamp(renderScale / 100f, 0.25f, 2f) : m_DefaultRenderScale;
+            var samples = Settings.Int("msaa", m_DefaultMsaa);
             // A render texture takes 1, 2, 4 or 8 samples and throws on anything else.
             m_Msaa = samples >= 8 ? 8 : samples >= 4 ? 4 : samples >= 2 ? 2 : 1;
+            return frameRate;
+        }
+
+        // The settings screen changed the frame rate, render scale or anti-aliasing.
+        public void ApplySettings()
+        {
+            var frameRate = ReadQuality();
+            DisplayRefreshRate.Request(frameRate);
+            Debug.Log($"[Stereo] Settings applied: target {frameRate} fps, render scale {m_RenderScale:F2}, MSAA {m_Msaa}x");
+            if (isActiveAndEnabled)
+                Rebuild();
+        }
+
+        void OnEnable()
+        {
+            var frameRate = ReadQuality();
             m_Mono = LaunchOptions.GetInt("mono", m_Mono ? 1 : 0) != 0;
             // Where the viewer's focus wheel has left the lens carriage, in tenths of a millimeter
             // (ViewerFocus). Given here it is saved, so it only has to be found once per viewer.

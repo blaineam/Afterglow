@@ -65,7 +65,7 @@ namespace CardboardXR.Demos
                     Debug.LogWarning($"[Demos] No demo {index}: the catalog has {m_Catalog.Demos.Count}");
                 // The lobby starts in 6DoF passthrough, where LobbyFlow scans the room, unless the "dof 3"
                 // launch option asks for 3DoF.
-                if (LaunchOptions.GetInt("dof", 6) == 6)
+                if (Settings.Int("dof", 6) == 6)
                 {
                     var state = CoreState.Resolve(m_Core.State, m_Catalog.LobbyRequirements);
                     Debug.Log($"[Demos] Starting the lobby in {state}");

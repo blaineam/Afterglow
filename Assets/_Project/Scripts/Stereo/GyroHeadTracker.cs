@@ -90,6 +90,10 @@ namespace CardboardXR.Stereo
 
         public float PredictionSeconds => m_PredictionSeconds;
 
+        // Whether the sensors the chosen source needs were found. False on a desk -- the Editor,
+        // the iOS Simulator -- where DeskHeadLook moves the head instead.
+        public bool HasSensors { get; private set; }
+
         // Subtracted from every gyroscope sample before the sensor fusion, on both sensor paths, in
         // rad/s in the frame of the samples the fusion is fed. HeadPoseFusion learns it from ARCore
         // or ARKit with GyroDriftEstimator, which measures it in that same frame, so no conversion
@@ -127,9 +131,10 @@ namespace CardboardXR.Stereo
             var ready = m_Source == Source.GameRotationVector
                 ? m_Attitude != null
                 : m_UseNative || (m_Gyro != null && m_Accelerometer != null);
+            HasSensors = ready;
             if (!ready)
             {
-                Debug.LogWarning($"[Stereo] Sensors for {m_Source} not found; head tracking is off.");
+                Debug.Log($"[Stereo] Sensors for {m_Source} not found; the head is moved from the desk instead (DeskHeadLook).");
                 return;
             }
 

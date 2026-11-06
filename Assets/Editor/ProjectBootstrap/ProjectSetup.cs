@@ -22,6 +22,10 @@ namespace ProjectBootstrap
 
         const string ArCoreLoader = "UnityEngine.XR.ARCore.ARCoreLoader";
         const string ArKitLoader = "UnityEngine.XR.ARKit.ARKitLoader";
+        // AR Foundation's XR Simulation, for the Editor: a synthetic room with a camera, planes and
+        // a pose, driven from the keyboard and mouse, so 6DoF and the room scan can be exercised in
+        // play mode. Without it the Editor has no AR provider and runs 3DoF (DeskHeadLook).
+        const string SimulationLoader = "UnityEngine.XR.Simulation.SimulationLoader";
         const string XrFolder = "Assets/XR";
         const string XrSettingsFolder = "Assets/XR/Settings";
 
@@ -109,6 +113,7 @@ namespace ProjectBootstrap
 
             if (!ConfigureLoader(BuildTargetGroup.Android, ArCoreLoader, "Android") ||
                 !ConfigureLoader(BuildTargetGroup.iOS, ArKitLoader, "iOS") ||
+                !ConfigureLoader(BuildTargetGroup.Standalone, SimulationLoader, "Editor") ||
                 !ConfigureArCore() || !ConfigureArKit())
             {
                 EditorApplication.Exit(1);
