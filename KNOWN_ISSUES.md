@@ -204,6 +204,33 @@ With the browser window open in the Simulator (2026-11-05), the page itself is a
 faintly and at full screen, behind the two eye views: the web view sits in the view hierarchy under
 Unity's and is not fully covered. Not checked on the phone. The window on the quad is unaffected.
 
+## The native port (`ios-native/`, phase 1)
+
+### No ultra-wide world-tracking format on the iPhone 18 Pro Max
+
+ARKit's `supportedVideoFormats` on this phone lists 22 formats, every one from the wide camera
+(the list looks doubled because the HDR variants come first); there is no
+`builtInUltraWideCamera` entry (logged by the native app under `[Camera]`, 2026-11-06). The
+native app says so in the log and uses the wide camera's 1920×1440 at 60 fps, a 69° × 55° window
+in the eye's view. The same applies to the Unity app's `camUltraWide` default, which can only
+fall back to the main camera here.
+
+### The camera image is 10-bit video range
+
+The captured image arrives as `x420` (10-bit samples in 16-bit words, video range) even for the
+non-HDR formats. Read as 8-bit full range it was yellow and blue static; the app now reads the
+planes as 16-bit textures and scales the range (`ARController.swift`, `Shaders.metal`). A phone
+that delivers `420f` takes the 8-bit full-range path, which has not been seen on this one.
+
+### Frames show about two frames after they are built
+
+With three drawables the frame loop runs ahead of the display and a frame is presented about
+33 ms after the display link's target; the renderer measures that and predicts the head pose to
+the real moment, so the picture does not lag a turn, but the camera image in passthrough is
+still 70–85 ms old by the time it is seen. Two drawables halve the rate to 30 fps instead, so
+three it stays. A frame built later in the vertical interval, closer to the vsync, is the next
+step if the latency shows.
+
 ## iPhone 18 Pro Max
 
 ### Frames are late with the browser window up

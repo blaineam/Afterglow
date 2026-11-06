@@ -27,6 +27,8 @@ final class Settings: ObservableObject {
     let cameraToEyesMm: SIMD3<Int>
     /// Save the left eye's texture to Documents/eye-left.png this many seconds after launch (0: never).
     let dumpAfterSeconds: Int
+    /// The owner vouches the phone is cold (`cold 1`), overriding the fifteen-minute rule.
+    let assertedCold: Bool
 
     private var loading = true
     private var options: [String: String] = [:]
@@ -45,6 +47,7 @@ final class Settings: ObservableObject {
                                Self.read("eyesY", options: options, default: -10),
                                Self.read("eyesZ", options: options, default: 66))
         dumpAfterSeconds = Self.read("dump", options: options, default: 0)
+        assertedCold = Self.read("cold", options: options, default: 0) != 0
         loading = false
         let given = options.keys.sorted().map { "\($0) \(options[$0]!)" }.joined(separator: ", ")
         log("[Stereo] Launch options: \(given.isEmpty ? "none" : given)")

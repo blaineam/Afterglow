@@ -69,10 +69,38 @@ screen shows a control strip for the first four, whose values are kept between r
 | `thermalCap` | 1 | hold render scale to 80 % at "serious" and 60 %/30 fps at "critical", as the Unity app does |
 | `eyesX`, `eyesY`, `eyesZ` | 60, -10, 66 | the eyes' midpoint relative to the camera, mm, camera axes (x right, y up, z back) |
 | `dump` | 0 | save the left eye's texture to `Documents/eye-left.png` this many seconds after launch |
+| `cold` | 0 | 1 vouches the phone is cold, so `[Thermal]` times the run from cold despite a recent run |
 
-## Phase 1 run (iPhone 18 Pro Max)
+## Phase 1 run (iPhone 18 Pro Max, 2026-11-06)
 
-_To be filled from the first five-minute run from a cooled phone._
+A run from a cold phone with passthrough on (`--ei passthrough 1 --ei cold 1`), off the charger,
+the phone lying on the desk: ARKit world tracking, the wide camera at 1920×1440 and 60 fps,
+both eyes at 1434×1320 (render scale 100 %), and the lens warp to the 2868×1320 screen. It ran
+2:58 before the phone locked (the idle timer was only set once at launch; fixed since), so this is
+a three-minute run, not the five intended. Every `[Frames]` line in it reads the same:
+
+| | Native, phase 1 | Unity app, same phone, same day |
+|---|---|---|
+| Frame rate | 60.0 fps, 0.0 % late, worst 16.7 ms, every 5 s line | 60 fps falling to 36 then 24 fps, 100 % late, once "serious" |
+| CPU per frame | 1.2–3.0 ms (main 0.2–0.8, waiting to present 0.8–2.4) | 18–42 ms (main 1–4, waiting to present 16–40) |
+| GPU per frame | 1.0–1.3 ms | 1.5–2.6 ms |
+| Thermal | nominal for the whole run | fair → serious at 2:02 (warm start); nominal → fair 3:21 → serious 5:30 in the seven-minute run of 2026-11-06 |
+
+Read it for what it is. The native app here runs only the base load: tracking, the camera,
+stereo rendering and the lens warp. It runs no hand tracking, no web view, no media, none of
+the Unity app's per-frame plugin and scene work, so the table bounds the engine's cost for that
+base load and nothing more; a native app skipping a game engine is expected to be cheaper for
+it. The numbers are kept as this app's own baseline, so that a later phase that heats the phone
+shows against them, rather than as a case to be remade at every step. The Unity figures are from
+its session logs of the same day (`KNOWN_ISSUES.md`, "The phone runs hot").
+
+Two shorter runs before it (one to two minutes each, passthrough on and off) read the same, with
+one difference worth knowing: in those the loop landed two frames ahead of the display and
+"waiting to present" read 15–16 ms a frame, with frames shown 33 ms after the display link's
+target; in the three-minute run it landed one frame ahead (16.7 ms after target, 1 ms waits).
+Either way the head pose is predicted to the measured moment, and the prediction's error against
+the next ARKit pose stays at 0.02–0.05° while the phone is still, against 0.5–1.1° unpredicted
+while it moves.
 
 ## Layout
 

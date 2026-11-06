@@ -6,7 +6,6 @@ struct AfterglowApp: App {
 
     init() {
         _ = SessionLog.shared
-        UIApplication.shared.isIdleTimerDisabled = true
     }
 
     var body: some Scene {
@@ -27,5 +26,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
         .landscapeRight
+    }
+
+    // The screen must not dim or lock in the viewer. Set at every activation rather than once at
+    // launch: set in the App's init it did not hold, and the phone locked during a run (2026-11-06).
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        application.isIdleTimerDisabled = true
+        log("[Stereo] Idle timer off: the screen stays awake while the app is up")
     }
 }

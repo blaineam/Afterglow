@@ -31,10 +31,15 @@ final class ThermalLog {
         UIDevice.current.isBatteryMonitoringEnabled = true
         state = Self.stateName
         since = launch
-        let why: String? = state != "nominal" ? "not nominal" : Self.charging ? "charging" : Self.warmFrom()
+        var why: String? = state != "nominal" ? "not nominal" : Self.charging ? "charging" : Self.warmFrom()
+        var vouched = ""
+        if why != nil && state == "nominal" && !Self.charging && Settings.shared.assertedCold {
+            vouched = " (\(why!), but the owner says it is cold)"
+            why = nil
+        }
         fromCold = why == nil
         log("[Thermal] \(state) at launch; \(Self.battery())" +
-            (fromCold ? "; timing the heating from cold" : "; not a run from cold (\(why!)), so its times aren't comparable"))
+            (fromCold ? "; timing the heating from cold\(vouched)" : "; not a run from cold (\(why!)), so its times aren't comparable"))
         Self.save()
 
         observers.append(NotificationCenter.default.addObserver(
