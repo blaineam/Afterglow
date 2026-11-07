@@ -66,24 +66,25 @@ final class HandGeometryTests: XCTestCase {
 
     func testPinchHysteresis() {
         var pinch = PinchDetector()
-        XCTAssertFalse(pinch.update(tipDistance: 0.03))
+        XCTAssertFalse(pinch.update(tipDistance: 0.035))
         XCTAssertFalse(pinch.update(tipDistance: 0.02))     // one close result is a hand passing through
-        XCTAssertFalse(pinch.update(tipDistance: 0.02))
-        XCTAssertFalse(pinch.update(tipDistance: 0.02))
-        XCTAssertTrue(pinch.update(tipDistance: 0.02))      // four in a row is a pinch
-        XCTAssertTrue(pinch.update(tipDistance: 0.04))      // still closed below the open distance
-        XCTAssertTrue(pinch.update(tipDistance: 0.05))      // one result apart is not a release
+        XCTAssertTrue(pinch.update(tipDistance: 0.02))      // two in a row is a pinch (a four-result start took a second on the phone)
+        XCTAssertTrue(pinch.update(tipDistance: 0.045))     // still closed below the open distance
+        XCTAssertTrue(pinch.update(tipDistance: 0.06))      // one result apart is not a release
         XCTAssertTrue(pinch.update(tipDistance: 0.10, tipsSure: false))   // a guessed tip changes nothing
-        XCTAssertTrue(pinch.update(tipDistance: 0.05))
-        XCTAssertFalse(pinch.update(tipDistance: 0.05))     // three in a row is
+        XCTAssertTrue(pinch.update(tipDistance: 0.06))
+        XCTAssertFalse(pinch.update(tipDistance: 0.06))     // three in a row is
         XCTAssertFalse(pinch.update(tipDistance: 0.01, allowStart: false))
         XCTAssertFalse(pinch.update(tipDistance: 0.01, tipsSure: false))   // counts towards a start (the tip hides behind the thumb)
-        // A start blocked midway (tips at different depths) begins the count again.
+        // A start blocked midway begins the count again.
         XCTAssertFalse(pinch.update(tipDistance: 0.01, allowStart: false))
         XCTAssertFalse(pinch.update(tipDistance: 0.01))
-        XCTAssertFalse(pinch.update(tipDistance: 0.01))
-        XCTAssertFalse(pinch.update(tipDistance: 0.01))
         XCTAssertTrue(pinch.update(tipDistance: 0.01))
+        // A hand back in view keeps its pinch only while the tips are together.
+        pinch.resume(tipDistance: 0.02)
+        XCTAssertTrue(pinch.isPinched)
+        pinch.resume(tipDistance: 0.06)
+        XCTAssertFalse(pinch.isPinched)
     }
 
     func testOneEuroFollowsAndSmooths() {
