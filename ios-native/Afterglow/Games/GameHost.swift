@@ -66,11 +66,11 @@ final class GameHost {
         for (i, game) in games.enumerated() {
             let col = i % 4, row = i / 4
             let parts = game.title.split(separator: " ", maxSplits: 1).map(String.init)
-            b.append(.init(id: "game:\(i)", rect: CGRect(x: 0.02 + CGFloat(col) * 0.2, y: 0.2 + CGFloat(row) * 0.4, width: 0.19, height: 0.38),
+            b.append(.init(id: "game:\(i)", rect: CGRect(x: 0.02 + CGFloat(col) * 0.2, y: 0.36 + CGFloat(row) * 0.32, width: 0.19, height: 0.3),
                            label: parts.last ?? game.title, wide: true, icon: parts.first, style: .tile, accent: current === game))
         }
-        b.append(.init(id: "reset", rect: CGRect(x: 0.83, y: 0.2, width: 0.15, height: 0.38), label: "Restart", icon: "arrow.counterclockwise", style: .round))
-        b.append(.init(id: "stop", rect: CGRect(x: 0.83, y: 0.6, width: 0.15, height: 0.38), label: "Stop", icon: "stop.fill", style: .round))
+        b.append(.init(id: "reset", rect: CGRect(x: 0.83, y: 0.36, width: 0.15, height: 0.3), label: "Restart", icon: "arrow.counterclockwise", style: .round))
+        b.append(.init(id: "stop", rect: CGRect(x: 0.83, y: 0.68, width: 0.15, height: 0.3), label: "Stop", icon: "stop.fill", style: .round))
         panel.set(buttons: b, version: "games|\(current?.title ?? "")|\(current?.status ?? "")")
     }
 

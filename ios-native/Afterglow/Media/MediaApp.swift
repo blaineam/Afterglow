@@ -235,19 +235,30 @@ final class MediaApp {
 
     private func layoutControls() {
         var b: [ScenePanel.Button] = []
-        let y: CGFloat = 0.05, h: CGFloat = 0.52
-        let items: [(String, String, String, CGFloat)] = [("exit", "Close", "xmark", 0.085), ("prevItem", "Previous", "backward.end.fill", 0.085), ("back10", "Back 10 s", "gobackward.10", 0.085),
-                                                          ("play", player.isPlaying ? "Pause" : "Play", player.isPlaying ? "pause.fill" : "play.fill", 0.085),
-                                                          ("fwd10", "Ahead 10 s", "goforward.10", 0.085), ("nextItem", "Next", "forward.end.fill", 0.085),
-                                                          ("format", format.label, "", 0.2), ("recentre", "Recentre", "scope", 0.085), ("yawL", "Turn left", "rotate.left", 0.085), ("yawR", "Turn right", "rotate.right", 0.085)]
+        let y: CGFloat = 0.05, h: CGFloat = 0.42
+        let isVideo = current.map { $0.kind == .video || $0.kind == .video180 || $0.kind == .video360 || $0.kind == .spatialVideo } ?? false
+        var items: [(String, String, String, CGFloat)] = [("exit", "Back to the album", "chevron.left", 0.07), ("prevItem", "Previous", "backward.end.fill", 0.07)]
+        if isVideo {
+            items += [("back10", "Back 10 s", "gobackward.10", 0.07), ("play", player.isPlaying ? "Pause" : "Play", player.isPlaying ? "pause.fill" : "play.fill", 0.07), ("fwd10", "Ahead 10 s", "goforward.10", 0.07)]
+        }
+        items += [("nextItem", "Next", "forward.end.fill", 0.07), ("format", format.label, "", 0.2), ("recentre", "Recentre", "scope", 0.07), ("yawL", "Turn left", "rotate.left", 0.07), ("yawR", "Turn right", "rotate.right", 0.07)]
         var x: CGFloat = 0.01
         for (id, label, icon, w) in items {
-            b.append(.init(id: id, rect: CGRect(x: x, y: y, width: w, height: h), label: label, wide: true, icon: icon.isEmpty ? nil : icon, style: icon.isEmpty ? .pill : .round, accent: id == "play"))
-            x += w + 0.013
+            b.append(.init(id: id, rect: CGRect(x: x, y: y, width: w, height: h), label: label, wide: true, icon: icon.isEmpty ? nil : icon, style: icon.isEmpty ? .pill : .round, accent: id == "play" || id == "exit"))
+            x += w + 0.01
         }
-        // The seek bar: ten steps.
-        for i in 0..<10 {
-            b.append(.init(id: "seek:\(i)", rect: CGRect(x: 0.02 + CGFloat(i) * 0.096, y: 0.64, width: 0.09, height: 0.3), label: "", wide: true))
+        if isVideo {
+            // The seek bar: ten steps.
+            for i in 0..<10 {
+                b.append(.init(id: "seek:\(i)", rect: CGRect(x: 0.02 + CGFloat(i) * 0.096, y: 0.55, width: 0.09, height: 0.4), label: "", wide: true))
+            }
+        } else if let current, let i = items0(current) {
+            // The filmstrip: the pictures round this one in the album, pressable.
+            let around = max(0, i - 3)...min(self.items.count - 1, i + 3)
+            let w: CGFloat = 0.96 / 7
+            for (slot, j) in around.enumerated() {
+                b.append(.init(id: "strip:\(j)", rect: CGRect(x: 0.02 + CGFloat(slot) * w, y: 0.52, width: w - 0.008, height: 0.45), label: "", wide: true, accent: j == i))
+            }
         }
         controls.set(buttons: b, version: "controls|\(format.label)|\(player.isPlaying)|\(Int(player.time))|\(Int(player.duration))")
     }
@@ -286,6 +297,7 @@ final class MediaApp {
             }
             else if id.hasPrefix("item:"), let i = Int(id.dropFirst(5)), items.indices.contains(i) { view(items[i]) }
             else if id.hasPrefix("seek:"), let i = Int(id.dropFirst(5)) { player.seek(fraction: Double(i) / 10) }
+            else if id.hasPrefix("strip:"), let i = Int(id.dropFirst(6)), items.indices.contains(i) { view(items[i]) }
         }
     }
 
@@ -297,6 +309,24 @@ final class MediaApp {
         thumbnails.removeAll()
         layoutGrid()
         loadThumbnails()
+    }
+
+    private var stripWanted: Set<String> = []
+    private var stripLoading = false
+    private func loadStripThumbnails() {
+        guard !stripLoading, !stripWanted.isEmpty else { return }
+        stripLoading = true
+        let wanted = items.filter { stripWanted.contains($0.id) && thumbnails[$0.id] == nil }
+        stripWanted.removeAll()
+        Task { @MainActor in
+            for item in wanted {
+                let image: UIImage?
+                if let url = item.fileURL { image = await FileSource.thumbnail(for: url) } else { image = await library.thumbnail(for: item) }
+                if let image { thumbnails[item.id] = image }
+            }
+            stripLoading = false
+            layoutControls()
+        }
     }
 
     private func loadThumbnails() {
@@ -317,6 +347,8 @@ final class MediaApp {
             if got > 0 { loadThumbnails() }   // the rest, or stop: nothing loads this way for these
         }
     }
+
+    private func items0(_ item: MediaItem) -> Int? { items.firstIndex { $0.id == item.id } }
 
     private func step(_ delta: Int) {
         guard let current, let i = items.firstIndex(where: { $0.id == current.id }) else { return }
@@ -413,8 +445,16 @@ final class MediaApp {
 
     func render() {
         if screen == .viewing {
-            controls.render(ButtonsView(size: CGSize(width: 1600, height: 260), buttons: controls.buttons, hovered: controls.hovered,
-                                        title: nil, titleHighlight: false))
+            // The filmstrip's pictures draw under its buttons.
+            var strip: [(String, UIImage?)] = []
+            for b in controls.buttons where b.id.hasPrefix("strip:") {
+                if let j = Int(b.id.dropFirst(6)), items.indices.contains(j) {
+                    strip.append((b.id, thumbnails[items[j].id]))
+                    if thumbnails[items[j].id] == nil { stripWanted.insert(items[j].id) }
+                }
+            }
+            loadStripThumbnails()
+            controls.render(FilmstripView(size: CGSize(width: 1600, height: 260), buttons: controls.buttons, hovered: controls.hovered, strip: strip))
         } else {
             var cells: [GridCell] = []
             switch screen {
@@ -440,6 +480,33 @@ final class MediaApp {
                 if h.hasPrefix("item:"), let i = Int(h.dropFirst(5)), items.indices.contains(i) { return items[i].id }
                 return nil
             }, title: title, columns: screen == .albums ? 2 : 4))
+        }
+    }
+}
+
+
+/// The viewer's controls with the filmstrip's pictures under their buttons.
+struct FilmstripView: View {
+    let size: CGSize
+    let buttons: [ScenePanel.Button]
+    let hovered: String?
+    let strip: [(String, UIImage?)]
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            PanelStyle.glass()
+            ForEach(strip, id: \.0) { id, image in
+                if let image, let button = buttons.first(where: { $0.id == id }) {
+                    let r = CGRect(x: button.rect.minX * size.width, y: button.rect.minY * size.height,
+                                   width: button.rect.width * size.width, height: button.rect.height * size.height).insetBy(dx: 6, dy: 6)
+                    Image(uiImage: image).resizable().aspectRatio(contentMode: .fill)
+                        .frame(width: r.width, height: r.height).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .strokeBorder(hovered == id ? PanelStyle.pink : (button.accent ? PanelStyle.accent : Color.white.opacity(0.2)), lineWidth: hovered == id || button.accent ? 6 : 2))
+                        .position(x: r.midX, y: r.midY)
+                }
+            }
+            ButtonsView(size: size, buttons: buttons.filter { b in !strip.contains { $0.0 == b.id && $0.1 != nil } }, hovered: hovered, title: nil, titleHighlight: false, transparent: true)
         }
     }
 }

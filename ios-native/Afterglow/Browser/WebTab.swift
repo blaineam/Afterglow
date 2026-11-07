@@ -40,6 +40,7 @@ final class WebTab: NSObject, WKNavigationDelegate, WKUIDelegate {
         self.isPrivate = isPrivate
         self.pageSize = pageSize
         webView = WKWebView(frame: CGRect(origin: .zero, size: pageSize), configuration: configuration)
+        webView.layer.anchorPoint = .zero
         super.init()
         webView.navigationDelegate = self
         webView.uiDelegate = self
@@ -52,6 +53,13 @@ final class WebTab: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func load(_ url: URL) {
         webView.load(URLRequest(url: url))
+    }
+
+    /// The layout size for a text scale: the page's size over the scale.
+    func setTextScale(percent: Int) {
+        let zoom = max(CGFloat(percent) / 100, 0.25)
+        webView.frame = CGRect(origin: .zero, size: CGSize(width: pageSize.width / zoom, height: pageSize.height / zoom))
+        webView.pageZoom = 1
     }
 
     /// Asks WebKit for the next picture of the page (`takeSnapshot`, rendered by the web process
@@ -67,8 +75,13 @@ final class WebTab: NSObject, WKNavigationDelegate, WKUIDelegate {
         configuration.afterScreenUpdates = false
         // snapshotWidth is in points and the image comes at the screen's scale: ask for the page's
         // pixel width over the scale, or the image is 3x the size (3840x2400, 37 MB a time).
+        // The view is laid out at the page's size over the text scale (so a page that fills its
+        // viewport fills the window) and the picture asked for at the page's size: the scale-up
+        // is the text scale. pageZoom instead kept the layout at the view's size and scaled the
+        // drawing, so a page sized to its viewport spilled past the window (owner, 2026-11-07).
         let scale = max(webView.traitCollection.displayScale, 1)
         configuration.snapshotWidth = NSNumber(value: Double(pageSize.width) / Double(scale))
+        configuration.rect = webView.bounds
         webView.takeSnapshot(with: configuration) { [weak self] image, error in
             guard let self else { return }
             self.snapshotting = false

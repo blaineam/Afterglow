@@ -502,7 +502,11 @@ final class HandTracker: @unchecked Sendable {
             // instead (LiDAR at 40 cm cannot tell two touching fingertips apart; log 2026-11-07).
             let along = simd_distance(hand.landmarks[5], hand.landmarks[6]) + simd_distance(hand.landmarks[6], hand.landmarks[7]) + simd_distance(hand.landmarks[7], hand.landmarks[8])
             let curl = along > 1 ? simd_distance(hand.landmarks[5], hand.landmarks[8]) / along : 1
-            let indexBent = curl < Self.maxStraightCurl
+            // From the headset's camera the index finger points at the lens in a pinch and its
+            // joints project in a line too (curl 0.91-0.99 on every real pinch, log 2026-11-07),
+            // so the curl is logged and not a gate: the tips' distance with its hysteresis decides.
+            let indexBent = true
+            _ = Self.maxStraightCurl
             let tipsInside = [hand.landmarks[HandGeometry.thumbTip], hand.landmarks[HandGeometry.indexTip]].allSatisfy {
                 $0.x > margin && $0.x < Float(width) - margin && $0.y > margin && $0.y < Float(height) - margin
             }
@@ -524,7 +528,7 @@ final class HandTracker: @unchecked Sendable {
                 var reasons: [String] = []
                 if !tipsInside { reasons.append("tips at the image's edge") }
                 if isEdgeOn { reasons.append(String(format: "palm edge-on (%.0f%% open)", openness * 100)) }
-                if !indexBent { reasons.append(String(format: "index finger straight (%.2f)", curl)) }
+                if curl > Self.maxStraightCurl { reasons.append(String(format: "(index finger straight %.2f)", curl)) }
                 if !tipsSeen { reasons.append(String(format: "a tip not seen (%.2f, %.2f)", hand.confidences[HandGeometry.thumbTip], hand.confidences[HandGeometry.indexTip])) }
                 log(String(format: "[Pinch] %@ hand's tips %.1f cm apart but no start: %@", slot.handedness >= 0.5 ? "right" : "left",
                            tipDistance * 100, reasons.joined(separator: ", ")))

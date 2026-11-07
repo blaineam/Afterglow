@@ -291,10 +291,12 @@ final class VacuumGame: Game {
             }
             seeded = true
         }
-        var nozzles: [SIMD3<Float>] = c.hands.map { $0.joints[HandGeometry.wrist] }.filter { $0.y - floor < 0.5 }
-        nozzles.append(SIMD3(c.headPosition.x, floor + 0.2, c.headPosition.z))
-        for n in nozzles {
-            for (k, pile) in piles where simd_distance(SIMD3(pile.position.x, 0, pile.position.z), SIMD3(n.x, 0, n.z)) < 0.28 {
+        // The nozzle under a low hand cleans a 28 cm circle; the feet, under the head, a 45 cm
+        // one (the owner walked over piles that stayed, 2026-11-07).
+        var nozzles: [(SIMD3<Float>, Float)] = c.hands.map { $0.joints[HandGeometry.wrist] }.filter { $0.y - floor < 0.5 }.map { ($0, 0.28) }
+        nozzles.append((SIMD3(c.headPosition.x, floor + 0.2, c.headPosition.z), 0.45))
+        for (n, radius) in nozzles {
+            for (k, pile) in piles where simd_distance(SIMD3(pile.position.x, 0, pile.position.z), SIMD3(n.x, 0, n.z)) < radius {
                 piles[k] = nil
                 cleaned += 1
                 for _ in 0..<6 {
@@ -314,6 +316,10 @@ final class VacuumGame: Game {
             scene.add(m.smallSphere, at: pile.position + SIMD3(s * 0.5, s * 0.35, s * 0.2), scale: SIMD3(repeating: s * 0.5), color: SIMD4(0.6, 0.55, 0.45, 1), roughness: 1, pattern: 5, shadow: false)
             scene.add(m.smallSphere, at: pile.position + SIMD3(-s * 0.4, s * 0.4, -s * 0.3), scale: SIMD3(repeating: s * 0.45), color: SIMD4(0.78, 0.7, 0.58, 1), roughness: 1, pattern: 5, shadow: false)
         }
+        // The feet: a ring on the floor under the head, so the player sees where walking counts.
+        let feet = SIMD3(eye.x, floor + 0.01, eye.z)
+        scene.add(m.ring, at: feet, scale: SIMD3(0.45, 1, 0.45), color: SIMD4(0.4, 0.9, 1, 1), roughness: 0.3, emissive: 0.8, shadow: false)
+        scene.glow(feet, size: 0.9, eye: eye + SIMD3(0, 0.1, 0), color: SIMD4(0.4, 0.9, 1, 0.15))
         // The nozzle under a low hand: a chrome ring with a glow.
         for hand in c.hands where hand.joints[HandGeometry.wrist].y - floor < 0.5 {
             let w = hand.joints[HandGeometry.wrist]

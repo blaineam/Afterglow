@@ -109,14 +109,37 @@ final class WindowManager {
         w.pane.place(ahead: head, distance: 1.4)
         w.pane.centre.y += 0.12
         if !open.isEmpty {
-            // Round the user: the next slot 40 degrees to the right of the last window.
+            // Round the user: the nearest free arc, ahead first, then alternately right and left,
+            // where "free" means no open window's arc (its width at its distance, plus a gap)
+            // overlaps the new one's. Windows never open through one another.
             let position = head.columns.3.xyz
-            let last = open.last!
-            let toLast = last.pane.centre - position
-            let yaw = atan2(toLast.x, -toLast.z) + 0.7
-            let distance = max(simd_length(SIMD3(toLast.x, 0, toLast.z)), 1.2)
+            let f = -head.columns.2.xyz
+            let aheadYaw = atan2(f.x, -f.z)
+            let distance: Float = 1.4
+            let halfArc = { (width: Float, d: Float) -> Float in atan(width / 2 / max(d, 0.3)) }
+            let mine = halfArc(w.pane.widthMeters, distance) + 0.06
+            func free(_ yaw: Float) -> Bool {
+                for o in open {
+                    let to = o.pane.centre - position
+                    let oYaw = atan2(to.x, -to.z)
+                    let oArc = halfArc(o.pane.widthMeters, simd_length(SIMD3(to.x, 0, to.z)))
+                    var d = yaw - oYaw
+                    d = atan2(sin(d), cos(d))
+                    if abs(d) < mine + oArc { return false }
+                }
+                return true
+            }
+            var yaw = aheadYaw
+            var found = free(yaw)
+            var stepIndex = 1
+            while !found && stepIndex < 24 {
+                let offset = Float((stepIndex + 1) / 2) * 0.35 * (stepIndex % 2 == 1 ? 1 : -1)
+                yaw = aheadYaw + offset
+                found = free(yaw)
+                stepIndex += 1
+            }
             let forward = SIMD3(sin(yaw), 0, -cos(yaw))
-            w.pane.centre = position + forward * distance + SIMD3(0, toLast.y, 0)
+            w.pane.centre = position + forward * distance + SIMD3(0, 0.12, 0)
             w.pane.right = simd_normalize(simd_cross(forward, SIMD3(0, 1, 0)))
             w.pane.up = SIMD3(0, 1, 0)
         }
@@ -218,10 +241,10 @@ final class HomeMenu {
                                             (.places, "mountain.2.fill"), (.music, "music.note"), (.settings, "gearshape.fill")]
         for (i, (app, icon)) in apps.enumerated() {
             let col = i % 4, row = i / 4
-            b.append(.init(id: "app:\(app.rawValue)", rect: CGRect(x: 0.03 + CGFloat(col) * 0.2375, y: 0.17 + CGFloat(row) * 0.41, width: 0.2275, height: 0.39),
+            b.append(.init(id: "app:\(app.rawValue)", rect: CGRect(x: 0.03 + CGFloat(col) * 0.2375, y: 0.06 + CGFloat(row) * 0.47, width: 0.2275, height: 0.44),
                            label: app.title, wide: true, icon: icon, style: .tile, accent: open.contains(app)))
         }
-        b.append(.init(id: "lock", rect: CGRect(x: 0.03 + 3 * 0.2375, y: 0.58, width: 0.2275, height: 0.39), label: "Lock", wide: true, icon: "lock.fill", style: .tile))
+        b.append(.init(id: "lock", rect: CGRect(x: 0.03 + 3 * 0.2375, y: 0.53, width: 0.2275, height: 0.44), label: "Lock", wide: true, icon: "lock.fill", style: .tile))
         panel.set(buttons: b, version: "home|\(open.map(\.rawValue).joined())")
     }
 
@@ -232,7 +255,6 @@ final class HomeMenu {
     }
 
     func render() {
-        panel.render(ButtonsView(size: CGSize(width: 1600, height: 900), buttons: panel.buttons, hovered: panel.hovered, title: "Afterglow", titleHighlight: true,
-                                 subtitle: openKinds.isEmpty ? "Look at an app and pinch, or tap" : openKinds.map(\.title).joined(separator: " · ") + " open"))
+        panel.render(ButtonsView(size: CGSize(width: 1600, height: 900), buttons: panel.buttons, hovered: panel.hovered, title: nil, titleHighlight: true))
     }
 }

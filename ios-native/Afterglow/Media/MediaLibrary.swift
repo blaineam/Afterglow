@@ -77,18 +77,50 @@ final class MediaLibrary {
                 result.append(MediaAlbum(id: collection.localIdentifier, title: collection.localizedTitle ?? "Album", count: count, collection: collection))
             }
         }
+        // 360 pictures and videos have no smart album of their own: a collection found by shape
+        // (2:1) over the whole library, kept first with Spatial and Panoramas, the ones made for
+        // a headset (owner, 2026-11-07).
+        let threeSixty = items(in: MediaAlbum(id: Self.allId, title: "All", count: 0, collection: nil), limit: 2000).filter { $0.kind == .photo360 || $0.kind == .video360 }
+        if !threeSixty.isEmpty { result.append(MediaAlbum(id: Self.threeSixtyId, title: "360°", count: threeSixty.count, collection: nil)) }
+        let rank: (MediaAlbum) -> Int = { album in
+            switch album.collection?.assetCollectionSubtype {
+            case .smartAlbumSpatial: return 0
+            case .smartAlbumPanoramas: return 1
+            case .none: return album.id == Self.threeSixtyId ? 2 : 10
+            case .smartAlbumUserLibrary: return 3
+            case .smartAlbumFavorites: return 4
+            case .smartAlbumVideos: return 5
+            default: return 6
+            }
+        }
+        result.sort { rank($0) < rank($1) }
         log("[Photos] \(result.count) albums: " + result.map { "\($0.title) (\($0.count))" }.joined(separator: ", "))
         return result
     }
 
+    static let allId = "afterglow.all"
+    static let threeSixtyId = "afterglow.360"
+    /// Whether an album is made for the headset: spatial, panoramas or 360.
+    static func isImmersive(_ album: MediaAlbum) -> Bool {
+        album.id == threeSixtyId || album.collection?.assetCollectionSubtype == .smartAlbumSpatial || album.collection?.assetCollectionSubtype == .smartAlbumPanoramas
+    }
+
     /// The items of an album, newest first.
     func items(in album: MediaAlbum, limit: Int = 200) -> [MediaItem] {
-        guard let collection = album.collection else { return [] }
         let options = PHFetchOptions()
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         options.predicate = NSPredicate(format: "mediaType == %d || mediaType == %d", PHAssetMediaType.image.rawValue, PHAssetMediaType.video.rawValue)
         options.fetchLimit = limit
-        let assets = PHAsset.fetchAssets(in: collection, options: options)
+        let assets: PHFetchResult<PHAsset>
+        if let collection = album.collection {
+            assets = PHAsset.fetchAssets(in: collection, options: options)
+        } else if album.id == Self.threeSixtyId {
+            var all: [MediaItem] = []
+            PHAsset.fetchAssets(with: options).enumerateObjects { asset, _, _ in all.append(Self.classify(asset)) }
+            return all.filter { $0.kind == .photo360 || $0.kind == .video360 }
+        } else {
+            assets = PHAsset.fetchAssets(with: options)
+        }
         var items: [MediaItem] = []
         assets.enumerateObjects { asset, _, _ in
             items.append(Self.classify(asset))

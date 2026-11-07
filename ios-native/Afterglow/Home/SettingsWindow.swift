@@ -26,12 +26,12 @@ final class SettingsWindow {
             ("handHz", "Hand images a second", "\(settings.handHzLive)", "hand.raised"),
             ("prediction", "Head prediction", "+\(settings.extraPredictionMs) ms", "clock"),
         ]
-        var ry: CGFloat = 0.11
+        var ry: CGFloat = 0.04
         for (id, name, value, icon) in rows {
             m.append(.init(id: "label:\(id)", rect: CGRect(x: 0.03, y: ry, width: 0.6, height: 0.095), label: name, wide: true, icon: icon, style: .row, value: value, accent: true))
             m.append(.init(id: "minus:\(id)", rect: CGRect(x: 0.66, y: ry, width: 0.14, height: 0.095), label: "−", icon: "minus", style: .round))
             m.append(.init(id: "plus:\(id)", rect: CGRect(x: 0.83, y: ry, width: 0.14, height: 0.095), label: "+", icon: "plus", style: .round))
-            ry += 0.105
+            ry += 0.11
         }
         let toggles: [(String, String, Bool)] = [
             ("passthrough", "Passthrough", settings.passthrough),
@@ -43,7 +43,7 @@ final class SettingsWindow {
             ("passcode", "Passcode", hasPasscode()),
         ]
         for (i, (id, label, on)) in toggles.enumerated() {
-            m.append(.init(id: "toggle:\(id)", rect: CGRect(x: 0.03 + CGFloat(i % 2) * 0.485, y: 0.65 + CGFloat(i / 2) * 0.087, width: 0.465, height: 0.08),
+            m.append(.init(id: "toggle:\(id)", rect: CGRect(x: 0.03 + CGFloat(i % 2) * 0.485, y: 0.60 + CGFloat(i / 2) * 0.095, width: 0.465, height: 0.088),
                            label: label, wide: true, style: .row, value: on ? "On" : "Off", accent: on))
         }
         panel.set(buttons: m, version: "settings|\(rows.map { $0.2 }.joined())|\(toggles.map { "\($0.2)" }.joined())")
@@ -74,6 +74,6 @@ final class SettingsWindow {
     }
 
     func render() {
-        panel.render(ButtonsView(size: CGSize(width: 1400, height: 1100), buttons: panel.buttons, hovered: panel.hovered, title: "Settings", titleHighlight: false))
+        panel.render(ButtonsView(size: CGSize(width: 1400, height: 1100), buttons: panel.buttons, hovered: panel.hovered, title: nil, titleHighlight: false))
     }
 }

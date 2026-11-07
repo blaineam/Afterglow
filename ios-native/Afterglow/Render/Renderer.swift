@@ -835,7 +835,10 @@ final class Renderer {
             if result.consumed { select = false }
             for w in windows.visible {
                 switch w.kind {
-                case .browser: if let browser { browser.window = w.pane }
+                case .browser:
+                    if let browser { browser.window = w.pane }
+                    // The bar sits above the chrome, whose height follows the window's width.
+                    if let chrome { w.barGap = chrome.panel.pane.heightMeters + 0.03 }
                 case .media, .files:
                     if let media {
                         media.grid.pane.centre = w.pane.centre; media.grid.pane.right = w.pane.right; media.grid.pane.up = w.pane.up; media.grid.pane.widthMeters = w.pane.widthMeters
@@ -941,24 +944,26 @@ final class Renderer {
         }
         var quads: [(MTLBuffer?, MTLTexture, SIMD4<Float>, Int)] = []
         // The dock: hidden while the keyboard hangs where it would be.
-        if let toolbar, !(browser?.isImmersive ?? false), !lockedNow, !(browser?.keyboardShown ?? false) {
+        // The dock and its Apps button at the feet: neither during a WebXR session or 360 playback.
+        if let toolbar, !(browser?.isImmersive ?? false), !lockedNow, !(browser?.keyboardShown ?? false), !(media?.isProjected ?? false) {
             let origin = pointerOrigin
             let forward = pointerDirection
+            toolbar.tick(time: t2)
+            toolbar.placeFeet(head: headInWorld, floor: (source as? ARController)?.room.floorHeight ?? floorHeight)
             var hit: (ScenePanel, SIMD2<Float>)?
-            if toolbar.menuOpen, let h = toolbar.menu.pane.hit(origin: origin, direction: forward) { hit = (toolbar.menu, h.uv) }
-            else if let h = toolbar.panel.pane.hit(origin: origin, direction: forward) { hit = (toolbar.panel, h.uv) }
+            if toolbar.dockShown, let h = toolbar.panel.pane.hit(origin: origin, direction: forward) { hit = (toolbar.panel, h.uv) }
+            else if !toolbar.dockShown, let h = toolbar.menu.pane.hit(origin: origin, direction: forward) { hit = (toolbar.menu, h.uv) }
             _ = toolbar.panel.hover(hit?.0 === toolbar.panel ? hit?.1 : nil)
             _ = toolbar.menu.hover(hit?.0 === toolbar.menu ? hit?.1 : nil)
             if select, let (panel, _) = hit, let id = panel.hovered {
-                toolbar.press(id)
+                if id == "feet" { toolbar.showDock(time: t2) } else { toolbar.press(id); toolbar.showDock(time: t2) }
                 select = false
             }
             toolbar.render()
-            if let t = toolbar.panel.texture { toolbarQuads.append((t, 3)) }
-            if toolbar.menuOpen, let t = toolbar.menu.texture { toolbarQuads.append((t, 4)) }
-            if hit != nil, browser == nil || toolbar.menuOpen {
-                // The reticle on the toolbar when nothing else draws one.
-                let (panel, uv) = hit!
+            if toolbar.dockShown, let t = toolbar.panel.texture { toolbarQuads.append((t, 3)) }
+            if !toolbar.dockShown, let t = toolbar.menu.texture { toolbarQuads.append((t, 4)) }
+            if let (panel, uv) = hit, browser == nil || panel === toolbar.menu {
+                // The reticle on the dock when nothing else draws one.
                 let at = panel.pane.centre + panel.pane.right * ((uv.x - 0.5) * panel.pane.widthMeters) + panel.pane.up * ((0.5 - uv.y) * panel.pane.heightMeters)
                 overlay.addSquare(at - forward * 0.01, size: 0.012, eye: origin, color: HandOverlay.pinchColor)
             }
@@ -1182,7 +1187,15 @@ final class Renderer {
             encoder.setVertexBytes(&passUniforms, length: MemoryLayout<FrameUniforms>.stride, index: 0)
             encoder.setFragmentBytes(&passUniforms, length: MemoryLayout<FrameUniforms>.stride, index: 0)
             encoder.setDepthStencilState(depthNoneState)
-            if settings.passthrough, let frame {
+            // A 360, 180 or panorama picture is the surroundings while it plays, passthrough or not
+            // (the owner chose 360 and saw the room instead, 2026-11-07).
+            if let media, media.isProjected, mediaTextures.picture != nil || mediaTextures.eyes != nil {
+                encoder.setRenderPipelineState(mediaPipeline)
+                encoder.setFragmentBytes(&mediaUniforms, length: MemoryLayout<MediaUniforms>.stride, index: 1)
+                encoder.setFragmentTexture(mediaTextures.picture ?? mediaTextures.eyes, index: 0)
+                encoder.setFragmentTexture(mediaTextures.eyes ?? eyeTexture, index: 1)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            } else if settings.passthrough, let frame {
                 encoder.setRenderPipelineState(passthroughPipeline)
                 encoder.setFragmentTexture(frame.luma, index: 0)
                 encoder.setFragmentTexture(frame.chroma, index: 1)

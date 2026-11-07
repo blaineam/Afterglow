@@ -1,6 +1,8 @@
 import Metal
 import simd
 import SwiftUI
+import UIKit
+import ImageIO
 
 /// The environments: the synthwave surroundings, the real room (passthrough with the surfaces
 /// marked), or a 360 photo from the Media folder as the surroundings; and the stationary 3DoF
@@ -75,32 +77,75 @@ final class PlacesApp {
 
     private func layout() {
         var b: [ScenePanel.Button] = []
-        b.append(.init(id: "synth", rect: CGRect(x: 0.03, y: 0.14, width: 0.3, height: 0.13), label: "Synthwave", wide: true, icon: "sun.horizon.fill", style: .pill, accent: choice == .synthwave))
-        b.append(.init(id: "room", rect: CGRect(x: 0.35, y: 0.14, width: 0.3, height: 0.13), label: "Your room", wide: true, icon: "eye.fill", style: .pill, accent: choice == .room))
-        b.append(.init(id: "scan", rect: CGRect(x: 0.67, y: 0.14, width: 0.3, height: 0.13), label: "Scan room", wide: true, icon: "viewfinder", style: .pill))
-        for (i, (kind, name)) in Self.places.enumerated() {
-            let parts = name.split(separator: " ", maxSplits: 1).map(String.init)
-            b.append(.init(id: "place:\(kind)", rect: CGRect(x: 0.03 + CGFloat(i % 4) * 0.2375, y: 0.30 + CGFloat(i / 4) * 0.2, width: 0.2275, height: 0.19),
-                           label: parts.last ?? name, wide: true, icon: parts.first, style: .tile, accent: choice == .place(kind)))
+        b.append(.init(id: "synth", rect: CGRect(x: 0.03, y: 0.04, width: 0.22, height: 0.12), label: "Synthwave", wide: true, icon: "sun.horizon.fill", style: .pill, accent: choice == .synthwave))
+        b.append(.init(id: "room", rect: CGRect(x: 0.27, y: 0.04, width: 0.22, height: 0.12), label: "Your room", wide: true, icon: "eye.fill", style: .pill, accent: choice == .room))
+        b.append(.init(id: "scan", rect: CGRect(x: 0.51, y: 0.04, width: 0.22, height: 0.12), label: "Scan room", wide: true, icon: "viewfinder", style: .pill))
+        b.append(.init(id: "night", rect: CGRect(x: 0.75, y: 0.04, width: 0.22, height: 0.12), label: night ? "Night" : "Day", wide: true, icon: night ? "moon.stars.fill" : "sun.max.fill", style: .pill, accent: night))
+        // The 360 pictures as picture tiles, eight a page, with the page arrows.
+        let all = tiles
+        let shown = all.dropFirst(page * Self.perPage).prefix(Self.perPage)
+        for (i, tile) in shown.enumerated() {
+            let col = i % 4, row = i / 4
+            b.append(.init(id: tile.id, rect: CGRect(x: 0.03 + CGFloat(col) * 0.2375, y: 0.19 + CGFloat(row) * 0.345, width: 0.2275, height: 0.33),
+                           label: tile.label, wide: true, style: .tile, accent: tile.on))
         }
-        b.append(.init(id: "night", rect: CGRect(x: 0.03 + 3 * 0.2375, y: 0.50, width: 0.2275, height: 0.19), label: night ? "Night" : "Day", wide: true, icon: night ? "moon.stars.fill" : "sun.max.fill", style: .tile, accent: night))
-        // The 360 pictures, four a row, paged; a generate button and a rescan.
-        let all: [(String, String, String)] = panoramas.map { ("pano:" + $0.path, String($0.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "-", with: " ").prefix(16)), "photo.circle.fill") }
-            + libraryItems.map { ("lib:" + $0.id, String($0.title.prefix(14)), "photo.on.rectangle") }
-        let perPage = 4
-        let shown = all.dropFirst(page * perPage).prefix(perPage)
-        for (i, (id, label, icon)) in shown.enumerated() {
-            let on: Bool
-            if case .panorama(let url) = choice, id == "pano:" + url.path { on = true }
-            else if case .libraryPhoto(let itemId) = choice, id == "lib:" + itemId { on = true }
-            else { on = false }
-            b.append(.init(id: id, rect: CGRect(x: 0.03 + CGFloat(i) * 0.2375, y: 0.71, width: 0.2275, height: 0.15), label: label, wide: true, icon: icon, style: .tile, accent: on))
+        let pages = max(1, (all.count + Self.perPage - 1) / Self.perPage)
+        b.append(.init(id: "prevpage", rect: CGRect(x: 0.03, y: 0.885, width: 0.1, height: 0.1), label: "Previous", icon: "chevron.left", style: .round))
+        b.append(.init(id: "pagelabel", rect: CGRect(x: 0.15, y: 0.885, width: 0.3, height: 0.1), label: "\(page + 1) of \(pages)", wide: true, style: .label))
+        b.append(.init(id: "nextpage", rect: CGRect(x: 0.46, y: 0.885, width: 0.1, height: 0.1), label: "Next", icon: "chevron.right", style: .round))
+        b.append(.init(id: "rescan", rect: CGRect(x: 0.75, y: 0.885, width: 0.22, height: 0.1), label: "Rescan", wide: true, icon: "arrow.clockwise", style: .pill))
+        panel.set(buttons: b, version: "places|\(choice)|\(night)|\(panoramas.count)|\(libraryItems.count)|\(page)|\(thumbnails.count)")
+    }
+
+    static let perPage = 8
+    struct Tile { var id: String; var label: String; var on: Bool; var image: UIImage? }
+    private var thumbnails: [String: UIImage] = [:]
+    /// Every selectable picture, bundled first, then the user's files, then the library's.
+    private var tiles: [Tile] {
+        var t: [Tile] = []
+        for url in panoramas {
+            let id = "pano:" + url.path
+            var on = false
+            if case .panorama(let u) = choice, u.path == url.path { on = true }
+            let name = url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "-", with: " ").capitalized
+            t.append(Tile(id: id, label: name, on: on, image: thumbnails[id]))
         }
-        b.append(.init(id: "prevpage", rect: CGRect(x: 0.03, y: 0.875, width: 0.1, height: 0.11), label: "Previous", icon: "chevron.left", style: .round))
-        b.append(.init(id: "nextpage", rect: CGRect(x: 0.14, y: 0.875, width: 0.1, height: 0.11), label: "Next", icon: "chevron.right", style: .round))
-        b.append(.init(id: "generate", rect: CGRect(x: 0.26, y: 0.875, width: 0.5, height: 0.11), label: generating ? generatorStatus : "Generate a place", wide: true, icon: "wand.and.stars", style: .pill))
-        b.append(.init(id: "rescan", rect: CGRect(x: 0.87, y: 0.875, width: 0.1, height: 0.11), label: "Rescan", icon: "arrow.clockwise", style: .round))
-        panel.set(buttons: b, version: "places|\(choice)|\(night)|\(panoramas.count)|\(libraryItems.count)|\(page)|\(generating)|\(generatorStatus)")
+        for item in libraryItems {
+            let id = "lib:" + item.id
+            var on = false
+            if case .libraryPhoto(let itemId) = choice, itemId == item.id { on = true }
+            t.append(Tile(id: id, label: item.title, on: on, image: thumbnails[id]))
+        }
+        return t
+    }
+
+    /// Small pictures for the tiles on the current page, loaded once each.
+    private func loadThumbnails() {
+        let wanted = tiles.dropFirst(page * Self.perPage).prefix(Self.perPage).filter { thumbnails[$0.id] == nil }
+        guard !wanted.isEmpty, !loadingThumbnails else { return }
+        loadingThumbnails = true
+        Task { @MainActor in
+            for tile in wanted {
+                if tile.id.hasPrefix("pano:") {
+                    thumbnails[tile.id] = await Self.thumbnail(URL(fileURLWithPath: String(tile.id.dropFirst(5))))
+                } else if let item = libraryItems.first(where: { "lib:" + $0.id == tile.id }) {
+                    thumbnails[tile.id] = await library.thumbnail(for: item)
+                }
+                if thumbnails[tile.id] == nil { thumbnails[tile.id] = UIImage() }
+            }
+            loadingThumbnails = false
+            layout()
+        }
+    }
+    private var loadingThumbnails = false
+
+    nonisolated static func thumbnail(_ url: URL) async -> UIImage? {
+        await Task.detached(priority: .utility) {
+            guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+            let options: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceThumbnailMaxPixelSize: 480, kCGImageSourceCreateThumbnailWithTransform: true]
+            guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
+            return UIImage(cgImage: cg)
+        }.value
     }
 
     /// The test script: the first 360 file whose name contains `name` becomes the surroundings.
@@ -116,11 +161,9 @@ final class PlacesApp {
         case "scan": return true
         case "night": night.toggle()
         case "prevpage": page = max(0, page - 1)
-        case "nextpage": if (page + 1) * 4 < panoramas.count + libraryItems.count { page += 1 }
+        case "nextpage": if (page + 1) * Self.perPage < panoramas.count + libraryItems.count { page += 1 }
         case "rescan": Task { @MainActor in await self.scan() }
-        case "generate": if !generating { onWantPrompt?() }
         default:
-            if id.hasPrefix("place:"), let kind = Int(id.dropFirst(6)) { choice = .place(kind); panoramaTexture = nil }
             if id.hasPrefix("pano:") {
                 let url = URL(fileURLWithPath: String(id.dropFirst(5)))
                 choice = .panorama(url)
@@ -171,7 +214,43 @@ final class PlacesApp {
     }
 
     func render() {
-        panel.render(ButtonsView(size: CGSize(width: 1600, height: 900), buttons: panel.buttons, hovered: panel.hovered, title: "Places", titleHighlight: false,
-                                 subtitle: "Surroundings when passthrough is off"))
+        loadThumbnails()
+        let shown = Array(tiles.dropFirst(page * Self.perPage).prefix(Self.perPage))
+        panel.render(PlacesView(size: CGSize(width: 1600, height: 900), buttons: panel.buttons, hovered: panel.hovered, tiles: shown))
+    }
+}
+
+
+/// The Places panel: the glass and buttons, with each picture tile's thumbnail under its name.
+struct PlacesView: View {
+    let size: CGSize
+    let buttons: [ScenePanel.Button]
+    let hovered: String?
+    let tiles: [PlacesApp.Tile]
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            PanelStyle.glass()
+            ForEach(Array(tiles.enumerated()), id: \.element.id) { _, tile in
+                if let image = tile.image, image.size.width > 0, let button = buttons.first(where: { $0.id == tile.id }) {
+                    let r = CGRect(x: button.rect.minX * size.width, y: button.rect.minY * size.height,
+                                   width: button.rect.width * size.width, height: button.rect.height * size.height).insetBy(dx: 6, dy: 6)
+                    let radius = min(44, r.height * 0.16)
+                    Image(uiImage: image).resizable().aspectRatio(contentMode: .fill)
+                        .frame(width: r.width, height: r.height).clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous)
+                            .fill(LinearGradient(colors: [.clear, .clear, Color.black.opacity(0.78)], startPoint: .top, endPoint: .bottom)))
+                        .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous)
+                            .strokeBorder(hovered == tile.id ? PanelStyle.pink : (tile.on ? PanelStyle.accent : Color.white.opacity(0.18)), lineWidth: hovered == tile.id || tile.on ? 6 : 2))
+                        .overlay(alignment: .bottom) {
+                            Text(tile.label).font(.system(size: 52, weight: .semibold, design: .rounded)).foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.6).padding(.bottom, 18).padding(.horizontal, 12)
+                        }
+                        .position(x: r.midX, y: r.midY)
+                }
+            }
+            // The other controls, and the tiles still loading their pictures.
+            ButtonsView(size: size, buttons: buttons.filter { b in !tiles.contains { $0.id == b.id && ($0.image?.size.width ?? 0) > 0 } },
+                        hovered: hovered, title: nil, titleHighlight: false, transparent: true)
+        }
     }
 }

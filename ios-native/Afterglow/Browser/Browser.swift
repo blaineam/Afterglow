@@ -110,7 +110,7 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
         let configuration = WebTab.configuration(private: isPrivate, userScripts: WebBridge.userScripts(config: config), handler: self,
                                                  handlerNames: [WebBridge.handlerName])
         let tab = WebTab(device: device, isPrivate: isPrivate, configuration: configuration, pageSize: pageSize)
-        tab.webView.pageZoom = CGFloat(textScalePercent) / 100
+        tab.setTextScale(percent: textScalePercent)
         tab.onChange = { [weak self] tab in self?.tabChanged(tab) }
         tabs.append(tab)
         switchTab(tabs.count - 1)
@@ -125,7 +125,7 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
         currentIndex = index
         let tab = tabs[index]
         if tab.webView.superview !== veil {
-            tab.webView.frame = CGRect(origin: .zero, size: pageSize)
+            tab.setTextScale(percent: textScalePercent)
             veil.addSubview(tab.webView)
         }
         typed = ""
@@ -196,7 +196,7 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
     func setTextScale(_ percent: Int) {
         guard percent != textScalePercent else { return }
         textScalePercent = percent
-        for tab in tabs { tab.webView.pageZoom = CGFloat(percent) / 100 }
+        for tab in tabs { tab.setTextScale(percent: percent) }
     }
     func toggleKeyboard() { keyboardShown.toggle() }
 
@@ -309,6 +309,7 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
         // The page zoom that makes text readable in the window would show the session's canvas
         // at 1.5x, one eye across the screen and the other off its edge: the page draws at 1:1
         // for the session and gets its zoom back after.
+        current?.webView.frame = CGRect(origin: .zero, size: pageSize)
         current?.webView.pageZoom = 1
         if let bounds = veil.window?.bounds { screenBounds = bounds }
         veil.alpha = 1
@@ -329,7 +330,7 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
         guard isImmersive else { return }
         isImmersive = false
         veil.alpha = 0.01
-        current?.webView.pageZoom = CGFloat(textScalePercent) / 100
+        current?.setTextScale(percent: textScalePercent)
         layoutVeil()
         log("[WebXR] Session ended (\(why))")
     }

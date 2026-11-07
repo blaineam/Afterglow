@@ -27,6 +27,11 @@ final class Toolbar {
     let panel: ScenePanel
     let menu: ScenePanel
     private(set) var menuOpen = false
+    /// The dock shows only when asked: a round Apps button at the feet (straight down) brings it
+    /// for ten seconds (owner, 2026-11-07); the button hides during WebXR and 360 playback.
+    private(set) var dockShown = false
+    private var dockShownAt: Double = 0
+    static let dockSeconds: Double = 10
     private(set) var recents: [AppKind] = [.browser, .media, .files, .environments, .games]
     private let recentsKey = "toolbar.recents"
     var settings: Settings
@@ -42,8 +47,8 @@ final class Toolbar {
         self.settings = settings
         panel = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 320)
         panel.pane.widthMeters = 1.5
-        menu = ScenePanel(device: device, pixelWidth: 1400, pixelHeight: 820)
-        menu.pane.widthMeters = 1.0
+        menu = ScenePanel(device: device, pixelWidth: 400, pixelHeight: 400)
+        menu.pane.widthMeters = 0.28
         if let saved = UserDefaults.standard.array(forKey: recentsKey) as? [String] {
             let kinds = saved.compactMap(AppKind.init(rawValue:))
             if !kinds.isEmpty { recents = kinds + AppKind.allCases.filter { !kinds.contains($0) && $0 != .settings } }
@@ -57,6 +62,23 @@ final class Toolbar {
         recents.insert(app, at: 0)
         UserDefaults.standard.set(recents.map(\.rawValue), forKey: recentsKey)
         layout()
+    }
+
+    /// The dock, for a while; a press on it keeps it a while longer.
+    func showDock(time: Double) { dockShown = true; dockShownAt = time }
+    func hideDock() { dockShown = false }
+    func tick(time: Double) { if dockShown && time - dockShownAt > Self.dockSeconds { dockShown = false } }
+
+    /// The Apps button lies flat on the floor half a metre ahead of the feet.
+    func placeFeet(head: simd_float4x4, floor: Float) {
+        let position = head.columns.3.xyz
+        var f = -head.columns.2.xyz
+        f.y = 0
+        if simd_length(f) < 1e-3 { f = SIMD3(0, 0, -1) }
+        f = simd_normalize(f)
+        menu.pane.centre = SIMD3(position.x, floor + 0.03, position.z) + f * 0.45
+        menu.pane.right = simd_normalize(simd_cross(f, SIMD3(0, 1, 0)))
+        menu.pane.up = f
     }
 
     /// Hangs the toolbar low ahead of the head and the menu above it.
@@ -95,7 +117,7 @@ final class Toolbar {
             x += w + gap
         }
         panel.set(buttons: buttons, version: "dock|\(settings.passthrough)|\(settings.showHandsLive)|\(isRecording())")
-        menu.set(buttons: [], version: "menu")
+        menu.set(buttons: [.init(id: "feet", rect: CGRect(x: 0.08, y: 0.08, width: 0.84, height: 0.84), label: "Apps", icon: "square.grid.2x2.fill", style: .round, accent: true)], version: "feet")
     }
 
     func press(_ id: String) {
@@ -129,8 +151,6 @@ final class Toolbar {
 
     func render() {
         panel.render(ButtonsView(size: CGSize(width: 1600, height: 320), buttons: panel.buttons, hovered: panel.hovered, title: nil, titleHighlight: false))
-        if menuOpen {
-            menu.render(ButtonsView(size: CGSize(width: 1400, height: 820), buttons: menu.buttons, hovered: menu.hovered, title: "Afterglow", titleHighlight: false))
-        }
+        menu.render(ButtonsView(size: CGSize(width: 400, height: 400), buttons: menu.buttons, hovered: menu.hovered, title: nil, titleHighlight: false, transparent: true))
     }
 }
