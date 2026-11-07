@@ -22,6 +22,11 @@ final class MusicApp {
     private var nowTitle = "Nothing playing"
     private var nowSubtitle = ""
     private var artworkURL: URL?
+    /// The playing song's tempo, measured from its audio when the device holds it unprotected.
+    let tempo = TempoAnalyzer()
+    private(set) var currentTempo: Double?
+    var nowPlayingId: String { (player.queue.currentEntry?.id ?? "") }
+    var nowPlayingTitle: String { nowTitle }
 
     init(device: MTLDevice) {
         panel = ScenePanel(device: device, pixelWidth: 1400, pixelHeight: 1000)
@@ -79,6 +84,15 @@ final class MusicApp {
             }
             log("[Music] \(isPlaying ? "Playing" : "Paused"): \(title) — \(subtitle)")
             version += 1
+            currentTempo = nil
+            if entry != nil {
+                let id = entry?.id ?? title
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    let bpm = await self.tempo.tempo(forTitle: title, artist: subtitle.components(separatedBy: " — ").first ?? "", id: id)
+                    if self.nowTitle == title { self.currentTempo = bpm; self.version += 1; self.layout() }
+                }
+            }
         }
         layout()
     }

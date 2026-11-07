@@ -233,8 +233,12 @@ foundation at all. The honest picture:
   collections and the viewer has a filmstrip; 360 pictures play over passthrough; Places is
   picture tiles with twenty-four bundled photospheres; the coaster has a real track with a lift,
   drops, a loop and banked turns; mini golf has eighteen holes; Music is on MusicKit with the
-  library and the rhythm game keeps time to it. Still to come: WebXR AR features, and the next
-  phone round.
+  library and the rhythm game keeps time to it.
+- **Third phone round, 2026-11-07**: the pinch starts in two results and a returning hand is
+  re-judged; WebXR ends on the viewer's double tap and runs in 3DoF; taps reach every panel and a
+  two-finger tap brings the strip; no demo cubes; Photos is tabs over a scrolling grid with album
+  covers; the rhythm game measures a song's tempo from its audio. Still to come: WebXR AR
+  features, and the next phone round.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

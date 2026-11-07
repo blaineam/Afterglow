@@ -7,32 +7,44 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		00B2DB7C887E41AEAF9AB2C5 /* japanese-house-garden.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 4E8489A5E30A7DFA44A45374 /* japanese-house-garden.jpg */; };
 		0113CE32E718FC51FC3EBD4B /* ARController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27D58785E652A50828B3FA73 /* ARController.swift */; };
+		0C56DF0C2BF03AA99439AD14 /* storybook-living-room.jpg in Resources */ = {isa = PBXBuildFile; fileRef = C2A54207BBF980E980927C4B /* storybook-living-room.jpg */; };
 		0D89C799428F9CFFFF206D6E /* PlacesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229FF7FB92EB617B3FAE073F /* PlacesApp.swift */; };
+		0EAFCD29ABB6F398F2D5A100 /* japanese-garden-autumn.jpg in Resources */ = {isa = PBXBuildFile; fileRef = BD814411B9CA51DA02EA8186 /* japanese-garden-autumn.jpg */; };
 		1084C85F476B2C5EB0582CBF /* Panels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62905D062521A7CC64D592BA /* Panels.swift */; };
 		11C794030430803513B767C4 /* MediaMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BF024C3B411C1CCCC0C7D01 /* MediaMetadata.swift */; };
 		11DE11B2F262E90405DBEE7D /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3675F8D2A8455F705C68C25 /* Renderer.swift */; };
 		15ABF46890760A0AF897089C /* AfterglowWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C733774A6D18BA201F8F99F1 /* AfterglowWatchApp.swift */; };
 		16D3E9D0732259261E2D92C5 /* PosePredictor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9966FF18394C15E0D6C282F /* PosePredictor.swift */; };
 		1C7E6B56FEE2873026D56C48 /* RhythmGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F6B9BCCCC55995285EE0920 /* RhythmGame.swift */; };
+		1D902A725EF3300FF36A28A2 /* beach-bungalows-sunset.jpg in Resources */ = {isa = PBXBuildFile; fileRef = B3A196F31F5FF25325F5EEF5 /* beach-bungalows-sunset.jpg */; };
 		21ED85F6B9E48ADF702FFA39 /* beach-cottage-night.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 8796DF6115EB58EFFCE33BF6 /* beach-cottage-night.jpg */; };
 		236DFF0648D3937CF4BA8D85 /* WindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A831ACB0D368CC926A366F /* WindowManager.swift */; };
+		2DD06DB7B09858DE25C7D2C7 /* starship-cabin.jpg in Resources */ = {isa = PBXBuildFile; fileRef = DD058E5F1F960588FAF96C98 /* starship-cabin.jpg */; };
 		347582F364588BCF278B1C27 /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E2E34385880FD6215E765AF /* AppLock.swift */; };
 		348FA203915A0E073B48490F /* afterglow-webxr.js in Resources */ = {isa = PBXBuildFile; fileRef = 1AA30D699725082AF000DBAB /* afterglow-webxr.js */; };
+		3720F035D5F83000098B192C /* baroque-church.jpg in Resources */ = {isa = PBXBuildFile; fileRef = C24522852A68EEFCA5D68816 /* baroque-church.jpg */; };
 		394A0218C3895C0013CC40EC /* WatchReceiver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B577727CAF3A49AE4D41D83 /* WatchReceiver.swift */; };
+		3A9F4891C6C4D686BE8F5017 /* country-kitchen.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 8F16A4AEA3051438B872ACAF /* country-kitchen.jpg */; };
 		3B611AB1D9B01C012F739B97 /* WebBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C758612B9495CD314D59EF61 /* WebBridge.swift */; };
 		3C5D52A1580439FA628A5336 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1558F78E920E5997115FF985 /* ContentView.swift */; };
 		41D13DAC96C560971D3E2F8C /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE734763626DCDC395851D92 /* CredentialStore.swift */; };
 		44349A8E8C2D2B5B72308FA2 /* FileSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9E0657D69D500D52FC6B5D /* FileSource.swift */; };
 		4752687B06DCC27E53D2DE95 /* LensDistortionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */; };
+		52505BE6706917719D30E6FE /* grand-library.jpg in Resources */ = {isa = PBXBuildFile; fileRef = B2EA5635963BE80E0B2E6C0B /* grand-library.jpg */; };
 		5EEE72D16F54283324E12570 /* Places in Resources */ = {isa = PBXBuildFile; fileRef = E34AF1523B2C160E1CAD5784 /* Places */; };
 		5FADCF4942F922DF8FD0C5C4 /* HandOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7854AEB3ED92FB2970560611 /* HandOverlay.swift */; };
 		63D96A7059EA72FC002BF7E8 /* GameHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5703D6F0702885C2F804B15B /* GameHost.swift */; };
+		660CAFA8E43B59C599427893 /* mountain-temple.jpg in Resources */ = {isa = PBXBuildFile; fileRef = C77DD93DBA27C98BC20F3841 /* mountain-temple.jpg */; };
+		733020827646768CFE810FF2 /* treehouse-night.jpg in Resources */ = {isa = PBXBuildFile; fileRef = C92416996DB5208F771C8CBB /* treehouse-night.jpg */; };
 		75ADA160809141FED2BF671A /* ExternalDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F1932938E01769D5BD70302 /* ExternalDisplay.swift */; };
 		75BE77AC84FBAB02AE1C6FB8 /* BrowserWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407B733E5D15B248CD512A98 /* BrowserWindow.swift */; };
 		77C5951CAE44BFA58BE8C46A /* Toolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B81BBB54C49B3845F94E2832 /* Toolbar.swift */; };
 		7A38FB3AAA8E460C9F4F65D7 /* OneEuroFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B54E68953FBF0A4BF468CAE /* OneEuroFilter.swift */; };
 		80531BEAA4C2E3BD43B155AB /* FrameTimingLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42BBF82DA32DCFE7BA0AD50 /* FrameTimingLog.swift */; };
+		807788B2D8EEBE3F6D84194F /* sequoia-ferns.jpg in Resources */ = {isa = PBXBuildFile; fileRef = BE47F3737D0629A0F102BD8C /* sequoia-ferns.jpg */; };
+		81CE956448CD4D2CC6F3861F /* fjord-village.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 0E4D62799C1BFC30A6A04742 /* fjord-village.jpg */; };
 		85FC0F60F815AACB5EB653D6 /* afterglow-helper.js in Resources */ = {isa = PBXBuildFile; fileRef = C4592C811D59569C81790593 /* afterglow-helper.js */; };
 		8600C1861C53352DF6521570 /* PolynomialRadialDistortion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 078E21E05BF54EC00E0F4308 /* PolynomialRadialDistortion.swift */; };
 		87FA55609E5C45D423B33A4C /* ViewerParams.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1258CEE15BE1B0F0A68046 /* ViewerParams.swift */; };
@@ -49,6 +61,7 @@
 		ADFAB9F747817AFE897DE790 /* MediaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57EB9465CB5A756B4F53BEC0 /* MediaApp.swift */; };
 		AED9AC2DB5CA264371AF1869 /* HandGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */; };
 		B11BEA3C83C4B14B3E457065 /* LensDistortion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4402EC68CCA81B671B468EE8 /* LensDistortion.swift */; };
+		B446BA54C32BA333B6EBFAC9 /* forest-cabin-night.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 0012F54B13FA8505C2687B82 /* forest-cabin-night.jpg */; };
 		BA4BD6BE9A09CCCEFC49BB63 /* BrowserStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF67DFEAB12B2149E6F36069 /* BrowserStore.swift */; };
 		BACE2FF920E1A6E965CE609E /* MediaLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F9D56A9273E547BF13DE6FB /* MediaLibrary.swift */; };
 		BC2DD9993B328B9BFE55C0D8 /* PinchDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E2E0B57207F4DEAA2DF268C /* PinchDetector.swift */; };
@@ -62,14 +75,23 @@
 		D9D3FFB7F662E475F947FD3C /* EyeRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCEC5C5D9ABB975443C7DE91 /* EyeRecorder.swift */; };
 		DD58B4FD2C93E71F18D6592E /* Games.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A39A4CC8DC935824223E5A /* Games.swift */; };
 		DE359C4BB4ED9F7CD98C51A3 /* clear-night.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 16BBDD1B2CF15D129C4B076F /* clear-night.jpg */; };
+		E0124F44E0DFEF7B9BB3F186 /* stone-village-street.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 78CB3840B546321CC750220F /* stone-village-street.jpg */; };
+		E05F1E82B7251BD7DBE0CFBC /* pink-beach-town.jpg in Resources */ = {isa = PBXBuildFile; fileRef = B6AC401557A336764D2FF405 /* pink-beach-town.jpg */; };
 		E13FF8F6F98AF4B5D65CBB41 /* SkyboxGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45D18B331C2B01FABE57BF49 /* SkyboxGenerator.swift */; };
 		E1962322F97DB95D45A90270 /* HeadsetTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87C4D44511F04B6AD7D43D31 /* HeadsetTap.swift */; };
 		E1F20C8F70E32B1C44AA3A59 /* ScreenMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F27D509791361AD2011E47 /* ScreenMetrics.swift */; };
 		E386311B4A1748A01C31E880 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = F3791EB1A750663D58286739 /* Shaders.metal */; };
+		E516BF6F319A7D941782837F /* cosy-cafe.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 790D54DF3A98C50BF0B8EEA1 /* cosy-cafe.jpg */; };
+		E521ACBFFD1AD70FD1F63F92 /* mountain-lake-dawn.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 6DB0F8C26E7004832B7038F0 /* mountain-lake-dawn.jpg */; };
 		E7BA05E46A062EE88CE62A42 /* AfterglowApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A07A7A60E0764F6995F5B5 /* AfterglowApp.swift */; };
+		E7FA97D93DC749774CA30914 /* steampunk-greenhouse.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 08642CA95FBD721718437E89 /* steampunk-greenhouse.jpg */; };
+		E9741B6C668F03D1A01BDAF2 /* TempoAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2934622527C2244ADFA7A160 /* TempoAnalyzer.swift */; };
 		ED5D8F15E38998A94A259426 /* MediaMetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 959D50A1EB5EED9EC6FE9AF1 /* MediaMetadataTests.swift */; };
 		EE2AE67EB8156EB501AED089 /* SettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1BE27FFB5F7BF0CBB5D4956 /* SettingsWindow.swift */; };
+		EED18ACE5F4CD68F6C9AFE06 /* storybook-station.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 8AA45D6DDB4AD16C783197CB /* storybook-station.jpg */; };
 		F0433297A0D001C5C4CA77C7 /* HandGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12EF0275572665780B091BD3 /* HandGeometry.swift */; };
+		F36D3CB29CBD862A26231676 /* space-station.jpg in Resources */ = {isa = PBXBuildFile; fileRef = FCC83EA17C676F2D8C04C833 /* space-station.jpg */; };
+		F3B74C3204EEAC6ACF229472 /* storybook-coast.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 409FE7FB8B013D4751674CA7 /* storybook-coast.jpg */; };
 		F58E76BF5FD19FA16788B30F /* Scene3D.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318D2A1B213CEF1FE5055CA0 /* Scene3D.swift */; };
 		F6B76CD3BD4B02E11FDCA409 /* VideoPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8B3564A698DE6CBC60A74CF /* VideoPlayer.swift */; };
 		F6FFC447E3208CC29FA6EAB3 /* HandTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 135AAF215BBE3C9874DB7911 /* HandTracker.swift */; };
@@ -107,10 +129,13 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0012F54B13FA8505C2687B82 /* forest-cabin-night.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "forest-cabin-night.jpg"; sourceTree = "<group>"; };
 		04A39A4CC8DC935824223E5A /* Games.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Games.swift; sourceTree = "<group>"; };
-		06F0D4D6403D9E0E7319F313 /* Afterglow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Afterglow.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		06F0D4D6403D9E0E7319F313 /* Afterglow.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Afterglow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		078E21E05BF54EC00E0F4308 /* PolynomialRadialDistortion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PolynomialRadialDistortion.swift; sourceTree = "<group>"; };
+		08642CA95FBD721718437E89 /* steampunk-greenhouse.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "steampunk-greenhouse.jpg"; sourceTree = "<group>"; };
 		0B577727CAF3A49AE4D41D83 /* WatchReceiver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchReceiver.swift; sourceTree = "<group>"; };
+		0E4D62799C1BFC30A6A04742 /* fjord-village.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "fjord-village.jpg"; sourceTree = "<group>"; };
 		0F9D56A9273E547BF13DE6FB /* MediaLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaLibrary.swift; sourceTree = "<group>"; };
 		12EF0275572665780B091BD3 /* HandGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandGeometry.swift; sourceTree = "<group>"; };
 		135AAF215BBE3C9874DB7911 /* HandTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandTracker.swift; sourceTree = "<group>"; };
@@ -121,26 +146,34 @@
 		1F1932938E01769D5BD70302 /* ExternalDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalDisplay.swift; sourceTree = "<group>"; };
 		229FF7FB92EB617B3FAE073F /* PlacesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacesApp.swift; sourceTree = "<group>"; };
 		27D58785E652A50828B3FA73 /* ARController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARController.swift; sourceTree = "<group>"; };
+		2934622527C2244ADFA7A160 /* TempoAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TempoAnalyzer.swift; sourceTree = "<group>"; };
 		2B54E68953FBF0A4BF468CAE /* OneEuroFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OneEuroFilter.swift; sourceTree = "<group>"; };
 		2B9E0657D69D500D52FC6B5D /* FileSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSource.swift; sourceTree = "<group>"; };
 		318D2A1B213CEF1FE5055CA0 /* Scene3D.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scene3D.swift; sourceTree = "<group>"; };
 		37D8895069D15A18068ACE71 /* BrowserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserTests.swift; sourceTree = "<group>"; };
 		38B30CD74969D37109A6EC5B /* AfterglowTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AfterglowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		407B733E5D15B248CD512A98 /* BrowserWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserWindow.swift; sourceTree = "<group>"; };
+		409FE7FB8B013D4751674CA7 /* storybook-coast.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "storybook-coast.jpg"; sourceTree = "<group>"; };
 		4402EC68CCA81B671B468EE8 /* LensDistortion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensDistortion.swift; sourceTree = "<group>"; };
 		44A831ACB0D368CC926A366F /* WindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowManager.swift; sourceTree = "<group>"; };
 		45D18B331C2B01FABE57BF49 /* SkyboxGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkyboxGenerator.swift; sourceTree = "<group>"; };
+		4E8489A5E30A7DFA44A45374 /* japanese-house-garden.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "japanese-house-garden.jpg"; sourceTree = "<group>"; };
 		5703D6F0702885C2F804B15B /* GameHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameHost.swift; sourceTree = "<group>"; };
 		57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalLog.swift; sourceTree = "<group>"; };
 		57EB9465CB5A756B4F53BEC0 /* MediaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaApp.swift; sourceTree = "<group>"; };
 		5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandGeometryTests.swift; sourceTree = "<group>"; };
 		62905D062521A7CC64D592BA /* Panels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels.swift; sourceTree = "<group>"; };
 		67A818255D526B59948B967F /* ShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
+		6DB0F8C26E7004832B7038F0 /* mountain-lake-dawn.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "mountain-lake-dawn.jpg"; sourceTree = "<group>"; };
 		7854AEB3ED92FB2970560611 /* HandOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandOverlay.swift; sourceTree = "<group>"; };
+		78CB3840B546321CC750220F /* stone-village-street.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "stone-village-street.jpg"; sourceTree = "<group>"; };
+		790D54DF3A98C50BF0B8EEA1 /* cosy-cafe.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "cosy-cafe.jpg"; sourceTree = "<group>"; };
 		7E2DC482C4113CBF72B365D3 /* MusicApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicApp.swift; sourceTree = "<group>"; };
 		7F6B9BCCCC55995285EE0920 /* RhythmGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RhythmGame.swift; sourceTree = "<group>"; };
 		8796DF6115EB58EFFCE33BF6 /* beach-cottage-night.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "beach-cottage-night.jpg"; sourceTree = "<group>"; };
 		87C4D44511F04B6AD7D43D31 /* HeadsetTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadsetTap.swift; sourceTree = "<group>"; };
+		8AA45D6DDB4AD16C783197CB /* storybook-station.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "storybook-station.jpg"; sourceTree = "<group>"; };
+		8F16A4AEA3051438B872ACAF /* country-kitchen.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "country-kitchen.jpg"; sourceTree = "<group>"; };
 		937E65EAEBF6C26F50ED3B34 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		959D50A1EB5EED9EC6FE9AF1 /* MediaMetadataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaMetadataTests.swift; sourceTree = "<group>"; };
 		9BF024C3B411C1CCCC0C7D01 /* MediaMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaMetadata.swift; sourceTree = "<group>"; };
@@ -153,14 +186,23 @@
 		B1BE27FFB5F7BF0CBB5D4956 /* SettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindow.swift; sourceTree = "<group>"; };
 		B1DF1BAF17D795352DAC505E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B2A07A7A60E0764F6995F5B5 /* AfterglowApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AfterglowApp.swift; sourceTree = "<group>"; };
+		B2EA5635963BE80E0B2E6C0B /* grand-library.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "grand-library.jpg"; sourceTree = "<group>"; };
+		B3A196F31F5FF25325F5EEF5 /* beach-bungalows-sunset.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "beach-bungalows-sunset.jpg"; sourceTree = "<group>"; };
+		B6AC401557A336764D2FF405 /* pink-beach-town.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "pink-beach-town.jpg"; sourceTree = "<group>"; };
 		B81BBB54C49B3845F94E2832 /* Toolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toolbar.swift; sourceTree = "<group>"; };
 		B8B3564A698DE6CBC60A74CF /* VideoPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayer.swift; sourceTree = "<group>"; };
 		BB1258CEE15BE1B0F0A68046 /* ViewerParams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerParams.swift; sourceTree = "<group>"; };
+		BD814411B9CA51DA02EA8186 /* japanese-garden-autumn.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "japanese-garden-autumn.jpg"; sourceTree = "<group>"; };
+		BE47F3737D0629A0F102BD8C /* sequoia-ferns.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "sequoia-ferns.jpg"; sourceTree = "<group>"; };
 		BF67DFEAB12B2149E6F36069 /* BrowserStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserStore.swift; sourceTree = "<group>"; };
+		C24522852A68EEFCA5D68816 /* baroque-church.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "baroque-church.jpg"; sourceTree = "<group>"; };
+		C2A54207BBF980E980927C4B /* storybook-living-room.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "storybook-living-room.jpg"; sourceTree = "<group>"; };
 		C2CBEB733EE8BDABEA32779E /* AfterglowWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AfterglowWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C4592C811D59569C81790593 /* afterglow-helper.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "afterglow-helper.js"; sourceTree = "<group>"; };
 		C733774A6D18BA201F8F99F1 /* AfterglowWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AfterglowWatchApp.swift; sourceTree = "<group>"; };
 		C758612B9495CD314D59EF61 /* WebBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebBridge.swift; sourceTree = "<group>"; };
+		C77DD93DBA27C98BC20F3841 /* mountain-temple.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "mountain-temple.jpg"; sourceTree = "<group>"; };
+		C92416996DB5208F771C8CBB /* treehouse-night.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "treehouse-night.jpg"; sourceTree = "<group>"; };
 		C9966FF18394C15E0D6C282F /* PosePredictor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosePredictor.swift; sourceTree = "<group>"; };
 		C9D14AF0F2015E62D345D07C /* WebTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebTab.swift; sourceTree = "<group>"; };
 		CE734763626DCDC395851D92 /* CredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialStore.swift; sourceTree = "<group>"; };
@@ -169,6 +211,7 @@
 		D97890D6EB3536CA74C71E09 /* SessionLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLog.swift; sourceTree = "<group>"; };
 		DCEC5C5D9ABB975443C7DE91 /* EyeRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EyeRecorder.swift; sourceTree = "<group>"; };
 		DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensDistortionTests.swift; sourceTree = "<group>"; };
+		DD058E5F1F960588FAF96C98 /* starship-cabin.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "starship-cabin.jpg"; sourceTree = "<group>"; };
 		E34AF1523B2C160E1CAD5784 /* Places */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Places; path = Afterglow/Places; sourceTree = SOURCE_ROOT; };
 		E35E9E8510A0D1E59C07510F /* Controllers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Controllers.swift; sourceTree = "<group>"; };
 		E430EDBD572B0C5A3B147DBA /* evening-meadow.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "evening-meadow.jpg"; sourceTree = "<group>"; };
@@ -178,6 +221,7 @@
 		F3791EB1A750663D58286739 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
 		F383C9716F8214D0A4E65E7D /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		F9423C371E42B4C272012AA5 /* Dictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dictation.swift; sourceTree = "<group>"; };
+		FCC83EA17C676F2D8C04C833 /* space-station.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "space-station.jpg"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -289,9 +333,30 @@
 		97E0267EAFA9F7BC847C9490 /* Places */ = {
 			isa = PBXGroup;
 			children = (
+				C24522852A68EEFCA5D68816 /* baroque-church.jpg */,
+				B3A196F31F5FF25325F5EEF5 /* beach-bungalows-sunset.jpg */,
 				8796DF6115EB58EFFCE33BF6 /* beach-cottage-night.jpg */,
 				16BBDD1B2CF15D129C4B076F /* clear-night.jpg */,
+				790D54DF3A98C50BF0B8EEA1 /* cosy-cafe.jpg */,
+				8F16A4AEA3051438B872ACAF /* country-kitchen.jpg */,
 				E430EDBD572B0C5A3B147DBA /* evening-meadow.jpg */,
+				0E4D62799C1BFC30A6A04742 /* fjord-village.jpg */,
+				0012F54B13FA8505C2687B82 /* forest-cabin-night.jpg */,
+				B2EA5635963BE80E0B2E6C0B /* grand-library.jpg */,
+				BD814411B9CA51DA02EA8186 /* japanese-garden-autumn.jpg */,
+				4E8489A5E30A7DFA44A45374 /* japanese-house-garden.jpg */,
+				6DB0F8C26E7004832B7038F0 /* mountain-lake-dawn.jpg */,
+				C77DD93DBA27C98BC20F3841 /* mountain-temple.jpg */,
+				B6AC401557A336764D2FF405 /* pink-beach-town.jpg */,
+				BE47F3737D0629A0F102BD8C /* sequoia-ferns.jpg */,
+				FCC83EA17C676F2D8C04C833 /* space-station.jpg */,
+				DD058E5F1F960588FAF96C98 /* starship-cabin.jpg */,
+				08642CA95FBD721718437E89 /* steampunk-greenhouse.jpg */,
+				78CB3840B546321CC750220F /* stone-village-street.jpg */,
+				409FE7FB8B013D4751674CA7 /* storybook-coast.jpg */,
+				C2A54207BBF980E980927C4B /* storybook-living-room.jpg */,
+				8AA45D6DDB4AD16C783197CB /* storybook-station.jpg */,
+				C92416996DB5208F771C8CBB /* treehouse-night.jpg */,
 			);
 			path = Places;
 			sourceTree = "<group>";
@@ -337,6 +402,7 @@
 				04A39A4CC8DC935824223E5A /* Games.swift */,
 				7F6B9BCCCC55995285EE0920 /* RhythmGame.swift */,
 				318D2A1B213CEF1FE5055CA0 /* Scene3D.swift */,
+				2934622527C2244ADFA7A160 /* TempoAnalyzer.swift */,
 			);
 			path = Games;
 			sourceTree = "<group>";
@@ -551,10 +617,31 @@
 				5EEE72D16F54283324E12570 /* Places in Resources */,
 				85FC0F60F815AACB5EB653D6 /* afterglow-helper.js in Resources */,
 				348FA203915A0E073B48490F /* afterglow-webxr.js in Resources */,
+				3720F035D5F83000098B192C /* baroque-church.jpg in Resources */,
+				1D902A725EF3300FF36A28A2 /* beach-bungalows-sunset.jpg in Resources */,
 				21ED85F6B9E48ADF702FFA39 /* beach-cottage-night.jpg in Resources */,
 				DE359C4BB4ED9F7CD98C51A3 /* clear-night.jpg in Resources */,
+				E516BF6F319A7D941782837F /* cosy-cafe.jpg in Resources */,
+				3A9F4891C6C4D686BE8F5017 /* country-kitchen.jpg in Resources */,
 				D151E7F53F6F570BD5827F0C /* evening-meadow.jpg in Resources */,
+				81CE956448CD4D2CC6F3861F /* fjord-village.jpg in Resources */,
+				B446BA54C32BA333B6EBFAC9 /* forest-cabin-night.jpg in Resources */,
+				52505BE6706917719D30E6FE /* grand-library.jpg in Resources */,
 				A60D870018233AC8AD7E288C /* index.html in Resources */,
+				0EAFCD29ABB6F398F2D5A100 /* japanese-garden-autumn.jpg in Resources */,
+				00B2DB7C887E41AEAF9AB2C5 /* japanese-house-garden.jpg in Resources */,
+				E521ACBFFD1AD70FD1F63F92 /* mountain-lake-dawn.jpg in Resources */,
+				660CAFA8E43B59C599427893 /* mountain-temple.jpg in Resources */,
+				E05F1E82B7251BD7DBE0CFBC /* pink-beach-town.jpg in Resources */,
+				807788B2D8EEBE3F6D84194F /* sequoia-ferns.jpg in Resources */,
+				F36D3CB29CBD862A26231676 /* space-station.jpg in Resources */,
+				2DD06DB7B09858DE25C7D2C7 /* starship-cabin.jpg in Resources */,
+				E7FA97D93DC749774CA30914 /* steampunk-greenhouse.jpg in Resources */,
+				E0124F44E0DFEF7B9BB3F186 /* stone-village-street.jpg in Resources */,
+				F3B74C3204EEAC6ACF229472 /* storybook-coast.jpg in Resources */,
+				0C56DF0C2BF03AA99439AD14 /* storybook-living-room.jpg in Resources */,
+				EED18ACE5F4CD68F6C9AFE06 /* storybook-station.jpg in Resources */,
+				733020827646768CFE810FF2 /* treehouse-night.jpg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -626,6 +713,7 @@
 				EE2AE67EB8156EB501AED089 /* SettingsWindow.swift in Sources */,
 				E386311B4A1748A01C31E880 /* Shaders.metal in Sources */,
 				E13FF8F6F98AF4B5D65CBB41 /* SkyboxGenerator.swift in Sources */,
+				E9741B6C668F03D1A01BDAF2 /* TempoAnalyzer.swift in Sources */,
 				D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */,
 				77C5951CAE44BFA58BE8C46A /* Toolbar.swift in Sources */,
 				91E95FC2F446BEEE1D5D8481 /* UltraWideController.swift in Sources */,
@@ -747,7 +835,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8ZVSPZYSVF;
 				INFOPLIST_FILE = Afterglow/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -832,7 +919,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8ZVSPZYSVF;
 				INFOPLIST_FILE = Afterglow/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

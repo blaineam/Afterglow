@@ -85,6 +85,8 @@ final class HandTracker: @unchecked Sendable {
         /// The wrist relative to the knuckles' centre, kept from results where the wrist was seen,
         /// for results where it is at the image's edge and guessed.
         var wristOffset: SIMD3<Float>?
+        /// Set when the hand has just come back into view: the pinch is re-judged from the tips.
+        var resumed = false
         /// The finger bones' lengths relative to the palm span, averaged over results, and how
         /// many results in a row have been rejected as impossible.
         var boneLengths: [Float] = []
@@ -318,7 +320,7 @@ final class HandTracker: @unchecked Sendable {
                 slots[back].velocity = .zero
                 for j in slots[back].jointFilters.indices { slots[back].jointFilters[j].reset() }
                 slots[back].depthFilter.reset()
-                if slots[back].pinch.isPinched { log("[Pinch] Hand back in view, still pinched") }
+                slots[back].resumed = true
             } else if let fresh = free.first {
                 assigned[i] = fresh
                 used.insert(fresh)
@@ -509,6 +511,14 @@ final class HandTracker: @unchecked Sendable {
             _ = Self.maxStraightCurl
             let tipsInside = [hand.landmarks[HandGeometry.thumbTip], hand.landmarks[HandGeometry.indexTip]].allSatisfy {
                 $0.x > margin && $0.x < Float(width) - margin && $0.y > margin && $0.y < Float(height) - margin
+            }
+            if slot.resumed {
+                // Back in view: a pinch held through the gap stands only if the tips are still
+                // together, else the hand is open (WebXR saw a hand pinched for good, 2026-11-07).
+                slot.resumed = false
+                let was = slot.pinch.isPinched
+                slot.pinch.resume(tipDistance: simd_distance(thumb, index))
+                if was != slot.pinch.isPinched { log("[Pinch] Hand back in view, released: tips apart") } else if was { log("[Pinch] Hand back in view, still pinched") }
             }
             let wasPinched = slot.pinch.isPinched
             let tipsSure = hand.confidences[HandGeometry.thumbTip] >= Self.sureTipConfidence

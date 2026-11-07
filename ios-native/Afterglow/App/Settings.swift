@@ -63,6 +63,8 @@ final class Settings: ObservableObject {
     /// An experiment: open the ultra-wide camera through AVFoundation this many seconds after
     /// ARKit starts, to see whether ARKit keeps tracking beside it (0: never).
     let ultraTestSeconds: Int
+    /// The phase-two grab demo (cubes to pinch), off unless asked for.
+    let demo: Bool
 
     private var loading = true
     private var options: [String: String] = [:]
@@ -99,6 +101,7 @@ final class Settings: ObservableObject {
         textScaleLive = min(max(Self.read("textScale", options: options, default: 175), 50), 300)
         phoneView = Self.read("view", options: options, default: 0) != 0
         ultraTestSeconds = Self.read("ultraTest", options: options, default: 0)
+        demo = (options["demo"].flatMap(Int.init) ?? 0) != 0
         loading = false
         let given = options.keys.sorted().map { "\($0) \(options[$0]!)" }.joined(separator: ", ")
         log("[Stereo] Launch options: \(given.isEmpty ? "none" : given)")

@@ -98,6 +98,12 @@ final class MediaLibrary {
         return result
     }
 
+    /// The album's cover: its newest item's thumbnail.
+    func cover(for album: MediaAlbum) async -> UIImage? {
+        guard let first = items(in: album, limit: 1).first else { return nil }
+        return await thumbnail(for: first)
+    }
+
     static let allId = "afterglow.all"
     static let threeSixtyId = "afterglow.360"
     /// Whether an album is made for the headset: spatial, panoramas or 360.

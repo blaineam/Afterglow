@@ -15,7 +15,7 @@ struct PinchDetector {
     private var openRun = 0
     private var closeRun = 0
 
-    init(closeDistance: Float = 0.025, openDistance: Float = 0.045, releaseResults: Int = 3, startResults: Int = 4) {
+    init(closeDistance: Float = 0.03, openDistance: Float = 0.05, releaseResults: Int = 3, startResults: Int = 2) {
         self.closeDistance = closeDistance
         self.openDistance = openDistance
         self.releaseResults = releaseResults
@@ -51,6 +51,13 @@ struct PinchDetector {
             closeRun = 0
         }
         return isPinched
+    }
+
+    /// A hand back in view: its pinch stands only if the tips are still together.
+    mutating func resume(tipDistance: Float) {
+        if isPinched && tipDistance > closeDistance { isPinched = false }
+        openRun = 0
+        closeRun = 0
     }
 
     mutating func reset() {

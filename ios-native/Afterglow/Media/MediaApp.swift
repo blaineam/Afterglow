@@ -10,37 +10,54 @@ struct GridView: View {
     let hovered: String?
     let title: String
     let columns: Int
+    var albums = false
+    var buttons: [ScenePanel.Button] = []
+    var emptyText: String? = nil
 
     var body: some View {
-        let gap: CGFloat = 14
-        let cellW = (size.width - gap * CGFloat(columns + 1)) / CGFloat(columns)
-        let rows = max(1, Int(ceil(Double(cells.count) / Double(columns))))
-        let cellH = min(cellW * 0.8, (size.height - 120 - gap * CGFloat(rows + 1)) / CGFloat(rows))
+        // The same geometry as the buttons: the grid under the tabs, arrows at the right.
+        let gap = 0.009 * size.width, top = 0.125 * size.height, left = 0.01 * size.width, gridWidth = 0.90 * size.width
+        let rowsShown = albums ? MediaApp.albumRows : MediaApp.itemRows
+        let cellW = (gridWidth - gap * CGFloat(columns - 1)) / CGFloat(columns)
+        let cellH = (0.99 * size.height - top - gap * CGFloat(rowsShown - 1)) / CGFloat(rowsShown)
         ZStack(alignment: .topLeading) {
             PanelStyle.glass()
-            Text(title).font(.system(size: 54, weight: .semibold, design: .rounded)).foregroundStyle(PanelStyle.text).lineLimit(1)
-                .padding(.horizontal, 44).padding(.top, 26)
+            if !title.isEmpty {
+                Text(title).font(.system(size: 54, weight: .semibold, design: .rounded)).foregroundStyle(PanelStyle.text).lineLimit(1)
+                    .padding(.horizontal, 44).padding(.top, 120)
+            }
+            // The tabs, the folder and back buttons, and the scroll arrows: everything that is not a cell.
+            ButtonsView(size: size, buttons: buttons.filter { !$0.id.hasPrefix("item:") && !$0.id.hasPrefix("album:") }, hovered: hovered, title: nil, titleHighlight: false, transparent: true)
+            if let emptyText, cells.isEmpty {
+                Text(emptyText).font(.system(size: 54, weight: .medium, design: .rounded)).foregroundStyle(PanelStyle.dim)
+                    .frame(width: size.width, height: size.height * 0.6).position(x: size.width / 2, y: size.height * 0.55)
+            }
             ForEach(Array(cells.enumerated()), id: \.element.id) { index, cell in
                 let col = index % columns, row = index / columns
-                let x = gap + CGFloat(col) * (cellW + gap), y = 110 + gap + CGFloat(row) * (cellH + gap)
-                ZStack(alignment: .bottomLeading) {
-                    RoundedRectangle(cornerRadius: 18).fill(hovered == cell.id ? PanelStyle.keyHover : PanelStyle.key)
-                    if let image = cell.image {
-                        Image(uiImage: image).resizable().aspectRatio(contentMode: .fill)
-                            .frame(width: cellW, height: cellH).clipShape(RoundedRectangle(cornerRadius: 18))
-                            .opacity(hovered == cell.id ? 0.75 : 1)
-                    }
-                    if cell.image == nil {
-                        HStack(spacing: 20) {
-                            Image(systemName: "rectangle.stack.fill").font(.system(size: 44)).foregroundStyle(PanelStyle.accent)
-                            Text(cell.label).font(.system(size: 46, weight: .medium, design: .rounded)).foregroundStyle(PanelStyle.text).lineLimit(1).minimumScaleFactor(0.6)
+                let x = left + CGFloat(col) * (cellW + gap), y = top + CGFloat(row) * (cellH + gap)
+                let imageH = albums ? cellH - 110 : cellH
+                VStack(spacing: 10) {
+                    ZStack(alignment: .bottomLeading) {
+                        RoundedRectangle(cornerRadius: 22, style: .continuous).fill(hovered == cell.id ? PanelStyle.keyHover : PanelStyle.key)
+                        if let image = cell.image, image.size.width > 0 {
+                            Image(uiImage: image).resizable().aspectRatio(contentMode: .fill)
+                                .frame(width: cellW, height: imageH).clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                                .opacity(hovered == cell.id ? 0.8 : 1)
+                        } else if albums {
+                            Image(systemName: "rectangle.stack.fill").font(.system(size: 90)).foregroundStyle(PanelStyle.dim).frame(width: cellW, height: imageH)
                         }
-                        .frame(width: cellW, height: cellH, alignment: .leading).padding(.leading, 28)
-                    } else {
-                        Text(cell.label).font(.system(size: 36, weight: .medium, design: .rounded)).foregroundStyle(PanelStyle.text)
-                            .lineLimit(2).padding(10)
-                            .background(RoundedRectangle(cornerRadius: 12).fill(Color.black.opacity(0.45)))
-                            .padding(8)
+                        if !albums && !cell.label.isEmpty {
+                            Text(cell.label).font(.system(size: 34, weight: .semibold, design: .rounded)).foregroundStyle(.white)
+                                .padding(.horizontal, 14).padding(.vertical, 6)
+                                .background(Capsule().fill(Color.black.opacity(0.55)))
+                                .padding(12)
+                        }
+                        RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(hovered == cell.id ? PanelStyle.pink : Color.white.opacity(0.14), lineWidth: hovered == cell.id ? 6 : 2)
+                    }
+                    .frame(width: cellW, height: imageH)
+                    if albums {
+                        Text(cell.label).font(.system(size: 42, weight: .medium, design: .rounded)).foregroundStyle(hovered == cell.id ? PanelStyle.pink : PanelStyle.text)
+                            .lineLimit(2).minimumScaleFactor(0.6).multilineTextAlignment(.center).frame(width: cellW, height: 96)
                     }
                 }
                 .frame(width: cellW, height: cellH)
@@ -93,10 +110,26 @@ final class MediaApp {
     private(set) var album: MediaAlbum?
     private(set) var items: [MediaItem] = []
     private var thumbnails: [String: UIImage] = [:]
-    private(set) var page = 0
-    private let perPage = 8
-    private let albumsPerPage = 8
-    private(set) var albumPage = 0
+    /// The tabs across the top: the library and the collections made for a headset, and the
+    /// user's albums as covers. The grid under them scrolls by rows: the arrows at its side,
+    /// the gaze held at its top or bottom edge, a pinch dragged up or down over it, or a drag
+    /// on the phone (the owner's 687 albums could not be browsed eight names a page, 2026-11-07).
+    enum Tab: String, CaseIterable { case library, albums, spatial, panoramas, threeSixty, videos
+        var title: String { switch self { case .library: return "Library"; case .albums: return "Albums"; case .spatial: return "Spatial"; case .panoramas: return "Panoramas"; case .threeSixty: return "360°"; case .videos: return "Videos" } }
+        var icon: String { switch self { case .library: return "photo.on.rectangle"; case .albums: return "rectangle.stack"; case .spatial: return "cube.transparent"; case .panoramas: return "pano"; case .threeSixty: return "globe"; case .videos: return "film" } }
+    }
+    private(set) var tab = Tab.library
+    private(set) var row = 0            // the first visible row of items
+    private(set) var albumRow = 0       // and of albums
+    static let itemColumns = 4, itemRows = 3, albumColumns = 4, albumRows = 2
+    private var covers: [String: UIImage] = [:]
+    private var coversLoading = false
+    private var lastEdgeScroll: Double = 0
+    private var dragStartY: Float?
+    private var dragRows = 0
+    /// Kept for the harness and the viewer: the page of the current row.
+    var page: Int { row / Self.itemRows }
+    private var perPage: Int { Self.itemColumns * Self.itemRows }
     private(set) var current: MediaItem?
     private(set) var formatIndex = 0
     private(set) var picture: MTLTexture?
@@ -146,9 +179,8 @@ final class MediaApp {
             Task { @MainActor in
                 guard await library.requestAccess() else { return }
                 albums = library.albums()
-                screen = .albums
                 gridVersion += 1
-                layoutGrid()
+                selectTab(.library)
             }
         }
         layoutGrid()
@@ -184,7 +216,7 @@ final class MediaApp {
             let found = await files.items(in: folder, query: wanted)
             guard wanted == query else { return }
             items = found
-            page = 0
+            row = 0
             thumbnails.removeAll()
             gridVersion += 1
             layoutGrid()
@@ -200,37 +232,140 @@ final class MediaApp {
         eyes = nil
     }
 
+    /// The album a tab stands for, from the library's collections.
+    private func album(for tab: Tab) -> MediaAlbum? {
+        switch tab {
+        case .library: return albums.first { $0.collection?.assetCollectionSubtype == .smartAlbumUserLibrary }
+        case .spatial: return albums.first { $0.collection?.assetCollectionSubtype == .smartAlbumSpatial }
+        case .panoramas: return albums.first { $0.collection?.assetCollectionSubtype == .smartAlbumPanoramas }
+        case .threeSixty: return albums.first { $0.id == MediaLibrary.threeSixtyId }
+        case .videos: return albums.first { $0.collection?.assetCollectionSubtype == .smartAlbumVideos }
+        case .albums: return nil
+        }
+    }
+
+    /// The user's own albums, for the Albums tab: everything that is not a smart collection.
+    private var userAlbums: [MediaAlbum] { albums.filter { $0.collection?.assetCollectionType == .album } }
+
+    func selectTab(_ newTab: Tab) {
+        tab = newTab
+        player.close()
+        current = nil
+        if newTab == .albums {
+            screen = .albums
+            albumRow = 0
+            layoutGrid()
+            loadCovers()
+        } else if let a = album(for: newTab) {
+            openAlbum(a, limit: newTab == .library ? 600 : 400)
+        } else {
+            album = nil
+            items = []
+            screen = .items
+            layoutGrid()
+        }
+        log("[Media] Tab \(newTab.title): \(screen == .albums ? userAlbums.count : items.count) entries")
+    }
+
+    private var visibleAlbums: ArraySlice<MediaAlbum> {
+        let all = files.map { _ in [MediaAlbum]() } ?? userAlbums
+        let start = albumRow * Self.albumColumns
+        return all.dropFirst(start).prefix(Self.albumColumns * Self.albumRows)
+    }
+
+    /// Scrolls the grid by rows, clamped to the content.
+    func scroll(rows: Int) {
+        if screen == .albums {
+            let total = files?.folders.count ?? userAlbums.count
+            let maxRow = max(0, (total + Self.albumColumns - 1) / Self.albumColumns - Self.albumRows)
+            albumRow = min(max(albumRow + rows, 0), maxRow)
+            loadCovers()
+        } else if screen == .items {
+            let maxRow = max(0, (items.count + Self.itemColumns - 1) / Self.itemColumns - Self.itemRows)
+            row = min(max(row + rows, 0), maxRow)
+            loadThumbnails()
+        }
+        layoutGrid()
+    }
+
+    /// A drag on the phone's screen over the grid: 150 points a row.
+    private var panAccumulated: Float = 0
+    func scrollBy(pixels: Float) {
+        panAccumulated += pixels
+        while panAccumulated > 150 { scroll(rows: -1); panAccumulated -= 150 }
+        while panAccumulated < -150 { scroll(rows: 1); panAccumulated += 150 }
+    }
+
+    /// Per frame while the grid is up: the gaze held at the grid's top or bottom edge scrolls a
+    /// row every half second; a pinch held on the grid and moved up or down scrolls with it.
+    func gaze(uv: SIMD2<Float>?, pinchHeld: Bool, time: Double) {
+        guard screen != .viewing else { return }
+        if pinchHeld, let uv {
+            if dragStartY == nil { dragStartY = uv.y; dragRows = 0 }
+            let rowsNow = Int(((dragStartY ?? uv.y) - uv.y) / -0.09)
+            if rowsNow != dragRows { scroll(rows: rowsNow - dragRows); dragRows = rowsNow }
+            return
+        }
+        dragStartY = nil
+        guard let uv, time - lastEdgeScroll > 0.5 else { return }
+        if uv.y > 0.95 { lastEdgeScroll = time; scroll(rows: 1) }
+        else if uv.y > 0.12 && uv.y < 0.18 { lastEdgeScroll = time; scroll(rows: -1) }
+    }
+
     private func layoutGrid() {
         var buttons: [ScenePanel.Button] = []
-        let columns = screen == .albums ? 2 : 4
-        let count: Int
-        switch screen {
-        case .albums: count = min(albumsPerPage, max(0, (files?.folders.count ?? albums.count) - albumPage * albumsPerPage))
-        case .items: count = min(perPage, items.count - page * perPage)
-        case .viewing: count = 0
-        }
-        let gap: CGFloat = 14 / 1600, top: CGFloat = (110 + 14) / 1000
-        let cellW = (1 - gap * CGFloat(columns + 1)) / CGFloat(columns)
-        let rows = max(1, Int(ceil(Double(count) / Double(columns))))
-        let cellH = min(cellW * 1.6 * (screen == .albums ? 0.25 : 0.8), (1 - top - gap * CGFloat(rows + 1)) / CGFloat(rows))
-        for i in 0..<max(count, 0) {
-            let col = i % columns, row = i / columns
-            let id: String
-            switch screen {
-            case .albums: id = "album:\(albumPage * albumsPerPage + i)"
-            case .items: id = "item:\(page * perPage + i)"
-            case .viewing: id = ""
-            }
-            buttons.append(.init(id: id, rect: CGRect(x: gap + CGFloat(col) * (cellW + gap), y: top + CGFloat(row) * (cellH + gap), width: cellW, height: cellH), label: ""))
-        }
-        // The header's own buttons: back, previous and next page.
+        // The tabs (or, for Files, the folder button), then the grid with its arrows at the side.
         if files != nil {
-            buttons.append(.init(id: "addfolder", rect: CGRect(x: 0.50, y: 0.012, width: 0.2, height: 0.1), label: "Folder", wide: true, icon: "folder.badge.plus", style: .pill))
+            buttons.append(.init(id: "addfolder", rect: CGRect(x: 0.01, y: 0.012, width: 0.24, height: 0.095), label: "Add folder", wide: true, icon: "folder.badge.plus", style: .pill))
+            if screen == .items {
+                buttons.append(.init(id: "back", rect: CGRect(x: 0.27, y: 0.012, width: 0.2, height: 0.095), label: "Folders", wide: true, icon: "chevron.left", style: .pill))
+            }
+        } else {
+            var x: CGFloat = 0.01
+            for t in Tab.allCases {
+                let w: CGFloat = t == .threeSixty || t == .videos || t == .spatial ? 0.14 : 0.16
+                buttons.append(.init(id: "tab:\(t.rawValue)", rect: CGRect(x: x, y: 0.012, width: w - 0.008, height: 0.095), label: t.title, wide: true, icon: nil, style: .pill, accent: tab == t))
+                x += w
+            }
         }
-        buttons.append(.init(id: "back", rect: CGRect(x: 0.72, y: 0.012, width: 0.08, height: 0.1), label: "Back", icon: "chevron.left", style: .round))
-        buttons.append(.init(id: "prev", rect: CGRect(x: 0.81, y: 0.012, width: 0.08, height: 0.1), label: "Previous page", icon: "arrow.left", style: .round))
-        buttons.append(.init(id: "next", rect: CGRect(x: 0.90, y: 0.012, width: 0.08, height: 0.1), label: "Next page", icon: "arrow.right", style: .round))
-        grid.set(buttons: buttons, version: "grid\(gridVersion)|\(screen)|\(page)|\(thumbnails.count)")
+        let columns = screen == .albums ? Self.albumColumns : Self.itemColumns
+        let rowsShown = screen == .albums ? Self.albumRows : Self.itemRows
+        let gap: CGFloat = 0.009, top: CGFloat = 0.125, left: CGFloat = 0.01, gridWidth: CGFloat = 0.90
+        let cellW = (gridWidth - gap * CGFloat(columns - 1)) / CGFloat(columns)
+        let cellH = (0.99 - top - gap * CGFloat(rowsShown - 1)) / CGFloat(rowsShown)
+        let count: Int
+        let first: Int
+        switch screen {
+        case .albums:
+            let total = files?.folders.count ?? userAlbums.count
+            first = albumRow * columns
+            count = min(columns * rowsShown, max(0, total - first))
+        case .items:
+            first = row * columns
+            count = min(columns * rowsShown, max(0, items.count - first))
+        case .viewing: first = 0; count = 0
+        }
+        for i in 0..<count {
+            let col = i % columns, r = i / columns
+            let id = screen == .albums ? "album:\(first + i)" : "item:\(first + i)"
+            buttons.append(.init(id: id, rect: CGRect(x: left + CGFloat(col) * (cellW + gap), y: top + CGFloat(r) * (cellH + gap), width: cellW, height: cellH), label: ""))
+        }
+        buttons.append(.init(id: "up", rect: CGRect(x: 0.925, y: top, width: 0.065, height: 0.11), label: "Up", icon: "chevron.up", style: .round))
+        buttons.append(.init(id: "down", rect: CGRect(x: 0.925, y: 0.87, width: 0.065, height: 0.11), label: "Down", icon: "chevron.down", style: .round))
+        grid.set(buttons: buttons, version: "grid\(gridVersion)|\(screen)|\(tab)|\(row)|\(albumRow)|\(thumbnails.count)|\(covers.count)|\(items.count)")
+    }
+
+    private func loadCovers() {
+        let wanted = visibleAlbums.filter { covers[$0.id] == nil }
+        guard !wanted.isEmpty, !coversLoading else { return }
+        coversLoading = true
+        Task { @MainActor in
+            for a in wanted { covers[a.id] = await library.cover(for: a) ?? UIImage() }
+            coversLoading = false
+            gridVersion += 1
+            layoutGrid()
+            loadCovers()
+        }
     }
 
     private func layoutControls() {
@@ -266,16 +401,11 @@ final class MediaApp {
     func press(_ id: String) {
         switch id {
         case "back":
-            if screen == .items { screen = .albums; page = 0 }
-            else if screen == .viewing { exitViewer() }
-            layoutGrid()
-        case "prev":
-            if screen == .albums { if albumPage > 0 { albumPage -= 1 } } else if page > 0 { page -= 1 }
-            layoutGrid()
-        case "next":
-            if screen == .albums { if (albumPage + 1) * albumsPerPage < (files?.folders.count ?? albums.count) { albumPage += 1 } }
-            else if (page + 1) * perPage < items.count { page += 1 }
-            layoutGrid()
+            if screen == .viewing { exitViewer() }
+            else if files != nil { screen = .albums; layoutGrid() }
+            else { selectTab(.albums) }
+        case "up", "prev": scroll(rows: -(screen == .albums ? Self.albumRows : Self.itemRows))
+        case "down", "next": scroll(rows: screen == .albums ? Self.albumRows : Self.itemRows)
         case "exit": exitViewer()
         case "play": player.togglePlay(); layoutControls()
         case "back10": player.skip(-10)
@@ -291,9 +421,10 @@ final class MediaApp {
         case "yawR": yaw += .pi / 12
         case "addfolder": onPickFolder?()
         default:
-            if id.hasPrefix("album:"), let i = Int(id.dropFirst(6)) {
+            if id.hasPrefix("tab:"), let t = Tab(rawValue: String(id.dropFirst(4))) { selectTab(t) }
+            else if id.hasPrefix("album:"), let i = Int(id.dropFirst(6)) {
                 if let files, files.folders.indices.contains(i) { openFolder(files.folders[i]) }
-                else if albums.indices.contains(i) { openAlbum(albums[i]) }
+                else if userAlbums.indices.contains(i) { openAlbum(userAlbums[i]) }
             }
             else if id.hasPrefix("item:"), let i = Int(id.dropFirst(5)), items.indices.contains(i) { view(items[i]) }
             else if id.hasPrefix("seek:"), let i = Int(id.dropFirst(5)) { player.seek(fraction: Double(i) / 10) }
@@ -301,10 +432,10 @@ final class MediaApp {
         }
     }
 
-    private func openAlbum(_ album: MediaAlbum) {
+    private func openAlbum(_ album: MediaAlbum, limit: Int = 400) {
         self.album = album
-        items = library.items(in: album)
-        page = 0
+        items = library.items(in: album, limit: limit)
+        row = 0
         screen = .items
         thumbnails.removeAll()
         layoutGrid()
@@ -330,7 +461,8 @@ final class MediaApp {
     }
 
     private func loadThumbnails() {
-        let wanted = items.dropFirst(page * perPage).prefix(perPage).filter { thumbnails[$0.id] == nil }
+        let first = row * Self.itemColumns
+        let wanted = items.dropFirst(first).prefix(Self.itemColumns * (Self.itemRows + 1)).filter { thumbnails[$0.id] == nil }
         guard !wanted.isEmpty, !loading else { return }
         loading = true
         Task { @MainActor in
@@ -397,6 +529,7 @@ final class MediaApp {
         current = nil
         screen = items.isEmpty ? .albums : .items
         layoutGrid()
+        loadThumbnails()
     }
 
     /// The uniforms for this frame's media pass, and the textures.
@@ -459,18 +592,29 @@ final class MediaApp {
             var cells: [GridCell] = []
             switch screen {
             case .albums:
-                if let files { cells = files.folders.dropFirst(albumPage * albumsPerPage).prefix(albumsPerPage).map { GridCell(id: $0.id, image: nil, label: $0.name) } }
-                else { cells = albums.dropFirst(albumPage * albumsPerPage).prefix(albumsPerPage).map { GridCell(id: $0.id, image: nil, label: "\($0.title)  ·  \($0.count)") } }
-            case .items: cells = items.dropFirst(page * perPage).prefix(perPage).map { GridCell(id: $0.id, image: thumbnails[$0.id], label: "\($0.kind.rawValue) \($0.title)") }
+                if let files { cells = files.folders.dropFirst(albumRow * Self.albumColumns).prefix(Self.albumColumns * Self.albumRows).map { GridCell(id: $0.id, image: nil, label: $0.name) } }
+                else { cells = visibleAlbums.map { GridCell(id: $0.id, image: covers[$0.id], label: "\($0.title)  ·  \($0.count)") } }
+            case .items:
+                cells = items.dropFirst(row * Self.itemColumns).prefix(Self.itemColumns * Self.itemRows).map { item in
+                    let badge: String
+                    switch item.kind {
+                    case .spatialPhoto, .spatialVideo: badge = "Spatial"
+                    case .photo360, .video360: badge = "360°"
+                    case .photo180, .video180: badge = "180°"
+                    case .panorama: badge = "Panorama"
+                    case .video: badge = item.duration > 0 ? String(format: "%d:%02d", Int(item.duration) / 60, Int(item.duration) % 60) : "Video"
+                    case .photo: badge = ""
+                    }
+                    return GridCell(id: item.id, image: thumbnails[item.id], label: badge)
+                }
             case .viewing: break
             }
             let title: String
-            if screen == .albums {
-                let total = files?.folders.count ?? albums.count
-                title = (files != nil ? "Files" : "Photos") + (total > albumsPerPage ? " · page \(albumPage + 1) of \((total + albumsPerPage - 1) / albumsPerPage)" : "")
+            if files != nil {
+                title = screen == .albums ? "Files" : "\(folder?.name ?? "") · \(query.isEmpty ? "type to search" : "search: " + query + "▏")"
+            } else {
+                title = ""
             }
-            else if files != nil { title = "\(folder?.name ?? "") · \(query.isEmpty ? "type to search" : "search: " + query + "▏") · page \(page + 1) of \(max(1, (items.count + perPage - 1) / perPage))" }
-            else { title = "\(album?.title ?? "") · page \(page + 1) of \(max(1, (items.count + perPage - 1) / perPage))" }
             grid.render(GridView(size: CGSize(width: 1600, height: 1000), cells: cells, hovered: grid.hovered.flatMap { h in
                 // The hovered button id maps to the cell id.
                 if h.hasPrefix("album:"), let i = Int(h.dropFirst(6)) {
@@ -479,7 +623,8 @@ final class MediaApp {
                 }
                 if h.hasPrefix("item:"), let i = Int(h.dropFirst(5)), items.indices.contains(i) { return items[i].id }
                 return nil
-            }, title: title, columns: screen == .albums ? 2 : 4))
+            }, title: title, columns: screen == .albums ? Self.albumColumns : Self.itemColumns, albums: screen == .albums, buttons: grid.buttons,
+               emptyText: screen == .albums ? (files != nil ? "Add a folder to browse" : "No albums of your own yet") : (tab == .spatial ? "No spatial photos or videos" : tab == .panoramas ? "No panoramas" : tab == .threeSixty ? "No 360° pictures" : "Nothing here")))
         }
     }
 }

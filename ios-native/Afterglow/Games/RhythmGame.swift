@@ -51,6 +51,8 @@ final class RhythmGame: Game {
         }
         usingMusic = music?.isPlaying ?? false
         if usingMusic {
+            // The song's measured tempo, when its audio could be read; else the tempo set.
+            if let measured = music?.currentTempo { bpm = measured }
             // The beat grid starts on the next whole beat of the song's clock.
             let t = music?.playbackTime ?? 0
             startTime = time + (beat - t.truncatingRemainder(dividingBy: beat))

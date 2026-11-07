@@ -270,9 +270,12 @@ furniture like the panels do. The games (`Games/Games.swift`):
 - **Rhythm** (`Games/RhythmGame.swift`): glossy gems travel in along four lane rails to rings
   that pulse on the beat; punch or pinch one as it reaches its ring, or select with the gaze on
   the lane, to score with combos; hits flare. When the Music app has Apple Music playing, the
-  notes run to the song's clock at the tempo set with the games panel's slower and faster
-  buttons (a protected stream cannot be beat-analysed, so the tempo is the player's); otherwise
-  a built-in synthesiser plays a synthwave beat.
+  notes run to the song's clock at its measured tempo: `Games/TempoAnalyzer.swift` reads ninety
+  seconds of the song's own audio through AVAssetReader (when the device holds it unprotected:
+  purchased, matched or ripped), takes an onset curve from the energy's rises and the strongest
+  autocorrelation between 70 and 180 bpm, and keeps the answer by song id. A protected Apple
+  Music stream gives no samples, so the tempo set with the games panel's slower and faster
+  buttons stands for those. Without music a built-in synthesiser plays a synthwave beat.
 
 In the Simulator the test script's `fakehand 1|0|punch|off` stands in for a hand and `tap`
 for the headset's double tap; every game has been run by script with the screen captured, and
@@ -327,13 +330,15 @@ and the whole thing a pile of button grids, so the interface was remade on one d
 - **Browser chrome**: back, forward, reload, the address pill (select it for the keyboard),
   keyboard, dictation, bookmark and start on the first row; tabs as pills with new, private and
   close on the second; a login prompt takes the second row when there is one.
-- **Photos**: the collections made for a headset first (Spatial, Panoramas, and a 360
-  collection found by shape over the whole library), then Recents, Favorites, Videos and the
-  user's albums, as a paged list of large rows (eight a page, arrows in the header); items eight
-  a page in four columns. The viewer's controls: back to the album, previous and next, the
-  format, recentre and turn, with the transport and a seek bar for videos and, for pictures, a
-  filmstrip of the neighbouring pictures to press. A 360, 180 or panorama picture is the
-  surroundings while it plays, passthrough or not.
+- **Photos**: tabs across the top (Library, Albums, Spatial, Panoramas, 360°, Videos) over a
+  grid that scrolls by rows: twelve pictures in view with a badge for what each is (Spatial,
+  360°, Panorama, a video's length), or the user's own albums as covers with their names and
+  counts, eight in view. Scroll with the arrows at the grid's side, by holding the gaze at its
+  top or bottom edge, by holding a pinch on it and moving the hand up or down, or by dragging
+  on the phone. The viewer's controls: back to the grid, previous and next, the format,
+  recentre and turn, with the transport and a seek bar for videos and, for pictures, a filmstrip
+  of the neighbouring pictures to press. A 360, 180 or panorama picture is the surroundings
+  while it plays, passthrough or not.
 - **Windows open in free slots**: a new window takes the nearest free arc round the user,
   ahead first, then alternately right and left, never through an open window.
 
@@ -346,10 +351,11 @@ screen through the blit pipeline. The head is still tracked, so the phone is a w
 around the room. A tap selects what it lands on (the tap's pixel becomes the pointer ray for
 that frame), a double tap brings up the system keyboard (the view is a `UIKeyInput`; text goes
 where dictation goes, Return is Go), a drag scrolls the page or swipes between pictures in the
-viewer, a long press ends a WebXR session. Without tracking (the Simulator) a drag still turns
-the head.
+viewer, a three-second press ends a WebXR session, and a two-finger tap shows or hides the
+control strip (a single tap is a select). Taps reach every panel, the window bars included.
+Without tracking (the Simulator) a drag still turns the head.
 
-## Pinch, second round (and third)
+## Pinch, second round (and third, and fourth)
 
 The phone round found real pinches blocked and a "perspective trick" (a straight index finger
 whose tip the thumb crosses in the image) accepted. The LiDAR tip-depth rule was the cause of
@@ -359,8 +365,13 @@ to tip over the length along its bones, in the image, which is 1 for a straight 
 angle (the points stay in line) and 0.6-0.85 in a pinch. That too failed on the phone: from the
 headset's camera the index finger points at the lens in a pinch and its joints project in a line
 (0.91-0.99 on every real pinch), so the curl is logged and no longer gates. The tips' distance
-with its hysteresis and the four-result start decide; the edge-on guard is looser (40 % open
-blocks a start, not 60 %). A wrist at the image's edge, or one Vision was unsure of, is held
+with its hysteresis decide: a start closer than 3 cm for two results, a release past 5 cm for
+three (a four-result start at 2.5 cm took about a second on the phone); the edge-on guard is
+looser (40 % open blocks a start, not 60 %). A hand back in view after a gap keeps its pinch only
+if the tips are still together; WebXR had seen hands pinched for good after they returned. A
+WebXR session ends on the viewer's double tap or a three-second press on the screen, never a
+pinch, and runs in 3DoF on the ultra-wide camera at 30 hand images a second while it lasts.
+The grab demo's cubes are behind the `demo 1` launch option. A wrist at the image's edge, or one Vision was unsure of, is held
 where the knuckles say it was last seen, so the hand no longer folds forward at the wrist when
 it reaches the camera's edge.
 

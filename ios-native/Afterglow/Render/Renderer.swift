@@ -111,6 +111,9 @@ final class Renderer {
     private var lastSettingsText = ""
     private var dumped = false
     private var homeOpened = false
+    private var wasImmersive = false
+    private var dofBeforeSession: Int?
+    private var handHzBeforeSession: Int?
     private var rideTransform = matrix_identity_float4x4
     /// Phone view: a tap this frame at a point on the screen (0-1 across and down), which is
     /// where the pointer goes for the frame; the pointer otherwise sits at the screen's centre.
@@ -384,6 +387,8 @@ final class Renderer {
         if !hasTracking { deskLook(yawDelta: -dx * 0.004, pitchDelta: -dy * 0.004); return }
         if let media, media.screen == .viewing {
             if ended, abs(totalDx) > 80 { media.press(totalDx < 0 ? "nextItem" : "prevItem") }
+        } else if let media, windows?.window(.media)?.minimized == false || windows?.window(.files)?.minimized == false {
+            media.scrollBy(pixels: dy)
         } else {
             browser?.scroll(dy: -dy * 2)
         }
@@ -744,6 +749,22 @@ final class Renderer {
         uniforms.passthroughBlend = settings.passthrough ? 1 : 0
 
         lastHead = headInWorld
+        // A WebXR session runs on the ultra-wide camera in 3DoF (its wider view makes the hands
+        // easier to use, owner 2026-11-07); the mode comes back when the session ends.
+        let immersiveNow = browser?.isImmersive ?? false
+        if immersiveNow != wasImmersive {
+            wasImmersive = immersiveNow
+            if immersiveNow {
+                dofBeforeSession = settings.degreesOfFreedom
+                handHzBeforeSession = settings.handHzLive
+                if settings.degreesOfFreedom != 3 { settings.degreesOfFreedom = 3; log("[WebXR] 3DoF ultra-wide for the session") }
+                // More hand images a second while a page's pointer rides on them.
+                settings.handHzLive = max(settings.handHzLive, 30)
+            } else {
+                if let before = dofBeforeSession, before != settings.degreesOfFreedom { settings.degreesOfFreedom = before; log("[WebXR] Back to \(before)DoF") }
+                if let hz = handHzBeforeSession { settings.handHzLive = hz }
+            }
+        }
         // The pointer: the gaze, or in the phone view the point tapped this frame.
         tapPoint = pendingTapPoint
         pendingTapPoint = nil
@@ -820,6 +841,8 @@ final class Renderer {
         if tap != 0 {
             tapRequests.value = 0
             if tap == 1 {
+                // A double tap on the viewer ends a WebXR session: distinct from any pinch.
+                if browser?.isImmersive == true { browser?.endSession(); log("[WebXR] Session ended by the viewer's double tap") }
                 doubleTapPending = true
                 doubleTapTarget = browser?.window.gaze(from: pointerHead)?.uv
             } else {
@@ -836,7 +859,7 @@ final class Renderer {
         var pinchHeld = tracked.contains { $0.pinched }
         if fakeHand?.pinched == true { pinchHeld = true }
         if let windows, !lockedNow {
-            let result = windows.frame(head: headInWorld, select: select, pinchHeld: pinchHeld, time: t2)
+            let result = windows.frame(head: pointerHead, select: select, pinchHeld: pinchHeld, time: t2)
             if result.consumed { select = false }
             for w in windows.visible {
                 switch w.kind {
@@ -912,7 +935,8 @@ final class Renderer {
                 if let t = keyboard.panel.texture { toolbarQuads.append((t, 2)) }
             }
         }
-        if browser == nil && games == nil && !lockedNow {
+        // The grab demo's cubes are a launch option (`demo 1`), not part of the interface.
+        if settings.demo && browser == nil && games == nil && !lockedNow {
             grabDemo.update(hands: tracked, time: predictTo)
             grabDemo.draw(into: &overlay)
         }
@@ -1021,6 +1045,7 @@ final class Renderer {
             let panel = media.screen == .viewing ? media.controls : media.grid
             var hit = panel.pane.hit(origin: origin, direction: forward)
             _ = panel.hover(hit?.uv)
+            media.gaze(uv: hit?.uv, pinchHeld: pinchHeld, time: t2)
             // The keyboard under the Files grid types the search.
             let filesKeys = media.isFiles && media.screen == .items
             if filesKeys, let keyboard {

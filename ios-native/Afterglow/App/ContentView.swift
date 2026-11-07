@@ -15,7 +15,7 @@ struct ContentView: View {
         MetalView(model: model)
             .ignoresSafeArea()
             .contentShape(Rectangle())
-            .onTapGesture { toggleControls() }
+            .onReceive(NotificationCenter.default.publisher(for: .afterglowToggleStrip)) { _ in toggleControls() }
             .overlay(alignment: .bottom) {
                 if controlsShown {
                     controls
@@ -219,12 +219,17 @@ final class MetalLayerView: UIView, UIKeyInput {
         let doubleTap = UITapGestureRecognizer(target: self, action: #selector(doubleTapped(_:)))
         doubleTap.numberOfTapsRequired = 2
         addGestureRecognizer(doubleTap)
+        // Two fingers show and hide the control strip; one finger selects (owner, 2026-11-07: the
+        // strip could not be reached after launch).
+        let twoFinger = UITapGestureRecognizer(target: self, action: #selector(twoFingerTapped(_:)))
+        twoFinger.numberOfTouchesRequired = 2
+        addGestureRecognizer(twoFinger)
         let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
         tap.cancelsTouchesInView = false
         tap.require(toFail: doubleTap)
         addGestureRecognizer(tap)
         let hold = UILongPressGestureRecognizer(target: self, action: #selector(held(_:)))
-        hold.minimumPressDuration = 1.5
+        hold.minimumPressDuration = 3.0
         addGestureRecognizer(hold)
         let pan = UIPanGestureRecognizer(target: self, action: #selector(panned(_:)))
         pan.maximumNumberOfTouches = 1
@@ -239,6 +244,10 @@ final class MetalLayerView: UIView, UIKeyInput {
         } else {
             model?.renderer?.screenTapped()
         }
+    }
+
+    @objc private func twoFingerTapped(_ gesture: UITapGestureRecognizer) {
+        NotificationCenter.default.post(name: .afterglowToggleStrip, object: nil)
     }
 
     @objc private func doubleTapped(_ gesture: UITapGestureRecognizer) {
@@ -300,4 +309,8 @@ final class MetalLayerView: UIView, UIKeyInput {
             fpsSince = link.timestamp
         }
     }
+}
+
+extension Notification.Name {
+    static let afterglowToggleStrip = Notification.Name("afterglowToggleStrip")
 }
