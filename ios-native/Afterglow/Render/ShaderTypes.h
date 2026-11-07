@@ -26,8 +26,22 @@ typedef struct {
     float captureVideoRange;             // 1 when the image's samples are video range (Y 16-235)
     vector_float4 gridColor;             // the neon grid's line colour; w = 0 keeps the default
     float floorScroll;                   // metres the grid has streamed past (the ride)
-    float pad2[3];
+    int environment;                     // EnvironmentKind
+    float night;                         // 0 day .. 1 night
+    float pad2;
 } FrameUniforms;
+
+// The built-in surroundings, each a sky and a ground drawn procedurally.
+typedef enum {
+    EnvironmentSynthwave = 0,
+    EnvironmentForest = 1,
+    EnvironmentDesert = 2,
+    EnvironmentBeach = 3,
+    EnvironmentRuins = 4,
+    EnvironmentCity = 5,
+    EnvironmentMoon = 6,
+    EnvironmentMars = 7,
+} EnvironmentKind;
 
 typedef struct {
     vector_float2 position;              // NDC over the whole screen

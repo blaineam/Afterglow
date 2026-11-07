@@ -46,6 +46,7 @@ final class Renderer {
     private var surfaceDrawLogged = false
     private var environment = PlacesApp.Choice.synthwave
     private var panoramaKeep: MTLTexture?
+    private var nightAmount: Float = 0
     private var overlayUnoccludedStart = 0
     private var surfacesAppear: Float = 0
     private var quadBuffers: [MTLBuffer] = []
@@ -571,6 +572,10 @@ final class Renderer {
         uniforms.floorHeight = floorHeight
         uniforms.gridColor = gridColor
         uniforms.floorScroll = floorScroll
+        if case .place(let kind) = environment { uniforms.environment = Int32(kind) } else { uniforms.environment = 0 }
+        nightAmount += ((places?.night ?? false) ? 1 : -1) * frameDt / 2
+        nightAmount = min(max(nightAmount, 0), 1)
+        uniforms.night = nightAmount
         uniforms.passthroughBlend = settings.passthrough ? 1 : 0
 
         lastHead = headInWorld

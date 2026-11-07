@@ -9,7 +9,10 @@ import SwiftUI
 final class PlacesApp {
     enum Choice: Equatable {
         case synthwave, room, panorama(URL)
+        case place(Int)     // an EnvironmentKind other than synthwave
     }
+    static let places: [(Int, String)] = [(1, "🌲 Forest"), (2, "🏜 Desert"), (3, "🏖 Beach"), (4, "🏛 Ruins"), (5, "🌆 City"), (6, "🌕 Moon"), (7, "🔴 Mars")]
+    private(set) var night = false
     let panel: ScenePanel
     private(set) var choice = Choice.synthwave
     private(set) var panoramaTexture: MTLTexture?
@@ -46,13 +49,18 @@ final class PlacesApp {
         b.append(.init(id: "synth", rect: CGRect(x: 0.03, y: 0.14, width: 0.3, height: 0.22), label: (choice == .synthwave ? "● " : "") + "Synthwave", wide: true))
         b.append(.init(id: "room", rect: CGRect(x: 0.35, y: 0.14, width: 0.3, height: 0.22), label: (choice == .room ? "● " : "") + "Your room", wide: true))
         b.append(.init(id: "scan", rect: CGRect(x: 0.67, y: 0.14, width: 0.3, height: 0.22), label: "Scan room", wide: true))
-        for (i, url) in panoramas.prefix(8).enumerated() {
-            let col = i % 4, row = i / 4
+        for (i, (kind, name)) in Self.places.enumerated() {
+            let on = choice == .place(kind)
+            b.append(.init(id: "place:\(kind)", rect: CGRect(x: 0.03 + CGFloat(i % 4) * 0.24, y: 0.40 + CGFloat(i / 4) * 0.2, width: 0.22, height: 0.17),
+                           label: (on ? "● " : "") + name, wide: true))
+        }
+        b.append(.init(id: "night", rect: CGRect(x: 0.75, y: 0.60, width: 0.22, height: 0.17), label: night ? "🌙 Night" : "☀️ Day", wide: true))
+        for (i, url) in panoramas.prefix(4).enumerated() {
             let on = choice == .panorama(url)
-            b.append(.init(id: "pano:\(i)", rect: CGRect(x: 0.03 + CGFloat(col) * 0.24, y: 0.42 + CGFloat(row) * 0.26, width: 0.22, height: 0.22),
+            b.append(.init(id: "pano:\(i)", rect: CGRect(x: 0.03 + CGFloat(i) * 0.24, y: 0.80, width: 0.22, height: 0.17),
                            label: (on ? "● " : "") + String(url.deletingPathExtension().lastPathComponent.prefix(14)), wide: true))
         }
-        panel.set(buttons: b, version: "places|\(choice)|\(panoramas.count)")
+        panel.set(buttons: b, version: "places|\(choice)|\(night)|\(panoramas.count)")
     }
 
     func press(_ id: String) -> Bool {
@@ -60,7 +68,9 @@ final class PlacesApp {
         case "synth": choice = .synthwave; panoramaTexture = nil
         case "room": choice = .room; panoramaTexture = nil
         case "scan": return true
+        case "night": night.toggle()
         default:
+            if id.hasPrefix("place:"), let kind = Int(id.dropFirst(6)) { choice = .place(kind); panoramaTexture = nil }
             if id.hasPrefix("pano:"), let i = Int(id.dropFirst(5)), panoramas.indices.contains(i) {
                 let url = panoramas[i]
                 choice = .panorama(url)

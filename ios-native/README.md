@@ -183,9 +183,13 @@ phone.
   Off with `occlusion 0` or the menu's toggle; there is no depth in the 3DoF mode or without
   LiDAR.
 - **Places** (`Room/PlacesApp.swift`): the surroundings are the synthwave scene, the real room
-  (passthrough with the surfaces marked), or a 360 photo or panorama from the Media folder drawn
-  all round through the media projection; and the toolbar's 3DoF switch gives a stationary mode.
-  Later: a 360 photo from the Photos library, and the detailed environments on the roadmap.
+  (passthrough with the surfaces marked), one of seven drawn places, or a 360 photo or panorama
+  from the Media folder drawn all round through the media projection; and the toolbar's 3DoF
+  switch gives a stationary mode. The places (`placeSky`/`placeFloor` in `Shaders.metal`) are
+  procedural, by day and by night with a two-second dusk: a forest (tree line, moss, fireflies at
+  night), a desert (dunes, ripples), a beach (a sea with moving waves and foam), ruins (columns,
+  flagstones), a cyberpunk city (lit towers, wet streets), the Moon (no air, the Earth hanging,
+  craters) and Mars (butterscotch sky, red rock). Clouds drift and stars twinkle.
 
 The Simulator proves the drawing with a synthetic floor and wall (`fakeplanes` in the test
 script); plane detection, the floor height and occlusion need the phone.
