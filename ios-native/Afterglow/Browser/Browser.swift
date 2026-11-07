@@ -309,11 +309,14 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
         // The page zoom that makes text readable in the window would show the session's canvas
         // at 1.5x, one eye across the screen and the other off its edge: the page draws at 1:1
         // for the session and gets its zoom back after.
-        current?.webView.frame = CGRect(origin: .zero, size: pageSize)
-        current?.webView.pageZoom = 1
+        // The view keeps its layout size: changing it here fired a resize the owner's player
+        // answered by disposing its renderer, ending the session 0.2 s in (2026-11-07). The veil
+        // is scaled from whatever size the view has to the screen; the shim sizes the session's
+        // framebuffer itself.
         if let bounds = veil.window?.bounds { screenBounds = bounds }
+        let layout = current?.webView.frame.size ?? pageSize
         veil.alpha = 1
-        veil.transform = CGAffineTransform(scaleX: screenBounds.width / pageSize.width, y: screenBounds.height / pageSize.height)
+        veil.transform = CGAffineTransform(scaleX: screenBounds.width / max(layout.width, 1), y: screenBounds.height / max(layout.height, 1))
         veil.center = CGPoint(x: screenBounds.midX, y: screenBounds.midY)
         veil.superview?.bringSubviewToFront(veil)
         handsWereSent = false
@@ -330,7 +333,6 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
         guard isImmersive else { return }
         isImmersive = false
         veil.alpha = 0.01
-        current?.setTextScale(percent: textScalePercent)
         layoutVeil()
         log("[WebXR] Session ended (\(why))")
     }

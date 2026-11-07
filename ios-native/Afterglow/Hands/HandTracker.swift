@@ -55,6 +55,9 @@ final class HandTracker: @unchecked Sendable {
     /// depth, is edge-on: the fingers are in line with the camera, which sees only the thumb and
     /// guesses the index tip beside it, which read as a pinch (owner, 2026-11-06). No pinch starts.
     private static let edgeOnOpenness: Float = 0.4
+    /// Results in a row a pinch needs to start; three in a WebXR session, where a page acts on
+    /// every select (owner, 2026-11-07: pinches triggered too readily there).
+    var pinchStartResults = 2
     /// Fingertips whose LiDAR depths differ by more than this, metres, are apart along the camera's
     /// axis however close they look: a C-shaped hand turned so its tips cross in the image.
     private static let maxTipDepthGap: Float = 0.02
@@ -529,6 +532,7 @@ final class HandTracker: @unchecked Sendable {
             if isEdgeOn { edgeOn += 1 }
             // Edge-on only stops a pinch starting; a held one still follows the tips, so it can end.
             let tipDistance = simd_distance(thumb, index)
+            slot.pinch.startResults = pinchStartResults
             let pinched = slot.pinch.update(tipDistance: tipDistance, allowStart: tipsInside && !isEdgeOn && indexBent && tipsSeen,
                                             tipsSure: tipsSure)
             // A pinch the tips are making that cannot start: say why, once a second, so a real pinch

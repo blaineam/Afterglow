@@ -55,7 +55,19 @@ final class FileSource: NSObject, UIDocumentPickerDelegate {
         guard let url = urls.first else { return }
         guard url.startAccessingSecurityScopedResource() else { log("[Files] No access to \(url.lastPathComponent)"); return }
         accessed.append(url)
-        guard let data = try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil) else { return }
+        var data: Data?
+        do {
+            data = try url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil)
+        } catch {
+            // Some file providers give no bookmark; the folder still opens for this session.
+            log("[Files] No bookmark for \(url.lastPathComponent) (\(error.localizedDescription)): kept for this session only")
+        }
+        guard let data else {
+            let folder = Folder(id: url.path, name: url.lastPathComponent, url: url, bookmark: nil)
+            folders.append(folder)
+            onPicked?(folder)
+            return
+        }
         var saved = UserDefaults.standard.array(forKey: Self.bookmarksKey) as? [Data] ?? []
         saved.append(data)
         UserDefaults.standard.set(saved, forKey: Self.bookmarksKey)

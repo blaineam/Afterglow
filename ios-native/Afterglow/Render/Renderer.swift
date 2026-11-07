@@ -112,6 +112,8 @@ final class Renderer {
     private var dumped = false
     private var homeOpened = false
     private var wasImmersive = false
+    private var gameWasRunning = false
+    private var dofBeforeGame: Int?
     private var lastDrawnFrameTime: Double = 0
     private var drawnFrames = 0
     private var immersiveSince: Double = 0
@@ -210,6 +212,7 @@ final class Renderer {
         let toolbar = Toolbar(device: device, settings: settings)
         toolbar.onLaunch = { [weak self] app in self?.launch(app) }
         toolbar.onMore = { [weak self] in self?.launch(WindowKind.home) }
+        toolbar.onRestore = { [weak self] kind in self?.launch(kind) }
         toolbar.onRecentre = { [weak self] in self?.recentre() }
         toolbar.onCloseApp = { [weak self] in self?.closeApp() }
         toolbar.onRecord = { [weak self] eye in self?.toggleRecording(eye: eye) }
@@ -250,6 +253,7 @@ final class Renderer {
         case .browser: aspect = 1280.0 / 800.0
         case .media, .files: aspect = 1.6
         case .games: aspect = 1600.0 / 560.0
+        case .gameControls: aspect = 1600.0 / 300.0
         case .places: aspect = 1600.0 / 900.0
         case .settings: aspect = 1.4
         case .music: aspect = 1400.0 / 1000.0
@@ -306,7 +310,7 @@ final class Renderer {
         case .music:
             if music == nil { music = MusicApp(device: device) }
             games?.music = music
-        case .settings, .home:
+        case .settings, .home, .gameControls:
             break
         }
         log("[Home] Opened \(kind.rawValue)")
@@ -320,6 +324,7 @@ final class Renderer {
         case .places: places = nil
         case .music: music = nil
         case .settings, .home: break
+        case .gameControls: games?.press("stop")   // closing a game's controls ends the game
         }
     }
 
@@ -709,7 +714,10 @@ final class Renderer {
         let frameDt = Float(min(max(t2 - lastDrawTime, 0), 0.1))
         let step = frameDt / 0.5
         lastDrawTime = t2
-        let target: Float = settings.passthrough ? 1 : 0
+        // Passthrough for this frame: the setting, except on the coaster, which is a ride through
+        // the scene and makes no sense over the room (owner, 2026-11-07).
+        let passthroughNow = settings.passthrough && !(games?.current is GridRide)
+        let target: Float = passthroughNow ? 1 : 0
         eyesAtCamera += min(max(target - eyesAtCamera, -step), step)
         let headInWorld = cameraInWorld * simd_float4x4.translation(cameraToEyes * (1 - eyesAtCamera))
 
@@ -757,7 +765,7 @@ final class Renderer {
         nightAmount += ((places?.night ?? false) ? 1 : -1) * frameDt / 2
         nightAmount = min(max(nightAmount, 0), 1)
         uniforms.night = nightAmount
-        uniforms.passthroughBlend = settings.passthrough ? 1 : 0
+        uniforms.passthroughBlend = passthroughNow ? 1 : 0
 
         lastHead = headInWorld
         // A WebXR session runs on the ultra-wide camera in 3DoF (its wider view makes the hands
@@ -767,14 +775,16 @@ final class Renderer {
             wasImmersive = immersiveNow
             if immersiveNow {
                 immersiveSince = t2
+                source.hands?.pinchStartResults = 3
                 dofBeforeSession = settings.degreesOfFreedom
                 handHzBeforeSession = settings.handHzLive
                 // More hand images a second while a page's pointer rides on them.
-                settings.handHzLive = max(settings.handHzLive, 30)
+                settings.handHzLive = min(settings.handHzLive, 20)
             } else {
                 if t2 - immersiveSince < 3 { log(String(format: "[WebXR] The session ended %.1f s after it began: the page's doing; see the Session ended line for its reason", t2 - immersiveSince)) }
                 if let before = dofBeforeSession, before != settings.degreesOfFreedom { settings.degreesOfFreedom = before; log("[WebXR] Back to \(before)DoF") }
                 if let hz = handHzBeforeSession { settings.handHzLive = hz }
+                source.hands?.pinchStartResults = 2
                 dofBeforeSession = nil
             }
         }
@@ -899,6 +909,8 @@ final class Renderer {
                     }
                 case .games:
                     if let games { games.panel.pane.centre = w.pane.centre; games.panel.pane.right = w.pane.right; games.panel.pane.up = w.pane.up; games.panel.pane.widthMeters = w.pane.widthMeters }
+                case .gameControls:
+                    if let games { games.controlsPanel.pane = w.pane }
                 case .places:
                     if let places { places.panel.pane.centre = w.pane.centre; places.panel.pane.right = w.pane.right; places.panel.pane.up = w.pane.up; places.panel.pane.widthMeters = w.pane.widthMeters }
                 case .settings:
@@ -973,6 +985,28 @@ final class Renderer {
                 select = false
                 gameSelect = false
             }
+            // A game's start minimizes the launcher and opens the game's own controls; its stop
+            // brings the launcher back (owner, 2026-11-07: the game, not the menu, until they exit).
+            if (games.current != nil) != gameWasRunning {
+                gameWasRunning = games.current != nil
+                if gameWasRunning {
+                    // Painting in the air needs the head's position: 6DoF while it runs.
+                    if games.current is PaintGame, settings.degreesOfFreedom == 3 { dofBeforeGame = 3; settings.degreesOfFreedom = 6; log("[Games] 6DoF for painting") }
+                    windows?.minimize(.games)
+                    if games.hasControls { let w = windows?.open(.gameControls, head: headInWorld, aspect: 1600.0 / 300.0, width: 1.4); w?.pane.centre.y -= 0.35 }
+                } else {
+                    windows?.close(.gameControls)
+                    windows?.open(.games, head: headInWorld, aspect: 1600.0 / 560.0)
+                    if let before = dofBeforeGame { settings.degreesOfFreedom = before; dofBeforeGame = nil }
+                }
+            }
+            if windows?.window(.gameControls)?.minimized == false {
+                let hit = games.controlsPanel.pane.hit(origin: origin, direction: forward)
+                _ = games.controlsPanel.hover(hit?.uv)
+                if select, hit != nil, let id = games.controlsPanel.hovered { games.press(id); select = false; gameSelect = false }
+                games.renderControls()
+                if let t = games.controlsPanel.texture { toolbarQuads.append((t, 26)) }
+            }
             let room = (source as? ARController)?.room
             let context = GameContext(head: headInWorld, hands: tracked, floorHeight: room?.floorHeight ?? floorHeight,
                                       surfaces: room?.all ?? [], time: t2, dt: frameDt, select: gameSelect, meshes: games.meshes)
@@ -1000,6 +1034,7 @@ final class Renderer {
             let origin = pointerOrigin
             let forward = pointerDirection
             toolbar.tick(time: t2)
+            toolbar.minimized = windows?.minimized.map(\.kind) ?? []
             toolbar.placeFeet(head: headInWorld, floor: (source as? ARController)?.room.floorHeight ?? floorHeight)
             var hit: (ScenePanel, SIMD2<Float>)?
             if toolbar.dockShown, let h = toolbar.panel.pane.hit(origin: origin, direction: forward) { hit = (toolbar.panel, h.uv) }
@@ -1065,9 +1100,10 @@ final class Renderer {
             let origin = pointerOrigin
             let forward = pointerDirection
             let panel = media.screen == .viewing ? media.controls : media.grid
-            var hit = panel.pane.hit(origin: origin, direction: forward)
+            var hit = media.controlsHidden && media.screen == .viewing ? nil : panel.pane.hit(origin: origin, direction: forward)
             _ = panel.hover(hit?.uv)
             media.gaze(uv: hit?.uv, pinchHeld: pinchHeld, time: t2)
+            if media.controlsHidden, media.screen == .viewing, select { media.showControls(); select = false }
             // The keyboard under the Files grid types the search.
             let filesKeys = media.isFiles && media.screen == .items
             if filesKeys, let keyboard {
@@ -1098,7 +1134,7 @@ final class Renderer {
             mediaTextures = media.frame(hostTime: t2)
             mediaUniforms = media.uniforms()
             if media.screen == .viewing {
-                if let t = media.controls.texture { toolbarQuads.append((t, 5)) }
+                if !media.controlsHidden, let t = media.controls.texture { toolbarQuads.append((t, 5)) }
             } else if let t = media.grid.texture {
                 toolbarQuads.append((t, 24))
             }
@@ -1173,6 +1209,7 @@ final class Renderer {
             vertices += lock?.panel.pane.quad ?? BrowserWindow().quad   // 23
             vertices += media?.grid.pane.quad ?? BrowserWindow().quad    // 24
             vertices += places?.panel.pane.quad ?? BrowserWindow().quad  // 25
+            vertices += games?.controlsPanel.pane.quad ?? BrowserWindow().quad  // 26
             while quadBuffers.count < 3 { quadBuffers.append(device.makeBuffer(length: 65536, options: .storageModeShared)!) }
             quadBufferIndex = (quadBufferIndex + 1) % quadBuffers.count
             let buffer = quadBuffers[quadBufferIndex]
@@ -1247,7 +1284,7 @@ final class Renderer {
                 encoder.setFragmentTexture(mediaTextures.picture ?? mediaTextures.eyes, index: 0)
                 encoder.setFragmentTexture(mediaTextures.eyes ?? eyeTexture, index: 1)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
-            } else if settings.passthrough, let frame {
+            } else if passthroughNow, let frame {
                 encoder.setRenderPipelineState(passthroughPipeline)
                 encoder.setFragmentTexture(frame.luma, index: 0)
                 encoder.setFragmentTexture(frame.chroma, index: 1)
@@ -1279,7 +1316,7 @@ final class Renderer {
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
             }
             // The real room's depth, so what follows can hide behind it; then its surfaces.
-            if settings.occlusion, settings.passthrough, let frame, let depth = frame.depth, let confidence = frame.depthConfidence {
+            if settings.occlusion, passthroughNow, let frame, let depth = frame.depth, let confidence = frame.depthConfidence {
                 encoder.setRenderPipelineState(occlusionPipeline)
                 encoder.setDepthStencilState(depthWriteState)
                 encoder.setFragmentTexture(depth, index: 0)
@@ -1359,7 +1396,7 @@ final class Renderer {
                 encoder.setRenderPipelineState(overlayPipeline)
                 // Placed things hide behind the real room; the hands and the reticle do not (the
                 // LiDAR sees the hand itself, which would hide its own skeleton).
-                encoder.setDepthStencilState(settings.occlusion && settings.passthrough ? depthTestState : depthNoneState)
+                encoder.setDepthStencilState(settings.occlusion && passthroughNow ? depthTestState : depthNoneState)
                 encoder.setVertexBuffer(overlayBuffer, offset: 0, index: 1)
                 if overlayUnoccludedStart > 0 {
                     encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: overlayUnoccludedStart)

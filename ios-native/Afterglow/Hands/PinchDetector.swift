@@ -10,7 +10,7 @@ struct PinchDetector {
     /// (with a start allowed) before one begins: a C-shaped hand turned so its tips cross in the
     /// image passes through that in less time than a pinch is held (owner, 2026-11-06).
     let releaseResults: Int
-    let startResults: Int
+    var startResults: Int
     private(set) var isPinched = false
     private var openRun = 0
     private var closeRun = 0

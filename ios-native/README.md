@@ -217,8 +217,11 @@ script); plane detection, the floor height and occlusion need the phone.
 
 ## Games
 
-A game host (`Games/GameHost.swift`) runs one game at a time; the Games window launches them,
-shows the running game's status, resets or stops it. Games draw into a small lit-mesh scene
+A game host (`Games/GameHost.swift`) runs one game at a time; the Games window launches them.
+When a game starts the launcher minimizes to the dock and the game's own controls open in a
+window of their own (the paint palette; the rhythm style, tempo, restart and stop; the golf
+holes), so nothing crowds the launcher (owner, 2026-11-07); closing that window stops the
+game, and stopping brings the launcher back. Games draw into a small lit-mesh scene
 (`Games/Scene3D.swift`): a mesh library built on the GPU once (smooth spheres, capsules,
 cylinders, cones, tori, a thin ring, rounded boxes, discs), drawn per instance through
 `meshVertex`/`meshFragment` with a model matrix, a colour and a material (roughness, metal,
@@ -229,10 +232,12 @@ for lamps, sparks, trails and bolts, and a particle system (bursts with gravity 
 games share. The meshes test depth against the room's LiDAR prepass, so they hide behind real
 furniture like the panels do. The games (`Games/Games.swift`):
 
-- **Paint**: pinch and move to paint in the air. The palette on the games panel picks the
-  colour (eight swatches, or a rainbow by the hand's height), the size, the brush (a glossy
-  tube, a flat ribbon facing you, or a glowing bead trail) and dynamics (the stroke thins as the
-  hand speeds up); undo takes the last stroke. Sparks trail the brush.
+- **Paint**: pinch and move to paint in the air. The palette, in the game's own controls
+  window, picks the colour (eight swatches, or a rainbow by the hand's height), the size, the
+  brush (a glossy tube, a flat ribbon facing you, or a glowing bead trail) and dynamics (the
+  stroke thins as the hand speeds up); undo takes the last stroke. Sparks trail the brush. A
+  stroke carries on through a pinch that flickers open for half a second (dots were left
+  before), and the game runs in 6DoF, since painting in the air needs the head's position.
 - **Blobs**: scaled, squashing blobs with eyes that follow you and glowing antennae squelch in
   by waves (each faster and larger); a punch forward (the hand moving ahead faster than 1.5 m/s)
   fires a plasma bolt from the hand along the gaze; hits splash goo, kills burst; a blob that
@@ -261,14 +266,20 @@ furniture like the panels do. The games (`Games/Games.swift`):
   at the head's speed, so a hand near the ball does nothing. The ball rolls and slows, bounces
   off the bumpers with three quarters of its speed, and drops in the cup. When it comes to
   rest more than a stride away the course shifts so it lies a step ahead again (the teleport
-  between putts); the next hole lays out when the ball drops, or on the panel's Next hole.
+  between putts, also on the controls window's Step to the ball); the next hole lays out when
+  the ball drops, or on Next hole. The whole course is laid out round the player at once,
+  three holes abreast and six deep in a serpentine, 1.6 times the first draft's size, each on
+  its dark base with rounded rails on the bumpers, lamps at its corners and its flag numbered;
+  a scoreboard by the first tee shows the card in beads. Only the current hole has the ball.
 - **Coaster**: a roller coaster over the grid. The course is poses half a metre apart from a
   list of segments (a chain lift, a drop, hills, a loop, banked turns, dips), repeated as the
   rider nears its end; the car follows it, gaining speed down the drops, losing it up the
   climbs, lifted by the chain on the way up. The rider stays where they stood, in a car drawn
   round them, and the track moves past through the car's inverse pose, so the room's panels
   (the Stop button among them) stay in reach and the view never leaves the car. Rails on
-  sleepers and pylons, arch lamps, the car's tub, nose, wheels and lap bar.
+  sleepers and pylons (none where the track passes under itself, as in the loop, where a pylon
+  would run through the rails), arch lamps, the car's tub, nose, wheels and lap bar.
+  Passthrough is off while the coaster runs: it is a ride through the scene.
 - **Portal**: a stone archway (fluted columns on plinths, a lintel, a glowing keystone) with a
   shimmering disc of the next world's colour in it and motes swirling in the doorway; walk
   through and the surroundings change palette, with a burst; back again for the previous.
@@ -279,9 +290,10 @@ furniture like the panels do. The games (`Games/Games.swift`):
   seconds of the song's own audio through AVAssetReader (when the device holds it unprotected:
   purchased, matched or ripped), takes an onset curve from the energy's rises and the strongest
   autocorrelation between 70 and 180 bpm, and keeps the answer by song id. A protected Apple
-  Music stream gives no samples, so the tempo set with the games panel's slower and faster
-  buttons stands for those, after a public music catalogue has been asked for the track's
-  tempo by title and artist. Without music a built-in synthesiser plays in a style picked on
+  Music stream gives no samples, so a public music catalogue is asked for the track's tempo
+  by title and artist, then a second, keyed catalogue when `Documents/tempo-api-key.txt` holds
+  a key for it; the tempo set with the slower and faster buttons stands when neither knows.
+  With Apple Music playing the style buttons are gone: the song decides. Without music a built-in synthesiser plays in a style picked on
   the games panel: synthwave, techno, lo-fi, drum and bass or chiptune, each with its own
   tempo, drums and lead.
 
@@ -331,8 +343,8 @@ and the whole thing a pile of button grids, so the interface was remade on one d
 - **Windows**: traffic lights at the top left of every window (red close, yellow minimize,
   green size, cycling four widths from 1.3 to 3.2 m), the name as a grab handle (hold a pinch
   on it to drag), move on the right. New windows open 40 degrees to the right of the last.
-- **The dock**: six tiles low ahead (Apps, Scene/Room, Hands, Recentre, Record, Settings),
-  hidden until asked for: a round Apps button lies on the floor half a metre ahead of the feet
+- **The dock**: six tiles low ahead (Apps, Scene/Room, Hands, Recentre, Record, Settings)
+  and a chip for each minimized window, which brings it back; hidden until asked for: a round Apps button lies on the floor half a metre ahead of the feet
   (look straight down), a select on it brings the dock for ten seconds. Neither shows during a
   WebXR session, 360 playback, or while the keyboard is up.
 - **Browser chrome**: back, forward, reload, the address pill (select it for the keyboard;
@@ -345,10 +357,12 @@ and the whole thing a pile of button grids, so the interface was remade on one d
   360°, Panorama, a video's length), or the user's own albums as covers with their names and
   counts, eight in view. Scroll with the arrows at the grid's side, by holding the gaze at its
   top or bottom edge, by holding a pinch on it and moving the hand up or down, or by dragging
-  on the phone. The viewer's controls: back to the grid, previous and next, the format,
-  recentre and turn, with the transport and a seek bar for videos and, for pictures, a filmstrip
-  of the neighbouring pictures to press. A 360, 180 or panorama picture is the surroundings
-  while it plays, passthrough or not.
+  on the phone. The viewer's controls: back to the grid, previous and next, the format (a
+  picker of the twelve projections, not a cycle), recentre and turn, hide (the controls go
+  away until the next select, so the picture is all there is), with the transport and a seek
+  bar for videos and, for pictures, a filmstrip of the neighbouring pictures to press. The 360
+  collection is found by shape over the whole library, not its newest two thousand. A 360, 180
+  or panorama picture is the surroundings while it plays, passthrough or not.
 - **Windows open in free slots**: a new window takes the nearest free arc round the user,
   ahead first, then alternately right and left, never through an open window.
 
@@ -382,7 +396,9 @@ looser (40 % open blocks a start, not 60 %). A hand back in view after a gap kee
 if the tips are still together; WebXR had seen hands pinched for good after they returned. A
 WebXR session ends on the viewer's double tap or a three-second press on the screen, never a
 pinch, and two seconds in (once the page has settled) runs in 3DoF on the ultra-wide camera at
-30 hand images a second while it lasts. The predictor's callbacks (the viewer's taps, the lock's
+20 hand images a second while it lasts, with a pinch needing three results to start there (a
+page acts on every select). The view keeps its layout size through a session: changing it fired
+a resize the owner's player answered by disposing its renderer, ending the session 0.2 s in. The predictor's callbacks (the viewer's taps, the lock's
 motion) follow the camera across that switch; before this they stayed on the first camera, so
 in 3DoF the viewer's double tap did nothing and a session could not be ended. A session that
 ends within three seconds of starting is logged as the page's doing, with the page's reason.

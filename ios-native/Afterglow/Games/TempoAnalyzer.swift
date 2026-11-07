@@ -28,7 +28,7 @@ final class TempoAnalyzer {
         defer { running.remove(id) }
         let query = MPMediaQuery.songs()
         query.addFilterPredicate(MPMediaPropertyPredicate(value: title, forProperty: MPMediaItemPropertyTitle, comparisonType: .equalTo))
-        guard let items = query.items else { log("[Tempo] No library match for \(title)"); return nil }
+        let items = query.items ?? []
         let match = items.first { ($0.artist ?? "").localizedCaseInsensitiveContains(artist) || artist.isEmpty } ?? items.first
         var bpm: Double?
         if let url = match?.assetURL {
@@ -69,6 +69,29 @@ final class TempoAnalyzer {
             log("[Tempo] Catalogue has no tempo for \(title)")
         } catch {
             log("[Tempo] Catalogue lookup failed: \(error.localizedDescription)")
+        }
+        return await lookupKeyed(title: title, artist: artist)
+    }
+
+    /// A second catalogue of tempos that needs a key: `Documents/tempo-api-key.txt` holds it
+    /// (dropped in through the Files app or Finder); without the file this is skipped.
+    nonisolated static func lookupKeyed(title: String, artist: String) async -> Double? {
+        let keyURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("tempo-api-key.txt")
+        guard let key = try? String(contentsOf: keyURL, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty else { return nil }
+        let lookup = "song:\(title)" + (artist.isEmpty ? "" : " artist:\(artist)")
+        guard let q = lookup.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "https://api.getsongbpm.com/search/?api_key=\(key)&type=both&lookup=\(q)") else { return nil }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any], let hits = json["search"] as? [[String: Any]] else { return nil }
+            for hit in hits {
+                if let text = hit["tempo"] as? String, let bpm = Double(text), bpm > 40 {
+                    log(String(format: "[Tempo] Second catalogue: %@ at %.1f bpm", title, bpm))
+                    return bpm
+                }
+            }
+        } catch {
+            log("[Tempo] Second catalogue failed: \(error.localizedDescription)")
         }
         return nil
     }

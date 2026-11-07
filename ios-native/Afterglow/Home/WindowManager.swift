@@ -4,7 +4,7 @@ import SwiftUI
 
 /// The kinds of window the app opens; each app is one, and several can be open at once.
 enum WindowKind: String, CaseIterable, Sendable {
-    case home, browser, media, files, games, places, settings, music
+    case home, browser, media, files, games, places, settings, music, gameControls
     var title: String {
         switch self {
         case .home: return "Afterglow"
@@ -15,6 +15,7 @@ enum WindowKind: String, CaseIterable, Sendable {
         case .places: return "Places"
         case .settings: return "Settings"
         case .music: return "Music"
+        case .gameControls: return "Controls"
         }
     }
     var icon: String {
@@ -27,6 +28,7 @@ enum WindowKind: String, CaseIterable, Sendable {
         case .places: return "🌄"
         case .settings: return "⚙"
         case .music: return "🎵"
+        case .gameControls: return "🎛"
         }
     }
 }

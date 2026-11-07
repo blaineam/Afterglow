@@ -131,6 +131,9 @@ final class MediaApp {
     var page: Int { row / Self.itemRows }
     private var perPage: Int { Self.itemColumns * Self.itemRows }
     private(set) var current: MediaItem?
+    /// The viewer's controls out of the way (a select brings them back), and the projection picker.
+    private(set) var controlsHidden = false
+    private(set) var formatMenu = false
     private(set) var formatIndex = 0
     private(set) var picture: MTLTexture?
     private(set) var eyes: MTLTexture?
@@ -371,12 +374,22 @@ final class MediaApp {
     private func layoutControls() {
         var b: [ScenePanel.Button] = []
         let y: CGFloat = 0.05, h: CGFloat = 0.42
+        if formatMenu {
+            // The projections as a grid to pick from, with the current one lit.
+            for (i, f) in Self.formats.enumerated() {
+                let col = i % 4, row = i / 4
+                b.append(.init(id: "fmt:\(i)", rect: CGRect(x: 0.02 + CGFloat(col) * 0.2, y: 0.04 + CGFloat(row) * 0.32, width: 0.19, height: 0.29), label: f.label, wide: true, style: .pill, accent: i == formatIndex))
+            }
+            b.append(.init(id: "fmtclose", rect: CGRect(x: 0.84, y: 0.04, width: 0.14, height: 0.29), label: "Done", wide: true, icon: "xmark", style: .pill))
+            controls.set(buttons: b, version: "fmtmenu|\(formatIndex)")
+            return
+        }
         let isVideo = current.map { $0.kind == .video || $0.kind == .video180 || $0.kind == .video360 || $0.kind == .spatialVideo } ?? false
         var items: [(String, String, String, CGFloat)] = [("exit", "Back to the album", "chevron.left", 0.07), ("prevItem", "Previous", "backward.end.fill", 0.07)]
         if isVideo {
             items += [("back10", "Back 10 s", "gobackward.10", 0.07), ("play", player.isPlaying ? "Pause" : "Play", player.isPlaying ? "pause.fill" : "play.fill", 0.07), ("fwd10", "Ahead 10 s", "goforward.10", 0.07)]
         }
-        items += [("nextItem", "Next", "forward.end.fill", 0.07), ("format", format.label, "", 0.2), ("recentre", "Recentre", "scope", 0.07), ("yawL", "Turn left", "rotate.left", 0.07), ("yawR", "Turn right", "rotate.right", 0.07)]
+        items += [("nextItem", "Next", "forward.end.fill", 0.07), ("format", format.label, "", 0.2), ("recentre", "Recentre", "scope", 0.07), ("yawL", "Turn left", "rotate.left", 0.07), ("yawR", "Turn right", "rotate.right", 0.07), ("hide", "Hide the controls", "eye.slash", 0.07)]
         var x: CGFloat = 0.01
         for (id, label, icon, w) in items {
             b.append(.init(id: id, rect: CGRect(x: x, y: y, width: w, height: h), label: label, wide: true, icon: icon.isEmpty ? nil : icon, style: icon.isEmpty ? .pill : .round, accent: id == "play" || id == "exit"))
@@ -412,10 +425,9 @@ final class MediaApp {
         case "fwd10": player.skip(10)
         case "prevItem": step(-1)
         case "nextItem": step(1)
-        case "format":
-            formatIndex = (formatIndex + 1) % Self.formats.count
-            log("[Media] Format \(format.label)")
-            layoutControls()
+        case "format": formatMenu = true; layoutControls()
+        case "fmtclose": formatMenu = false; layoutControls()
+        case "hide": controlsHidden = true; log("[Media] Controls hidden; a select brings them back")
         case "recentre": yaw = 0
         case "yawL": yaw -= .pi / 12
         case "yawR": yaw += .pi / 12
@@ -429,6 +441,12 @@ final class MediaApp {
             else if id.hasPrefix("item:"), let i = Int(id.dropFirst(5)), items.indices.contains(i) { view(items[i]) }
             else if id.hasPrefix("seek:"), let i = Int(id.dropFirst(5)) { player.seek(fraction: Double(i) / 10) }
             else if id.hasPrefix("strip:"), let i = Int(id.dropFirst(6)), items.indices.contains(i) { view(items[i]) }
+            else if id.hasPrefix("fmt:"), let i = Int(id.dropFirst(4)), Self.formats.indices.contains(i) {
+                formatIndex = i
+                formatMenu = false
+                log("[Media] Format \(format.label)")
+                layoutControls()
+            }
         }
     }
 
@@ -489,8 +507,13 @@ final class MediaApp {
     }
 
     /// Opens an item in the viewer with the format its kind implies.
+    /// A select while the controls are hidden shows them again.
+    func showControls() { controlsHidden = false }
+
     func view(_ item: MediaItem) {
         player.close()
+        controlsHidden = false
+        formatMenu = false
         picture = nil
         eyes = nil
         current = item
@@ -648,8 +671,8 @@ struct FilmstripView: View {
                     Text("Loading…").font(.system(size: 54, weight: .medium, design: .rounded)).foregroundStyle(PanelStyle.text)
                 }
                 .padding(.horizontal, 36).padding(.vertical, 16)
-                .background(Capsule().fill(Color.black.opacity(0.6)))
-                .position(x: size.width / 2, y: -70)
+                .background(Capsule().fill(Color.black.opacity(0.7)))
+                .position(x: size.width / 2, y: size.height * 0.75)
             }
             ForEach(strip, id: \.0) { id, image in
                 if let image, let button = buttons.first(where: { $0.id == id }) {

@@ -41,6 +41,9 @@ final class Toolbar {
     var onCloseApp: (() -> Void)?
     var onRecord: ((Int) -> Void)?
     var onMore: (() -> Void)?
+    /// The minimized windows, shown on the dock as chips that bring them back.
+    var minimized: [WindowKind] = [] { didSet { if minimized != oldValue { layout() } } }
+    var onRestore: ((WindowKind) -> Void)?
     var isRecording: () -> Bool = { false }
 
     init(device: MTLDevice, settings: Settings) {
@@ -109,14 +112,26 @@ final class Toolbar {
             ("record:0", isRecording() ? "stop.circle.fill" : "record.circle", isRecording() ? "Stop" : "Record"),
             ("app:settings", "gearshape.fill", "Settings"),
         ]
-        let w: CGFloat = 0.158, gap: CGFloat = 0.008
-        var x: CGFloat = (1 - (w * CGFloat(tiles.count) + gap * CGFloat(tiles.count - 1))) / 2
+        let chips = minimized.prefix(4)
+        let count = CGFloat(tiles.count + chips.count)
+        let gap: CGFloat = 0.008
+        let w = min(0.158, (1 - gap * (count - 1)) / count)
+        var x: CGFloat = (1 - (w * count + gap * (count - 1))) / 2
         for (id, icon, label) in tiles {
             buttons.append(.init(id: id, rect: CGRect(x: x, y: 0.06, width: w, height: 0.88), label: label, wide: true, icon: icon, style: .tile,
                                  accent: id == "toggle:passthrough" && settings.passthrough || id == "record:0" && isRecording()))
             x += w + gap
         }
-        panel.set(buttons: buttons, version: "dock|\(settings.passthrough)|\(settings.showHandsLive)|\(isRecording())")
+        for kind in chips {
+            let icon: String
+            switch kind {
+            case .browser: icon = "safari.fill"; case .media: icon = "photo.on.rectangle.angled"; case .files: icon = "folder.fill"; case .games: icon = "gamecontroller.fill"
+            case .places: icon = "mountain.2.fill"; case .music: icon = "music.note"; case .settings: icon = "gearshape.fill"; case .home: icon = "square.grid.2x2.fill"; case .gameControls: icon = "slider.horizontal.3"
+            }
+            buttons.append(.init(id: "win:\(kind.rawValue)", rect: CGRect(x: x, y: 0.06, width: w, height: 0.88), label: kind.title, wide: true, icon: icon, style: .tile, accent: true))
+            x += w + gap
+        }
+        panel.set(buttons: buttons, version: "dock|\(settings.passthrough)|\(settings.showHandsLive)|\(isRecording())|\(minimized.map(\.rawValue).joined())")
         menu.set(buttons: [.init(id: "feet", rect: CGRect(x: 0.08, y: 0.08, width: 0.84, height: 0.84), label: "Apps", icon: "square.grid.2x2.fill", style: .round, accent: true)], version: "feet")
     }
 
@@ -144,7 +159,8 @@ final class Toolbar {
         case "minus:prediction": settings.extraPredictionMs = max(0, settings.extraPredictionMs - 4)
         case "plus:prediction": settings.extraPredictionMs = min(60, settings.extraPredictionMs + 4)
         default:
-            if id.hasPrefix("app:"), let app = AppKind(rawValue: String(id.dropFirst(4))) { onLaunch?(app); menuOpen = false }
+            if id.hasPrefix("win:"), let kind = WindowKind(rawValue: String(id.dropFirst(4))) { onRestore?(kind) }
+            else if id.hasPrefix("app:"), let app = AppKind(rawValue: String(id.dropFirst(4))) { onLaunch?(app); menuOpen = false }
         }
         layout()
     }

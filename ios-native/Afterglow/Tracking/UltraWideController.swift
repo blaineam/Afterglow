@@ -17,6 +17,12 @@ final class UltraWideController: NSObject, AVCaptureVideoDataOutputSampleBufferD
     private let device: MTLDevice
     private let session = AVCaptureSession()
     private let queue = DispatchQueue(label: "afterglow.ultrawide", qos: .userInteractive)
+    private var dropped = 0
+    private var noAttitude = 0
+
+    func captureOutput(_ output: AVCaptureOutput, didDrop sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        dropped += 1
+    }
     private var textureCache: CVMetalTextureCache?
     private let lock = NSLock()
     private var latest: CapturedFrame?
@@ -130,7 +136,7 @@ final class UltraWideController: NSObject, AVCaptureVideoDataOutputSampleBufferD
             let fx = Float(width) / 2 / tan(fieldOfView * .pi / 180 / 2)
             k = simd_float3x3(columns: (SIMD3(fx, 0, 0), SIMD3(0, fx, 0), SIMD3(Float(width) / 2, Float(height) / 2, 1)))
         }
-        guard let cameraTransform = predictor.attitudeCameraTransform(at: timestamp) else { return }
+        guard let cameraTransform = predictor.attitudeCameraTransform(at: timestamp) else { noAttitude += 1; return }
         let pose = PoseSample(timestamp: timestamp, transform: cameraTransform)
 
         var captured: CapturedFrame?
@@ -165,7 +171,8 @@ final class UltraWideController: NSObject, AVCaptureVideoDataOutputSampleBufferD
         if timestamp - lastLog >= 5 {
             let elapsed = lastLog == 0 ? 0 : timestamp - lastLog
             lock.lock(); let n = frames; frames = 0; lock.unlock()
-            log(String(format: "[AR] 3DoF, ultra-wide camera %.1f fps; %@", elapsed > 0 ? Double(n) / elapsed : 0, predictor.statusAndReset()))
+            log(String(format: "[AR] 3DoF, ultra-wide camera %.1f fps (%d late frames dropped by the camera, %d without an attitude); %@", elapsed > 0 ? Double(n) / elapsed : 0, dropped, noAttitude, predictor.statusAndReset()))
+            dropped = 0; noAttitude = 0
             lastLog = timestamp
         }
     }

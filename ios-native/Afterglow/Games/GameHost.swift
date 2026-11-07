@@ -39,6 +39,9 @@ extension Game {
 @MainActor
 final class GameHost {
     let panel: ScenePanel
+    /// The running game's own controls (the paint palette, the rhythm style and tempo, the golf
+    /// holes), a window of their own rather than a crowd on the launcher (owner, 2026-11-07).
+    let controlsPanel: ScenePanel
     private(set) var games: [Game]
     private(set) var current: Game?
     private let device: MTLDevice
@@ -52,6 +55,7 @@ final class GameHost {
         meshes = MeshLibrary(device: device)
         panel = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 560)
         panel.pane.widthMeters = 1.2
+        controlsPanel = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 300)
         games = [PaintGame(), BlobShooter(), VacuumGame(), ToyBox(), GolfGame(), GridRide(), PortalGame(), RhythmGame()]
         layout()
     }
@@ -74,33 +78,52 @@ final class GameHost {
         }
         b.append(.init(id: "reset", rect: CGRect(x: 0.83, y: 0.36, width: 0.15, height: 0.3), label: "Restart", icon: "arrow.counterclockwise", style: .round))
         b.append(.init(id: "stop", rect: CGRect(x: 0.83, y: 0.68, width: 0.15, height: 0.3), label: "Stop", icon: "stop.fill", style: .round))
-        if let rhythm = current as? RhythmGame {
-            b.append(.init(id: "style", rect: CGRect(x: 0.42, y: 0.04, width: 0.22, height: 0.28), label: rhythm.style.name, wide: true, icon: "music.quarternote.3", style: .pill))
-            b.append(.init(id: "tempo:-", rect: CGRect(x: 0.66, y: 0.04, width: 0.15, height: 0.28), label: "Slower", icon: "minus", style: .round))
-            b.append(.init(id: "tempo:+", rect: CGRect(x: 0.83, y: 0.04, width: 0.15, height: 0.28), label: "Faster", icon: "plus", style: .round))
-        }
+        panel.set(buttons: b, version: "games|\(current?.title ?? "")|\(current?.status ?? "")")
+        layoutControls()
+    }
+
+    /// Whether the running game has controls of its own to show.
+    var hasControls: Bool { current is PaintGame || current is RhythmGame || current is GolfGame }
+
+    /// The controls window's content for the running game.
+    private func layoutControls() {
+        var b: [ScenePanel.Button] = []
         if let paint = current as? PaintGame {
-            // The palette: the swatches, the rainbow, then size, brush, dynamics and undo.
-            var x: CGFloat = 0.30
+            var x: CGFloat = 0.02
             for (i, (emoji, _)) in PaintGame.swatches.enumerated() {
-                b.append(.init(id: "paint:color:\(i)", rect: CGRect(x: x, y: 0.04, width: 0.05, height: 0.28), label: emoji, style: .key, accent: paint.swatch == i))
-                x += 0.052
+                b.append(.init(id: "paint:color:\(i)", rect: CGRect(x: x, y: 0.06, width: 0.085, height: 0.42), label: emoji, style: .key, accent: paint.swatch == i))
+                x += 0.09
             }
-            b.append(.init(id: "paint:color:rainbow", rect: CGRect(x: x, y: 0.04, width: 0.05, height: 0.28), label: "🌈", style: .key, accent: paint.swatch == nil))
-            x += 0.062
-            b.append(.init(id: "paint:size", rect: CGRect(x: x, y: 0.04, width: 0.055, height: 0.28), label: ["S", "M", "L"][paint.sizeIndex], style: .round))
-            x += 0.06
-            b.append(.init(id: "paint:brush", rect: CGRect(x: x, y: 0.04, width: 0.055, height: 0.28), label: paint.brush.name, icon: paint.brush.icon, style: .round))
-            x += 0.06
-            b.append(.init(id: "paint:dyn", rect: CGRect(x: x, y: 0.04, width: 0.055, height: 0.28), label: "Dynamics", icon: paint.dynamics ? "waveform.path" : "minus", style: .round, accent: paint.dynamics))
-            x += 0.06
-            b.append(.init(id: "paint:undo", rect: CGRect(x: x, y: 0.04, width: 0.055, height: 0.28), label: "Undo", icon: "arrow.uturn.backward", style: .round))
+            b.append(.init(id: "paint:color:rainbow", rect: CGRect(x: x, y: 0.06, width: 0.085, height: 0.42), label: "🌈", style: .key, accent: paint.swatch == nil))
+            b.append(.init(id: "paint:size", rect: CGRect(x: 0.02, y: 0.54, width: 0.22, height: 0.42), label: "Size " + ["S", "M", "L"][paint.sizeIndex], wide: true, icon: "circle.fill", style: .pill))
+            b.append(.init(id: "paint:brush", rect: CGRect(x: 0.26, y: 0.54, width: 0.24, height: 0.42), label: paint.brush.name, wide: true, icon: paint.brush.icon, style: .pill))
+            b.append(.init(id: "paint:dyn", rect: CGRect(x: 0.52, y: 0.54, width: 0.24, height: 0.42), label: "Dynamics", wide: true, icon: paint.dynamics ? "waveform.path" : "minus", style: .pill, accent: paint.dynamics))
+            b.append(.init(id: "paint:undo", rect: CGRect(x: 0.78, y: 0.54, width: 0.2, height: 0.42), label: "Undo", wide: true, icon: "arrow.uturn.backward", style: .pill))
+        } else if let rhythm = current as? RhythmGame {
+            if !(music?.isPlaying ?? false) {
+                // The built-in music's style; with Apple Music playing the song decides.
+                b.append(.init(id: "style", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: rhythm.style.name, wide: true, icon: "music.quarternote.3", style: .pill))
+            } else {
+                b.append(.init(id: "music", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: "Apple Music", wide: true, icon: "music.note", style: .label))
+            }
+            b.append(.init(id: "tempo:-", rect: CGRect(x: 0.52, y: 0.06, width: 0.12, height: 0.42), label: "Slower", icon: "minus", style: .round))
+            b.append(.init(id: "tempo", rect: CGRect(x: 0.65, y: 0.06, width: 0.2, height: 0.42), label: "\(Int(rhythm.bpm)) bpm", wide: true, style: .label))
+            b.append(.init(id: "tempo:+", rect: CGRect(x: 0.86, y: 0.06, width: 0.12, height: 0.42), label: "Faster", icon: "plus", style: .round))
+            b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: "Restart", wide: true, icon: "arrow.counterclockwise", style: .pill))
+            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
+        } else if current is GolfGame {
+            b.append(.init(id: "golf:next", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: "Next hole", wide: true, icon: "flag.fill", style: .pill))
+            b.append(.init(id: "golf:step", rect: CGRect(x: 0.52, y: 0.06, width: 0.46, height: 0.42), label: "Step to the ball", wide: true, icon: "figure.walk", style: .pill))
+            b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: "Restart the round", wide: true, icon: "arrow.counterclockwise", style: .pill))
+            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
         }
-        if current is GolfGame {
-            b.append(.init(id: "golf:next", rect: CGRect(x: 0.72, y: 0.04, width: 0.26, height: 0.28), label: "Next hole", wide: true, icon: "flag.fill", style: .pill))
-        }
-        let extra = (current as? PaintGame).map { "\($0.swatch ?? -1)|\($0.sizeIndex)|\($0.brush)|\($0.dynamics)" } ?? ""
-        panel.set(buttons: b, version: "games|\(current?.title ?? "")|\(current?.status ?? "")|\(extra)")
+        let extra = (current as? PaintGame).map { "\($0.swatch ?? -1)|\($0.sizeIndex)|\($0.brush)|\($0.dynamics)" } ?? ((current as? RhythmGame).map { "\($0.style)|\($0.bpm)|\(music?.isPlaying ?? false)" } ?? "")
+        controlsPanel.set(buttons: b, version: "controls|\(current?.title ?? "")|\(extra)")
+    }
+
+    func renderControls() {
+        controlsPanel.render(ButtonsView(size: CGSize(width: 1600, height: 300), buttons: controlsPanel.buttons, hovered: controlsPanel.hovered,
+                                         title: nil, titleHighlight: false, subtitle: current?.status))
     }
 
     func press(_ id: String) {
@@ -109,13 +132,14 @@ final class GameHost {
         case "stop": current = nil
         case "tempo:-": (current as? RhythmGame).map { $0.setTempo($0.bpm - 4) }
         case "tempo:+": (current as? RhythmGame).map { $0.setTempo($0.bpm + 4) }
-        case "style": (current as? RhythmGame)?.cycleStyle()
+        case "style": if !(music?.isPlaying ?? false) { (current as? RhythmGame)?.cycleStyle() }
         case "paint:size": (current as? PaintGame)?.cycleSize()
         case "paint:brush": (current as? PaintGame)?.cycleBrush()
         case "paint:dyn": (current as? PaintGame)?.toggleDynamics()
         case "paint:undo": (current as? PaintGame)?.undo()
         case "paint:color:rainbow": (current as? PaintGame)?.pick(swatch: nil)
         case "golf:next": (current as? GolfGame)?.nextHole()
+        case "golf:step": (current as? GolfGame)?.stepToBallNow()
         default:
             if id.hasPrefix("paint:color:"), let i = Int(id.dropFirst(12)) { (current as? PaintGame)?.pick(swatch: i) }
             else if id.hasPrefix("game:"), let i = Int(id.dropFirst(5)), games.indices.contains(i) {

@@ -244,7 +244,14 @@ foundation at all. The honest picture:
   show loading; the phone view's tap selects at the centre cursor; the coaster moves the world
   round a seated rider; mini golf has one felt surface a hole, putters from the hands, club-only
   strokes and a step to the ball; the paint palette; rhythm styles on the synth and an online
-  tempo catalogue. Still to come: WebXR AR features, the next phone round.
+  tempo catalogue.
+- **Fifth phone round, 2026-11-07**: each game's controls in a window of their own with the
+  launcher minimized to the dock; dock chips for minimized windows; media controls that hide
+  and a projection picker; the 360 collection over the whole library; the coaster's pylons kept
+  out of its loop and passthrough off on it; the whole mini golf course laid out at real scale
+  with a scoreboard; the WebXR session kept alive (no resize at its start) with a steadier
+  pinch; a second tempo catalogue. Still to come: the 3DoF camera at 10 fps, WebXR AR, the
+  next phone round.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

@@ -80,7 +80,9 @@ final class MediaLibrary {
         // 360 pictures and videos have no smart album of their own: a collection found by shape
         // (2:1) over the whole library, kept first with Spatial and Panoramas, the ones made for
         // a headset (owner, 2026-11-07).
-        let threeSixty = items(in: MediaAlbum(id: Self.allId, title: "All", count: 0, collection: nil), limit: 2000).filter { $0.kind == .photo360 || $0.kind == .video360 }
+        // The whole library, by shape alone (2:1), since the owner's 360 pictures were older than
+        // the newest two thousand (2026-11-07). Tens of thousands of assets take a second or two.
+        let threeSixty = items(in: MediaAlbum(id: Self.threeSixtyId, title: "360°", count: 0, collection: nil), limit: 0)
         if !threeSixty.isEmpty { result.append(MediaAlbum(id: Self.threeSixtyId, title: "360°", count: threeSixty.count, collection: nil)) }
         let rank: (MediaAlbum) -> Int = { album in
             switch album.collection?.assetCollectionSubtype {
@@ -116,14 +118,22 @@ final class MediaLibrary {
         let options = PHFetchOptions()
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         options.predicate = NSPredicate(format: "mediaType == %d || mediaType == %d", PHAssetMediaType.image.rawValue, PHAssetMediaType.video.rawValue)
-        options.fetchLimit = limit
+        if limit > 0 { options.fetchLimit = limit }
         let assets: PHFetchResult<PHAsset>
         if let collection = album.collection {
             assets = PHAsset.fetchAssets(in: collection, options: options)
         } else if album.id == Self.threeSixtyId {
             var all: [MediaItem] = []
-            PHAsset.fetchAssets(with: options).enumerateObjects { asset, _, _ in all.append(Self.classify(asset)) }
-            return all.filter { $0.kind == .photo360 || $0.kind == .video360 }
+            let started = Date()
+            let everything = PHAsset.fetchAssets(with: options)
+            everything.enumerateObjects { asset, _, _ in
+                // The shape first, which is cheap; the full classification only for 2:1 assets.
+                let w = Float(asset.pixelWidth), h = Float(max(asset.pixelHeight, 1))
+                if abs(w / h - 2) < 0.06 { all.append(Self.classify(asset)) }
+            }
+            let found = all.filter { $0.kind == .photo360 || $0.kind == .video360 }
+            log(String(format: "[Photos] 360 scan: %d of %d assets are 2:1, %d are 360, in %.1f s", all.count, everything.count, found.count, Date().timeIntervalSince(started)))
+            return found
         } else {
             assets = PHAsset.fetchAssets(with: options)
         }
