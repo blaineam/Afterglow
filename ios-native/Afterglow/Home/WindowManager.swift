@@ -45,11 +45,11 @@ final class AppWindow {
     var sizeIndex = 1
     /// Extra room above the pane for the app's own bar (the browser's tabs and address).
     var barGap: Float = 0.015
-    static let widths: [Float] = [0.8, 1.1, 1.4, 1.9, 2.6]
+    static let widths: [Float] = [1.3, 1.8, 2.4, 3.2]
 
     init(kind: WindowKind, device: MTLDevice, aspect: Float) {
         self.kind = kind
-        titleBar = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 110)
+        titleBar = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 150)
         pane.aspect = aspect
         pane.widthMeters = Self.widths[sizeIndex]
         layoutBar()
@@ -57,12 +57,12 @@ final class AppWindow {
 
     func layoutBar() {
         var b: [ScenePanel.Button] = []
-        b.append(.init(id: "title", rect: CGRect(x: 0.0, y: 0.05, width: 0.62, height: 0.9), label: "\(kind.icon) \(kind.title)", wide: true))
-        b.append(.init(id: "move", rect: CGRect(x: 0.63, y: 0.05, width: 0.08, height: 0.9), label: moving ? "📍" : "✥"))
-        b.append(.init(id: "smaller", rect: CGRect(x: 0.72, y: 0.05, width: 0.08, height: 0.9), label: "−"))
-        b.append(.init(id: "larger", rect: CGRect(x: 0.81, y: 0.05, width: 0.08, height: 0.9), label: "+"))
-        b.append(.init(id: "minimize", rect: CGRect(x: 0.90, y: 0.05, width: 0.045, height: 0.9), label: "▁"))
-        b.append(.init(id: "close", rect: CGRect(x: 0.95, y: 0.05, width: 0.045, height: 0.9), label: "✕"))
+        // Traffic lights at the top left (close, minimize, size), the name as a grab handle, move.
+        b.append(.init(id: "close", rect: CGRect(x: 0.02, y: 0.08, width: 0.08, height: 0.84), label: "Close", icon: "xmark", style: .round, light: 1))
+        b.append(.init(id: "minimize", rect: CGRect(x: 0.105, y: 0.08, width: 0.08, height: 0.84), label: "Minimize", icon: "minus", style: .round, light: 2))
+        b.append(.init(id: "larger", rect: CGRect(x: 0.19, y: 0.08, width: 0.08, height: 0.84), label: "Size", icon: "arrow.up.left.and.arrow.down.right", style: .round, light: 3))
+        b.append(.init(id: "title", rect: CGRect(x: 0.29, y: 0.05, width: 0.58, height: 0.9), label: kind.title, wide: true, icon: "line.3.horizontal", style: .pill, accent: moving))
+        b.append(.init(id: "move", rect: CGRect(x: 0.89, y: 0.05, width: 0.095, height: 0.9), label: "Move", icon: moving ? "mappin.and.ellipse" : "arrow.up.and.down.and.arrow.left.and.right", style: .round, accent: moving))
         titleBar.set(buttons: b, version: "bar|\(kind.rawValue)|\(moving)|\(sizeIndex)")
     }
 
@@ -75,7 +75,7 @@ final class AppWindow {
     }
 
     func render() {
-        titleBar.render(ButtonsView(size: CGSize(width: 1600, height: 110), buttons: titleBar.buttons, hovered: titleBar.hovered, title: nil, titleHighlight: false))
+        titleBar.render(ButtonsView(size: CGSize(width: 1600, height: 150), buttons: titleBar.buttons, hovered: titleBar.hovered, title: nil, titleHighlight: false))
     }
 }
 
@@ -106,7 +106,8 @@ final class WindowManager {
         let w = AppWindow(kind: kind, device: device, aspect: aspect)
         if let width { w.pane.widthMeters = width }
         let open = windows.filter { !$0.minimized }
-        w.pane.place(ahead: head, distance: 1.3)
+        w.pane.place(ahead: head, distance: 1.4)
+        w.pane.centre.y += 0.12
         if !open.isEmpty {
             // Round the user: the next slot 40 degrees to the right of the last window.
             let position = head.columns.3.xyz
@@ -143,8 +144,7 @@ final class WindowManager {
         switch id {
         case "close": close(w.kind)
         case "minimize": w.minimized = true
-        case "larger": w.sizeIndex = min(AppWindow.widths.count - 1, w.sizeIndex + 1); w.pane.widthMeters = AppWindow.widths[w.sizeIndex]
-        case "smaller": w.sizeIndex = max(0, w.sizeIndex - 1); w.pane.widthMeters = AppWindow.widths[w.sizeIndex]
+        case "larger": w.sizeIndex = (w.sizeIndex + 1) % AppWindow.widths.count; w.pane.widthMeters = AppWindow.widths[w.sizeIndex]
         case "move": w.moving.toggle()
         default: break
         }
@@ -214,14 +214,14 @@ final class HomeMenu {
     func layout(open: [WindowKind]) {
         openKinds = open
         var b: [ScenePanel.Button] = []
-        let apps: [WindowKind] = [.browser, .media, .files, .games, .places, .music, .settings]
-        for (i, app) in apps.enumerated() {
+        let apps: [(WindowKind, String)] = [(.browser, "safari.fill"), (.media, "photo.on.rectangle.angled"), (.files, "folder.fill"), (.games, "gamecontroller.fill"),
+                                            (.places, "mountain.2.fill"), (.music, "music.note"), (.settings, "gearshape.fill")]
+        for (i, (app, icon)) in apps.enumerated() {
             let col = i % 4, row = i / 4
-            b.append(.init(id: "app:\(app.rawValue)", rect: CGRect(x: 0.03 + CGFloat(col) * 0.24, y: 0.14 + CGFloat(row) * 0.3, width: 0.22, height: 0.26),
-                           label: "\(app.icon) \(app.title)" + (open.contains(app) ? " ●" : ""), wide: true))
+            b.append(.init(id: "app:\(app.rawValue)", rect: CGRect(x: 0.03 + CGFloat(col) * 0.2375, y: 0.17 + CGFloat(row) * 0.41, width: 0.2275, height: 0.39),
+                           label: app.title, wide: true, icon: icon, style: .tile, accent: open.contains(app)))
         }
-        b.append(.init(id: "lock", rect: CGRect(x: 0.75, y: 0.44, width: 0.22, height: 0.26), label: "🔒 Lock", wide: true))
-        b.append(.init(id: "close", rect: CGRect(x: 0.03, y: 0.78, width: 0.3, height: 0.16), label: "Close menu", wide: true))
+        b.append(.init(id: "lock", rect: CGRect(x: 0.03 + 3 * 0.2375, y: 0.58, width: 0.2275, height: 0.39), label: "Lock", wide: true, icon: "lock.fill", style: .tile))
         panel.set(buttons: b, version: "home|\(open.map(\.rawValue).joined())")
     }
 
@@ -232,6 +232,7 @@ final class HomeMenu {
     }
 
     func render() {
-        panel.render(ButtonsView(size: CGSize(width: 1600, height: 900), buttons: panel.buttons, hovered: panel.hovered, title: "✦ Afterglow", titleHighlight: true))
+        panel.render(ButtonsView(size: CGSize(width: 1600, height: 900), buttons: panel.buttons, hovered: panel.hovered, title: "Afterglow", titleHighlight: true,
+                                 subtitle: openKinds.isEmpty ? "Look at an app and pinch, or tap" : openKinds.map(\.title).joined(separator: " · ") + " open"))
     }
 }

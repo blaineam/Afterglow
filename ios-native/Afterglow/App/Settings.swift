@@ -57,6 +57,9 @@ final class Settings: ObservableObject {
     @Published var showHandsLive: Bool { didSet { save("showHands", showHandsLive ? 1 : 0) } }
     @Published var handHzLive: Int { didSet { save("handHz", handHzLive) } }
     @Published var textScaleLive: Int { didSet { save("textScale", textScaleLive) } }
+    /// Phone view: one eye, the screen's shape, no lens warp, for the phone in the hand instead
+    /// of the viewer; taps select where they land and a double tap brings the system keyboard.
+    @Published var phoneView: Bool { didSet { save("view", phoneView ? 1 : 0) } }
     /// An experiment: open the ultra-wide camera through AVFoundation this many seconds after
     /// ARKit starts, to see whether ARKit keeps tracking beside it (0: never).
     let ultraTestSeconds: Int
@@ -81,8 +84,9 @@ final class Settings: ObservableObject {
                                Self.read("eyesY", options: options, default: -10),
                                Self.read("eyesZ", options: options, default: 66))
         dumpAfterSeconds = Self.read("dump", options: options, default: 0)
-        browserOpen = Self.read("web", options: options, default: 1) != 0
-        textScalePercent = min(max(Self.read("textScale", options: options, default: 150), 50), 300)
+        // A launch option only: the browser is an app the launcher opens, not a saved state.
+        browserOpen = (options["web"].flatMap(Int.init) ?? 0) != 0
+        textScalePercent = min(max(Self.read("textScale", options: options, default: 175), 50), 300)
         launchURL = options["url"]
         actions = (options["actions"] ?? "").split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         assertedCold = Self.read("cold", options: options, default: 0) != 0
@@ -92,7 +96,8 @@ final class Settings: ObservableObject {
         showHands = Self.read("showHands", options: options, default: 1) != 0
         showHandsLive = showHands
         handHzLive = min(max(Self.read("handHz", options: options, default: 20), 1), 60)
-        textScaleLive = min(max(Self.read("textScale", options: options, default: 150), 50), 300)
+        textScaleLive = min(max(Self.read("textScale", options: options, default: 175), 50), 300)
+        phoneView = Self.read("view", options: options, default: 0) != 0
         ultraTestSeconds = Self.read("ultraTest", options: options, default: 0)
         loading = false
         let given = options.keys.sorted().map { "\($0) \(options[$0]!)" }.joined(separator: ", ")

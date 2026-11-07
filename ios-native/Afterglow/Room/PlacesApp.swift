@@ -75,31 +75,31 @@ final class PlacesApp {
 
     private func layout() {
         var b: [ScenePanel.Button] = []
-        b.append(.init(id: "synth", rect: CGRect(x: 0.03, y: 0.14, width: 0.3, height: 0.22), label: (choice == .synthwave ? "● " : "") + "Synthwave", wide: true))
-        b.append(.init(id: "room", rect: CGRect(x: 0.35, y: 0.14, width: 0.3, height: 0.22), label: (choice == .room ? "● " : "") + "Your room", wide: true))
-        b.append(.init(id: "scan", rect: CGRect(x: 0.67, y: 0.14, width: 0.3, height: 0.22), label: "Scan room", wide: true))
+        b.append(.init(id: "synth", rect: CGRect(x: 0.03, y: 0.14, width: 0.3, height: 0.13), label: "Synthwave", wide: true, icon: "sun.horizon.fill", style: .pill, accent: choice == .synthwave))
+        b.append(.init(id: "room", rect: CGRect(x: 0.35, y: 0.14, width: 0.3, height: 0.13), label: "Your room", wide: true, icon: "eye.fill", style: .pill, accent: choice == .room))
+        b.append(.init(id: "scan", rect: CGRect(x: 0.67, y: 0.14, width: 0.3, height: 0.13), label: "Scan room", wide: true, icon: "viewfinder", style: .pill))
         for (i, (kind, name)) in Self.places.enumerated() {
-            let on = choice == .place(kind)
-            b.append(.init(id: "place:\(kind)", rect: CGRect(x: 0.03 + CGFloat(i % 4) * 0.24, y: 0.40 + CGFloat(i / 4) * 0.2, width: 0.22, height: 0.17),
-                           label: (on ? "● " : "") + name, wide: true))
+            let parts = name.split(separator: " ", maxSplits: 1).map(String.init)
+            b.append(.init(id: "place:\(kind)", rect: CGRect(x: 0.03 + CGFloat(i % 4) * 0.2375, y: 0.30 + CGFloat(i / 4) * 0.2, width: 0.2275, height: 0.19),
+                           label: parts.last ?? name, wide: true, icon: parts.first, style: .tile, accent: choice == .place(kind)))
         }
-        b.append(.init(id: "night", rect: CGRect(x: 0.75, y: 0.60, width: 0.22, height: 0.17), label: night ? "🌙 Night" : "☀️ Day", wide: true))
+        b.append(.init(id: "night", rect: CGRect(x: 0.03 + 3 * 0.2375, y: 0.50, width: 0.2275, height: 0.19), label: night ? "Night" : "Day", wide: true, icon: night ? "moon.stars.fill" : "sun.max.fill", style: .tile, accent: night))
         // The 360 pictures, four a row, paged; a generate button and a rescan.
-        let all: [(String, String)] = panoramas.map { ("pano:" + $0.path, String($0.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "-", with: " ").prefix(16))) }
-            + libraryItems.map { ("lib:" + $0.id, "📷 " + String($0.title.prefix(12))) }
+        let all: [(String, String, String)] = panoramas.map { ("pano:" + $0.path, String($0.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "-", with: " ").prefix(16)), "photo.circle.fill") }
+            + libraryItems.map { ("lib:" + $0.id, String($0.title.prefix(14)), "photo.on.rectangle") }
         let perPage = 4
         let shown = all.dropFirst(page * perPage).prefix(perPage)
-        for (i, (id, label)) in shown.enumerated() {
+        for (i, (id, label, icon)) in shown.enumerated() {
             let on: Bool
             if case .panorama(let url) = choice, id == "pano:" + url.path { on = true }
             else if case .libraryPhoto(let itemId) = choice, id == "lib:" + itemId { on = true }
             else { on = false }
-            b.append(.init(id: id, rect: CGRect(x: 0.03 + CGFloat(i) * 0.24, y: 0.80, width: 0.22, height: 0.14), label: (on ? "● " : "") + label, wide: true))
+            b.append(.init(id: id, rect: CGRect(x: 0.03 + CGFloat(i) * 0.2375, y: 0.71, width: 0.2275, height: 0.15), label: label, wide: true, icon: icon, style: .tile, accent: on))
         }
-        b.append(.init(id: "prevpage", rect: CGRect(x: 0.03, y: 0.95, width: 0.1, height: 0.045), label: "◀"))
-        b.append(.init(id: "nextpage", rect: CGRect(x: 0.14, y: 0.95, width: 0.1, height: 0.045), label: "▶"))
-        b.append(.init(id: "generate", rect: CGRect(x: 0.26, y: 0.95, width: 0.36, height: 0.045), label: generating ? generatorStatus : "✨ Generate a place (AI)", wide: true))
-        b.append(.init(id: "rescan", rect: CGRect(x: 0.64, y: 0.95, width: 0.33, height: 0.045), label: "↻ Rescan 360 photos", wide: true))
+        b.append(.init(id: "prevpage", rect: CGRect(x: 0.03, y: 0.875, width: 0.1, height: 0.11), label: "Previous", icon: "chevron.left", style: .round))
+        b.append(.init(id: "nextpage", rect: CGRect(x: 0.14, y: 0.875, width: 0.1, height: 0.11), label: "Next", icon: "chevron.right", style: .round))
+        b.append(.init(id: "generate", rect: CGRect(x: 0.26, y: 0.875, width: 0.5, height: 0.11), label: generating ? generatorStatus : "Generate a place", wide: true, icon: "wand.and.stars", style: .pill))
+        b.append(.init(id: "rescan", rect: CGRect(x: 0.87, y: 0.875, width: 0.1, height: 0.11), label: "Rescan", icon: "arrow.clockwise", style: .round))
         panel.set(buttons: b, version: "places|\(choice)|\(night)|\(panoramas.count)|\(libraryItems.count)|\(page)|\(generating)|\(generatorStatus)")
     }
 
@@ -171,6 +171,7 @@ final class PlacesApp {
     }
 
     func render() {
-        panel.render(ButtonsView(size: CGSize(width: 1600, height: 900), buttons: panel.buttons, hovered: panel.hovered, title: "Places", titleHighlight: false))
+        panel.render(ButtonsView(size: CGSize(width: 1600, height: 900), buttons: panel.buttons, hovered: panel.hovered, title: "Places", titleHighlight: false,
+                                 subtitle: "Surroundings when passthrough is off"))
     }
 }

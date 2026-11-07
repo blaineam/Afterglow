@@ -54,10 +54,12 @@ final class HandTracker: @unchecked Sendable {
     /// A palm reading smaller than this share of the hand's own flat-on size, at the measured
     /// depth, is edge-on: the fingers are in line with the camera, which sees only the thumb and
     /// guesses the index tip beside it, which read as a pinch (owner, 2026-11-06). No pinch starts.
-    private static let edgeOnOpenness: Float = 0.6
+    private static let edgeOnOpenness: Float = 0.4
     /// Fingertips whose LiDAR depths differ by more than this, metres, are apart along the camera's
     /// axis however close they look: a C-shaped hand turned so its tips cross in the image.
     private static let maxTipDepthGap: Float = 0.02
+    /// Knuckle-to-tip over the bones' length, in the image, above which the index finger is straight.
+    private static let maxStraightCurl: Float = 0.9
     /// Results the tips must have been level for: at the moment they cross in the image both read
     /// the nearer depth, so the gap before the crossing is what tells a turning C from a pinch.
     private static let levelResults = 5
@@ -80,6 +82,9 @@ final class HandTracker: @unchecked Sendable {
         var lostAt: Double = -1
         /// The last few results' depth gaps between the thumb and index tips, metres.
         var tipGaps: [Float] = []
+        /// The wrist relative to the knuckles' centre, kept from results where the wrist was seen,
+        /// for results where it is at the image's edge and guessed.
+        var wristOffset: SIMD3<Float>?
         /// The finger bones' lengths relative to the palm span, averaged over results, and how
         /// many results in a row have been rejected as impossible.
         var boneLengths: [Float] = []
@@ -412,7 +417,23 @@ final class HandTracker: @unchecked Sendable {
             let cameraJoints = HandGeometry.placeJoints(imageLandmarks: hand.landmarks, metricLandmarks: shape, centerDepth: depth,
                                                         focalLength: focal, principalPoint: principal)
             // Into ARKit's camera axes (x right, y up, -z forward), then the world at the image's pose.
-            let rawJoints = cameraJoints.map { c in (cameraToWorld * SIMD4(c.x, -c.y, -c.z, 1)).xyz }
+            var rawJoints = cameraJoints.map { c in (cameraToWorld * SIMD4(c.x, -c.y, -c.z, 1)).xyz }
+            // A wrist at the image's edge (or that Vision was unsure of) is a guess, and the guess
+            // folds the hand forward at the wrist; it is held where the knuckles say it was last
+            // seen (owner, 2026-11-07).
+            let margin = Self.edgeMargin * Float(width)
+            let wristPixel = hand.landmarks[HandGeometry.wrist]
+            let wristInside = wristPixel.x > margin && wristPixel.x < Float(width) - margin && wristPixel.y > margin && wristPixel.y < Float(height) - margin
+            let knuckles = [5, 9, 13, 17].reduce(SIMD3<Float>.zero) { $0 + rawJoints[$1] } / 4
+            if wristInside && hand.confidences[HandGeometry.wrist] >= Self.sureTipConfidence {
+                slot.wristOffset = rawJoints[HandGeometry.wrist] - knuckles
+            } else if let offset = slot.wristOffset {
+                rawJoints[HandGeometry.wrist] = knuckles + offset
+                for t in [1, 2] where hand.confidences[t] < Self.sureTipConfidence {
+                    // The thumb's base follows the wrist it hangs off.
+                    rawJoints[t] = knuckles + offset + (rawJoints[t] - rawJoints[HandGeometry.wrist])
+                }
+            }
             if let previous = slot.state, now - slot.imageTime < 0.1, slot.rejectedRun < Self.maxRejectedRun {
                 let jump = zip(rawJoints, previous.joints).map { simd_distance($0, $1) }.max() ?? 0
                 if jump > Self.maxJointJump {
@@ -473,9 +494,15 @@ final class HandTracker: @unchecked Sendable {
             }
             slot.tipGaps.append(tipDepthGap ?? Float.nan)
             if slot.tipGaps.count > Self.levelResults { slot.tipGaps.removeFirst() }
-            let readings = slot.tipGaps.filter { !$0.isNaN }
-            let tipsLevel = readings.count < 2 || readings.allSatisfy { $0 <= Self.maxTipDepthGap }
-            let margin = Self.edgeMargin * Float(width)
+            // The index finger must be bent for a pinch: the straight distance from its knuckle to
+            // its tip against the length along its bones, in the image, is 1 for a straight finger
+            // from any angle (the points stay in line) and about 0.6-0.85 in a pinch. A straight
+            // index finger whose tip the thumb crosses in the image is the "perspective trick"
+            // the depth gap was meant to catch and never did; the gap rule blocked real pinches
+            // instead (LiDAR at 40 cm cannot tell two touching fingertips apart; log 2026-11-07).
+            let along = simd_distance(hand.landmarks[5], hand.landmarks[6]) + simd_distance(hand.landmarks[6], hand.landmarks[7]) + simd_distance(hand.landmarks[7], hand.landmarks[8])
+            let curl = along > 1 ? simd_distance(hand.landmarks[5], hand.landmarks[8]) / along : 1
+            let indexBent = curl < Self.maxStraightCurl
             let tipsInside = [hand.landmarks[HandGeometry.thumbTip], hand.landmarks[HandGeometry.indexTip]].allSatisfy {
                 $0.x > margin && $0.x < Float(width) - margin && $0.y > margin && $0.y < Float(height) - margin
             }
@@ -488,18 +515,16 @@ final class HandTracker: @unchecked Sendable {
             if isEdgeOn { edgeOn += 1 }
             // Edge-on only stops a pinch starting; a held one still follows the tips, so it can end.
             let tipDistance = simd_distance(thumb, index)
-            let pinched = slot.pinch.update(tipDistance: tipDistance, allowStart: tipsInside && !isEdgeOn && tipsLevel && tipsSeen,
+            let pinched = slot.pinch.update(tipDistance: tipDistance, allowStart: tipsInside && !isEdgeOn && indexBent && tipsSeen,
                                             tipsSure: tipsSure)
             // A pinch the tips are making that cannot start: say why, once a second, so a real pinch
             // that fails to register can be read off the log.
-            if !pinched && tipDistance < 0.025 && !(tipsInside && !isEdgeOn && tipsLevel && tipsSeen) && now - lastBlockedLog > 1 {
+            if !pinched && tipDistance < 0.025 && !(tipsInside && !isEdgeOn && indexBent && tipsSeen) && now - lastBlockedLog > 1 {
                 lastBlockedLog = now
                 var reasons: [String] = []
                 if !tipsInside { reasons.append("tips at the image's edge") }
                 if isEdgeOn { reasons.append(String(format: "palm edge-on (%.0f%% open)", openness * 100)) }
-                if !tipsLevel {
-                    reasons.append("tip depths " + slot.tipGaps.map { $0.isNaN ? "none" : String(format: "%.1f", $0 * 100) }.joined(separator: "/") + " cm")
-                }
+                if !indexBent { reasons.append(String(format: "index finger straight (%.2f)", curl)) }
                 if !tipsSeen { reasons.append(String(format: "a tip not seen (%.2f, %.2f)", hand.confidences[HandGeometry.thumbTip], hand.confidences[HandGeometry.indexTip])) }
                 log(String(format: "[Pinch] %@ hand's tips %.1f cm apart but no start: %@", slot.handedness >= 0.5 ? "right" : "left",
                            tipDistance * 100, reasons.joined(separator: ", ")))

@@ -39,10 +39,10 @@ final class MusicApp {
 
     private func layout() {
         var b: [ScenePanel.Button] = []
-        let y: CGFloat = 0.72, h: CGFloat = 0.22
-        b.append(.init(id: "prev", rect: CGRect(x: 0.08, y: y, width: 0.2, height: h), label: "⏮"))
-        b.append(.init(id: "play", rect: CGRect(x: 0.31, y: y, width: 0.38, height: h), label: isPlaying ? "⏸" : "▶"))
-        b.append(.init(id: "next", rect: CGRect(x: 0.72, y: y, width: 0.2, height: h), label: "⏭"))
+        let y: CGFloat = 0.64, h: CGFloat = 0.32
+        b.append(.init(id: "prev", rect: CGRect(x: 0.14, y: y, width: 0.2, height: h), label: "Previous", icon: "backward.fill", style: .round))
+        b.append(.init(id: "play", rect: CGRect(x: 0.40, y: y, width: 0.2, height: h), label: isPlaying ? "Pause" : "Play", icon: isPlaying ? "pause.fill" : "play.fill", style: .round, accent: true))
+        b.append(.init(id: "next", rect: CGRect(x: 0.66, y: y, width: 0.2, height: h), label: "Next", icon: "forward.fill", style: .round))
         panel.set(buttons: b, version: "music|\(version)|\(isPlaying)")
     }
 
@@ -82,9 +82,9 @@ struct MusicView: View {
                     RoundedRectangle(cornerRadius: 24).fill(PanelStyle.key).frame(width: 300, height: 300).overlay(Text("🎵").font(.system(size: 120)))
                 }
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Apple Music").font(.system(size: 26, weight: .medium, design: .rounded)).foregroundStyle(PanelStyle.accent)
-                    Text(title).font(.system(size: 44, weight: .semibold, design: .rounded)).foregroundStyle(PanelStyle.text).lineLimit(2)
-                    Text(subtitle).font(.system(size: 30, design: .rounded)).foregroundStyle(PanelStyle.text.opacity(0.8)).lineLimit(2)
+                    Text("Apple Music").font(.system(size: 36, weight: .medium, design: .rounded)).foregroundStyle(PanelStyle.accent)
+                    Text(title).font(.system(size: 56, weight: .semibold, design: .rounded)).foregroundStyle(PanelStyle.text).lineLimit(2)
+                    Text(subtitle).font(.system(size: 40, design: .rounded)).foregroundStyle(PanelStyle.text.opacity(0.8)).lineLimit(2)
                 }
             }
             .padding(40)

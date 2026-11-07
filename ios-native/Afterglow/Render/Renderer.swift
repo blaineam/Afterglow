@@ -110,6 +110,14 @@ final class Renderer {
     private var lastPoseLog: Double = 0
     private var lastSettingsText = ""
     private var dumped = false
+    private var homeOpened = false
+    /// Phone view: a tap this frame at a point on the screen (0-1 across and down), which is
+    /// where the pointer goes for the frame; the pointer otherwise sits at the screen's centre.
+    private var tapPoint: SIMD2<Float>?
+    private var pendingTapPoint: SIMD2<Float>?
+    private var phoneFov: SIMD2<Float> = SIMD2(1, 1)   // tan of the half angles, x and y
+    private(set) var hasTracking = false
+    private var eyeTexturePhone = false
     private let amplifies: Bool
 
     /// The camera and head pose source in use; swapped when the degrees of freedom change.
@@ -180,7 +188,8 @@ final class Renderer {
         windows.onClose = { [weak self] kind in self?.windowClosed(kind) }
         self.windows = windows
         let home = HomeMenu(device: device)
-        home.onLaunch = { [weak self] kind in self?.launch(kind) }
+        // The app takes Home's place: Home closes first, so the window lands where it was.
+        home.onLaunch = { [weak self] kind in self?.windows?.close(.home); self?.launch(kind) }
         home.onLock = { [weak self] in self?.lock?.lock(reason: "the menu") }
         self.home = home
         let lock = AppLock(device: device)
@@ -351,6 +360,31 @@ final class Renderer {
 
     /// A tap on the screen (desk mode, or the viewer's button): a select.
     func screenTapped() { tapRequests.value = 2 }
+    /// A tap at a point on the screen (0-1 across and down): the phone view's select.
+    func screenTapped(at point: SIMD2<Float>) { pendingTapPoint = point; tapRequests.value = 2 }
+    /// Text from the system keyboard (the phone view's double tap) goes where dictation does.
+    func typed(_ text: String) {
+        if places != nil, promptingForPlace { placePrompt += text; return }
+        if let media, media.isFiles { media.type(text) } else { browser?.type(text) }
+    }
+    func typedKey(_ key: String) {
+        if places != nil, promptingForPlace {
+            if key == "Backspace", !placePrompt.isEmpty { placePrompt.removeLast() }
+            if key == "Enter" { promptingForPlace = false; places?.generate(prompt: placePrompt) }
+            return
+        }
+        if let media, media.isFiles { media.key(key) } else { browser?.key(key) }
+    }
+    /// A drag on the screen: the desk look without tracking; with it, a scroll of the page or a
+    /// swipe between the media viewer's items.
+    func panned(dx: Float, dy: Float, ended: Bool, totalDx: Float) {
+        if !hasTracking { deskLook(yawDelta: -dx * 0.004, pitchDelta: -dy * 0.004); return }
+        if let media, media.screen == .viewing {
+            if ended, abs(totalDx) > 80 { media.press(totalDx < 0 ? "nextItem" : "prevItem") }
+        } else {
+            browser?.scroll(dy: -dy * 2)
+        }
+    }
     /// A long press on the screen ends an immersive session.
     func screenHeld() { browser?.endSession() }
     func deskLook(yawDelta: Float, pitchDelta: Float) {
@@ -510,7 +544,7 @@ final class Renderer {
         floorPipeline = try scene("floorVertex", "floorFragment")
         passthroughPipeline = try scene("fullscreenVertex", "passthroughFragment")
         overlayPipeline = try scene("overlayVertex", "overlayFragment")
-        quadPipeline = try scene("quadVertex", "quadFragment")
+        quadPipeline = try scene("quadVertex", "quadFragment", blend: true)
         mediaPipeline = try scene("fullscreenVertex", "mediaFragment")
         mediaQuadPipeline = try scene("quadVertex", "mediaQuadFragment")
         surfacePipeline = try scene("surfaceVertex", "surfaceFragment", blend: true)
@@ -589,8 +623,11 @@ final class Renderer {
 
     private func ensureEyeTexture() {
         let scale = cappedScale
-        if eyeTexture != nil && eyeTextureScale == scale { return }
-        let width = max(16, Int((Float(screen.pixelWidth) * 0.5 * scale).rounded()))
+        let phone = settings.phoneView
+        if eyeTexture != nil && eyeTextureScale == scale && eyeTexturePhone == phone { return }
+        eyeTexturePhone = phone
+        // The phone view draws the whole screen from one eye; the viewer half of it per eye.
+        let width = max(16, Int((Float(screen.pixelWidth) * (phone ? 1 : 0.5) * scale).rounded()))
         let height = max(16, Int((Float(screen.pixelHeight) * scale).rounded()))
         let d = MTLTextureDescriptor()
         d.textureType = .type2DArray
@@ -656,9 +693,21 @@ final class Renderer {
         let headInWorld = cameraInWorld * simd_float4x4.translation(cameraToEyes * (1 - eyesAtCamera))
 
         var uniforms = FrameUniforms()
+        let phone = settings.phoneView
+        hasTracking = source.predictedCameraTransform(at: predictTo) != nil
         for eye in Eye.allCases {
-            let eyeInWorld = headInWorld * simd_float4x4.translation(lens.eyeOffset(eye))
-            let projection = lens.projectionMatrix(eye, near: 0.05, far: 500)
+            // The phone view: one eye at the camera, a symmetric frustum the screen's shape, 58
+            // degrees tall (the wide camera's, so passthrough fills it at its true scale).
+            let eyeInWorld = phone ? headInWorld : headInWorld * simd_float4x4.translation(lens.eyeOffset(eye))
+            let projection: simd_float4x4
+            if phone {
+                let tanV = tan(Float(29) * .pi / 180)
+                let tanH = tanV * Float(eyeTexture.width) / Float(eyeTexture.height)
+                phoneFov = SIMD2(tanH, tanV)
+                projection = LensDistortion.frustum(left: -tanH * 0.05, right: tanH * 0.05, bottom: -tanV * 0.05, top: tanV * 0.05, near: 0.05, far: 500)
+            } else {
+                projection = lens.projectionMatrix(eye, near: 0.05, far: 500)
+            }
             let view = eyeInWorld.inverse
             var worldFromView = eyeInWorld
             worldFromView.columns.3 = SIMD4(0, 0, 0, 1)
@@ -690,6 +739,24 @@ final class Renderer {
         uniforms.passthroughBlend = settings.passthrough ? 1 : 0
 
         lastHead = headInWorld
+        // The pointer: the gaze, or in the phone view the point tapped this frame.
+        tapPoint = pendingTapPoint
+        pendingTapPoint = nil
+        var pointerHead = headInWorld
+        if phone, let tap = tapPoint {
+            let local = simd_normalize(SIMD3((tap.x * 2 - 1) * phoneFov.x, (1 - tap.y * 2) * phoneFov.y, -1))
+            let worldDir = simd_normalize((headInWorld * SIMD4(local, 0)).xyz)
+            let up = headInWorld.columns.1.xyz
+            let right = simd_normalize(simd_cross(worldDir, up))
+            let trueUp = simd_cross(right, worldDir)
+            pointerHead.columns.0 = SIMD4(right, 0)
+            pointerHead.columns.1 = SIMD4(trueUp, 0)
+            pointerHead.columns.2 = SIMD4(-worldDir, 0)
+        }
+        let pointerOrigin = pointerHead.columns.3.xyz
+        let pointerDirection = -pointerHead.columns.2.xyz
+        // Home opens on its own a second in, over the surroundings: the launcher is the first thing seen.
+        if !homeOpened, t2 - launchTime > 1, uiWindow != nil, lock?.locked != true { homeOpened = true; launch(WindowKind.home) }
         if settings.browserOpen && browser == nil && uiWindow != nil && windows?.window(.browser) == nil { launch(WindowKind.browser) }
         if !settings.browserOpen && browser != nil { windows?.close(.browser) }
 
@@ -708,8 +775,8 @@ final class Renderer {
             if lock.panel.pane.centre == .zero || simd_distance(lock.panel.pane.centre, headInWorld.columns.3.xyz) > 3 {
                 lock.panel.pane.place(ahead: headInWorld, distance: 1.0)
             }
-            let origin = headInWorld.columns.3.xyz
-            let forward = -headInWorld.columns.2.xyz
+            let origin = pointerOrigin
+            let forward = pointerDirection
             let hit = lock.panel.pane.hit(origin: origin, direction: forward)
             _ = lock.panel.hover(hit?.uv)
             lock.render()
@@ -749,13 +816,13 @@ final class Renderer {
             tapRequests.value = 0
             if tap == 1 {
                 doubleTapPending = true
-                doubleTapTarget = browser?.window.gaze(from: headInWorld)?.uv
+                doubleTapTarget = browser?.window.gaze(from: pointerHead)?.uv
             } else {
                 select = true
             }
         }
         if lockedNow, let lock {
-            if select, lock.panel.pane.hit(origin: headInWorld.columns.3.xyz, direction: -headInWorld.columns.2.xyz) != nil, let id = lock.panel.hovered {
+            if select, lock.panel.pane.hit(origin: pointerOrigin, direction: pointerDirection) != nil, let id = lock.panel.hovered {
                 lock.press(id)
             }
             select = false
@@ -791,8 +858,8 @@ final class Renderer {
                 if let t = w.titleBar.texture { toolbarQuads.append((t, 8 + windows.visible.firstIndex { $0 === w }!)) }
             }
             // The home menu, the settings and music windows: panels with buttons.
-            let origin = headInWorld.columns.3.xyz
-            let forward = -headInWorld.columns.2.xyz
+            let origin = pointerOrigin
+            let forward = pointerDirection
             if windows.window(.home)?.minimized == false, let home {
                 home.layout(open: windows.windows.map(\.kind))
                 let hit = home.panel.pane.hit(origin: origin, direction: forward)
@@ -842,8 +909,8 @@ final class Renderer {
             grabDemo.draw(into: &overlay)
         }
         if let games, !lockedNow {
-            let origin = headInWorld.columns.3.xyz
-            let forward = -headInWorld.columns.2.xyz
+            let origin = pointerOrigin
+            let forward = pointerDirection
             let hit = windows?.window(.games)?.minimized == false ? games.panel.pane.hit(origin: origin, direction: forward) : nil
             _ = games.panel.hover(hit?.uv)
             var gameSelect = select
@@ -873,9 +940,10 @@ final class Renderer {
             for hand in tracked { overlay.addHand(hand, eye: eyeMid) }
         }
         var quads: [(MTLBuffer?, MTLTexture, SIMD4<Float>, Int)] = []
-        if let toolbar, !(browser?.isImmersive ?? false), !lockedNow {
-            let origin = headInWorld.columns.3.xyz
-            let forward = -headInWorld.columns.2.xyz
+        // The dock: hidden while the keyboard hangs where it would be.
+        if let toolbar, !(browser?.isImmersive ?? false), !lockedNow, !(browser?.keyboardShown ?? false) {
+            let origin = pointerOrigin
+            let forward = pointerDirection
             var hit: (ScenePanel, SIMD2<Float>)?
             if toolbar.menuOpen, let h = toolbar.menu.pane.hit(origin: origin, direction: forward) { hit = (toolbar.menu, h.uv) }
             else if let h = toolbar.panel.pane.hit(origin: origin, direction: forward) { hit = (toolbar.panel, h.uv) }
@@ -897,8 +965,8 @@ final class Renderer {
         }
         // Places: the panel, and the scan it asks for.
         if let places, windows?.window(.places)?.minimized == false, !lockedNow {
-            let origin = headInWorld.columns.3.xyz
-            let forward = -headInWorld.columns.2.xyz
+            let origin = pointerOrigin
+            let forward = pointerDirection
             let hit = places.panel.pane.hit(origin: origin, direction: forward)
             _ = places.panel.hover(hit?.uv)
             if select, hit != nil, let id = places.panel.hovered {
@@ -938,8 +1006,8 @@ final class Renderer {
         var mediaTextures: (picture: MTLTexture?, eyes: MTLTexture?) = (nil, nil)
         var mediaUniforms = MediaUniforms()
         if let media, windows?.visible.contains(where: { $0.kind == .media || $0.kind == .files }) == true, !lockedNow {
-            let origin = headInWorld.columns.3.xyz
-            let forward = -headInWorld.columns.2.xyz
+            let origin = pointerOrigin
+            let forward = pointerDirection
             let panel = media.screen == .viewing ? media.controls : media.grid
             var hit = panel.pane.hit(origin: origin, direction: forward)
             _ = panel.hover(hit?.uv)
@@ -984,8 +1052,8 @@ final class Renderer {
         }
         if let browser, let chrome, let keyboard, windows?.window(.browser)?.minimized == false, !lockedNow {
             // The gaze on the panels, before the page: a panel under the gaze takes the select.
-            let origin = headInWorld.columns.3.xyz
-            let forward = -headInWorld.columns.2.xyz
+            let origin = pointerOrigin
+            let forward = pointerDirection
             let eyeMid = origin
             var panelHit: (ScenePanel, SIMD2<Float>)?
             let showKeyboard = browser.keyboardShown || browser.fieldFocused || !browser.typed.isEmpty
@@ -1000,7 +1068,7 @@ final class Renderer {
                 pressPanel(panel, id: id)
             }
             if doubleTapPending && select { doubleTapPending = false }
-            let gaze = browser.frame(head: headInWorld, hands: tracked, select: pageSelect || (select && browser.isImmersive), time: predictTo,
+            let gaze = browser.frame(head: pointerHead, hands: tracked, select: pageSelect || (select && browser.isImmersive), time: predictTo,
                                      deltaTime: frameDt)
             if !browser.isImmersive {
                 chrome.update(browser: browser)
@@ -1084,7 +1152,7 @@ final class Renderer {
 
         // Pass 1: the scene, both eyes at once (or one pass per eye without amplification). In an
         // immersive session the page has the screen, so the scene is skipped.
-        let passes: [Int?] = (browser?.isImmersive ?? false) ? [] : (amplifies ? [nil] : [0, 1])
+        let passes: [Int?] = (browser?.isImmersive ?? false) ? [] : (phone ? [0] : (amplifies ? [nil] : [0, 1]))
         for slice in passes {
             let scenePass = MTLRenderPassDescriptor()
             scenePass.colorAttachments[0].texture = eyeTexture
@@ -1246,12 +1314,21 @@ final class Renderer {
         screenPass.colorAttachments[0].storeAction = .store
         screenPass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
         if let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: screenPass) {
-            encoder.label = "distortion"
-            encoder.setRenderPipelineState(distortionPipeline)
-            encoder.setVertexBuffer(meshBuffer, offset: 0, index: 0)
-            encoder.setFragmentTexture(eyeTexture, index: 0)
-            encoder.drawIndexedPrimitives(type: .triangle, indexCount: indexCount, indexType: .uint32,
-                                          indexBuffer: indexBuffer, indexBufferOffset: 0)
+            if phone {
+                encoder.label = "phone view"
+                encoder.setRenderPipelineState(blitPipeline)
+                var slice: UInt32 = 0
+                encoder.setFragmentBytes(&slice, length: MemoryLayout<UInt32>.stride, index: 0)
+                encoder.setFragmentTexture(eyeTexture, index: 0)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            } else {
+                encoder.label = "distortion"
+                encoder.setRenderPipelineState(distortionPipeline)
+                encoder.setVertexBuffer(meshBuffer, offset: 0, index: 0)
+                encoder.setFragmentTexture(eyeTexture, index: 0)
+                encoder.drawIndexedPrimitives(type: .triangle, indexCount: indexCount, indexType: .uint32,
+                                              indexBuffer: indexBuffer, indexBufferOffset: 0)
+            }
             encoder.endEncoding()
         }
 
@@ -1337,7 +1414,7 @@ extension Renderer {
         case "star": browser.toggleBookmark()
         case "size": browser.cycleSize(); layoutPanels()
         case "place": browser.togglePlacing()
-        case "keys": browser.toggleKeyboard()
+        case "keys", "address": browser.toggleKeyboard()
         case "mic": onDictate?()
         case "close": browser.closeTab()
         case "yes": browser.answerPrompt(yes: true)

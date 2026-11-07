@@ -219,8 +219,14 @@ foundation at all. The honest picture:
   sprites, particles): the toy box's seven part-built toys and its hidden wake-up button that
   sets them driving, waddling, launching, marching, flying, bouncing and spinning, a putting
   green, a blob arena with waves, a coaster with rails and arches, a stone portal, dust bunnies,
-  gems on rails for the rhythm game. Still to come: MusicKit for the rhythm game, WebXR AR
-  features, and everything above on the phone.
+  gems on rails for the rhythm game.
+- **First phone round, 2026-11-07**: the panels were unreadable through the lenses and the UX
+  a pile of button grids. Remade the same night: one glass design language with type sized
+  for the lenses (2.5-3 degrees), a Home launcher at start over the surroundings, traffic-light
+  window controls, a dock, a browser chrome with the address, paged Photos albums; a phone
+  view (one eye, taps select, double tap for the system keyboard, drags scroll and swipe); the
+  pinch rebuilt on an index-curl rule instead of LiDAR tip depths; the wrist held at the image's
+  edge. Still to come: MusicKit for the rhythm game, WebXR AR features, and the next phone round.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

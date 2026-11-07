@@ -40,8 +40,8 @@ final class Toolbar {
 
     init(device: MTLDevice, settings: Settings) {
         self.settings = settings
-        panel = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 180)
-        panel.pane.widthMeters = 1.1
+        panel = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 320)
+        panel.pane.widthMeters = 1.5
         menu = ScenePanel(device: device, pixelWidth: 1400, pixelHeight: 820)
         menu.pane.widthMeters = 1.0
         if let saved = UserDefaults.standard.array(forKey: recentsKey) as? [String] {
@@ -66,7 +66,7 @@ final class Toolbar {
         let position = head.columns.3.xyz
         panel.pane.right = w.right
         panel.pane.up = w.up
-        panel.pane.centre = w.centre - SIMD3(0, 0.42, 0)
+        panel.pane.centre = w.centre - SIMD3(0, 0.55, 0)
         // Tilted up to face a head looking down at it.
         let tilt = simd_quatf(angle: -0.5, axis: w.right)
         panel.pane.up = tilt.act(w.up)
@@ -77,52 +77,25 @@ final class Toolbar {
     }
 
     func layout() {
+        // The dock: six large tiles, an icon over a word each.
         var buttons: [ScenePanel.Button] = []
-        let h: CGFloat = 0.82, y: CGFloat = 0.09
-        var x: CGFloat = 0.01
-        func add(_ id: String, _ label: String, _ width: CGFloat) {
-            buttons.append(.init(id: id, rect: CGRect(x: x, y: y, width: width, height: h), label: label, wide: true))
-            x += width + 0.006
-        }
-        add("toggle:passthrough", settings.passthrough ? "👁 Room" : "👁 Scene", 0.11)
-        add("toggle:hands", settings.showHands ? "✋ On" : "✋ Off", 0.09)
-        add("toggle:dof", settings.degreesOfFreedom == 3 ? "3DoF" : "6DoF", 0.09)
-        add("toggle:surfaces", settings.surfaces ? "▦ On" : "▦ Off", 0.09)
-        add("recentre", "⌖", 0.06)
-        for app in recents.prefix(4) { add("app:\(app.rawValue)", app.label, 0.13) }
-        add("more", "⋯ More", 0.11)
-        panel.set(buttons: buttons, version: "toolbar|\(settings.passthrough)|\(settings.showHandsLive)|\(settings.degreesOfFreedom)|\(settings.surfaces)|\(recents.map(\.rawValue).joined())")
-
-        // The menu: every app, then the settings as rows of value and +/-.
-        var m: [ScenePanel.Button] = []
-        let appY: CGFloat = 0.05, appH: CGFloat = 0.14
-        var ax: CGFloat = 0.02
-        for app in AppKind.allCases {
-            m.append(.init(id: "app:\(app.rawValue)", rect: CGRect(x: ax, y: appY, width: 0.155, height: appH), label: app.label, wide: true))
-            ax += 0.16
-        }
-        let rows: [(String, String, String)] = [
-            ("renderScale", "Render scale", "\(settings.renderScalePercent)%"),
-            ("fps", "Frame rate", "\(settings.targetFrameRate) fps"),
-            ("textScale", "Browser text", "\(settings.textScaleLive)%"),
-            ("handHz", "Hand images/s", "\(settings.handHzLive)"),
-            ("prediction", "Head prediction", "+\(settings.extraPredictionMs) ms"),
+        let tiles: [(String, String, String)] = [
+            ("more", "square.grid.2x2.fill", "Apps"),
+            ("toggle:passthrough", settings.passthrough ? "eye.fill" : "sparkles", settings.passthrough ? "Room" : "Scene"),
+            ("toggle:hands", settings.showHandsLive ? "hand.raised.fill" : "hand.raised.slash", "Hands"),
+            ("recentre", "scope", "Recentre"),
+            ("record:0", isRecording() ? "stop.circle.fill" : "record.circle", isRecording() ? "Stop" : "Record"),
+            ("app:settings", "gearshape.fill", "Settings"),
         ]
-        var ry: CGFloat = 0.25
-        for (id, name, value) in rows {
-            m.append(.init(id: "label:\(id)", rect: CGRect(x: 0.02, y: ry, width: 0.42, height: 0.12), label: name, wide: true))
-            m.append(.init(id: "minus:\(id)", rect: CGRect(x: 0.46, y: ry, width: 0.12, height: 0.12), label: "−"))
-            m.append(.init(id: "value:\(id)", rect: CGRect(x: 0.59, y: ry, width: 0.25, height: 0.12), label: value, wide: true))
-            m.append(.init(id: "plus:\(id)", rect: CGRect(x: 0.85, y: ry, width: 0.12, height: 0.12), label: "+"))
-            ry += 0.135
+        let w: CGFloat = 0.158, gap: CGFloat = 0.008
+        var x: CGFloat = (1 - (w * CGFloat(tiles.count) + gap * CGFloat(tiles.count - 1))) / 2
+        for (id, icon, label) in tiles {
+            buttons.append(.init(id: id, rect: CGRect(x: x, y: 0.06, width: w, height: 0.88), label: label, wide: true, icon: icon, style: .tile,
+                                 accent: id == "toggle:passthrough" && settings.passthrough || id == "record:0" && isRecording()))
+            x += w + gap
         }
-        m.append(.init(id: "toggle:occlusion", rect: CGRect(x: 0.36, y: 0.9, width: 0.3, height: 0.09), label: settings.occlusion ? "Occlusion on" : "Occlusion off", wide: true))
-        let recording = isRecording()
-        m.append(.init(id: "record:0", rect: CGRect(x: 0.02, y: 0.80, width: 0.3, height: 0.09), label: recording ? "■ Stop recording" : "● Record left eye", wide: true))
-        m.append(.init(id: "record:1", rect: CGRect(x: 0.36, y: 0.80, width: 0.3, height: 0.09), label: recording ? "■ Stop recording" : "● Record right eye", wide: true))
-        m.append(.init(id: "closeapp", rect: CGRect(x: 0.02, y: 0.9, width: 0.3, height: 0.09), label: "Close app", wide: true))
-        m.append(.init(id: "closemenu", rect: CGRect(x: 0.68, y: 0.9, width: 0.3, height: 0.09), label: "Done", wide: true))
-        menu.set(buttons: m, version: "menu|\(rows.map { $0.2 }.joined())|\(settings.occlusion)|\(recording)|\(recents.map(\.rawValue).joined())")
+        panel.set(buttons: buttons, version: "dock|\(settings.passthrough)|\(settings.showHandsLive)|\(isRecording())")
+        menu.set(buttons: [], version: "menu")
     }
 
     func press(_ id: String) {
@@ -149,15 +122,13 @@ final class Toolbar {
         case "minus:prediction": settings.extraPredictionMs = max(0, settings.extraPredictionMs - 4)
         case "plus:prediction": settings.extraPredictionMs = min(60, settings.extraPredictionMs + 4)
         default:
-            if id.hasPrefix("app:"), let app = AppKind(rawValue: String(id.dropFirst(4))) {
-                if app == .settings { menuOpen = true } else { onLaunch?(app); menuOpen = false }
-            }
+            if id.hasPrefix("app:"), let app = AppKind(rawValue: String(id.dropFirst(4))) { onLaunch?(app); menuOpen = false }
         }
         layout()
     }
 
     func render() {
-        panel.render(ButtonsView(size: CGSize(width: 1600, height: 180), buttons: panel.buttons, hovered: panel.hovered, title: nil, titleHighlight: false))
+        panel.render(ButtonsView(size: CGSize(width: 1600, height: 320), buttons: panel.buttons, hovered: panel.hovered, title: nil, titleHighlight: false))
         if menuOpen {
             menu.render(ButtonsView(size: CGSize(width: 1400, height: 820), buttons: menu.buttons, hovered: menu.hovered, title: "Afterglow", titleHighlight: false))
         }

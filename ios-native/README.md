@@ -290,6 +290,59 @@ heading taken as straight ahead), the camera sits at the origin, and the hands r
 but without LiDAR, so they are placed by the flat fit at the learned palm size and the depth
 guards on the pinch are off. The 6DoF wide mode (`dof 6`, the default) is unchanged.
 
+## The interface: Afterglow glass
+
+The first phone round (2026-11-07) found the panels unreadable through the cardboard lenses
+and the whole thing a pile of button grids, so the interface was remade on one design language
+(`Browser/Panels.swift`, `PanelStyle` and `ButtonsView`):
+
+- **Glass**: dark violet glass with a top highlight and a hairline rim, continuous corners,
+  transparent outside the corners (the panel quads blend their alpha), rounded type, one pink
+  accent for what the gaze is on and cyan for the current choice.
+- **Type for lenses**: every control's text is sized from its height with a floor of 60 texture
+  pixels; at a window's usual 1.8 m width and 1.4 m distance that is 2.5-3 degrees tall, the
+  size a phone behind a cardboard lens needs (the earlier 26-34 px titles were about 1 degree).
+  Panels show few things, large: tiles with an icon over a word, pills, round icons, rows.
+- **Launch**: the app opens on the surroundings (the scene or passthrough) with the Home
+  launcher ahead: eight tiles (Browser, Media, Files, Games, Places, Music, Settings, Lock).
+  Launching an app closes Home and puts the app's window where it was. The browser no longer
+  opens on its own (`web 1` as a launch option still does).
+- **Windows**: traffic lights at the top left of every window (red close, yellow minimize,
+  green size, cycling four widths from 1.3 to 3.2 m), the name as a grab handle (hold a pinch
+  on it to drag), move on the right. New windows open 40 degrees to the right of the last.
+- **The dock**: six tiles low ahead (Apps, Scene/Room, Hands, Recentre, Record, Settings); it
+  hides while the keyboard is up, which hangs where it would be.
+- **Browser chrome**: back, forward, reload, the address pill (select it for the keyboard),
+  keyboard, dictation, bookmark and start on the first row; tabs as pills with new, private and
+  close on the second; a login prompt takes the second row when there is one.
+- **Photos**: albums as a paged list of large rows (eight a page, arrows in the header), items
+  eight a page in four columns; the viewer's controls are round icons: close, previous, back
+  10 s, play, ahead 10 s, next, the format, recentre and turn.
+
+## Phone view
+
+`view 1` (or the control strip's toggle, or Settings) is the phone in the hand instead of the
+viewer, as the Unity app had: one eye at the camera, a symmetric frustum the screen's shape and
+58 degrees tall (the wide camera's, so passthrough is life-size), no lens warp, drawn full
+screen through the blit pipeline. The head is still tracked, so the phone is a window moved
+around the room. A tap selects what it lands on (the tap's pixel becomes the pointer ray for
+that frame), a double tap brings up the system keyboard (the view is a `UIKeyInput`; text goes
+where dictation goes, Return is Go), a drag scrolls the page or swipes between pictures in the
+viewer, a long press ends a WebXR session. Without tracking (the Simulator) a drag still turns
+the head.
+
+## Pinch, second round
+
+The phone round found real pinches blocked and a "perspective trick" (a straight index finger
+whose tip the thumb crosses in the image) accepted. The LiDAR tip-depth rule was the cause of
+both: at 40 cm it cannot tell two touching fingertips apart, so it blocked true pinches, and it
+never caught the trick. It is gone. A pinch now also needs the index finger bent: its knuckle
+to tip over the length along its bones, in the image, which is 1 for a straight finger from any
+angle (the points stay in line) and 0.6-0.85 in a pinch. The edge-on guard is looser (40 % open
+blocks a start, not 60 %). A wrist at the image's edge, or one Vision was unsure of, is held
+where the knuckles say it was last seen, so the hand no longer folds forward at the wrist when
+it reaches the camera's edge.
+
 ## Windows, Home, settings, lock, music
 
 - **Windows** (`Home/WindowManager.swift`): every app is a window in the scene with a title bar

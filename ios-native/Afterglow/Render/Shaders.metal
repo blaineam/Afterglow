@@ -639,7 +639,8 @@ fragment float4 quadFragment(QuadOut in [[stage_in]], texture2d<float> page [[te
                              constant float4 &tint [[buffer(2)]]) {
     constexpr sampler s(filter::linear, address::clamp_to_edge);
     float4 c = page.sample(s, in.uv);
-    return float4(c.rgb * tint.rgb, tint.a);
+    // The panels' pictures are premultiplied with transparent corners; the page is opaque.
+    return float4(c.rgb * tint.rgb, c.a * tint.a);
 }
 
 // A flat picture or video in a frame ahead, with the eye's half for stereo layouts and no lens

@@ -32,7 +32,7 @@ struct ContentView: View {
     private var controls: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 24) {
-                Toggle("Browser", isOn: $settings.browserOpen)
+                Toggle("Phone view", isOn: $settings.phoneView)
                     .toggleStyle(.switch)
                     .fixedSize()
                 Toggle("Passthrough", isOn: $settings.passthrough)
@@ -62,7 +62,7 @@ struct ContentView: View {
         .onChange(of: settings.targetFrameRate) { _, _ in scheduleHide() }
         .onChange(of: settings.extraPredictionMs) { _, _ in scheduleHide() }
         .onChange(of: settings.degreesOfFreedom) { _, _ in scheduleHide() }
-        .onChange(of: settings.browserOpen) { _, _ in scheduleHide() }
+        .onChange(of: settings.phoneView) { _, _ in scheduleHide() }
     }
 
     private func toggleControls() {
@@ -144,7 +144,7 @@ struct MetalView: UIViewRepresentable {
     func updateUIView(_ uiView: MetalLayerView, context: Context) {}
 }
 
-final class MetalLayerView: UIView {
+final class MetalLayerView: UIView, UIKeyInput {
     var model: StereoModel?
     private var displayLink: CADisplayLink?
     private var frameRate = 0
@@ -209,13 +209,19 @@ final class MetalLayerView: UIView {
     private var gesturesInstalled = false
     private var lastPan = CGPoint.zero
 
-    // A tap selects, a long press ends an immersive session, a drag turns the head when nothing
-    // tracks it (the Simulator). The SwiftUI tap on the view (the control strip) stays as well.
+    // A tap selects where it lands (the phone view) or at the gaze, a double tap brings up the
+    // system keyboard for typing, a long press ends an immersive session, a drag turns the head
+    // when nothing tracks it (the Simulator) and otherwise scrolls the page or swipes between
+    // pictures. The SwiftUI tap on the view (the control strip) stays as well.
     private func installGestures() {
         guard !gesturesInstalled else { return }
         gesturesInstalled = true
+        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(doubleTapped(_:)))
+        doubleTap.numberOfTapsRequired = 2
+        addGestureRecognizer(doubleTap)
         let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
         tap.cancelsTouchesInView = false
+        tap.require(toFail: doubleTap)
         addGestureRecognizer(tap)
         let hold = UILongPressGestureRecognizer(target: self, action: #selector(held(_:)))
         hold.minimumPressDuration = 1.5
@@ -226,7 +232,18 @@ final class MetalLayerView: UIView {
     }
 
     @objc private func tapped(_ gesture: UITapGestureRecognizer) {
-        model?.renderer?.screenTapped()
+        let p = gesture.location(in: self)
+        guard bounds.width > 0, bounds.height > 0 else { return }
+        if Settings.shared.phoneView {
+            model?.renderer?.screenTapped(at: SIMD2(Float(p.x / bounds.width), Float(p.y / bounds.height)))
+        } else {
+            model?.renderer?.screenTapped()
+        }
+    }
+
+    @objc private func doubleTapped(_ gesture: UITapGestureRecognizer) {
+        if isFirstResponder { resignFirstResponder() } else { becomeFirstResponder() }
+        log("[Phone] Keyboard \(isFirstResponder ? "shown" : "hidden")")
     }
 
     @objc private func held(_ gesture: UILongPressGestureRecognizer) {
@@ -238,8 +255,19 @@ final class MetalLayerView: UIView {
         if gesture.state == .began { lastPan = .zero }
         let dx = Float(point.x - lastPan.x), dy = Float(point.y - lastPan.y)
         lastPan = point
-        model?.renderer?.deskLook(yawDelta: -dx * 0.004, pitchDelta: -dy * 0.004)
+        model?.renderer?.panned(dx: dx, dy: dy, ended: gesture.state == .ended, totalDx: Float(point.x))
     }
+
+    // The system keyboard's text, for the phone view's double tap.
+    override var canBecomeFirstResponder: Bool { true }
+    var hasText: Bool { true }
+    var keyboardType: UIKeyboardType = .webSearch
+    var autocorrectionType: UITextAutocorrectionType = .no
+    var autocapitalizationType: UITextAutocapitalizationType = .none
+    func insertText(_ text: String) {
+        if text == "\n" { model?.renderer?.typedKey("Enter"); resignFirstResponder() } else { model?.renderer?.typed(text) }
+    }
+    func deleteBackward() { model?.renderer?.typedKey("Backspace") }
 
     private func startDisplayLink() {
         displayLink?.invalidate()
