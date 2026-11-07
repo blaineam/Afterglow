@@ -65,6 +65,8 @@ final class Settings: ObservableObject {
     let ultraTestSeconds: Int
     /// The phase-two grab demo (cubes to pinch), off unless asked for.
     let demo: Bool
+    /// Phone view: a tap selects where it lands (1) instead of what the centre cursor is on (0).
+    let tapAtPoint: Bool
 
     private var loading = true
     private var options: [String: String] = [:]
@@ -102,6 +104,7 @@ final class Settings: ObservableObject {
         phoneView = Self.read("view", options: options, default: 0) != 0
         ultraTestSeconds = Self.read("ultraTest", options: options, default: 0)
         demo = (options["demo"].flatMap(Int.init) ?? 0) != 0
+        tapAtPoint = (options["tapAtPoint"].flatMap(Int.init) ?? 0) != 0
         loading = false
         let given = options.keys.sorted().map { "\($0) \(options[$0]!)" }.joined(separator: ", ")
         log("[Stereo] Launch options: \(given.isEmpty ? "none" : given)")

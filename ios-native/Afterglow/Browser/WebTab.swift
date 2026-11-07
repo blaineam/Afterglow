@@ -35,6 +35,10 @@ final class WebTab: NSObject, WKNavigationDelegate, WKUIDelegate {
         return configuration
     }
 
+    /// 0-1 while a page loads, 1 when it is done; the chrome shows a loading pill under 1.
+    private(set) var progress: Double = 1
+    private var progressObservation: NSKeyValueObservation?
+
     init(device: MTLDevice, isPrivate: Bool, configuration: WKWebViewConfiguration, pageSize: CGSize) {
         self.device = device
         self.isPrivate = isPrivate
@@ -48,6 +52,9 @@ final class WebTab: NSObject, WKNavigationDelegate, WKUIDelegate {
         webView.backgroundColor = .white
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.allowsBackForwardNavigationGestures = false
+        progressObservation = webView.observe(\.estimatedProgress, options: [.new]) { [weak self] view, _ in
+            MainActor.assumeIsolated { guard let self else { return }; self.progress = view.isLoading ? view.estimatedProgress : 1; self.onChange?(self) }
+        }
         webView.customUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1 Afterglow"
     }
 

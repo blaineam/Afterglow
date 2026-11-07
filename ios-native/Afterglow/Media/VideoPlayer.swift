@@ -14,6 +14,11 @@ final class VideoPlayer: @unchecked Sendable {
     private var cache: CVMetalTextureCache?
     private var output: AVPlayerItemVideoOutput?
     private var stereoOutput: AVPlayerVideoOutput?
+    private var stereoAskedAt: Double = 0
+    private var stereoFellBack = false
+    private var playerItem: AVPlayerItem?
+    /// True until the first picture of the current item is on screen: the viewer shows a spinner.
+    private(set) var isLoading = false
     private let lock = NSLock()
     private var current: (texture: MTLTexture, ref: CVMetalTexture, buffer: CVPixelBuffer)?
     private var eyes: (left: MTLTexture, right: MTLTexture, refs: [CVMetalTexture], buffers: [CVPixelBuffer])?
@@ -91,6 +96,8 @@ final class VideoPlayer: @unchecked Sendable {
             player.videoOutput = stereoOutput
             self.stereoOutput = stereoOutput
             self.output = nil
+            stereoAskedAt = CACurrentMediaTime()
+            stereoFellBack = false
         } else {
             let output = AVPlayerItemVideoOutput(pixelBufferAttributes: [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
                                                                           kCVPixelBufferMetalCompatibilityKey as String: true])
@@ -99,6 +106,8 @@ final class VideoPlayer: @unchecked Sendable {
             player.videoOutput = nil
             self.stereoOutput = nil
         }
+        self.playerItem = playerItem
+        isLoading = true
         player.replaceCurrentItem(with: playerItem)
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
         try? AVAudioSession.sharedInstance().setActive(true)
@@ -136,6 +145,19 @@ final class VideoPlayer: @unchecked Sendable {
     func frame(at hostTime: Double) -> (texture: MTLTexture?, eyes: MTLTexture?) {
         guard let cache else { return (nil, nil) }
         if let stereoOutput {
+            // No tagged buffers two seconds into playback: the player gave the sound and not the
+            // picture (owner, 2026-11-07); the flat output shows the file's base view instead.
+            if !stereoFellBack, frames == 0, loggedFirst == false, time > 0.3, CACurrentMediaTime() - stereoAskedAt > 2, let playerItem {
+                stereoFellBack = true
+                log("[Video] No stereo frames from the spatial output in 2 s (status \(player.status.rawValue), item \(playerItem.status.rawValue)): showing the base view flat")
+                let output = AVPlayerItemVideoOutput(pixelBufferAttributes: [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+                                                                              kCVPixelBufferMetalCompatibilityKey as String: true])
+                playerItem.add(output)
+                player.videoOutput = nil
+                self.stereoOutput = nil
+                self.output = output
+                return (nil, nil)
+            }
             if let result = stereoOutput.taggedBuffers(forHostTime: CMClockGetTime(CMClockGetHostTimeClock())),
                result.presentationTime.seconds != lastFrameTime {
                 lastFrameTime = result.presentationTime.seconds
@@ -151,7 +173,7 @@ final class VideoPlayer: @unchecked Sendable {
                         eyes = (l.texture, r.texture, [l.ref, r.ref], [left, right])
                         isStereo = true
                     }
-                    if !loggedFirst { loggedFirst = true; log("[Video] Spatial video playing: \(l.texture.width)x\(l.texture.height) per eye, both eyes") }
+                    if !loggedFirst { loggedFirst = true; isLoading = false; log("[Video] Spatial video playing: \(l.texture.width)x\(l.texture.height) per eye, both eyes") }
                     frames += 1
                 } else if let any, let t = texture(from: any, cache: cache) {
                     lock.withLock {
@@ -159,7 +181,7 @@ final class VideoPlayer: @unchecked Sendable {
                         eyes = nil
                         isStereo = false
                     }
-                    if !loggedFirst { loggedFirst = true; log("[Video] Spatial video playing: one eye shown to both") }
+                    if !loggedFirst { loggedFirst = true; isLoading = false; log("[Video] Spatial video playing: one eye shown to both") }
                     frames += 1
                 }
             }
@@ -169,7 +191,7 @@ final class VideoPlayer: @unchecked Sendable {
                let t = texture(from: buffer, cache: cache) {
                 lock.withLock { current = (t.texture, t.ref, buffer) }
                 frames += 1
-                if !loggedFirst { loggedFirst = true; log("[Video] Playing \(t.texture.width)x\(t.texture.height)") }
+                if !loggedFirst { loggedFirst = true; isLoading = false; log("[Video] Playing \(t.texture.width)x\(t.texture.height)") }
             }
         }
         CVMetalTextureCacheFlush(cache, 0)

@@ -30,11 +30,15 @@ final class TempoAnalyzer {
         query.addFilterPredicate(MPMediaPropertyPredicate(value: title, forProperty: MPMediaItemPropertyTitle, comparisonType: .equalTo))
         guard let items = query.items else { log("[Tempo] No library match for \(title)"); return nil }
         let match = items.first { ($0.artist ?? "").localizedCaseInsensitiveContains(artist) || artist.isEmpty } ?? items.first
-        guard let url = match?.assetURL else {
-            log("[Tempo] \(title) is protected or not on the device: no audio to read")
-            return nil
+        var bpm: Double?
+        if let url = match?.assetURL {
+            bpm = await Self.measure(url: url)
+        } else {
+            log("[Tempo] \(title) is protected or not on the device: asking the catalogue")
         }
-        let bpm = await Self.measure(url: url)
+        // No audio to read (a protected stream), or a measurement that failed: a public music
+        // catalogue that lists tempos, by title and artist.
+        if bpm == nil { bpm = await Self.lookup(title: title, artist: artist) }
         if let bpm {
             cache[id] = bpm
             UserDefaults.standard.set(cache, forKey: cacheKey)
@@ -43,6 +47,30 @@ final class TempoAnalyzer {
             log("[Tempo] \(title): could not be measured")
         }
         return bpm
+    }
+
+    /// The catalogue: a search for the track, then its record, which carries a tempo when known.
+    nonisolated static func lookup(title: String, artist: String) async -> Double? {
+        var query = "track:\"\(title)\""
+        if !artist.isEmpty { query += " artist:\"\(artist)\"" }
+        guard let q = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let searchURL = URL(string: "https://api.deezer.com/search?q=\(q)&limit=3") else { return nil }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: searchURL)
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any], let hits = json["data"] as? [[String: Any]] else { return nil }
+            for hit in hits {
+                guard let id = hit["id"] as? Int, let trackURL = URL(string: "https://api.deezer.com/track/\(id)") else { continue }
+                let (trackData, _) = try await URLSession.shared.data(from: trackURL)
+                if let track = try JSONSerialization.jsonObject(with: trackData) as? [String: Any], let bpm = track["bpm"] as? Double, bpm > 40 {
+                    log(String(format: "[Tempo] Catalogue: %@ at %.1f bpm", title, bpm))
+                    return bpm
+                }
+            }
+            log("[Tempo] Catalogue has no tempo for \(title)")
+        } catch {
+            log("[Tempo] Catalogue lookup failed: \(error.localizedDescription)")
+        }
+        return nil
     }
 
     nonisolated static func measure(url: URL) async -> Double? {

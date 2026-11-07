@@ -334,8 +334,10 @@ final class ChromePanel {
         round("back", "chevron.left", "Back")
         round("forward", "chevron.right", "Forward")
         round("reload", "arrow.clockwise", "Reload")
-        buttons.append(.init(id: "address", rect: CGRect(x: x, y: row1, width: 0.42, height: h), label: address.isEmpty ? "Search or address" : address, wide: true,
-                             icon: browser.current?.isPrivate == true ? "eyeglasses" : "globe", style: .pill, accent: !browser.typed.isEmpty))
+        let progress = browser.current?.progress ?? 1
+        let loading = progress < 1 && browser.typed.isEmpty
+        buttons.append(.init(id: "address", rect: CGRect(x: x, y: row1, width: 0.42, height: h), label: loading ? "Loading \(Int(progress * 100))%  ·  " + (address.isEmpty ? "" : address) : (address.isEmpty ? "Search or address" : address), wide: true,
+                             icon: loading ? "arrow.triangle.2.circlepath" : (browser.current?.isPrivate == true ? "eyeglasses" : "globe"), style: .pill, accent: !browser.typed.isEmpty || loading))
         x += 0.43
         round("keys", "keyboard", "Keyboard")
         round("mic", "mic.fill", "Dictate")
@@ -365,7 +367,7 @@ final class ChromePanel {
                 buttons.append(.init(id: "close", rect: CGRect(x: 0.80 - 0.1, y: row2, width: 0.095, height: h), label: "Close tab", icon: "xmark", style: .round))
             }
         }
-        panel.set(buttons: buttons, version: "chrome|\(address)|\(browser.tabs.count)|\(browser.currentIndex)|\(browser.prompt.map { "\($0)" } ?? "")|\(browser.placing)|\(browser.isBookmarked())")
+        panel.set(buttons: buttons, version: "chrome|\(address)|\(browser.tabs.count)|\(browser.currentIndex)|\(browser.prompt.map { "\($0)" } ?? "")|\(browser.placing)|\(browser.isBookmarked())|\(Int(progress * 20))")
         lastAddress = address
     }
 

@@ -395,7 +395,7 @@ final class MediaApp {
                 b.append(.init(id: "strip:\(j)", rect: CGRect(x: 0.02 + CGFloat(slot) * w, y: 0.52, width: w - 0.008, height: 0.45), label: "", wide: true, accent: j == i))
             }
         }
-        controls.set(buttons: b, version: "controls|\(format.label)|\(player.isPlaying)|\(Int(player.time))|\(Int(player.duration))")
+        controls.set(buttons: b, version: "controls|\(format.label)|\(player.isPlaying)|\(Int(player.time))|\(Int(player.duration))|\(player.isLoading)|\(picture == nil && eyes == nil)")
     }
 
     func press(_ id: String) {
@@ -587,7 +587,8 @@ final class MediaApp {
                 }
             }
             loadStripThumbnails()
-            controls.render(FilmstripView(size: CGSize(width: 1600, height: 260), buttons: controls.buttons, hovered: controls.hovered, strip: strip))
+            let loading = current.map { $0.isVideo ? player.isLoading : (picture == nil && eyes == nil) } ?? false
+            controls.render(FilmstripView(size: CGSize(width: 1600, height: 260), buttons: controls.buttons, hovered: controls.hovered, strip: strip, loading: loading))
         } else {
             var cells: [GridCell] = []
             switch screen {
@@ -636,10 +637,20 @@ struct FilmstripView: View {
     let buttons: [ScenePanel.Button]
     let hovered: String?
     let strip: [(String, UIImage?)]
+    var loading = false
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             PanelStyle.glass()
+            if loading {
+                HStack(spacing: 20) {
+                    Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 48, weight: .medium)).foregroundStyle(PanelStyle.accent)
+                    Text("Loading…").font(.system(size: 54, weight: .medium, design: .rounded)).foregroundStyle(PanelStyle.text)
+                }
+                .padding(.horizontal, 36).padding(.vertical, 16)
+                .background(Capsule().fill(Color.black.opacity(0.6)))
+                .position(x: size.width / 2, y: -70)
+            }
             ForEach(strip, id: \.0) { id, image in
                 if let image, let button = buttons.first(where: { $0.id == id }) {
                     let r = CGRect(x: button.rect.minX * size.width, y: button.rect.minY * size.height,

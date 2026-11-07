@@ -112,6 +112,9 @@ final class Renderer {
     private var dumped = false
     private var homeOpened = false
     private var wasImmersive = false
+    private var lastDrawnFrameTime: Double = 0
+    private var drawnFrames = 0
+    private var immersiveSince: Double = 0
     private var dofBeforeSession: Int?
     private var handHzBeforeSession: Int?
     private var rideTransform = matrix_identity_float4x4
@@ -203,9 +206,7 @@ final class Renderer {
         settingsWindow.onSetPasscode = { [weak self] in self?.lock?.beginSettingNew() }
         settingsWindow.onRemovePasscode = { [weak self] in self?.lock?.removePasscode() }
         self.settingsWindow = settingsWindow
-        source.predictor.onMotion = { [weak self] gravity, rate, time in
-            Task { @MainActor in self?.lock?.motion(gravity: gravity, rotationRate: rate, time: time) }
-        }
+        wireSource()
         let toolbar = Toolbar(device: device, settings: settings)
         toolbar.onLaunch = { [weak self] app in self?.launch(app) }
         toolbar.onMore = { [weak self] in self?.launch(WindowKind.home) }
@@ -489,6 +490,15 @@ final class Renderer {
         keyboard.panel.pane.centre = w.centre - w.up * (w.heightMeters / 2 + keyboard.panel.pane.heightMeters / 2 * 0.9 + 0.03) - w.normal * 0.15
     }
 
+    /// The predictor's callbacks (the lock's motion, the viewer's taps): set on whichever source
+    /// is current, since a 6DoF/3DoF switch makes a new predictor (taps were lost in 3DoF, so a
+    /// WebXR session could not be ended, 2026-11-07).
+    private func wireSource() {
+        source.predictor.onMotion = { [weak self] gravity, rate, time in
+            Task { @MainActor in self?.lock?.motion(gravity: gravity, rotationRate: rate, time: time) }
+        }
+    }
+
     /// Starts the source; also swaps it when the setting changed (the strip's switch).
     func startSource() {
         if sourceDof != settings.degreesOfFreedom {
@@ -497,6 +507,7 @@ final class Renderer {
             source = Self.makeSource(dof: settings.degreesOfFreedom, device: device, hands: hands, settings: settings)
             sourceDof = settings.degreesOfFreedom
             log("[Pose] Switched to \(sourceDof)DoF (\(source.cameraName) camera)")
+            wireSource()
         }
         source.start()
     }
@@ -755,21 +766,32 @@ final class Renderer {
         if immersiveNow != wasImmersive {
             wasImmersive = immersiveNow
             if immersiveNow {
+                immersiveSince = t2
                 dofBeforeSession = settings.degreesOfFreedom
                 handHzBeforeSession = settings.handHzLive
-                if settings.degreesOfFreedom != 3 { settings.degreesOfFreedom = 3; log("[WebXR] 3DoF ultra-wide for the session") }
                 // More hand images a second while a page's pointer rides on them.
                 settings.handHzLive = max(settings.handHzLive, 30)
             } else {
+                if t2 - immersiveSince < 3 { log(String(format: "[WebXR] The session ended %.1f s after it began: the page's doing; see the Session ended line for its reason", t2 - immersiveSince)) }
                 if let before = dofBeforeSession, before != settings.degreesOfFreedom { settings.degreesOfFreedom = before; log("[WebXR] Back to \(before)DoF") }
                 if let hz = handHzBeforeSession { settings.handHzLive = hz }
+                dofBeforeSession = nil
             }
+        }
+        // The switch to the ultra-wide 3DoF camera waits two seconds, so a session that is still
+        // settling is not disturbed by the camera changing under it.
+        if immersiveNow, dofBeforeSession != nil, settings.degreesOfFreedom != 3, t2 - immersiveSince > 2 {
+            settings.degreesOfFreedom = 3
+            log("[WebXR] 3DoF ultra-wide for the session")
         }
         // The pointer: the gaze, or in the phone view the point tapped this frame.
         tapPoint = pendingTapPoint
         pendingTapPoint = nil
         var pointerHead = headInWorld
-        if phone, let tap = tapPoint {
+        // The phone view's cursor sits at the screen's centre and a tap selects what it is on
+        // (owner, 2026-11-07: easier to steer than tapping the element); `tapAtPoint` keeps the
+        // older behaviour for a script.
+        if phone, settings.tapAtPoint, let tap = tapPoint {
             let local = simd_normalize(SIMD3((tap.x * 2 - 1) * phoneFov.x, (1 - tap.y * 2) * phoneFov.y, -1))
             let worldDir = simd_normalize((headInWorld * SIMD4(local, 0)).xyz)
             let up = headInWorld.columns.1.xyz
@@ -1424,7 +1446,10 @@ final class Renderer {
                       sample: FrameTimingLog.Sample(mainMs: (t3 - t2) * 1000, presentWaitMs: (t2 - t0) * 1000, gpuMs: gpuMs),
                       thermalState: thermal.currentState)
 
+        if let frame, frame.pose.timestamp != lastDrawnFrameTime { lastDrawnFrameTime = frame.pose.timestamp; drawnFrames += 1 }
         if t2 - lastPoseLog >= 5 {
+            if settings.passthrough { log(String(format: "[Passthrough] %.1f distinct camera images drawn a second", Double(drawnFrames) / 5)) }
+            drawnFrames = 0
             lastPoseLog = t2
             let p = headInWorld.columns.3
             log(String(format: "[Pose] %dDoF: head (%.2f, %.2f, %.2f), predicted %.0f ms ahead of the camera image (display %.0f ms + presented %.1f ms after target + %d ms), camera frame age %.0f ms",

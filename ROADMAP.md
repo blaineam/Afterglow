@@ -237,8 +237,14 @@ foundation at all. The honest picture:
 - **Third phone round, 2026-11-07**: the pinch starts in two results and a returning hand is
   re-judged; WebXR ends on the viewer's double tap and runs in 3DoF; taps reach every panel and a
   two-finger tap brings the strip; no demo cubes; Photos is tabs over a scrolling grid with album
-  covers; the rhythm game measures a song's tempo from its audio. Still to come: WebXR AR
-  features, and the next phone round.
+  covers; the rhythm game measures a song's tempo from its audio.
+- **Fourth phone round, 2026-11-07**: the viewer's taps follow the camera switch (WebXR could
+  not be ended in 3DoF); the 3DoF switch waits for the session to settle and a quick end is
+  logged with the page's reason; spatial video falls back to the flat output; pages and media
+  show loading; the phone view's tap selects at the centre cursor; the coaster moves the world
+  round a seated rider; mini golf has one felt surface a hole, putters from the hands, club-only
+  strokes and a step to the ball; the paint palette; rhythm styles on the synth and an online
+  tempo catalogue. Still to come: WebXR AR features, the next phone round.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

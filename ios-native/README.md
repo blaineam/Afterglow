@@ -229,10 +229,10 @@ for lamps, sparks, trails and bolts, and a particle system (bursts with gravity 
 games share. The meshes test depth against the room's LiDAR prepass, so they hide behind real
 furniture like the panels do. The games (`Games/Games.swift`):
 
-- **Paint**: pinch and move to paint a glossy tube in the air (spheres at the points, capsules
-  between), its colour from the hand's height when the stroke starts, a rainbow from the floor
-  up, previewed by a glowing bead at the pinch; sparks trail the brush; a select with no pinch
-  undoes the last stroke.
+- **Paint**: pinch and move to paint in the air. The palette on the games panel picks the
+  colour (eight swatches, or a rainbow by the hand's height), the size, the brush (a glossy
+  tube, a flat ribbon facing you, or a glowing bead trail) and dynamics (the stroke thins as the
+  hand speeds up); undo takes the last stroke. Sparks trail the brush.
 - **Blobs**: scaled, squashing blobs with eyes that follow you and glowing antennae squelch in
   by waves (each faster and larger); a punch forward (the hand moving ahead faster than 1.5 m/s)
   fires a plasma bolt from the hand along the gaze; hits splash goo, kills burst; a blob that
@@ -251,19 +251,24 @@ furniture like the panels do. The games (`Games/Games.swift`):
   angles swinging their arms, planes take off and circle the room banking into the turn with the
   propeller spinning, balls kick themselves about, tops spin and precess, all staying within a
   few metres of the box; the button again sends them to sleep.
-- **Mini golf**: eighteen holes laid out one at a time on the floor ahead, each a felt fairway
-  with wooden bumper walls in its own shape (straights, doglegs, a zigzag, a hook, islands,
-  gates, a maze), with ramps and hills, windmills whose blades block the gap, and tunnel
-  bridges; a cup with a flag that counts the hole in beads, a tee mat, par per hole and a card.
-  The ball bounces off the walls, slows on the slopes and drops in the cup; the next hole lays
-  out when it does. A low hand carries a putter; swing it through the ball to putt, or select
-  to tap it along the gaze.
-- **Coaster**: a roller coaster over the grid. The course is laid out in the world as poses half
-  a metre apart from a list of segments (a chain lift, a drop, hills, a loop, banked turns, dips)
-  repeated as the rider nears the end; the rider sits in a car that follows it (its pose moves
-  the camera through the world), gaining speed down the drops, losing it up the climbs, lifted
-  by the chain on the way up. Rails on sleepers and pylons, arch lamps over the track, the car's
-  tub, nose, wheels and lap bar round the rider.
+- **Mini golf**: eighteen holes laid out one at a time on the floor ahead, the tee a step in
+  front of the player. Each fairway is one felt surface (its polygon ear-clipped into a mesh)
+  on a dark base, with wooden bumper walls along its edges in its own shape (straights,
+  doglegs, a zigzag, a hook, islands, gates, a maze), ramps and hills, windmills whose blades
+  block the gap, tunnel bridges, a cup with a flag that counts the hole in beads, par per hole
+  and a card. A putter hangs from each hand (grip at the hand, a steel shaft to a brass head on
+  the felt, facing the way the hand points); only the head moving through the ball putts it,
+  at the head's speed, so a hand near the ball does nothing. The ball rolls and slows, bounces
+  off the bumpers with three quarters of its speed, and drops in the cup. When it comes to
+  rest more than a stride away the course shifts so it lies a step ahead again (the teleport
+  between putts); the next hole lays out when the ball drops, or on the panel's Next hole.
+- **Coaster**: a roller coaster over the grid. The course is poses half a metre apart from a
+  list of segments (a chain lift, a drop, hills, a loop, banked turns, dips), repeated as the
+  rider nears its end; the car follows it, gaining speed down the drops, losing it up the
+  climbs, lifted by the chain on the way up. The rider stays where they stood, in a car drawn
+  round them, and the track moves past through the car's inverse pose, so the room's panels
+  (the Stop button among them) stay in reach and the view never leaves the car. Rails on
+  sleepers and pylons, arch lamps, the car's tub, nose, wheels and lap bar.
 - **Portal**: a stone archway (fluted columns on plinths, a lintel, a glowing keystone) with a
   shimmering disc of the next world's colour in it and motes swirling in the doorway; walk
   through and the surroundings change palette, with a burst; back again for the previous.
@@ -275,7 +280,10 @@ furniture like the panels do. The games (`Games/Games.swift`):
   purchased, matched or ripped), takes an onset curve from the energy's rises and the strongest
   autocorrelation between 70 and 180 bpm, and keeps the answer by song id. A protected Apple
   Music stream gives no samples, so the tempo set with the games panel's slower and faster
-  buttons stands for those. Without music a built-in synthesiser plays a synthwave beat.
+  buttons stands for those, after a public music catalogue has been asked for the track's
+  tempo by title and artist. Without music a built-in synthesiser plays in a style picked on
+  the games panel: synthwave, techno, lo-fi, drum and bass or chiptune, each with its own
+  tempo, drums and lead.
 
 In the Simulator the test script's `fakehand 1|0|punch|off` stands in for a hand and `tap`
 for the headset's double tap; every game has been run by script with the screen captured, and
@@ -327,9 +335,11 @@ and the whole thing a pile of button grids, so the interface was remade on one d
   hidden until asked for: a round Apps button lies on the floor half a metre ahead of the feet
   (look straight down), a select on it brings the dock for ten seconds. Neither shows during a
   WebXR session, 360 playback, or while the keyboard is up.
-- **Browser chrome**: back, forward, reload, the address pill (select it for the keyboard),
-  keyboard, dictation, bookmark and start on the first row; tabs as pills with new, private and
-  close on the second; a login prompt takes the second row when there is one.
+- **Browser chrome**: back, forward, reload, the address pill (select it for the keyboard;
+  while a page loads it shows the progress), keyboard, dictation, bookmark and start on the
+  first row; tabs as pills with new, private and close on the second; a login prompt takes the
+  second row when there is one. The media viewer likewise shows Loading… over its controls
+  until the first picture is up.
 - **Photos**: tabs across the top (Library, Albums, Spatial, Panoramas, 360°, Videos) over a
   grid that scrolls by rows: twelve pictures in view with a badge for what each is (Spatial,
   360°, Panorama, a video's length), or the user's own albums as covers with their names and
@@ -352,7 +362,8 @@ around the room. A tap selects what it lands on (the tap's pixel becomes the poi
 that frame), a double tap brings up the system keyboard (the view is a `UIKeyInput`; text goes
 where dictation goes, Return is Go), a drag scrolls the page or swipes between pictures in the
 viewer, a three-second press ends a WebXR session, and a two-finger tap shows or hides the
-control strip (a single tap is a select). Taps reach every panel, the window bars included.
+control strip. A single tap selects what the cursor at the screen's centre is on (the phone is
+aimed like a torch; `tapAtPoint 1` selects where the tap lands instead).
 Without tracking (the Simulator) a drag still turns the head.
 
 ## Pinch, second round (and third, and fourth)
@@ -370,7 +381,11 @@ three (a four-result start at 2.5 cm took about a second on the phone); the edge
 looser (40 % open blocks a start, not 60 %). A hand back in view after a gap keeps its pinch only
 if the tips are still together; WebXR had seen hands pinched for good after they returned. A
 WebXR session ends on the viewer's double tap or a three-second press on the screen, never a
-pinch, and runs in 3DoF on the ultra-wide camera at 30 hand images a second while it lasts.
+pinch, and two seconds in (once the page has settled) runs in 3DoF on the ultra-wide camera at
+30 hand images a second while it lasts. The predictor's callbacks (the viewer's taps, the lock's
+motion) follow the camera across that switch; before this they stayed on the first camera, so
+in 3DoF the viewer's double tap did nothing and a session could not be ended. A session that
+ends within three seconds of starting is logged as the page's doing, with the page's reason.
 The grab demo's cubes are behind the `demo 1` launch option. A wrist at the image's edge, or one Vision was unsure of, is held
 where the knuckles say it was last seen, so the hand no longer folds forward at the wrist when
 it reaches the camera's edge.

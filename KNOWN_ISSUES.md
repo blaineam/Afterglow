@@ -281,6 +281,15 @@ of fixes from the first device runs, as phases 1 and 2 had.
 
 ### The browser (native)
 
+The owner's own WebXR video player ends its session within a second of starting while the
+immersive sample on the start page runs on (2026-11-07). The session log's "Session ended"
+line carries the page's reason (a stack from the shim); the earlier log was overwritten before
+it could be read, so the cause is open. The 3DoF switch now waits two seconds into a session.
+In 3DoF the owner saw the passthrough at two or three images a second while the frame log said
+60 fps; the log now counts distinct camera images drawn a second (`[Passthrough]`) to tell the
+camera from the display. A spatial video played its sound with no picture; the stereo output
+is given two seconds, then the flat output shows the file's base view, with a log line.
+
 A page that sized itself to its viewport (100 vw, 100 vh) spilled past the window on the phone
 (2026-11-07): `pageZoom` kept the layout at the view's size and scaled the drawing. The view is
 now laid out at the page's size over the text scale and snapshotted at the page's size, so the

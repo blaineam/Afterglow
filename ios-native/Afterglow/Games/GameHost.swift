@@ -74,11 +74,33 @@ final class GameHost {
         }
         b.append(.init(id: "reset", rect: CGRect(x: 0.83, y: 0.36, width: 0.15, height: 0.3), label: "Restart", icon: "arrow.counterclockwise", style: .round))
         b.append(.init(id: "stop", rect: CGRect(x: 0.83, y: 0.68, width: 0.15, height: 0.3), label: "Stop", icon: "stop.fill", style: .round))
-        if current is RhythmGame {
+        if let rhythm = current as? RhythmGame {
+            b.append(.init(id: "style", rect: CGRect(x: 0.42, y: 0.04, width: 0.22, height: 0.28), label: rhythm.style.name, wide: true, icon: "music.quarternote.3", style: .pill))
             b.append(.init(id: "tempo:-", rect: CGRect(x: 0.66, y: 0.04, width: 0.15, height: 0.28), label: "Slower", icon: "minus", style: .round))
             b.append(.init(id: "tempo:+", rect: CGRect(x: 0.83, y: 0.04, width: 0.15, height: 0.28), label: "Faster", icon: "plus", style: .round))
         }
-        panel.set(buttons: b, version: "games|\(current?.title ?? "")|\(current?.status ?? "")")
+        if let paint = current as? PaintGame {
+            // The palette: the swatches, the rainbow, then size, brush, dynamics and undo.
+            var x: CGFloat = 0.30
+            for (i, (emoji, _)) in PaintGame.swatches.enumerated() {
+                b.append(.init(id: "paint:color:\(i)", rect: CGRect(x: x, y: 0.04, width: 0.05, height: 0.28), label: emoji, style: .key, accent: paint.swatch == i))
+                x += 0.052
+            }
+            b.append(.init(id: "paint:color:rainbow", rect: CGRect(x: x, y: 0.04, width: 0.05, height: 0.28), label: "🌈", style: .key, accent: paint.swatch == nil))
+            x += 0.062
+            b.append(.init(id: "paint:size", rect: CGRect(x: x, y: 0.04, width: 0.055, height: 0.28), label: ["S", "M", "L"][paint.sizeIndex], style: .round))
+            x += 0.06
+            b.append(.init(id: "paint:brush", rect: CGRect(x: x, y: 0.04, width: 0.055, height: 0.28), label: paint.brush.name, icon: paint.brush.icon, style: .round))
+            x += 0.06
+            b.append(.init(id: "paint:dyn", rect: CGRect(x: x, y: 0.04, width: 0.055, height: 0.28), label: "Dynamics", icon: paint.dynamics ? "waveform.path" : "minus", style: .round, accent: paint.dynamics))
+            x += 0.06
+            b.append(.init(id: "paint:undo", rect: CGRect(x: x, y: 0.04, width: 0.055, height: 0.28), label: "Undo", icon: "arrow.uturn.backward", style: .round))
+        }
+        if current is GolfGame {
+            b.append(.init(id: "golf:next", rect: CGRect(x: 0.72, y: 0.04, width: 0.26, height: 0.28), label: "Next hole", wide: true, icon: "flag.fill", style: .pill))
+        }
+        let extra = (current as? PaintGame).map { "\($0.swatch ?? -1)|\($0.sizeIndex)|\($0.brush)|\($0.dynamics)" } ?? ""
+        panel.set(buttons: b, version: "games|\(current?.title ?? "")|\(current?.status ?? "")|\(extra)")
     }
 
     func press(_ id: String) {
@@ -87,8 +109,16 @@ final class GameHost {
         case "stop": current = nil
         case "tempo:-": (current as? RhythmGame).map { $0.setTempo($0.bpm - 4) }
         case "tempo:+": (current as? RhythmGame).map { $0.setTempo($0.bpm + 4) }
+        case "style": (current as? RhythmGame)?.cycleStyle()
+        case "paint:size": (current as? PaintGame)?.cycleSize()
+        case "paint:brush": (current as? PaintGame)?.cycleBrush()
+        case "paint:dyn": (current as? PaintGame)?.toggleDynamics()
+        case "paint:undo": (current as? PaintGame)?.undo()
+        case "paint:color:rainbow": (current as? PaintGame)?.pick(swatch: nil)
+        case "golf:next": (current as? GolfGame)?.nextHole()
         default:
-            if id.hasPrefix("game:"), let i = Int(id.dropFirst(5)), games.indices.contains(i) {
+            if id.hasPrefix("paint:color:"), let i = Int(id.dropFirst(12)) { (current as? PaintGame)?.pick(swatch: i) }
+            else if id.hasPrefix("game:"), let i = Int(id.dropFirst(5)), games.indices.contains(i) {
                 current = games[i]
                 current?.reset()
                 log("[Games] Playing \(games[i].title)")

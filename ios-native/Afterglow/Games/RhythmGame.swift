@@ -15,6 +15,18 @@ final class RhythmGame: Game {
     private var score = 0
     private var combo = 0
     private var best = 0
+    /// The built-in music's styles, for playing without a song on the phone (owner, 2026-11-07).
+    enum Style: Int, CaseIterable {
+        case synthwave, techno, lofi, drumAndBass, chiptune
+        var name: String { switch self { case .synthwave: return "Synthwave"; case .techno: return "Techno"; case .lofi: return "Lo-fi"; case .drumAndBass: return "Drum & bass"; case .chiptune: return "Chiptune" } }
+        var bpm: Double { switch self { case .synthwave: return 112; case .techno: return 128; case .lofi: return 84; case .drumAndBass: return 172; case .chiptune: return 140 } }
+    }
+    private(set) var style = Style.synthwave
+    func cycleStyle() {
+        style = Style(rawValue: (style.rawValue + 1) % Style.allCases.count) ?? .synthwave
+        bpm = style.bpm
+        reset()
+    }
     private(set) var bpm: Double = 112
     /// Apple Music, when the Music app has something playing: the notes run to its clock at the
     /// tempo set with the games panel's tempo buttons (no beat analysis is possible on a protected
@@ -57,7 +69,7 @@ final class RhythmGame: Game {
             let t = music?.playbackTime ?? 0
             startTime = time + (beat - t.truncatingRemainder(dividingBy: beat))
         } else {
-            synth.start(bpm: bpm, leadIn: 2)
+            synth.start(bpm: bpm, leadIn: 2, style: style)
         }
         started = true
         log("[Games] Rhythm: \(notes.count) notes at \(Int(bpm)) bpm\(usingMusic ? " to Apple Music" : " to the synth")")
@@ -148,10 +160,12 @@ final class Synth: @unchecked Sendable {
     private var popAt: Double = -1
     private let rate: Double = 44100
     private let scale: [Double] = [220, 261.6, 293.7, 329.6, 392, 440, 523.3, 587.3]
+    private var style = RhythmGame.Style.synthwave
 
-    func start(bpm: Double, leadIn: Double) {
+    func start(bpm: Double, leadIn: Double, style: RhythmGame.Style = .synthwave) {
         self.bpm = bpm
         self.leadIn = leadIn
+        self.style = style
         sampleIndex = 0
         let format = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 1)!
         let node = AVAudioSourceNode { [weak self] _, _, frameCount, audioBufferList -> OSStatus in
@@ -163,13 +177,40 @@ final class Synth: @unchecked Sendable {
                 var sample = 0.0
                 if t >= 0 {
                     let inBeat = t.truncatingRemainder(dividingBy: beat)
-                    // Kick: a dropping sine, 80 ms.
-                    if inBeat < 0.08 { sample += sin(2 * .pi * (120 - inBeat * 600) * inBeat) * (1 - inBeat / 0.08) * 0.5 }
-                    // Lead: an eighth-note square on the pentatonic walk, soft.
-                    let step = Int(t / (beat / 2))
-                    let f = self.scale[(step * 3 + step / 7) % self.scale.count]
-                    let env = 1 - (t.truncatingRemainder(dividingBy: beat / 2)) / (beat / 2)
-                    sample += (sin(2 * .pi * f * t) > 0 ? 0.12 : -0.12) * env
+                    let beatIndex = Int(t / beat)
+                    // Kick: a dropping sine, 80 ms; drum and bass skips the third beat and adds a
+                    // snare, lo-fi a soft kick on one and three.
+                    let kicks: Bool
+                    switch self.style {
+                    case .drumAndBass: kicks = beatIndex % 4 != 2
+                    case .lofi: kicks = beatIndex % 2 == 0
+                    default: kicks = true
+                    }
+                    if kicks && inBeat < 0.08 { sample += sin(2 * .pi * (120 - inBeat * 600) * inBeat) * (1 - inBeat / 0.08) * (self.style == .lofi ? 0.35 : 0.5) }
+                    if (self.style == .drumAndBass || self.style == .techno) && beatIndex % 2 == 1 && inBeat < 0.05 {
+                        // A snare: noise with a fast decay.
+                        sample += (Double.random(in: -1...1)) * (1 - inBeat / 0.05) * 0.25
+                    }
+                    if self.style == .techno || self.style == .drumAndBass || self.style == .chiptune {
+                        // Hats on the off-beats.
+                        let inHalf = t.truncatingRemainder(dividingBy: beat / 2)
+                        if inBeat >= beat / 2 && inHalf < 0.02 { sample += Double.random(in: -1...1) * (1 - inHalf / 0.02) * 0.08 }
+                    }
+                    // Lead: the pentatonic walk; eighths, or sixteenths for drum and bass and chiptune;
+                    // a square (synthwave, chiptune), a saw (techno), a triangle (lo-fi), a sine (d&b).
+                    let division = (self.style == .drumAndBass || self.style == .chiptune) ? beat / 4 : beat / 2
+                    let step = Int(t / division)
+                    let f = self.scale[(step * 3 + step / 7) % self.scale.count] * (self.style == .lofi ? 0.5 : 1)
+                    let env = 1 - (t.truncatingRemainder(dividingBy: division)) / division
+                    let phaseT = f * t
+                    let wave: Double
+                    switch self.style {
+                    case .techno: wave = 2 * (phaseT - floor(phaseT + 0.5)) * 0.8
+                    case .lofi: wave = (2 * abs(2 * (phaseT - floor(phaseT + 0.5))) - 1) * 0.9
+                    case .drumAndBass: wave = sin(2 * .pi * phaseT) * 0.9
+                    default: wave = sin(2 * .pi * phaseT) > 0 ? 1 : -1
+                    }
+                    sample += wave * 0.12 * env
                     // A pop on a hit.
                     if self.popAt >= 0 && t - self.popAt < 0.06 && t >= self.popAt { sample += sin(2 * .pi * 880 * (t - self.popAt)) * 0.3 }
                 }
