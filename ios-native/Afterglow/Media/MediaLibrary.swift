@@ -118,7 +118,9 @@ final class MediaLibrary {
         let options = PHFetchOptions()
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         options.predicate = NSPredicate(format: "mediaType == %d || mediaType == %d", PHAssetMediaType.image.rawValue, PHAssetMediaType.video.rawValue)
-        if limit > 0 { options.fetchLimit = limit }
+        // The 360 collection is a scan of everything: a limit would cut it to the newest few hundred
+        // assets, none of them 360 (the tab showed nothing while the scan had found 134, 2026-11-07).
+        if limit > 0 && album.id != Self.threeSixtyId { options.fetchLimit = limit }
         let assets: PHFetchResult<PHAsset>
         if let collection = album.collection {
             assets = PHAsset.fetchAssets(in: collection, options: options)

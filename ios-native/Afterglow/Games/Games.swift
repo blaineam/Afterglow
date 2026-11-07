@@ -66,8 +66,9 @@ final class PaintGame: Game {
     private var strokes: [Stroke] = []
     private var drawing: [Bool: Int] = [:]
     private var lastPoint: [Bool: (SIMD3<Float>, Double)] = [:]
-    /// When each stroke last grew, so a pinch that flickers open for a moment (or a hand whose
-    /// side flips) carries on the same stroke instead of leaving dots (owner, 2026-11-07).
+    /// When each stroke last grew, so a pinch that flickers open for up to a second (the phone
+    /// log showed re-pinches 0.7 s apart) or a hand whose side flips carries on the same stroke
+    /// instead of leaving dots (owner, 2026-11-07).
     private var strokeGrewAt: [Int: Double] = [:]
     private var particles = ParticleSystem()
     static let swatches: [(String, SIMD4<Float>)] = [("🔴", SIMD4(1, 0.25, 0.25, 1)), ("🟠", SIMD4(1, 0.55, 0.15, 1)), ("🟡", SIMD4(1, 0.9, 0.2, 1)), ("🟢", SIMD4(0.3, 0.9, 0.4, 1)),
@@ -117,7 +118,7 @@ final class PaintGame: Game {
             if hand.pinched {
                 if drawing[hand.isRight] == nil {
                     // A stroke that grew within half a second and ends within 10 cm continues.
-                    if let i = strokes.indices.last, let grew = strokeGrewAt[i], c.time - grew < 0.5, let last = strokes[i].points.last, simd_distance(last, tip) < 0.1 {
+                    if let i = strokes.indices.last, let grew = strokeGrewAt[i], c.time - grew < 1.0, let last = strokes[i].points.last, simd_distance(last, tip) < 0.15 {
                         drawing[hand.isRight] = i
                     } else {
                         strokes.append(Stroke(color: color(forHeight: tip.y - c.floorHeight), points: [tip], radii: [radius], brush: brush))
