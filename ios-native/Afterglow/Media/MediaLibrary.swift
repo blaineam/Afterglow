@@ -8,7 +8,7 @@ import UniformTypeIdentifiers
 /// viewer should show it as.
 struct MediaItem: Identifiable, Sendable {
     enum Kind: String, Sendable {
-        case photo, spatialPhoto, panorama, photo360, video, spatialVideo, video360, video180
+        case photo, spatialPhoto, panorama, photo360, photo180, video, spatialVideo, video360, video180
     }
     let id: String
     let kind: Kind
@@ -18,6 +18,9 @@ struct MediaItem: Identifiable, Sendable {
     let duration: Double
     let asset: PHAsset?
     let fileURL: URL?
+    /// What a file's metadata or name said about its stereo layout and a panorama's span.
+    var fileLayout: MediaMetadata.VideoFormat.Layout? = nil
+    var fileSpan: Float? = nil
 
     var isVideo: Bool { [.video, .spatialVideo, .video360, .video180].contains(kind) }
     var isSpatial: Bool { kind == .spatialPhoto || kind == .spatialVideo }
@@ -149,6 +152,10 @@ final class MediaLibrary {
 
     /// The whole picture as a texture; a spatial photo as a two-slice array (left, right).
     func picture(for item: MediaItem) async -> (texture: MTLTexture?, eyes: MTLTexture?) {
+        if let fileURL = item.fileURL {
+            guard let source = CGImageSourceCreateWithURL(fileURL as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary) else { return (nil, nil) }
+            return decode(source, item: item)
+        }
         guard let asset = item.asset else { return (nil, nil) }
         let data: Data? = await withCheckedContinuation { continuation in
             let options = PHImageRequestOptions()
@@ -158,6 +165,10 @@ final class MediaLibrary {
             imageManager.requestImageDataAndOrientation(for: asset, options: options) { @Sendable data, _, _, _ in continuation.resume(returning: data) }
         }
         guard let data, let source = CGImageSourceCreateWithData(data as CFData, nil) else { return (nil, nil) }
+        return decode(source, item: item)
+    }
+
+    private func decode(_ source: CGImageSource, item: MediaItem) -> (texture: MTLTexture?, eyes: MTLTexture?) {
         // Any picture with a stereo pair in it is spatial, marked so or not (an imported HEIC is not).
         if CGImageSourceGetCount(source) >= 2, let pair = Self.stereoPair(in: source) {
             let left = Self.texture(from: pair.left, device: device, maxSide: 4096)

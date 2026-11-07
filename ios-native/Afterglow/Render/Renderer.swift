@@ -130,6 +130,7 @@ final class Renderer {
     /// The window the app is in: the browser's veiled web view lives in it.
     func attach(window: UIWindow) {
         uiWindow = window
+        keyboard = KeyboardPanel(device: device)
         let toolbar = Toolbar(device: device, settings: settings)
         toolbar.onLaunch = { [weak self] app in self?.launch(app) }
         toolbar.onRecentre = { [weak self] in self?.recentre() }
@@ -152,7 +153,6 @@ final class Renderer {
         let browser = Browser(device: device, config: config, textScalePercent: settings.textScalePercent)
         self.browser = browser
         chrome = ChromePanel(device: device)
-        keyboard = KeyboardPanel(device: device)
         browser.open(in: uiWindow, head: lastHead, launchURL: settings.launchURL.flatMap { URL(string: WebBridge.normalizeAddress($0)) })
         layoutPanels()
     }
@@ -161,7 +161,6 @@ final class Renderer {
         browser?.close()
         browser = nil
         chrome = nil
-        keyboard = nil
     }
 
     func launch(_ app: AppKind) {
@@ -171,11 +170,15 @@ final class Renderer {
         case .browser:
             settings.browserOpen = true
             openApp = .browser
-        case .media:
+        case .media, .files:
             let media = MediaApp(device: device)
-            media.open(head: lastHead)
+            media.onPickFolder = { [weak self] in
+                guard let self, let root = self.uiWindow?.rootViewController, let files = self.media?.files else { return }
+                files.pickFolder(from: root)
+            }
+            if app == .files { media.openFiles(head: lastHead) } else { media.open(head: lastHead) }
             self.media = media
-            openApp = .media
+            openApp = app
         default:
             log("[Home] \(app.rawValue) is not built yet")
         }
@@ -184,7 +187,7 @@ final class Renderer {
 
     func closeApp() {
         if openApp == .browser { settings.browserOpen = false }
-        if openApp == .media { media?.close(); media = nil }
+        if openApp == .media || openApp == .files { media?.close(); media = nil }
         openApp = nil
     }
 
@@ -221,12 +224,22 @@ final class Renderer {
         switch verb {
         case "wait": actionWaitUntil = now + (Double(argument) ?? 1)
         case "press":
-            if let keyboard, keyboard.panel.buttons.contains(where: { $0.id == argument }) { pressPanel(keyboard.panel, id: argument) }
+            if let keyboard, keyboard.panel.buttons.contains(where: { $0.id == argument }) {
+                if let media, media.isFiles {
+                    switch keyboard.press(argument) {
+                    case .text(let t): media.type(t)
+                    case .key(let k): media.key(k)
+                    default: break
+                    }
+                } else {
+                    pressPanel(keyboard.panel, id: argument)
+                }
+            }
             else if let chrome, chrome.panel.buttons.contains(where: { $0.id == argument }) { pressPanel(chrome.panel, id: argument) }
             else if let media, (media.screen == .viewing ? media.controls : media.grid).buttons.contains(where: { $0.id == argument }) { media.press(argument) }
             else if let toolbar { toolbar.press(argument) }
-        case "type": browser?.type(argument)
-        case "key": browser?.key(argument)
+        case "type": if let media, media.isFiles { media.type(argument) } else { browser?.type(argument) }
+        case "key": if let media, media.isFiles { media.key(argument) } else { browser?.key(argument) }
         case "look":
             let numbers = argument.split(separator: " ").compactMap { Float($0) }
             if numbers.count == 2 { deskYaw = numbers[0] * .pi / 180; deskPitch = numbers[1] * .pi / 180 }
@@ -509,8 +522,30 @@ final class Renderer {
             let origin = headInWorld.columns.3.xyz
             let forward = -headInWorld.columns.2.xyz
             let panel = media.screen == .viewing ? media.controls : media.grid
-            let hit = panel.pane.hit(origin: origin, direction: forward)
+            var hit = panel.pane.hit(origin: origin, direction: forward)
             _ = panel.hover(hit?.uv)
+            // The keyboard under the Files grid types the search.
+            let filesKeys = media.isFiles && media.screen == .items
+            if filesKeys, let keyboard {
+                keyboard.panel.pane.right = media.grid.pane.right
+                keyboard.panel.pane.up = simd_quatf(angle: -0.35, axis: media.grid.pane.right).act(media.grid.pane.up)
+                keyboard.panel.pane.widthMeters = media.grid.pane.widthMeters
+                keyboard.panel.pane.centre = media.grid.pane.centre - media.grid.pane.up * (media.grid.pane.heightMeters / 2 + keyboard.panel.pane.heightMeters * 0.45) - media.grid.pane.normal * 0.15
+                let keyHit = keyboard.panel.pane.hit(origin: origin, direction: forward)
+                _ = keyboard.panel.hover(keyHit?.uv)
+                if select, keyHit != nil, let id = keyboard.panel.hovered {
+                    switch keyboard.press(id) {
+                    case .text(let t): media.type(t)
+                    case .key(let k): media.key(k)
+                    case .mic: onDictate?()
+                    case .none: break
+                    }
+                    select = false
+                }
+                keyboard.render()
+                if let t = keyboard.panel.texture { toolbarQuads.append((t, 2)) }
+                if hit == nil, let keyHit { hit = keyHit; _ = keyHit }
+            }
             if select, hit != nil, let id = panel.hovered {
                 media.press(id)
                 select = false

@@ -96,6 +96,13 @@ final class MediaApp {
     private var loading = false
     private let device: MTLDevice
     var window = BrowserWindow()
+    /// Asks the host to present the Files picker.
+    var onPickFolder: (() -> Void)?
+    /// Files mode: folders instead of albums, with a search typed on the keyboard.
+    private(set) var files: FileSource?
+    private var folder: FileSource.Folder?
+    private(set) var query = ""
+    var isFiles: Bool { files != nil }
 
     init(device: MTLDevice) {
         self.device = device
@@ -110,6 +117,13 @@ final class MediaApp {
     var format: Format { Self.formats[formatIndex] }
     var isProjected: Bool { screen == .viewing && format.projection != MediaProjectionFlat }
 
+    /// Opens on the Files folders rather than the Photos albums.
+    func openFiles(head: simd_float4x4) {
+        files = FileSource()
+        files?.onPicked = { [weak self] folder in self?.openFolder(folder) }
+        open(head: head)
+    }
+
     func open(head: simd_float4x4) {
         window.place(ahead: head, distance: 1.5)
         grid.pane.centre = window.centre
@@ -118,15 +132,56 @@ final class MediaApp {
         controls.pane.right = window.right
         controls.pane.up = window.up
         controls.pane.centre = window.centre - window.up * 0.55
-        Task { @MainActor in
-            guard await library.requestAccess() else { return }
-            albums = library.albums()
-            screen = .albums
-            gridVersion += 1
-            layoutGrid()
+        if files == nil {
+            Task { @MainActor in
+                guard await library.requestAccess() else { return }
+                albums = library.albums()
+                screen = .albums
+                gridVersion += 1
+                layoutGrid()
+            }
         }
         layoutGrid()
         layoutControls()
+    }
+
+    /// Text from the keyboard while the Files grid is up: the search.
+    func type(_ text: String) {
+        query += text
+        refreshFolder()
+    }
+
+    func key(_ name: String) {
+        switch name {
+        case "Backspace": if !query.isEmpty { query.removeLast() }
+        case "Clear": query = ""
+        default: return
+        }
+        refreshFolder()
+    }
+
+    private func openFolder(_ folder: FileSource.Folder) {
+        self.folder = folder
+        query = ""
+        refreshFolder()
+    }
+
+    private func refreshFolder() {
+        guard let files, let folder else { return }
+        screen = .items
+        let wanted = query
+        Task { @MainActor in
+            let found = await files.items(in: folder, query: wanted)
+            guard wanted == query else { return }
+            items = found
+            page = 0
+            thumbnails.removeAll()
+            gridVersion += 1
+            layoutGrid()
+            loadThumbnails()
+        }
+        gridVersion += 1
+        layoutGrid()
     }
 
     func close() {
@@ -140,7 +195,7 @@ final class MediaApp {
         let columns = 5
         let count: Int
         switch screen {
-        case .albums: count = albums.count
+        case .albums: count = files?.folders.count ?? albums.count
         case .items: count = min(perPage, items.count - page * perPage)
         case .viewing: count = 0
         }
@@ -159,6 +214,9 @@ final class MediaApp {
             buttons.append(.init(id: id, rect: CGRect(x: gap + CGFloat(col) * (cellW + gap), y: top + CGFloat(row) * (cellH + gap), width: cellW, height: cellH), label: ""))
         }
         // The header's own buttons: back, previous and next page.
+        if files != nil {
+            buttons.append(.init(id: "addfolder", rect: CGRect(x: 0.52, y: 0.01, width: 0.19, height: 0.07), label: "+ Folder", wide: true))
+        }
         buttons.append(.init(id: "back", rect: CGRect(x: 0.72, y: 0.01, width: 0.08, height: 0.07), label: "‹"))
         buttons.append(.init(id: "prev", rect: CGRect(x: 0.81, y: 0.01, width: 0.08, height: 0.07), label: "◀"))
         buttons.append(.init(id: "next", rect: CGRect(x: 0.90, y: 0.01, width: 0.08, height: 0.07), label: "▶"))
@@ -203,8 +261,12 @@ final class MediaApp {
         case "recentre": yaw = 0
         case "yawL": yaw -= .pi / 12
         case "yawR": yaw += .pi / 12
+        case "addfolder": onPickFolder?()
         default:
-            if id.hasPrefix("album:"), let i = Int(id.dropFirst(6)), albums.indices.contains(i) { openAlbum(albums[i]) }
+            if id.hasPrefix("album:"), let i = Int(id.dropFirst(6)) {
+                if let files, files.folders.indices.contains(i) { openFolder(files.folders[i]) }
+                else if albums.indices.contains(i) { openAlbum(albums[i]) }
+            }
             else if id.hasPrefix("item:"), let i = Int(id.dropFirst(5)), items.indices.contains(i) { view(items[i]) }
             else if id.hasPrefix("seek:"), let i = Int(id.dropFirst(5)) { player.seek(fraction: Double(i) / 10) }
         }
@@ -227,7 +289,9 @@ final class MediaApp {
         Task { @MainActor in
             var got = 0
             for item in wanted {
-                if let image = await library.thumbnail(for: item) { thumbnails[item.id] = image; got += 1 }
+                let image: UIImage?
+                if let url = item.fileURL { image = await FileSource.thumbnail(for: url) } else { image = await library.thumbnail(for: item) }
+                if let image { thumbnails[item.id] = image; got += 1 }
             }
             log("[Photos] \(got) of \(wanted.count) thumbnails loaded")
             loading = false
@@ -251,12 +315,15 @@ final class MediaApp {
         current = item
         screen = .viewing
         yaw = 0
-        let label: String
+        var label: String
         switch item.kind {
         case .photo360, .video360: label = "360"
-        case .video180: label = "180"
+        case .video180, .photo180: label = "180"
         case .panorama: label = "Panorama"
         default: label = "Flat"
+        }
+        if let layout = item.fileLayout, label != "Panorama" {
+            if layout == .sideBySide { label += " SBS" } else if layout == .topBottom { label += " TB" }
         }
         formatIndex = Self.formats.firstIndex { $0.label == label } ?? 0
         log("[Media] Viewing \(item.kind.rawValue) \(item.title) as \(format.label)")
@@ -300,6 +367,7 @@ final class MediaApp {
     // the height times 60 degrees, between 60 and 360.
     private func cylinderHeight() -> Float { tan(Float.pi / 6) }
     private func cylinderSpan() -> Float {
+        if let span = current?.fileSpan { return span * .pi / 180 }
         guard let current, current.pixelSize.height > 0 else { return .pi }
         let aspect = Float(current.pixelSize.width / current.pixelSize.height)
         return min(2 * .pi, max(.pi / 3, aspect * .pi / 3))
@@ -333,14 +401,22 @@ final class MediaApp {
         } else {
             var cells: [GridCell] = []
             switch screen {
-            case .albums: cells = albums.map { GridCell(id: $0.id, image: nil, label: "\($0.title) (\($0.count))") }
+            case .albums:
+                if let files { cells = files.folders.map { GridCell(id: $0.id, image: nil, label: $0.name) } }
+                else { cells = albums.map { GridCell(id: $0.id, image: nil, label: "\($0.title) (\($0.count))") } }
             case .items: cells = items.dropFirst(page * perPage).prefix(perPage).map { GridCell(id: $0.id, image: thumbnails[$0.id], label: "\($0.kind.rawValue) \($0.title)") }
             case .viewing: break
             }
-            let title = screen == .albums ? "Media" : "\(album?.title ?? "") · page \(page + 1) of \(max(1, (items.count + perPage - 1) / perPage))"
+            let title: String
+            if screen == .albums { title = files != nil ? "Files" : "Media" }
+            else if files != nil { title = "\(folder?.name ?? "") · \(query.isEmpty ? "type to search" : "search: " + query + "▏") · page \(page + 1) of \(max(1, (items.count + perPage - 1) / perPage))" }
+            else { title = "\(album?.title ?? "") · page \(page + 1) of \(max(1, (items.count + perPage - 1) / perPage))" }
             grid.render(GridView(size: CGSize(width: 1600, height: 1000), cells: cells, hovered: grid.hovered.flatMap { h in
                 // The hovered button id maps to the cell id.
-                if h.hasPrefix("album:"), let i = Int(h.dropFirst(6)), albums.indices.contains(i) { return albums[i].id }
+                if h.hasPrefix("album:"), let i = Int(h.dropFirst(6)) {
+                    if let files, files.folders.indices.contains(i) { return files.folders[i].id }
+                    if albums.indices.contains(i) { return albums[i].id }
+                }
                 if h.hasPrefix("item:"), let i = Int(h.dropFirst(5)), items.indices.contains(i) { return items[i].id }
                 return nil
             }, title: title, columns: 5))

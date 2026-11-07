@@ -77,6 +77,11 @@ if [ $MODE = sim ]; then
     xcrun simctl boot $SIM 2>/dev/null; xcrun simctl bootstatus $SIM -b >/dev/null
     xcrun simctl install $SIM "$APP" || exit 1
     xcrun simctl terminate $SIM $BUNDLE 2>/dev/null
+    # The fixture media (Tools/make_fixture_media.py) into the app's Media folder for the Files app.
+    FIX=${TMPDIR:-/tmp}/afterglow/fixtures
+    if [ -d $FIX ]; then
+        DATA=$(xcrun simctl get_app_container $SIM $BUNDLE data 2>/dev/null) && mkdir -p "$DATA/Documents/Media" && cp -n $FIX/* "$DATA/Documents/Media/" 2>/dev/null
+    fi
     env "${SIMENV[@]}" xcrun simctl launch $SIM $BUNDLE >/dev/null || exit 1
     echo "== launched in the simulator ${ENVIRONMENT:+with {$ENVIRONMENT}}"
     # While the app runs, a screenshot of the Simulator's screen for every "screenshot" step the

@@ -152,6 +152,15 @@ The Photos library in the viewer (`Media/`), after the Unity app's `VideoDemo` a
 - **Panels**: the album grid and the item grid with thumbnails (five across, fifteen a page), and
   the player's controls below the picture.
 
+- **Files** (`FileSource.swift`): the app's own `Documents/Media` and any folder the user picks in
+  the Files app (a security-scoped bookmark, read in place so a large library streams rather than
+  copies), walked for pictures and videos, searched by name from the scene keyboard, with
+  thumbnails from ImageIO or a video frame at one second. Each file is classified by what it says
+  about itself (`MediaMetadata.swift`, the Unity app's `MediaMetadata.cs`): an MP4's `st3d` stereo
+  mode and `sv3d`/`equi` crop or spherical v1 `uuid` XML, a JPEG's GPano span, a HEIC's stereo
+  pair, then words in the name (`360`, `180`/`vr180`, `flat`, `sbs`/`lr`/`3dh`, `tb`/`ou`/`3dv`,
+  `mono`/`2d`), then its shape.
+
 Proven in the Simulator with the Unity repo's fixture media (`Tools/sim_add_media.sh` makes it;
 `xcrun simctl addmedia` adds it): a 360 video around the viewer, a spatial HEIC with an eye each,
 portrait and landscape photos upright in the frame, the panorama and 360 still on their

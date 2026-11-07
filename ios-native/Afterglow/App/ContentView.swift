@@ -107,7 +107,7 @@ final class StereoModel: ObservableObject {
 
     /// Push to talk: a press starts listening, the next stops it and types what was heard.
     func dictate() {
-        guard let renderer, let browser = renderer.browser else { return }
+        guard let renderer else { return }
         if dictation.listening {
             dictation.stop()
             return
@@ -115,7 +115,8 @@ final class StereoModel: ObservableObject {
         Task { @MainActor in
             guard await dictation.requestPermission() else { return }
             dictation.start { text in
-                if !text.isEmpty { browser.type(text) }
+                guard !text.isEmpty else { return }
+                if let media = renderer.media, media.isFiles { media.type(text) } else { renderer.browser?.type(text) }
             }
         }
     }
