@@ -372,6 +372,7 @@ struct OverlayOut {
     float4 position [[position]];
     uint layer [[render_target_array_index]];
     float4 color;
+    float2 uv;
 };
 
 vertex OverlayOut overlayVertex(uint vid [[vertex_id]], ushort amp [[amplification_id]],
@@ -382,6 +383,7 @@ vertex OverlayOut overlayVertex(uint vid [[vertex_id]], ushort amp [[amplificati
     out.position = frame.eyes[amp].viewProjection * float4(v.position, 1);
     out.layer = 0;
     out.color = v.color;
+    out.uv = v.uv;
     return out;
 }
 
@@ -525,6 +527,89 @@ fragment float4 mediaFragment(SceneOut in [[stage_in]], constant FrameUniforms &
         c = picture.sample(s, uv);
     }
     return float4(c.rgb * media.brightness, 1.0);
+}
+
+// ---- Lit meshes (the games) ----------------------------------------------------------------
+
+struct MeshOut {
+    float4 position [[position]];
+    uint layer [[render_target_array_index]];
+    float3 worldPos;
+    float3 normal;
+    float2 uv;
+    float4 color;
+    float4 material;    // roughness, metallic, emissive, pattern
+    ushort eye [[flat]];
+};
+
+vertex MeshOut meshVertex(uint vid [[vertex_id]], ushort amp [[amplification_id]],
+                          const device MeshVertex *vertices [[buffer(1)]],
+                          constant FrameUniforms &frame [[buffer(0)]],
+                          constant MeshInstance &instance [[buffer(3)]]) {
+    MeshVertex v = vertices[vid];
+    float4 world = instance.model * float4(v.position, 1);
+    MeshOut out;
+    out.position = frame.eyes[amp].viewProjection * world;
+    out.layer = 0;
+    out.worldPos = world.xyz;
+    out.normal = normalize((instance.model * float4(v.normal, 0)).xyz);
+    out.uv = v.uv;
+    out.color = instance.color;
+    out.material = float4(instance.roughness, instance.metallic, instance.emissive, instance.pattern);
+    out.eye = amp;
+    return out;
+}
+
+// Blinn-Phong with a hemisphere ambient, a rim, a procedural surface pattern and a little
+// Fresnel: enough to make a ball look like a ball and a toy look painted.
+fragment float4 meshFragment(MeshOut in [[stage_in]], constant FrameUniforms &frame [[buffer(0)]],
+                             constant LightUniforms &light [[buffer(2)]]) {
+    float3 n = normalize(in.normal);
+    float3 eye = frame.eyes[in.eye].eyePosition.xyz;
+    float3 v = normalize(eye - in.worldPos);
+    float3 l = normalize(light.lightDirection.xyz);
+    float roughness = clamp(in.material.x, 0.05, 1.0);
+    float metallic = in.material.y;
+    float3 base = in.color.rgb;
+    int pattern = int(in.material.w + 0.5);
+    if (pattern == 9) {            // a blob shadow: a soft dark disc, no lighting
+        float r = length(in.uv - 0.5) * 2.0;
+        return float4(0.0, 0.0, 0.0, in.color.a * (1.0 - smoothstep(0.55, 1.0, r)));
+    }
+    if (pattern == 1) {            // dimples
+        float2 g = fract(in.uv * float2(24.0, 12.0)) - 0.5;
+        base *= 1.0 - 0.25 * (1.0 - smoothstep(0.2, 0.35, length(g)));
+    } else if (pattern == 2) {     // stripes
+        base = mix(base, base * 0.35 + 0.1, step(0.5, fract(in.uv.y * 8.0)));
+    } else if (pattern == 3) {     // checks
+        float c = step(0.5, fract(in.uv.x * 8.0)) + step(0.5, fract(in.uv.y * 8.0));
+        base = mix(base, float3(1.0) - base * 0.3, fmod(c, 2.0));
+    } else if (pattern == 4) {     // scales
+        float2 g = fract(in.uv * float2(18.0, 9.0) + float2(step(0.5, fract(in.uv.y * 4.5)) * 0.5, 0.0)) - 0.5;
+        base *= 0.85 + 0.15 * smoothstep(0.45, 0.3, length(g));
+    } else if (pattern == 5) {     // noise
+        base *= 0.8 + 0.2 * fbm(in.uv * 12.0);
+    }
+    float3 h = normalize(l + v);
+    float ndl = max(dot(n, l), 0.0);
+    float ndh = max(dot(n, h), 0.0);
+    float shininess = mix(96.0, 4.0, roughness);
+    float spec = pow(ndh, shininess) * (1.0 - roughness * 0.7);
+    float fresnel = pow(1.0 - max(dot(n, v), 0.0), 4.0);
+    float3 ambient = mix(light.groundColor.rgb, light.skyColor.rgb, n.y * 0.5 + 0.5);
+    float3 diffuse = base * (ambient * 0.6 + light.lightColor.rgb * ndl) * (1.0 - metallic * 0.6);
+    float3 specular = mix(float3(1.0), base, metallic) * light.lightColor.rgb * spec * (0.3 + metallic * 0.7);
+    float3 rim = base * fresnel * 0.25;
+    float3 color = diffuse + specular + rim + base * in.material.z;
+    return float4(color, in.color.a);
+}
+
+// Additive sprites (sparks, trails, glows): the overlay's vertices, blended by adding.
+fragment float4 glowFragment(OverlayOut in [[stage_in]]) {
+    // A soft radial falloff across the sprite (uv 0..1), brightest at the centre.
+    float r = length(in.uv - 0.5) * 2.0;
+    float a = in.color.a * pow(saturate(1.0 - r), 2.0);
+    return float4(in.color.rgb * a, a);
 }
 
 // ---- Textured quads (the browser window) --------------------------------------------------

@@ -12,18 +12,25 @@ struct GameContext {
     var time: Double
     var dt: Float
     var select: Bool
+    var meshes: MeshLibrary
     var headPosition: SIMD3<Float> { head.columns.3.xyz }
     var forward: SIMD3<Float> { -head.columns.2.xyz }
 }
 
-/// A game: updated and drawn into the overlay every frame, with a line of status for its panel.
+/// A game: updated every frame and drawn as lit meshes, glows and shadows into the scene (and,
+/// for thin things like hand ribbons, the overlay), with a line of status for its panel.
 @MainActor
 protocol Game: AnyObject {
     var title: String { get }
     var status: String { get }
     func update(_ context: GameContext)
+    func draw(into scene: inout Scene3D, context: GameContext)
     func draw(into overlay: inout HandOverlay, context: GameContext)
     func reset()
+}
+
+extension Game {
+    func draw(into overlay: inout HandOverlay, context: GameContext) {}
 }
 
 /// The games panel (a launcher of the games, with the running game's status and a reset) and
@@ -35,9 +42,11 @@ final class GameHost {
     private(set) var games: [Game]
     private(set) var current: Game?
     private let device: MTLDevice
+    let meshes: MeshLibrary
 
     init(device: MTLDevice) {
         self.device = device
+        meshes = MeshLibrary(device: device)
         panel = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 560)
         panel.pane.widthMeters = 1.2
         games = [PaintGame(), BlobShooter(), VacuumGame(), ToyBox(), GolfGame(), GridRide(), PortalGame(), RhythmGame()]
@@ -81,9 +90,10 @@ final class GameHost {
 
     func start(_ index: Int) { press("game:\(index)") }
 
-    func frame(_ context: GameContext, overlay: inout HandOverlay) {
+    func frame(_ context: GameContext, overlay: inout HandOverlay, scene: inout Scene3D) {
         guard let current else { return }
         current.update(context)
+        current.draw(into: &scene, context: context)
         current.draw(into: &overlay, context: context)
         layout()
     }

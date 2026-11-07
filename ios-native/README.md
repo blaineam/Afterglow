@@ -207,35 +207,60 @@ script); plane detection, the floor height and occlusion need the phone.
 
 ## Games
 
-A game host (`Games/GameHost.swift`) runs one game at a time over the overlay system, so games
-are drawn with everything else, occluded by the room, and driven by the same hands, head and
-surfaces; the Games panel launches them, shows the running game's status, resets or stops it.
-The first seven (`Games/Games.swift`):
+A game host (`Games/GameHost.swift`) runs one game at a time; the Games window launches them,
+shows the running game's status, resets or stops it. Games draw into a small lit-mesh scene
+(`Games/Scene3D.swift`): a mesh library built on the GPU once (smooth spheres, capsules,
+cylinders, cones, tori, a thin ring, rounded boxes, discs), drawn per instance through
+`meshVertex`/`meshFragment` with a model matrix, a colour and a material (roughness, metal,
+glow, a surface pattern: dimples, stripes, checks, scales or noise), lit by one sun with a
+sky/ground hemisphere, a rim and a little Fresnel, dimmed with the place's night. Under
+everything a soft blob shadow on the floor; over it additive glow sprites with a radial falloff
+for lamps, sparks, trails and bolts, and a particle system (bursts with gravity and drag) the
+games share. The meshes test depth against the room's LiDAR prepass, so they hide behind real
+furniture like the panels do. The games (`Games/Games.swift`):
 
-- **Paint**: pinch and move to draw ribbons in the air, a colour per stroke; a select with no
-  pinch undoes the last stroke.
-- **Blobs**: alien blobs drift in from around the room; a punch forward (the hand moving ahead
-  faster than 1.5 m/s) fires a bolt from the hand the way the head faces; a blob that reaches you
-  costs a life.
-- **Vacuum**: the floor (the detected floor surfaces, or a 4 m square) is covered in dust marks;
-  a hand run low over them, or walking over them, cleans them until the last goes.
-- **Toys**: pinch in empty space to make a toy, pinch near one to grab and carry it, let go to
-  throw it; gravity, bounces on the floor and on detected tables, collisions between toys.
-- **Golf**: a ball ahead and a hole a few metres on; swing a hand through the ball to putt,
-  strokes counted.
-- **Ride**: a glide over the neon grid that streams past below, banking with the head, with lit
-  gates to fly through.
-- **Portal**: a doorway ahead; walking through it changes the surroundings' palette; back again
-  for the previous.
+- **Paint**: pinch and move to paint a glossy tube in the air (spheres at the points, capsules
+  between), its colour from the hand's height when the stroke starts, a rainbow from the floor
+  up, previewed by a glowing bead at the pinch; sparks trail the brush; a select with no pinch
+  undoes the last stroke.
+- **Blobs**: scaled, squashing blobs with eyes that follow you and glowing antennae squelch in
+  by waves (each faster and larger); a punch forward (the hand moving ahead faster than 1.5 m/s)
+  fires a plasma bolt from the hand along the gaze; hits splash goo, kills burst; a blob that
+  reaches you costs a life and flashes the view red.
+- **Vacuum**: dust bunnies (lumpy, noisy spheres) lie over the detected floor or a square round
+  the player; a hand held low grows a chrome nozzle with a glow, and what it passes over swirls
+  up into it; walking over a pile cleans it too.
+- **Toys**: a painted toy box on the floor ahead holds seven toys, each built from parts: a car
+  (body, cabin, wheels, headlamps), a duck (beak, eyes, tail), a rocket (fins, porthole), a robot
+  (eyes, arms, legs, antenna), a plane (wings, tail, propeller), a dimpled ball and a top. Pinch
+  a toy to carry it, let go to throw it: gravity, bounces off the floor, detected tables and the
+  box's own floor, collisions, a dust puff on a hard landing; pinch in empty space for another.
+  At the bottom of the box is a red button on a chrome base; pinch it, or select with the gaze on
+  it, and every toy wakes: cars drive in arcs and climb out over the rim, ducks waddle and hop,
+  rockets count down, lift off on a flame, arc over and parachute back, robots march in right
+  angles swinging their arms, planes take off and circle the room banking into the turn with the
+  propeller spinning, balls kick themselves about, tops spin and precess, all staying within a
+  few metres of the box; the button again sends them to sleep.
+- **Golf**: a mown putting green with a fringe, a cup with a white rim, a pole and a waving flag;
+  the dimpled ball rolls (it turns with its travel) and the cup's lip pulls it in at the end. A
+  low hand carries a putter head; swing it through the ball to putt, or select to tap it along
+  the gaze; confetti when it drops.
+- **Ride**: a coaster over the grid: two glowing rails on sleepers and pylons curve ahead, thin
+  lit arches stream past overhead with a lamp on top, lamp posts line both sides, the floor's
+  scroll and the head's bank follow. Nothing in the room moves sideways, so it stays comfortable.
+- **Portal**: a stone archway (fluted columns on plinths, a lintel, a glowing keystone) with a
+  shimmering disc of the next world's colour in it and motes swirling in the doorway; walk
+  through and the surroundings change palette, with a burst; back again for the previous.
+- **Rhythm** (`Games/RhythmGame.swift`): glossy gems travel in along four lane rails to rings
+  that pulse on the beat of a built-in synthwave track (a kick and a square-wave lead from a
+  small AVAudioEngine synthesiser, so no music file is needed yet); punch or pinch one as it
+  reaches its ring, or select with the gaze on the lane, to score with combos; hits flare.
+  Apple Music through MusicKit and beat maps from real tracks are the next step.
 
-- **Rhythm** (`Games/RhythmGame.swift`): neon shapes come down four lanes in time with a
-  bundled synthwave beat (a kick and a square-wave lead from a small AVAudioEngine synthesiser,
-  so no music file is needed yet); punch or pinch one as it reaches its ring, or select with the
-  gaze on the lane, to score, with combos. Apple Music through MusicKit and beat maps from
-  bundled tracks are the next step.
-
-In the Simulator the test script's `fakehand 1|0|punch|off` stands in for a hand, and every game
-has been run by script. The detailed environments and 3D models for the toy box are still to come.
+In the Simulator the test script's `fakehand 1|0|punch|off` stands in for a hand and `tap`
+for the headset's double tap; every game has been run by script with the screen captured, and
+the toy box's button pressed by gaze. Cost: a frame of the toy box awake is about 120 mesh
+draws; the Simulator's software Metal keeps 56–60 fps with them.
 
 ## Controllers
 
@@ -386,7 +411,7 @@ ios-native/
   Afterglow/Home/             Toolbar (dock), WindowManager + HomeMenu, SettingsWindow, AppLock, MusicApp
   Afterglow/Room/             RoomModel (surfaces, floor), PlacesApp (environments), SkyboxGenerator (AI photospheres)
   Afterglow/Capture/          EyeRecorder (one eye to a movie), ExternalDisplay (a TV gets the left eye flat)
-  Afterglow/Games/            GameHost, Games (Paint, Blobs, Vacuum, Toys, Golf, Ride, Portal), RhythmGame (+ Synth)
+  Afterglow/Games/            GameHost, Scene3D (meshes, lit scene, particles), Games (Paint, Blobs, Vacuum, Toys, Golf, Ride, Portal), RhythmGame (+ Synth)
   Afterglow/Input/            HeadsetTap, Dictation, Controllers (GameController pads)
   Afterglow/Input/            HeadsetTap (double tap on the viewer), Dictation
   Afterglow/Log/              SessionLog, FrameTimingLog, ThermalLog

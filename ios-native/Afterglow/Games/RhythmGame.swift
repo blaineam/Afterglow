@@ -20,6 +20,7 @@ final class RhythmGame: Game {
     private var started = false
     private let motion = HandMotionTracker()
     private var lastHit: [Bool: Double] = [:]
+    private var hits: [(lane: Int, time: Double)] = []
     var status: String { started ? "Score \(score), combo \(combo)" : "Starting…" }
 
     func reset() {
@@ -71,6 +72,8 @@ final class RhythmGame: Game {
             let delta = notes[i].time - now
             if hitLanes.contains(notes[i].lane) && abs(delta) < 0.18 {
                 notes[i].hit = true
+                hits.append((notes[i].lane, c.time))
+                if hits.count > 16 { hits.removeFirst() }
                 combo += 1
                 score += 10 + min(combo, 10) * 2
                 synth.pop()
@@ -82,25 +85,36 @@ final class RhythmGame: Game {
         best = max(best, combo)
     }
 
-    func draw(into overlay: inout HandOverlay, context c: GameContext) {
+    func draw(into scene: inout Scene3D, context c: GameContext) {
         guard started else { return }
+        let m = c.meshes
         let now = c.time - startTime
         let eye = c.headPosition
-        let forward = simd_normalize(SIMD3(c.forward.x, 0, c.forward.z))
+        let forward = G.flat(c.forward)
         let right = simd_cross(forward, SIMD3(0, 1, 0))
         let base = SIMD3(eye.x, eye.y - 0.25, eye.z)
-        // The rings the notes arrive at, 0.6 m ahead.
+        let colors: [SIMD4<Float>] = [SIMD4(1, 0.3, 0.8, 1), SIMD4(1, 0.85, 0.3, 1), SIMD4(0.5, 1, 0.4, 1), SIMD4(0.7, 0.4, 1, 1)]
+        let beat = Float(fmod(now * Double(bpm) / 60, 1))
+        // The target rings 0.6 m ahead, pulsing on the beat, with a lane rail running away.
         for lane in 0..<4 {
             let p = base + forward * 0.6 + right * laneX(lane)
-            overlay.addSquare(p, size: 0.16, eye: eye, color: SIMD4(0.3, 0.9, 1, 0.5))
+            let pulse = 1 + 0.08 * (1 - beat)
+            scene.add(m.torus, at: p, rotation: G.look(forward) * G.pitch(.pi / 2), scale: SIMD3(repeating: 0.1 * pulse), color: colors[lane], roughness: 0.2, metallic: 0.5, emissive: 0.6, shadow: false)
+            scene.rod(m, p + forward * 0.2 - SIMD3(0, 0.12, 0), p + forward * 4.5 - SIMD3(0, 0.12, 0), radius: 0.006, color: colors[lane] * SIMD4(0.5, 0.5, 0.5, 1), emissive: 0.4)
         }
-        // The notes, 4 m out at 3 s ahead.
+        // The notes: glossy gems travelling in, grey when missed, with a trail glow.
         for note in notes where !note.hit {
             let delta = Float(note.time - now)
             if delta > 3 || delta < -0.4 { continue }
             let p = base + forward * (0.6 + delta * 1.3) + right * laneX(note.lane)
-            let color: SIMD4<Float> = note.missed ? SIMD4(0.4, 0.4, 0.4, 1) : [SIMD4(1, 0.3, 0.8, 1), SIMD4(1, 0.85, 0.3, 1), SIMD4(0.5, 1, 0.4, 1), SIMD4(0.7, 0.4, 1, 1)][note.lane]
-            overlay.addCube(p, size: 0.14, color: color)
+            let color = note.missed ? SIMD4<Float>(0.4, 0.4, 0.4, 1) : colors[note.lane]
+            scene.add(m.sphere, at: p, rotation: G.yaw(Float(now) * 2) * G.pitch(0.5), scale: SIMD3(0.06, 0.08, 0.06), color: color, roughness: 0.15, metallic: 0.4, emissive: note.missed ? 0 : 0.5, shadow: false)
+            if !note.missed { scene.glow(p, size: 0.25, eye: eye, color: color * SIMD4(1, 1, 1, 0.3)) }
+        }
+        for hit in hits where c.time - hit.time < 0.4 {
+            let t = Float(c.time - hit.time) / 0.4
+            let p = base + forward * 0.6 + right * laneX(hit.lane)
+            scene.glow(p, size: 0.15 + t * 0.4, eye: eye, color: colors[hit.lane] * SIMD4(1, 1, 1, (1 - t) * 0.8))
         }
     }
 }

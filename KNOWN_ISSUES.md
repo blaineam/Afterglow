@@ -271,7 +271,9 @@ steady load the phase 1 run did not have; `handHz` lowers it.
 
 Everything after phase 2 was proven only by the Simulator harness: the browser and its WebXR
 sessions, the toolbar and menu, the Photos and Files media viewers with every projection, the
-surfaces, occlusion and places, recording, the games and the rhythm game, controllers. On the
+surfaces, occlusion and places, recording, the games (lit meshes, the toy box's wake-up
+button) and the rhythm game, controllers, the Apple Watch app (no paired watch in the
+Simulator). On the
 phone these are untested: real hands driving the browser's keyboard and the games, LiDAR
 occlusion, plane detection and the floor height, spatial MV-HEVC video, dictation, the double
 tap's threshold, AirPlay casting, the Files picker, and the heat all of it adds. Expect a round

@@ -95,6 +95,32 @@ typedef struct {
     float pad;
 } SurfaceUniforms;
 
+// Lit meshes (the games): a vertex with a normal and a texture coordinate, drawn per instance
+// with a model matrix, a colour and a material.
+typedef struct {
+    vector_float3 position;
+    vector_float3 normal;
+    vector_float2 uv;
+} MeshVertex;
+
+typedef struct {
+    matrix_float4x4 model;
+    vector_float4 color;
+    float roughness;       // 0 mirror .. 1 matte
+    float metallic;        // 0 .. 1
+    float emissive;        // how much the colour glows on its own
+    float pattern;         // 0 plain, 1 dimples, 2 stripes, 3 checks, 4 scales, 5 noise
+} MeshInstance;
+
+typedef struct {
+    vector_float4 lightDirection;   // towards the light, world
+    vector_float4 lightColor;
+    vector_float4 skyColor;         // hemisphere ambient from above
+    vector_float4 groundColor;      // and below
+    float time;
+    float pad3[3];
+} LightUniforms;
+
 // Textured quads in the world (the browser window, panels): position and texture coordinate.
 typedef struct {
     vector_float3 position;
@@ -105,6 +131,7 @@ typedef struct {
 typedef struct {
     vector_float3 position;
     vector_float4 color;
+    vector_float2 uv;      // 0..1 across a sprite, for the glow's falloff; unused by the plain overlay
 } OverlayVertex;
 
 #endif

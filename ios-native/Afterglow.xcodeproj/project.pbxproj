@@ -12,11 +12,13 @@
 		1084C85F476B2C5EB0582CBF /* Panels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62905D062521A7CC64D592BA /* Panels.swift */; };
 		11C794030430803513B767C4 /* MediaMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BF024C3B411C1CCCC0C7D01 /* MediaMetadata.swift */; };
 		11DE11B2F262E90405DBEE7D /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3675F8D2A8455F705C68C25 /* Renderer.swift */; };
+		15ABF46890760A0AF897089C /* AfterglowWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C733774A6D18BA201F8F99F1 /* AfterglowWatchApp.swift */; };
 		16D3E9D0732259261E2D92C5 /* PosePredictor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9966FF18394C15E0D6C282F /* PosePredictor.swift */; };
 		1C7E6B56FEE2873026D56C48 /* RhythmGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F6B9BCCCC55995285EE0920 /* RhythmGame.swift */; };
 		236DFF0648D3937CF4BA8D85 /* WindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A831ACB0D368CC926A366F /* WindowManager.swift */; };
 		347582F364588BCF278B1C27 /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E2E34385880FD6215E765AF /* AppLock.swift */; };
 		348FA203915A0E073B48490F /* afterglow-webxr.js in Resources */ = {isa = PBXBuildFile; fileRef = 1AA30D699725082AF000DBAB /* afterglow-webxr.js */; };
+		394A0218C3895C0013CC40EC /* WatchReceiver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B577727CAF3A49AE4D41D83 /* WatchReceiver.swift */; };
 		3B611AB1D9B01C012F739B97 /* WebBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C758612B9495CD314D59EF61 /* WebBridge.swift */; };
 		3C5D52A1580439FA628A5336 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1558F78E920E5997115FF985 /* ContentView.swift */; };
 		41D13DAC96C560971D3E2F8C /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE734763626DCDC395851D92 /* CredentialStore.swift */; };
@@ -37,6 +39,7 @@
 		9053B9FD4E934468FB7313A1 /* RoomModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A988740926B41E19A4D4C598 /* RoomModel.swift */; };
 		9095BA84A3DC061A60F4CD65 /* Dictation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9423C371E42B4C272012AA5 /* Dictation.swift */; };
 		91E95FC2F446BEEE1D5D8481 /* UltraWideController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F03EB15525A4EC358532B829 /* UltraWideController.swift */; };
+		92948FAE03293BBBA0990B08 /* AfterglowWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = C2CBEB733EE8BDABEA32779E /* AfterglowWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		93D6C51CE90E1CC4F24D1091 /* Controllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = E35E9E8510A0D1E59C07510F /* Controllers.swift */; };
 		97305D4E9B52CAA27CC13956 /* Browser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47EDB0FC1E0D6EF4E3D1AE0 /* Browser.swift */; };
 		998F8E4E9A185C881C5B74DC /* SessionLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97890D6EB3536CA74C71E09 /* SessionLog.swift */; };
@@ -63,6 +66,7 @@
 		ED5D8F15E38998A94A259426 /* MediaMetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 959D50A1EB5EED9EC6FE9AF1 /* MediaMetadataTests.swift */; };
 		EE2AE67EB8156EB501AED089 /* SettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1BE27FFB5F7BF0CBB5D4956 /* SettingsWindow.swift */; };
 		F0433297A0D001C5C4CA77C7 /* HandGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12EF0275572665780B091BD3 /* HandGeometry.swift */; };
+		F58E76BF5FD19FA16788B30F /* Scene3D.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318D2A1B213CEF1FE5055CA0 /* Scene3D.swift */; };
 		F6B76CD3BD4B02E11FDCA409 /* VideoPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8B3564A698DE6CBC60A74CF /* VideoPlayer.swift */; };
 		F6FFC447E3208CC29FA6EAB3 /* HandTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 135AAF215BBE3C9874DB7911 /* HandTracker.swift */; };
 /* End PBXBuildFile section */
@@ -75,12 +79,34 @@
 			remoteGlobalIDString = A0902AD11CA646B49C201ADC;
 			remoteInfo = Afterglow;
 		};
+		CA130574CECADDA2954F71BF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4B2DB3C43A750CB236E73B8A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1CAF7B1CC1AB3A908C7FBB28;
+			remoteInfo = AfterglowWatch;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		47C047F7D351E19D1F2D43E8 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				92948FAE03293BBBA0990B08 /* AfterglowWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		04A39A4CC8DC935824223E5A /* Games.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Games.swift; sourceTree = "<group>"; };
 		06F0D4D6403D9E0E7319F313 /* Afterglow.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Afterglow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		078E21E05BF54EC00E0F4308 /* PolynomialRadialDistortion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PolynomialRadialDistortion.swift; sourceTree = "<group>"; };
+		0B577727CAF3A49AE4D41D83 /* WatchReceiver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchReceiver.swift; sourceTree = "<group>"; };
 		0F9D56A9273E547BF13DE6FB /* MediaLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaLibrary.swift; sourceTree = "<group>"; };
 		12EF0275572665780B091BD3 /* HandGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandGeometry.swift; sourceTree = "<group>"; };
 		135AAF215BBE3C9874DB7911 /* HandTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandTracker.swift; sourceTree = "<group>"; };
@@ -92,6 +118,7 @@
 		27D58785E652A50828B3FA73 /* ARController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARController.swift; sourceTree = "<group>"; };
 		2B54E68953FBF0A4BF468CAE /* OneEuroFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OneEuroFilter.swift; sourceTree = "<group>"; };
 		2B9E0657D69D500D52FC6B5D /* FileSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSource.swift; sourceTree = "<group>"; };
+		318D2A1B213CEF1FE5055CA0 /* Scene3D.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scene3D.swift; sourceTree = "<group>"; };
 		37D8895069D15A18068ACE71 /* BrowserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserTests.swift; sourceTree = "<group>"; };
 		38B30CD74969D37109A6EC5B /* AfterglowTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AfterglowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		407B733E5D15B248CD512A98 /* BrowserWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserWindow.swift; sourceTree = "<group>"; };
@@ -116,6 +143,7 @@
 		A3675F8D2A8455F705C68C25 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		A7F27D509791361AD2011E47 /* ScreenMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenMetrics.swift; sourceTree = "<group>"; };
 		A988740926B41E19A4D4C598 /* RoomModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomModel.swift; sourceTree = "<group>"; };
+		AB1DC4E70B80488B9E5CCA30 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B1BE27FFB5F7BF0CBB5D4956 /* SettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindow.swift; sourceTree = "<group>"; };
 		B1DF1BAF17D795352DAC505E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B2A07A7A60E0764F6995F5B5 /* AfterglowApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AfterglowApp.swift; sourceTree = "<group>"; };
@@ -123,7 +151,9 @@
 		B8B3564A698DE6CBC60A74CF /* VideoPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayer.swift; sourceTree = "<group>"; };
 		BB1258CEE15BE1B0F0A68046 /* ViewerParams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerParams.swift; sourceTree = "<group>"; };
 		BF67DFEAB12B2149E6F36069 /* BrowserStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserStore.swift; sourceTree = "<group>"; };
+		C2CBEB733EE8BDABEA32779E /* AfterglowWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AfterglowWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C4592C811D59569C81790593 /* afterglow-helper.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "afterglow-helper.js"; sourceTree = "<group>"; };
+		C733774A6D18BA201F8F99F1 /* AfterglowWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AfterglowWatchApp.swift; sourceTree = "<group>"; };
 		C758612B9495CD314D59EF61 /* WebBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebBridge.swift; sourceTree = "<group>"; };
 		C9966FF18394C15E0D6C282F /* PosePredictor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosePredictor.swift; sourceTree = "<group>"; };
 		C9D14AF0F2015E62D345D07C /* WebTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebTab.swift; sourceTree = "<group>"; };
@@ -181,6 +211,7 @@
 				9BFC2DC2C15F790660B215F4 /* Afterglow */,
 				F95164F99F7AEB622525CE32 /* Afterglow */,
 				1AFE8A8B31701757B0E378F8 /* AfterglowTests */,
+				E14A0E1DFFDF7DA488C6205C /* AfterglowWatch */,
 				B9BDD00DF717B7759B21B2AC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -221,6 +252,7 @@
 				E35E9E8510A0D1E59C07510F /* Controllers.swift */,
 				F9423C371E42B4C272012AA5 /* Dictation.swift */,
 				87C4D44511F04B6AD7D43D31 /* HeadsetTap.swift */,
+				0B577727CAF3A49AE4D41D83 /* WatchReceiver.swift */,
 			);
 			path = Input;
 			sourceTree = "<group>";
@@ -273,6 +305,7 @@
 			children = (
 				06F0D4D6403D9E0E7319F313 /* Afterglow.app */,
 				38B30CD74969D37109A6EC5B /* AfterglowTests.xctest */,
+				C2CBEB733EE8BDABEA32779E /* AfterglowWatch.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -283,6 +316,7 @@
 				5703D6F0702885C2F804B15B /* GameHost.swift */,
 				04A39A4CC8DC935824223E5A /* Games.swift */,
 				7F6B9BCCCC55995285EE0920 /* RhythmGame.swift */,
+				318D2A1B213CEF1FE5055CA0 /* Scene3D.swift */,
 			);
 			path = Games;
 			sourceTree = "<group>";
@@ -323,6 +357,15 @@
 				57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */,
 			);
 			path = Log;
+			sourceTree = "<group>";
+		};
+		E14A0E1DFFDF7DA488C6205C /* AfterglowWatch */ = {
+			isa = PBXGroup;
+			children = (
+				C733774A6D18BA201F8F99F1 /* AfterglowWatchApp.swift */,
+				AB1DC4E70B80488B9E5CCA30 /* Info.plist */,
+			);
+			path = AfterglowWatch;
 			sourceTree = "<group>";
 		};
 		EDA76F939C41E1DAB52320CA /* Hands */ = {
@@ -401,16 +444,35 @@
 			productReference = 38B30CD74969D37109A6EC5B /* AfterglowTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		1CAF7B1CC1AB3A908C7FBB28 /* AfterglowWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6A7B71526CF7D4BB060725A4 /* Build configuration list for PBXNativeTarget "AfterglowWatch" */;
+			buildPhases = (
+				409CBBCE8A5AE699FFC3A0C1 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AfterglowWatch;
+			packageProductDependencies = (
+			);
+			productName = AfterglowWatch;
+			productReference = C2CBEB733EE8BDABEA32779E /* AfterglowWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
 		A0902AD11CA646B49C201ADC /* Afterglow */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = F5A1FADBF0E80FD073F6DB25 /* Build configuration list for PBXNativeTarget "Afterglow" */;
 			buildPhases = (
 				F3D3B77078171E5C5179C37B /* Sources */,
 				8FE247492FFFC171B4A7E9E0 /* Resources */,
+				47C047F7D351E19D1F2D43E8 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7A489266CEB74301BA95BAC1 /* PBXTargetDependency */,
 			);
 			name = Afterglow;
 			packageProductDependencies = (
@@ -429,6 +491,9 @@
 				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					09AF2787337D30883BD5EB0D = {
+						ProvisioningStyle = Automatic;
+					};
+					1CAF7B1CC1AB3A908C7FBB28 = {
 						ProvisioningStyle = Automatic;
 					};
 					A0902AD11CA646B49C201ADC = {
@@ -452,6 +517,7 @@
 			targets = (
 				A0902AD11CA646B49C201ADC /* Afterglow */,
 				09AF2787337D30883BD5EB0D /* AfterglowTests */,
+				1CAF7B1CC1AB3A908C7FBB28 /* AfterglowWatch */,
 			);
 		};
 /* End PBXProject section */
@@ -471,6 +537,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		409CBBCE8A5AE699FFC3A0C1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				15ABF46890760A0AF897089C /* AfterglowWatchApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		CB1FB0B0660E7FE02621D00E /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -521,6 +595,7 @@
 				11DE11B2F262E90405DBEE7D /* Renderer.swift in Sources */,
 				1C7E6B56FEE2873026D56C48 /* RhythmGame.swift in Sources */,
 				9053B9FD4E934468FB7313A1 /* RoomModel.swift in Sources */,
+				F58E76BF5FD19FA16788B30F /* Scene3D.swift in Sources */,
 				E1F20C8F70E32B1C44AA3A59 /* ScreenMetrics.swift in Sources */,
 				998F8E4E9A185C881C5B74DC /* SessionLog.swift in Sources */,
 				8A26420DC8EEC87E91BE44DA /* Settings.swift in Sources */,
@@ -533,6 +608,7 @@
 				C803CA1BEC03B79551EFB51B /* UltraWideProbe.swift in Sources */,
 				F6B76CD3BD4B02E11FDCA409 /* VideoPlayer.swift in Sources */,
 				87FA55609E5C45D423B33A4C /* ViewerParams.swift in Sources */,
+				394A0218C3895C0013CC40EC /* WatchReceiver.swift in Sources */,
 				3B611AB1D9B01C012F739B97 /* WebBridge.swift in Sources */,
 				C41DAACF85D3845C8E068C10 /* WebTab.swift in Sources */,
 				236DFF0648D3937CF4BA8D85 /* WindowManager.swift in Sources */,
@@ -546,6 +622,11 @@
 			isa = PBXTargetDependency;
 			target = A0902AD11CA646B49C201ADC /* Afterglow */;
 			targetProxy = 05B38E9EFDF5071110952205 /* PBXContainerItemProxy */;
+		};
+		7A489266CEB74301BA95BAC1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1CAF7B1CC1AB3A908C7FBB28 /* AfterglowWatch */;
+			targetProxy = CA130574CECADDA2954F71BF /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -610,13 +691,13 @@
 				MTL_TREAT_WARNINGS_AS_ERRORS = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Debug;
 		};
@@ -631,7 +712,6 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow.tests;
 				SDKROOT = iphoneos;
-				SWIFT_OBJC_BRIDGING_HEADER = Afterglow/Render/ShaderTypes.h;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Afterglow.app/Afterglow";
 			};
@@ -711,13 +791,13 @@
 				MTL_FAST_MATH = YES;
 				MTL_TREAT_WARNINGS_AS_ERRORS = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 1;
+				WATCHOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Release;
 		};
@@ -753,11 +833,48 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow.tests;
 				SDKROOT = iphoneos;
-				SWIFT_OBJC_BRIDGING_HEADER = Afterglow/Render/ShaderTypes.h;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Afterglow.app/Afterglow";
 			};
 			name = Debug;
+		};
+		D301D35D86A6C6D30EC9897C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AfterglowWatch/Info.plist;
+				MARKETING_VERSION = 2.0.0;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow.watchkitapp;
+				PRODUCT_NAME = AfterglowWatch;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Debug;
+		};
+		E3964C88DBBA29E8A550F0C7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AfterglowWatch/Info.plist;
+				MARKETING_VERSION = 2.0.0;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow.watchkitapp;
+				PRODUCT_NAME = AfterglowWatch;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
@@ -767,6 +884,15 @@
 			buildConfigurations = (
 				B5BCAA87FE17B8A2D96222A3 /* Debug */,
 				6ADD25A0D74B5657C4F34177 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		6A7B71526CF7D4BB060725A4 /* Build configuration list for PBXNativeTarget "AfterglowWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D301D35D86A6C6D30EC9897C /* Debug */,
+				E3964C88DBBA29E8A550F0C7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

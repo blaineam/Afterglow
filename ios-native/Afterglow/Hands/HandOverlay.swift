@@ -3,6 +3,10 @@ import simd
 /// Builds the triangles that draw the tracked hands (bones as thin ribbons facing the eyes, joints
 /// as small squares) and the grab demo's cubes, in world space with a colour each, for the
 /// overlay pipeline. Rebuilt every frame on the CPU: a few hundred vertices.
+extension OverlayVertex {
+    init(position: SIMD3<Float>, color: SIMD4<Float>) { self.init(position: position, color: color, uv: .zero) }
+}
+
 struct HandOverlay {
     private(set) var vertices: [OverlayVertex] = []
 

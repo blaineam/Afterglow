@@ -212,8 +212,13 @@ foundation at all. The honest picture:
   Apple Music controls, the bundle id taken over from the Unity app with its icon; and any 360
   photo from Photos, the Media folder or Documents/Environments as a place, with AI photosphere
   generation behind an API key file; the Apple Watch app (its double tap is the primary
-  action, the crown scrolls) built the same evening. Still to come: the games rebuilt as lit HD experiences with the toy box's wake-up button,
-  MusicKit for the rhythm game, WebXR AR features, and everything above on the phone.
+  action, the crown scrolls) built the same evening, and the games rebuilt as lit experiences
+  on a mesh scene (generated meshes, materials, one sun with a hemisphere, blob shadows, glow
+  sprites, particles): the toy box's seven part-built toys and its hidden wake-up button that
+  sets them driving, waddling, launching, marching, flying, bouncing and spinning, a putting
+  green, a blob arena with waves, a coaster with rails and arches, a stone portal, dust bunnies,
+  gems on rails for the rhythm game. Still to come: MusicKit for the rhythm game, WebXR AR
+  features, and everything above on the phone.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

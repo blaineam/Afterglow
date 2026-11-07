@@ -26,6 +26,13 @@ final class Renderer {
     private var surfacePipeline: MTLRenderPipelineState!
     private var occlusionPipeline: MTLRenderPipelineState!
     private var overlayDepthPipeline: MTLRenderPipelineState!
+    private var meshPipeline: MTLRenderPipelineState!
+    private var meshBlendPipeline: MTLRenderPipelineState!
+    private var glowPipeline: MTLRenderPipelineState!
+    private var depthTestNoWriteState: MTLDepthStencilState!
+    private var scene3D = Scene3D()
+    private var glowBuffers: [MTLBuffer] = []
+    private var glowBufferIndex = 0
     private var depthTexture: MTLTexture?
     private var depthTestState: MTLDepthStencilState!
     private var depthWriteState: MTLDepthStencilState!
@@ -471,7 +478,7 @@ final class Renderer {
     }
 
     private func buildPipelines() throws {
-        func scene(_ vertex: String, _ fragment: String, blend: Bool = false, depthOnly: Bool = false) throws -> MTLRenderPipelineState {
+        func scene(_ vertex: String, _ fragment: String, blend: Bool = false, depthOnly: Bool = false, additive: Bool = false) throws -> MTLRenderPipelineState {
             let d = MTLRenderPipelineDescriptor()
             d.vertexFunction = library.makeFunction(name: vertex)
             d.fragmentFunction = library.makeFunction(name: fragment)
@@ -484,6 +491,13 @@ final class Renderer {
                 d.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
                 d.colorAttachments[0].sourceAlphaBlendFactor = .one
                 d.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
+            }
+            if additive {
+                d.colorAttachments[0].isBlendingEnabled = true
+                d.colorAttachments[0].sourceRGBBlendFactor = .one
+                d.colorAttachments[0].destinationRGBBlendFactor = .one
+                d.colorAttachments[0].sourceAlphaBlendFactor = .zero
+                d.colorAttachments[0].destinationAlphaBlendFactor = .one
             }
             if amplifies { d.maxVertexAmplificationCount = 2 }
             // Writing render_target_array_index needs the topology stated up front.
@@ -501,6 +515,9 @@ final class Renderer {
         surfacePipeline = try scene("surfaceVertex", "surfaceFragment", blend: true)
         occlusionPipeline = try scene("fullscreenVertex", "occlusionFragment", depthOnly: true)
         overlayDepthPipeline = try scene("overlayVertex", "overlayFragment")
+        meshPipeline = try scene("meshVertex", "meshFragment")
+        meshBlendPipeline = try scene("meshVertex", "meshFragment", blend: true)
+        glowPipeline = try scene("overlayVertex", "glowFragment", additive: true)
         let b = MTLRenderPipelineDescriptor()
         b.vertexFunction = library.makeFunction(name: "blitVertex")
         b.fragmentFunction = library.makeFunction(name: "blitFragment")
@@ -519,6 +536,10 @@ final class Renderer {
         none.depthCompareFunction = .always
         none.isDepthWriteEnabled = false
         depthNoneState = device.makeDepthStencilState(descriptor: none)
+        let testOnly = MTLDepthStencilDescriptor()
+        testOnly.depthCompareFunction = .lessEqual
+        testOnly.isDepthWriteEnabled = false
+        depthTestNoWriteState = device.makeDepthStencilState(descriptor: testOnly)
 
         let d = MTLRenderPipelineDescriptor()
         d.vertexFunction = library.makeFunction(name: "distortionVertex")
@@ -832,8 +853,10 @@ final class Renderer {
             }
             let room = (source as? ARController)?.room
             let context = GameContext(head: headInWorld, hands: tracked, floorHeight: room?.floorHeight ?? floorHeight,
-                                      surfaces: room?.all ?? [], time: t2, dt: frameDt, select: gameSelect)
-            games.frame(context, overlay: &overlay)
+                                      surfaces: room?.all ?? [], time: t2, dt: frameDt, select: gameSelect, meshes: games.meshes)
+            scene3D.clear()
+            scene3D.floorHeight = context.floorHeight
+            games.frame(context, overlay: &overlay, scene: &scene3D)
             if let ride = games.current as? GridRide { floorScroll = ride.distance } 
             games.render()
             if windows?.window(.games)?.minimized == false, let t = games.panel.texture { toolbarQuads.append((t, 6)) }
@@ -1030,6 +1053,18 @@ final class Renderer {
             vertices.withUnsafeBytes { buffer.contents().copyMemory(from: $0.baseAddress!, byteCount: $0.count) }
             quadBuffer = buffer
         }
+        var glowBuffer: MTLBuffer?
+        if (games?.current) == nil { scene3D.clear() }
+        if !scene3D.glows.isEmpty {
+            let bytes = scene3D.glows.count * MemoryLayout<OverlayVertex>.stride
+            while glowBuffers.count < 3 { glowBuffers.append(device.makeBuffer(length: 1 << 20, options: .storageModeShared)!) }
+            glowBufferIndex = (glowBufferIndex + 1) % glowBuffers.count
+            let buffer = glowBuffers[glowBufferIndex]
+            if bytes <= buffer.length {
+                scene3D.glows.withUnsafeBytes { buffer.contents().copyMemory(from: $0.baseAddress!, byteCount: bytes) }
+                glowBuffer = buffer
+            }
+        }
         var overlayBuffer: MTLBuffer?
         if !overlay.vertices.isEmpty {
             let bytes = overlay.vertices.count * MemoryLayout<OverlayVertex>.stride
@@ -1131,6 +1166,42 @@ final class Renderer {
                 encoder.setVertexBuffer(surfaceBuffer, offset: 0, index: 1)
                 encoder.setFragmentBytes(&su, length: MemoryLayout<SurfaceUniforms>.stride, index: 2)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: surfaceVertexCount)
+            }
+            // The games' lit meshes, their shadows and their glows.
+            if !scene3D.draws.isEmpty || glowBuffer != nil {
+                var light = LightUniforms()
+                let dusk = 1 - nightAmount
+                light.lightDirection = SIMD4(simd_normalize(SIMD3<Float>(0.35, 0.8, 0.45)), 0)
+                light.lightColor = SIMD4(1.0 * dusk + 0.35 * nightAmount, 0.92 * dusk + 0.4 * nightAmount, 0.85 * dusk + 0.6 * nightAmount, 1)
+                light.skyColor = SIMD4(0.45 * dusk + 0.12 * nightAmount, 0.5 * dusk + 0.15 * nightAmount, 0.75 * dusk + 0.3 * nightAmount, 1)
+                light.groundColor = SIMD4(0.3 * dusk + 0.08 * nightAmount, 0.15 * dusk + 0.06 * nightAmount, 0.35 * dusk + 0.12 * nightAmount, 1)
+                light.time = Float(t2 - launchTime)
+                encoder.setFragmentBytes(&light, length: MemoryLayout<LightUniforms>.stride, index: 2)
+                encoder.setRenderPipelineState(meshPipeline)
+                encoder.setDepthStencilState(depthTestState)
+                for draw in scene3D.draws {
+                    var instance = draw.instance
+                    encoder.setVertexBuffer(draw.mesh.vertices, offset: 0, index: 1)
+                    encoder.setVertexBytes(&instance, length: MemoryLayout<MeshInstance>.stride, index: 3)
+                    encoder.drawIndexedPrimitives(type: .triangle, indexCount: draw.mesh.indexCount, indexType: .uint32, indexBuffer: draw.mesh.indices, indexBufferOffset: 0)
+                }
+                if !scene3D.shadows.isEmpty, let games {
+                    encoder.setRenderPipelineState(meshBlendPipeline)
+                    encoder.setDepthStencilState(depthTestNoWriteState)
+                    let disc = games.meshes.disc
+                    encoder.setVertexBuffer(disc.vertices, offset: 0, index: 1)
+                    for (p, radius, strength) in scene3D.shadows {
+                        var instance = MeshInstance(model: Scene3D.transform(position: p, scale: SIMD3(radius, 1, radius)), color: SIMD4(0, 0, 0, strength), roughness: 1, metallic: 0, emissive: 0, pattern: 9)
+                        encoder.setVertexBytes(&instance, length: MemoryLayout<MeshInstance>.stride, index: 3)
+                        encoder.drawIndexedPrimitives(type: .triangle, indexCount: disc.indexCount, indexType: .uint32, indexBuffer: disc.indices, indexBufferOffset: 0)
+                    }
+                }
+                if let glowBuffer {
+                    encoder.setRenderPipelineState(glowPipeline)
+                    encoder.setDepthStencilState(depthTestNoWriteState)
+                    encoder.setVertexBuffer(glowBuffer, offset: 0, index: 1)
+                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: scene3D.glows.count)
+                }
             }
             encoder.setDepthStencilState(depthNoneState)
             if let quadBuffer {
