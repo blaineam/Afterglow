@@ -136,7 +136,8 @@ fragment float4 floorFragment(SceneOut in [[stage_in]], constant FrameUniforms &
     const float3 glowColor = float3(0.55, 0.10, 0.60);
     const float3 horizonGlow = float3(1.00, 0.55, 0.30);
 
-    float2 p = in.worldPos.xz;
+    float2 p = in.worldPos.xz + float2(0.0, frame.floorScroll);
+    float3 lineColor = frame.gridColor.w > 0.5 ? frame.gridColor.rgb : line;
     float2 grid = abs(fract(p - 0.5) - 0.5);          // distance to the nearest line, per axis
     float2 width = fwidth(p);
     float2 aa = max(width, 0.002);
@@ -148,7 +149,7 @@ fragment float4 floorFragment(SceneOut in [[stage_in]], constant FrameUniforms &
 
     float3 color = background;
     color = mix(color, glowColor, glowAmount);
-    color = mix(color, line * pulse, lines);
+    color = mix(color, lineColor * pulse, lines);
 
     // Fade into the horizon's glow with distance, so the far edge of the quad dissolves and the
     // lines stop shimmering where they bunch up.

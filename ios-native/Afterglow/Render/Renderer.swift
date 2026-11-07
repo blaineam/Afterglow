@@ -36,6 +36,11 @@ final class Renderer {
     private(set) var places: PlacesApp?
     private var blitPipeline: MTLRenderPipelineState!
     private(set) var recorder: EyeRecorder?
+    private(set) var games: GameHost?
+    private var gridColor = SIMD4<Float>(0, 0, 0, 0)
+    private var floorScroll: Float = 0
+    /// A synthetic hand for the Simulator (`fakehand` in the test script).
+    private var fakeHand: (pinched: Bool, punchUntil: Double)?
     private var castEye = 0
     private var surfaceDrawLogged = false
     private var environment = PlacesApp.Choice.synthwave
@@ -199,6 +204,17 @@ final class Renderer {
             if app == .files { media.openFiles(head: lastHead) } else { media.open(head: lastHead) }
             self.media = media
             openApp = app
+        case .games:
+            let games = GameHost(device: device)
+            games.open(head: lastHead)
+            if let portal = games.games.compactMap({ $0 as? PortalGame }).first {
+                portal.onWorldChange = { [weak self] world in
+                    let c = PortalGame.palettes[world % PortalGame.palettes.count]
+                    self?.gridColor = world == 0 ? SIMD4(0, 0, 0, 0) : SIMD4(c, 1)
+                }
+            }
+            self.games = games
+            openApp = .games
         case .environments:
             let places = PlacesApp(device: device)
             places.open(head: lastHead)
@@ -219,6 +235,7 @@ final class Renderer {
         if openApp == .browser { settings.browserOpen = false }
         if openApp == .media || openApp == .files { media?.close(); media = nil }
         if openApp == .environments { places = nil }
+        if openApp == .games { games = nil; gridColor = SIMD4(0, 0, 0, 0) }
         openApp = nil
     }
 
@@ -283,6 +300,7 @@ final class Renderer {
             else if let chrome, chrome.panel.buttons.contains(where: { $0.id == argument }) { pressPanel(chrome.panel, id: argument) }
             else if let media, (media.screen == .viewing ? media.controls : media.grid).buttons.contains(where: { $0.id == argument }) { media.press(argument) }
             else if let places, places.panel.buttons.contains(where: { $0.id == argument }) { if places.press(argument) { settings.surfaces.toggle() } }
+            else if let games, games.panel.buttons.contains(where: { $0.id == argument }) { games.press(argument) }
             else if let toolbar { toolbar.press(argument) }
         case "type": if let media, media.isFiles { media.type(argument) } else { browser?.type(argument) }
         case "key": if let media, media.isFiles { media.key(argument) } else { browser?.key(argument) }
@@ -300,6 +318,10 @@ final class Renderer {
             browser?.current?.webView.evaluateJavaScript(script) { result, _ in log("[Actions] immersive: \(result ?? "?")") }
         case "end": browser?.endSession()
         case "record": toggleRecording(eye: Int(argument) ?? 0)
+        case "fakehand":
+            if argument == "off" { fakeHand = nil }
+            else if argument == "punch" { fakeHand = (fakeHand?.pinched ?? false, now + 0.2) }
+            else { fakeHand = (argument == "1", 0) }
         case "fakeplanes": (source as? ARController)?.room.addFake(floorY: floorHeight); settings.surfaces = true
         case "js":
             browser?.current?.webView.evaluateJavaScript(argument) { result, error in
@@ -545,6 +567,8 @@ final class Renderer {
         }
         uniforms.time = Float(t2 - launchTime)
         uniforms.floorHeight = floorHeight
+        uniforms.gridColor = gridColor
+        uniforms.floorScroll = floorScroll
         uniforms.passthroughBlend = settings.passthrough ? 1 : 0
 
         lastHead = headInWorld
@@ -553,10 +577,24 @@ final class Renderer {
 
         // The hands as of this frame, and the grab demo they drive.
         overlay.clear()
+        var toolbarQuads: [(MTLTexture, Int)] = []
         var tracked: [TrackedHandState] = []
         if let hands = source.hands {
             tracked = hands.hands(at: predictTo)
             hands.hertz = settings.handHzLive
+        }
+        if let fake = fakeHand {
+            // A flat hand 0.4 m ahead and a little right and down, punched forward when asked.
+            let forward = -headInWorld.columns.2.xyz
+            let right = headInWorld.columns.0.xyz
+            let punch: Float = t2 < fake.punchUntil ? Float((fake.punchUntil - t2) / 0.2) * 0.4 : 0
+            let origin = headInWorld.columns.3.xyz + forward * (0.4 + punch) + right * 0.15 - SIMD3(0, 0.12, 0)
+            var joints = [SIMD3<Float>](repeating: origin, count: HandGeometry.jointCount)
+            for (i, j) in joints.enumerated() { _ = j; joints[i] = origin + right * Float(i % 5) * 0.015 + forward * Float(i / 5) * 0.02 }
+            let tips = fake.pinched ? origin + forward * 0.08 : origin + forward * 0.09
+            joints[HandGeometry.thumbTip] = tips - right * (fake.pinched ? 0.005 : 0.05)
+            joints[HandGeometry.indexTip] = tips + right * 0.005
+            tracked.append(TrackedHandState(joints: joints, pinched: fake.pinched, pinchPoint: tips, handedness: 1, confidence: 1, distance: 0.4))
         }
         // Selects this frame: a pinch beginning, a screen tap, or a double tap on the viewer.
         var pinchNow = [false, false]
@@ -577,6 +615,29 @@ final class Renderer {
             grabDemo.update(hands: tracked, time: predictTo)
             grabDemo.draw(into: &overlay)
         }
+        if let games {
+            let origin = headInWorld.columns.3.xyz
+            let forward = -headInWorld.columns.2.xyz
+            let hit = games.panel.pane.hit(origin: origin, direction: forward)
+            _ = games.panel.hover(hit?.uv)
+            var gameSelect = select
+            if select, hit != nil, let id = games.panel.hovered {
+                games.press(id)
+                select = false
+                gameSelect = false
+            }
+            let room = (source as? ARController)?.room
+            let context = GameContext(head: headInWorld, hands: tracked, floorHeight: room?.floorHeight ?? floorHeight,
+                                      surfaces: room?.all ?? [], time: t2, dt: frameDt, select: gameSelect)
+            games.frame(context, overlay: &overlay)
+            if let ride = games.current as? GridRide { floorScroll = ride.distance } 
+            games.render()
+            if let t = games.panel.texture { toolbarQuads.append((t, 6)) }
+            if let hit {
+                let at = games.panel.pane.centre + games.panel.pane.right * ((hit.uv.x - 0.5) * games.panel.pane.widthMeters) + games.panel.pane.up * ((0.5 - hit.uv.y) * games.panel.pane.heightMeters)
+                overlay.addSquare(at - forward * 0.01, size: 0.012, eye: origin, color: HandOverlay.pinchColor)
+            }
+        }
         // Everything before this point can hide behind the room; the hands and reticles cannot.
         overlayUnoccludedStart = overlay.vertices.count
         if settings.showHandsLive {
@@ -584,7 +645,6 @@ final class Renderer {
             for hand in tracked { overlay.addHand(hand, eye: eyeMid) }
         }
         var quads: [(MTLBuffer?, MTLTexture, SIMD4<Float>, Int)] = []
-        var toolbarQuads: [(MTLTexture, Int)] = []
         if let toolbar, !(browser?.isImmersive ?? false) {
             let origin = headInWorld.columns.3.xyz
             let forward = -headInWorld.columns.2.xyz

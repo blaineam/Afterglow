@@ -20,6 +20,7 @@
 		44349A8E8C2D2B5B72308FA2 /* FileSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9E0657D69D500D52FC6B5D /* FileSource.swift */; };
 		4752687B06DCC27E53D2DE95 /* LensDistortionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */; };
 		5FADCF4942F922DF8FD0C5C4 /* HandOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7854AEB3ED92FB2970560611 /* HandOverlay.swift */; };
+		63D96A7059EA72FC002BF7E8 /* GameHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5703D6F0702885C2F804B15B /* GameHost.swift */; };
 		75ADA160809141FED2BF671A /* ExternalDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F1932938E01769D5BD70302 /* ExternalDisplay.swift */; };
 		75BE77AC84FBAB02AE1C6FB8 /* BrowserWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407B733E5D15B248CD512A98 /* BrowserWindow.swift */; };
 		77C5951CAE44BFA58BE8C46A /* Toolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B81BBB54C49B3845F94E2832 /* Toolbar.swift */; };
@@ -47,6 +48,7 @@
 		CD88B09669D877C78226AE06 /* CameraSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D94EC27CAA1FF1943486BB0 /* CameraSource.swift */; };
 		D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */; };
 		D9D3FFB7F662E475F947FD3C /* EyeRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCEC5C5D9ABB975443C7DE91 /* EyeRecorder.swift */; };
+		DD58B4FD2C93E71F18D6592E /* Games.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A39A4CC8DC935824223E5A /* Games.swift */; };
 		E1962322F97DB95D45A90270 /* HeadsetTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87C4D44511F04B6AD7D43D31 /* HeadsetTap.swift */; };
 		E1F20C8F70E32B1C44AA3A59 /* ScreenMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F27D509791361AD2011E47 /* ScreenMetrics.swift */; };
 		E386311B4A1748A01C31E880 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = F3791EB1A750663D58286739 /* Shaders.metal */; };
@@ -68,6 +70,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		04A39A4CC8DC935824223E5A /* Games.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Games.swift; sourceTree = "<group>"; };
 		06F0D4D6403D9E0E7319F313 /* Afterglow.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Afterglow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		078E21E05BF54EC00E0F4308 /* PolynomialRadialDistortion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PolynomialRadialDistortion.swift; sourceTree = "<group>"; };
 		0F9D56A9273E547BF13DE6FB /* MediaLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaLibrary.swift; sourceTree = "<group>"; };
@@ -84,6 +87,7 @@
 		38B30CD74969D37109A6EC5B /* AfterglowTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AfterglowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		407B733E5D15B248CD512A98 /* BrowserWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserWindow.swift; sourceTree = "<group>"; };
 		4402EC68CCA81B671B468EE8 /* LensDistortion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensDistortion.swift; sourceTree = "<group>"; };
+		5703D6F0702885C2F804B15B /* GameHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameHost.swift; sourceTree = "<group>"; };
 		57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalLog.swift; sourceTree = "<group>"; };
 		57EB9465CB5A756B4F53BEC0 /* MediaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaApp.swift; sourceTree = "<group>"; };
 		5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandGeometryTests.swift; sourceTree = "<group>"; };
@@ -227,6 +231,7 @@
 				6977E4302D248A13F4C272D6 /* App */,
 				FEF5E09E6BBB32ED16C89585 /* Browser */,
 				EE23577D125C45ED3D4430A9 /* Capture */,
+				BFF0D7C734B85E9D28C88B97 /* Games */,
 				EDA76F939C41E1DAB52320CA /* Hands */,
 				1E150F1B8FD54F8E79628E24 /* Home */,
 				6A349F2B742FA042961ED828 /* Input */,
@@ -247,6 +252,15 @@
 				38B30CD74969D37109A6EC5B /* AfterglowTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		BFF0D7C734B85E9D28C88B97 /* Games */ = {
+			isa = PBXGroup;
+			children = (
+				5703D6F0702885C2F804B15B /* GameHost.swift */,
+				04A39A4CC8DC935824223E5A /* Games.swift */,
+			);
+			path = Games;
 			sourceTree = "<group>";
 		};
 		C91B7EF79664E589DD136246 /* StreamingAssets */ = {
@@ -460,6 +474,8 @@
 				D9D3FFB7F662E475F947FD3C /* EyeRecorder.swift in Sources */,
 				44349A8E8C2D2B5B72308FA2 /* FileSource.swift in Sources */,
 				80531BEAA4C2E3BD43B155AB /* FrameTimingLog.swift in Sources */,
+				63D96A7059EA72FC002BF7E8 /* GameHost.swift in Sources */,
+				DD58B4FD2C93E71F18D6592E /* Games.swift in Sources */,
 				F0433297A0D001C5C4CA77C7 /* HandGeometry.swift in Sources */,
 				5FADCF4942F922DF8FD0C5C4 /* HandOverlay.swift in Sources */,
 				F6FFC447E3208CC29FA6EAB3 /* HandTracker.swift in Sources */,

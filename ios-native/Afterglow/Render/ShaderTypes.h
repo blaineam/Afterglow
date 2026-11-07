@@ -24,6 +24,9 @@ typedef struct {
     float floorHeight;                   // the virtual floor's y
     float passthroughBlend;              // 1 shows the camera image, 0 the surroundings
     float captureVideoRange;             // 1 when the image's samples are video range (Y 16-235)
+    vector_float4 gridColor;             // the neon grid's line colour; w = 0 keeps the default
+    float floorScroll;                   // metres the grid has streamed past (the ride)
+    float pad2[3];
 } FrameUniforms;
 
 typedef struct {

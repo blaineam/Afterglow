@@ -201,6 +201,33 @@ script); plane detection, the floor height and occlusion need the phone.
   flat, letterboxed, blitted each frame. The lens-warped phone screen itself is not what the TV
   gets. Untested without a second display.
 
+## Games
+
+A game host (`Games/GameHost.swift`) runs one game at a time over the overlay system, so games
+are drawn with everything else, occluded by the room, and driven by the same hands, head and
+surfaces; the Games panel launches them, shows the running game's status, resets or stops it.
+The first seven (`Games/Games.swift`):
+
+- **Paint**: pinch and move to draw ribbons in the air, a colour per stroke; a select with no
+  pinch undoes the last stroke.
+- **Blobs**: alien blobs drift in from around the room; a punch forward (the hand moving ahead
+  faster than 1.5 m/s) fires a bolt from the hand the way the head faces; a blob that reaches you
+  costs a life.
+- **Vacuum**: the floor (the detected floor surfaces, or a 4 m square) is covered in dust marks;
+  a hand run low over them, or walking over them, cleans them until the last goes.
+- **Toys**: pinch in empty space to make a toy, pinch near one to grab and carry it, let go to
+  throw it; gravity, bounces on the floor and on detected tables, collisions between toys.
+- **Golf**: a ball ahead and a hole a few metres on; swing a hand through the ball to putt,
+  strokes counted.
+- **Ride**: a glide over the neon grid that streams past below, banking with the head, with lit
+  gates to fly through.
+- **Portal**: a doorway ahead; walking through it changes the surroundings' palette; back again
+  for the previous.
+
+In the Simulator the test script's `fakehand 1|0|punch|off` stands in for a hand, and every game
+has been run by script. The rhythm game (MusicKit), the detailed environments and 3D models for
+the toy box are still to come.
+
 ## 3DoF on the ultra-wide
 
 ARKit's world tracking has no ultra-wide format on the iPhone and stops the moment another
@@ -256,7 +283,7 @@ screen shows a control strip for the first four, whose values are kept between r
 | `ultraTest` | 0 | an experiment: open the ultra-wide through AVFoundation this many seconds in and log what ARKit does (it stops) |
 | `web`, `url`, `textScale` | 1, –, 150 | the browser open at launch, a page to open, the page zoom in percent |
 | `surfaces`, `occlusion` | 0, 1 | scan and show the room's surfaces; hide placed things behind the real room (LiDAR, 6DoF, passthrough) |
-| `actions` | – | a test script: `wait N; press <button>; type <text>; key <Backspace\|Clear\|Enter>; look <yaw> <pitch>; tap; dump; screenshot; immersive; end` |
+| `actions` | – | a test script: `wait N; press <button>; type <text>; key <Backspace\|Clear\|Enter>; look <yaw> <pitch>; tap; dump; screenshot; immersive; end; js <expr>; record <eye>; fakeplanes; fakehand <1\|0\|punch\|off>` |
 | `cold` | 0 | 1 vouches the phone is cold, so `[Thermal]` times the run from cold despite a recent run |
 | `hands`, `handHz`, `handDepth`, `showHands` | 1, 20, 1, 1 | hand tracking on, its image rate, LiDAR depth for the hands, the hands drawn |
 
@@ -306,6 +333,7 @@ ios-native/
   Afterglow/Home/             Toolbar (quick toggles, recent apps, the menu with the settings)
   Afterglow/Room/             RoomModel (surfaces, floor), PlacesApp (environments)
   Afterglow/Capture/          EyeRecorder (one eye to a movie), ExternalDisplay (a TV gets the left eye flat)
+  Afterglow/Games/            GameHost, Games (Paint, Blobs, Vacuum, Toys, Golf, Ride, Portal)
   Afterglow/Input/            HeadsetTap (double tap on the viewer), Dictation
   Afterglow/Log/              SessionLog, FrameTimingLog, ThermalLog
   AfterglowTests/             the optics against the Unity app's numbers

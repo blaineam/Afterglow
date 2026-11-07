@@ -200,6 +200,11 @@ foundation at all. The honest picture:
 - **Recording and casting built 2026-11-06**: one eye to an H.264 movie in Documents/Recordings
   and Photos (proven in the Simulator), and an external-display scene that shows the left eye
   flat on a mirrored Apple TV (untested).
+- **Games built 2026-11-06**: a game host over the overlay system and seven games (paint, the
+  alien blob shooter with a punch to fire, the vacuum cleanup on the floor, a toy box with
+  gravity and surface collisions, putting golf, a grid flight, the portal), each run by script in
+  the Simulator with a synthetic hand. Still to come: the rhythm game (MusicKit), 3D models in
+  the toy box, the detailed environments, controllers.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the
