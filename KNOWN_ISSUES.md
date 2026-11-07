@@ -267,6 +267,16 @@ the crossing can still read as one, and Vision sometimes drops the hand at the c
 image on the Neural Engine at 30 images/s whether or not a hand is in view, which is the one
 steady load the phase 1 run did not have; `handHz` lowers it.
 
+### Built in the Simulator, not yet run on the phone (2026-11-06 evening)
+
+Everything after phase 2 was proven only by the Simulator harness: the browser and its WebXR
+sessions, the toolbar and menu, the Photos and Files media viewers with every projection, the
+surfaces, occlusion and places, recording, the games and the rhythm game, controllers. On the
+phone these are untested: real hands driving the browser's keyboard and the games, LiDAR
+occlusion, plane detection and the floor height, spatial MV-HEVC video, dictation, the double
+tap's threshold, AirPlay casting, the Files picker, and the heat all of it adds. Expect a round
+of fixes from the first device runs, as phases 1 and 2 had.
+
 ### The browser (native)
 
 The page is a snapshot, twelve a second (WebKit's `takeSnapshot`, rendered off the main thread),
