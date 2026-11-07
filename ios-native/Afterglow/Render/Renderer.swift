@@ -37,6 +37,7 @@ final class Renderer {
     private var blitPipeline: MTLRenderPipelineState!
     private(set) var recorder: EyeRecorder?
     private(set) var games: GameHost?
+    private let controllers = Controllers()
     private var gridColor = SIMD4<Float>(0, 0, 0, 0)
     private var floorScroll: Float = 0
     /// A synthetic hand for the Simulator (`fakehand` in the test script).
@@ -154,6 +155,7 @@ final class Renderer {
     func attach(window: UIWindow) {
         uiWindow = window
         keyboard = KeyboardPanel(device: device)
+        controllers.start()
         let toolbar = Toolbar(device: device, settings: settings)
         toolbar.onLaunch = { [weak self] app in self?.launch(app) }
         toolbar.onRecentre = { [weak self] in self?.recentre() }
@@ -601,6 +603,18 @@ final class Renderer {
         for hand in tracked { pinchNow[hand.isRight ? 1 : 0] = pinchNow[hand.isRight ? 1 : 0] || hand.pinched }
         var select = (0..<2).contains { pinchNow[$0] && !pinchWas[$0] }
         pinchWas = pinchNow
+        // A controller: A selects, B closes a menu or app, the left stick scrolls or looks, the
+        // right stick looks in desk mode.
+        let pad = controllers.take()
+        if pad.select { select = true }
+        if pad.menu { toolbar?.press("more") }
+        if pad.back { if toolbar?.menuOpen == true { toolbar?.press("closemenu") } else { closeApp() } }
+        if source.predictedCameraTransform(at: predictTo) == nil, simd_length(pad.rightStick) > 0.1 {
+            deskLook(yawDelta: -pad.rightStick.x * frameDt * 2, pitchDelta: pad.rightStick.y * frameDt * 2)
+        }
+        if let browser, !browser.isImmersive, abs(pad.stick.y) > 0.15 {
+            browser.scroll(dy: -pad.stick.y * 900 * frameDt)
+        }
         let tap = tapRequests.value
         if tap != 0 {
             tapRequests.value = 0

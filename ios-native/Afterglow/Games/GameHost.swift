@@ -40,7 +40,7 @@ final class GameHost {
         self.device = device
         panel = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 560)
         panel.pane.widthMeters = 1.2
-        games = [PaintGame(), BlobShooter(), VacuumGame(), ToyBox(), GolfGame(), GridRide(), PortalGame()]
+        games = [PaintGame(), BlobShooter(), VacuumGame(), ToyBox(), GolfGame(), GridRide(), PortalGame(), RhythmGame()]
         layout()
     }
 

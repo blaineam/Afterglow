@@ -224,9 +224,22 @@ The first seven (`Games/Games.swift`):
 - **Portal**: a doorway ahead; walking through it changes the surroundings' palette; back again
   for the previous.
 
+- **Rhythm** (`Games/RhythmGame.swift`): neon shapes come down four lanes in time with a
+  bundled synthwave beat (a kick and a square-wave lead from a small AVAudioEngine synthesiser,
+  so no music file is needed yet); punch or pinch one as it reaches its ring, or select with the
+  gaze on the lane, to score, with combos. Apple Music through MusicKit and beat maps from
+  bundled tracks are the next step.
+
 In the Simulator the test script's `fakehand 1|0|punch|off` stands in for a hand, and every game
-has been run by script. The rhythm game (MusicKit), the detailed environments and 3D models for
-the toy box are still to come.
+has been run by script. The detailed environments and 3D models for the toy box are still to come.
+
+## Controllers
+
+`Input/Controllers.swift` listens for Bluetooth controllers through the GameController framework
+(Joy-Cons, DualSense, DualShock, MFi pads): A selects, B closes the menu or the app, Menu opens
+the menu, the left stick scrolls a page and the right stick looks in desk mode, and where a pad
+reports motion (DualSense and DualShock do; Joy-Cons as iOS passes it) its attitude is kept for a
+3DoF pointer. No controller pairs to an iPhone with camera-tracked 6DoF.
 
 ## 3DoF on the ultra-wide
 
@@ -333,7 +346,8 @@ ios-native/
   Afterglow/Home/             Toolbar (quick toggles, recent apps, the menu with the settings)
   Afterglow/Room/             RoomModel (surfaces, floor), PlacesApp (environments)
   Afterglow/Capture/          EyeRecorder (one eye to a movie), ExternalDisplay (a TV gets the left eye flat)
-  Afterglow/Games/            GameHost, Games (Paint, Blobs, Vacuum, Toys, Golf, Ride, Portal)
+  Afterglow/Games/            GameHost, Games (Paint, Blobs, Vacuum, Toys, Golf, Ride, Portal), RhythmGame (+ Synth)
+  Afterglow/Input/            HeadsetTap, Dictation, Controllers (GameController pads)
   Afterglow/Input/            HeadsetTap (double tap on the viewer), Dictation
   Afterglow/Log/              SessionLog, FrameTimingLog, ThermalLog
   AfterglowTests/             the optics against the Unity app's numbers

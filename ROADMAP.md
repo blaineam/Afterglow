@@ -203,8 +203,10 @@ foundation at all. The honest picture:
 - **Games built 2026-11-06**: a game host over the overlay system and seven games (paint, the
   alien blob shooter with a punch to fire, the vacuum cleanup on the floor, a toy box with
   gravity and surface collisions, putting golf, a grid flight, the portal), each run by script in
-  the Simulator with a synthetic hand. Still to come: the rhythm game (MusicKit), 3D models in
-  the toy box, the detailed environments, controllers.
+  the Simulator with a synthetic hand; then the rhythm game on a built-in synthesiser's beat, and
+  controllers through the GameController framework (A select, B back, sticks scroll and look,
+  motion kept for a 3DoF pointer). Still to come: MusicKit for the rhythm game, 3D models in the
+  toy box, the detailed environments, WebXR AR features, and everything above on the phone.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

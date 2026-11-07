@@ -188,6 +188,11 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
 
     func togglePlacing() { placing.toggle() }
 
+    /// Scrolls the page at the gaze, or its middle, by `dy` CSS pixels (a controller's stick).
+    func scroll(dy: Float) {
+        run(WebBridge.scroll(0.5, 0.5, 0, dy))
+    }
+
     func setTextScale(_ percent: Int) {
         guard percent != textScalePercent else { return }
         textScalePercent = percent
