@@ -190,13 +190,16 @@ phone.
   night), a desert (dunes, ripples), a beach (a sea with moving waves and foam), ruins (columns,
   flagstones), a cyberpunk city (lit towers, wet streets), the Moon (no air, the Earth hanging,
   craters) and Mars (butterscotch sky, red rock). Clouds drift and stars twinkle.
-- **Bundled photospheres** (`Afterglow/Places/`, copied into the app as a folder): real 360
-  pictures the owner chose, listed first among the 360 files in Places: a beach cottage at night
-  (an Insta360 photo), an evening meadow and a clear desert night under the Milky Way (two 4K
-  HDRIs tone-mapped from EXR with an ACES curve to sRGB). Each is a 4096×2048 JPEG at quality
-  85, 1–1.8 MB, so the app grows by 4.5 MB. To add one: drop a 2:1 JPEG into that folder and
-  regenerate the project; EXRs go through `Tools/exr_to_place.py` (OpenEXR, numpy and Pillow in a
-  venv), which takes an exposure multiplier.
+- **Bundled photospheres** (`Afterglow/Places/`, copied into the app as a folder): twenty-four
+  360 pictures the owner chose, shown in Places as picture tiles (eight a page, each tile its
+  own thumbnail with the name over it) beside the user's own 360 files and library photos:
+  five from cameras and HDRIs (a beach cottage at night, a sequoia grove, a forest cabin at
+  night, an evening meadow, a clear desert night under the Milky Way; the EXRs tone-mapped with
+  `Tools/exr_to_place.py`) and nineteen generated ones named by their subjects (a grand library,
+  a cosy cafe, a treehouse at night, a Japanese garden in autumn, a space station, a fjord
+  village, a baroque church, a stone village street and more). 16 MB in all. The drawn places
+  and the generation button are gone from Places (owner, 2026-11-07); the generator code stays
+  behind the Environments folder for files dropped in by hand.
 
 The Simulator proves the drawing with a synthetic floor and wall (`fakeplanes` in the test
 script); plane detection, the floor height and occlusion need the phone.
@@ -248,21 +251,28 @@ furniture like the panels do. The games (`Games/Games.swift`):
   angles swinging their arms, planes take off and circle the room banking into the turn with the
   propeller spinning, balls kick themselves about, tops spin and precess, all staying within a
   few metres of the box; the button again sends them to sleep.
-- **Golf**: a mown putting green with a fringe, a cup with a white rim, a pole and a waving flag;
-  the dimpled ball rolls (it turns with its travel) and the cup's lip pulls it in at the end. A
-  low hand carries a putter head; swing it through the ball to putt, or select to tap it along
-  the gaze; confetti when it drops.
-- **Ride**: a coaster over the grid: two glowing rails on sleepers and pylons curve ahead, thin
-  lit arches stream past overhead with a lamp on top, lamp posts line both sides, the floor's
-  scroll and the head's bank follow. Nothing in the room moves sideways, so it stays comfortable.
+- **Mini golf**: eighteen holes laid out one at a time on the floor ahead, each a felt fairway
+  with wooden bumper walls in its own shape (straights, doglegs, a zigzag, a hook, islands,
+  gates, a maze), with ramps and hills, windmills whose blades block the gap, and tunnel
+  bridges; a cup with a flag that counts the hole in beads, a tee mat, par per hole and a card.
+  The ball bounces off the walls, slows on the slopes and drops in the cup; the next hole lays
+  out when it does. A low hand carries a putter; swing it through the ball to putt, or select
+  to tap it along the gaze.
+- **Coaster**: a roller coaster over the grid. The course is laid out in the world as poses half
+  a metre apart from a list of segments (a chain lift, a drop, hills, a loop, banked turns, dips)
+  repeated as the rider nears the end; the rider sits in a car that follows it (its pose moves
+  the camera through the world), gaining speed down the drops, losing it up the climbs, lifted
+  by the chain on the way up. Rails on sleepers and pylons, arch lamps over the track, the car's
+  tub, nose, wheels and lap bar round the rider.
 - **Portal**: a stone archway (fluted columns on plinths, a lintel, a glowing keystone) with a
   shimmering disc of the next world's colour in it and motes swirling in the doorway; walk
   through and the surroundings change palette, with a burst; back again for the previous.
 - **Rhythm** (`Games/RhythmGame.swift`): glossy gems travel in along four lane rails to rings
-  that pulse on the beat of a built-in synthwave track (a kick and a square-wave lead from a
-  small AVAudioEngine synthesiser, so no music file is needed yet); punch or pinch one as it
-  reaches its ring, or select with the gaze on the lane, to score with combos; hits flare.
-  Apple Music through MusicKit and beat maps from real tracks are the next step.
+  that pulse on the beat; punch or pinch one as it reaches its ring, or select with the gaze on
+  the lane, to score with combos; hits flare. When the Music app has Apple Music playing, the
+  notes run to the song's clock at the tempo set with the games panel's slower and faster
+  buttons (a protected stream cannot be beat-analysed, so the tempo is the player's); otherwise
+  a built-in synthesiser plays a synthwave beat.
 
 In the Simulator the test script's `fakehand 1|0|punch|off` stands in for a hand and `tap`
 for the headset's double tap; every game has been run by script with the screen captured, and
@@ -310,14 +320,22 @@ and the whole thing a pile of button grids, so the interface was remade on one d
 - **Windows**: traffic lights at the top left of every window (red close, yellow minimize,
   green size, cycling four widths from 1.3 to 3.2 m), the name as a grab handle (hold a pinch
   on it to drag), move on the right. New windows open 40 degrees to the right of the last.
-- **The dock**: six tiles low ahead (Apps, Scene/Room, Hands, Recentre, Record, Settings); it
-  hides while the keyboard is up, which hangs where it would be.
+- **The dock**: six tiles low ahead (Apps, Scene/Room, Hands, Recentre, Record, Settings),
+  hidden until asked for: a round Apps button lies on the floor half a metre ahead of the feet
+  (look straight down), a select on it brings the dock for ten seconds. Neither shows during a
+  WebXR session, 360 playback, or while the keyboard is up.
 - **Browser chrome**: back, forward, reload, the address pill (select it for the keyboard),
   keyboard, dictation, bookmark and start on the first row; tabs as pills with new, private and
   close on the second; a login prompt takes the second row when there is one.
-- **Photos**: albums as a paged list of large rows (eight a page, arrows in the header), items
-  eight a page in four columns; the viewer's controls are round icons: close, previous, back
-  10 s, play, ahead 10 s, next, the format, recentre and turn.
+- **Photos**: the collections made for a headset first (Spatial, Panoramas, and a 360
+  collection found by shape over the whole library), then Recents, Favorites, Videos and the
+  user's albums, as a paged list of large rows (eight a page, arrows in the header); items eight
+  a page in four columns. The viewer's controls: back to the album, previous and next, the
+  format, recentre and turn, with the transport and a seek bar for videos and, for pictures, a
+  filmstrip of the neighbouring pictures to press. A 360, 180 or panorama picture is the
+  surroundings while it plays, passthrough or not.
+- **Windows open in free slots**: a new window takes the nearest free arc round the user,
+  ahead first, then alternately right and left, never through an open window.
 
 ## Phone view
 
@@ -331,14 +349,17 @@ where dictation goes, Return is Go), a drag scrolls the page or swipes between p
 viewer, a long press ends a WebXR session. Without tracking (the Simulator) a drag still turns
 the head.
 
-## Pinch, second round
+## Pinch, second round (and third)
 
 The phone round found real pinches blocked and a "perspective trick" (a straight index finger
 whose tip the thumb crosses in the image) accepted. The LiDAR tip-depth rule was the cause of
 both: at 40 cm it cannot tell two touching fingertips apart, so it blocked true pinches, and it
 never caught the trick. It is gone. A pinch now also needs the index finger bent: its knuckle
 to tip over the length along its bones, in the image, which is 1 for a straight finger from any
-angle (the points stay in line) and 0.6-0.85 in a pinch. The edge-on guard is looser (40 % open
+angle (the points stay in line) and 0.6-0.85 in a pinch. That too failed on the phone: from the
+headset's camera the index finger points at the lens in a pinch and its joints project in a line
+(0.91-0.99 on every real pinch), so the curl is logged and no longer gates. The tips' distance
+with its hysteresis and the four-result start decide; the edge-on guard is looser (40 % open
 blocks a start, not 60 %). A wrist at the image's edge, or one Vision was unsure of, is held
 where the knuckles say it was last seen, so the hand no longer folds forward at the wrist when
 it reaches the camera's edge.
@@ -361,9 +382,9 @@ it reaches the camera's edge.
   viewer comes off, which the motion sensors tell: the phone laid flat for two seconds, or held
   still for thirty. While locked only the keypad draws and takes the gaze. Set and removed from
   Settings; the Home menu locks on demand.
-- **Music** (`Home/MusicApp.swift`): Apple Music through the system player: what is playing with
-  its artwork, play, pause, next and previous. No MusicKit authorization is needed to drive the
-  system player.
+- **Music** (`Home/MusicApp.swift`): Apple Music through MusicKit (authorization asked on first
+  open): what is playing with its artwork and the transport, and the library (playlists, then
+  albums) as a paged list to play from; the music keeps playing under the other apps.
 - **Branding**: the bundle id is now `com.wemiller.afterglow`, the same as the Unity app's, so
   installing the native app replaces it on the phone; the icon is the Unity app's
   (`Assets/_Project/Branding/AppIcon.png`) in an asset catalog; version 2.0.0.

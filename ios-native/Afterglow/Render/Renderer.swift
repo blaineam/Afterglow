@@ -111,6 +111,7 @@ final class Renderer {
     private var lastSettingsText = ""
     private var dumped = false
     private var homeOpened = false
+    private var rideTransform = matrix_identity_float4x4
     /// Phone view: a tap this frame at a point on the screen (0-1 across and down), which is
     /// where the pointer goes for the frame; the pointer otherwise sits at the screen's centre.
     private var tapPoint: SIMD2<Float>?
@@ -247,7 +248,7 @@ final class Renderer {
         case .games: aspect = 1600.0 / 560.0
         case .places: aspect = 1600.0 / 900.0
         case .settings: aspect = 1.4
-        case .music: aspect = 1200.0 / 700.0
+        case .music: aspect = 1400.0 / 1000.0
         case .home: aspect = 1600.0 / 900.0
         }
         let window = windows.open(kind, head: lastHead, aspect: aspect)
@@ -282,6 +283,7 @@ final class Renderer {
                         self?.gridColor = world == 0 ? SIMD4(0, 0, 0, 0) : SIMD4(c, 1)
                     }
                 }
+                g.music = music
                 games = g
             }
         case .places:
@@ -299,6 +301,7 @@ final class Renderer {
             }
         case .music:
             if music == nil { music = MusicApp(device: device) }
+            games?.music = music
         case .settings, .home:
             break
         }
@@ -685,6 +688,8 @@ final class Renderer {
             let pitch = simd_quatf(angle: deskPitch, axis: SIMD3(1, 0, 0))
             cameraInWorld = simd_float4x4(yaw * pitch)
         }
+        // The coaster carries the rider: its car's pose moves the camera through the world.
+        cameraInWorld = rideTransform * cameraInWorld
         let frameDt = Float(min(max(t2 - lastDrawTime, 0), 0.1))
         let step = frameDt / 0.5
         lastDrawTime = t2
@@ -928,7 +933,7 @@ final class Renderer {
             scene3D.clear()
             scene3D.floorHeight = context.floorHeight
             games.frame(context, overlay: &overlay, scene: &scene3D)
-            if let ride = games.current as? GridRide { floorScroll = ride.distance } 
+            rideTransform = (games.current as? GridRide)?.riderTransform ?? matrix_identity_float4x4
             games.render()
             if windows?.window(.games)?.minimized == false, let t = games.panel.texture { toolbarQuads.append((t, 6)) }
             if let hit {

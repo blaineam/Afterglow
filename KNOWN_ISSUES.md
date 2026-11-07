@@ -281,11 +281,10 @@ of fixes from the first device runs, as phases 1 and 2 had.
 
 ### The browser (native)
 
-The owner saw the page drawn larger than its window on the phone (2026-11-07); in the Simulator
-the page quad and the chrome match, and the window is resynced to the window manager's pane
-every frame, so the cause is not yet found. The page zoom (175 %) can also lay a desktop page
-out wider than the window, which then needs a horizontal scroll; lower the browser text in
-Settings if a page overflows.
+A page that sized itself to its viewport (100 vw, 100 vh) spilled past the window on the phone
+(2026-11-07): `pageZoom` kept the layout at the view's size and scaled the drawing. The view is
+now laid out at the page's size over the text scale and snapshotted at the page's size, so the
+viewport is the window; not yet confirmed on the phone with that page.
 
 The page is a snapshot, twelve a second (WebKit's `takeSnapshot`, rendered off the main thread),
 so video in the window plays at that rate and a fast scroll smears; the window is for reading and

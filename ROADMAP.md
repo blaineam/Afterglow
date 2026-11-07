@@ -226,7 +226,15 @@ foundation at all. The honest picture:
   window controls, a dock, a browser chrome with the address, paged Photos albums; a phone
   view (one eye, taps select, double tap for the system keyboard, drags scroll and swipe); the
   pinch rebuilt on an index-curl rule instead of LiDAR tip depths; the wrist held at the image's
-  edge. Still to come: MusicKit for the rhythm game, WebXR AR features, and the next phone round.
+  edge.
+- **Second phone round, 2026-11-07, batches one and two**: the pinch no longer gates on the
+  index curl; the page lays out at the window's size; bars and titles no longer collide; windows
+  open in free slots; the dock hides behind a button at the feet; Photos leads with the headset
+  collections and the viewer has a filmstrip; 360 pictures play over passthrough; Places is
+  picture tiles with twenty-four bundled photospheres; the coaster has a real track with a lift,
+  drops, a loop and banked turns; mini golf has eighteen holes; Music is on MusicKit with the
+  library and the rhythm game keeps time to it. Still to come: WebXR AR features, and the next
+  phone round.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

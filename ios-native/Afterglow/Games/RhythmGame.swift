@@ -15,13 +15,21 @@ final class RhythmGame: Game {
     private var score = 0
     private var combo = 0
     private var best = 0
-    private let bpm: Double = 112
+    private(set) var bpm: Double = 112
+    /// Apple Music, when the Music app has something playing: the notes run to its clock at the
+    /// tempo set with the games panel's tempo buttons (no beat analysis is possible on a protected
+    /// stream), the synth stays quiet.
+    var music: MusicApp?
+    private var usingMusic = false
     private let synth = Synth()
     private var started = false
     private let motion = HandMotionTracker()
     private var lastHit: [Bool: Double] = [:]
     private var hits: [(lane: Int, time: Double)] = []
-    var status: String { started ? "Score \(score), combo \(combo)" : "Starting…" }
+    var status: String { started ? "Score \(score), combo \(combo) · \(Int(bpm)) bpm\(usingMusic ? " · Apple Music" : "")" : "Starting…" }
+
+    /// The tempo, from the games panel; a change restarts the notes to it.
+    func setTempo(_ value: Double) { bpm = min(max(value, 60), 200); reset() }
 
     func reset() {
         notes.removeAll()
@@ -41,9 +49,16 @@ final class RhythmGame: Game {
                 if bar % 4 == 3 && b % 2 == 0 { notes.append(Note(lane: (bar + b + 2) % 4, time: t + beat / 2, hit: false, missed: false)) }
             }
         }
-        synth.start(bpm: bpm, leadIn: 2)
+        usingMusic = music?.isPlaying ?? false
+        if usingMusic {
+            // The beat grid starts on the next whole beat of the song's clock.
+            let t = music?.playbackTime ?? 0
+            startTime = time + (beat - t.truncatingRemainder(dividingBy: beat))
+        } else {
+            synth.start(bpm: bpm, leadIn: 2)
+        }
         started = true
-        log("[Games] Rhythm: \(notes.count) notes at \(Int(bpm)) bpm")
+        log("[Games] Rhythm: \(notes.count) notes at \(Int(bpm)) bpm\(usingMusic ? " to Apple Music" : " to the synth")")
     }
 
     private func laneX(_ lane: Int) -> Float { (Float(lane) - 1.5) * 0.45 }

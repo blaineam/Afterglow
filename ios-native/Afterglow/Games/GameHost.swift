@@ -44,6 +44,9 @@ final class GameHost {
     private let device: MTLDevice
     let meshes: MeshLibrary
 
+    /// The Music app, for the rhythm game to keep time to.
+    var music: MusicApp? { didSet { games.compactMap { $0 as? RhythmGame }.forEach { $0.music = music } } }
+
     init(device: MTLDevice) {
         self.device = device
         meshes = MeshLibrary(device: device)
@@ -71,6 +74,10 @@ final class GameHost {
         }
         b.append(.init(id: "reset", rect: CGRect(x: 0.83, y: 0.36, width: 0.15, height: 0.3), label: "Restart", icon: "arrow.counterclockwise", style: .round))
         b.append(.init(id: "stop", rect: CGRect(x: 0.83, y: 0.68, width: 0.15, height: 0.3), label: "Stop", icon: "stop.fill", style: .round))
+        if current is RhythmGame {
+            b.append(.init(id: "tempo:-", rect: CGRect(x: 0.66, y: 0.04, width: 0.15, height: 0.28), label: "Slower", icon: "minus", style: .round))
+            b.append(.init(id: "tempo:+", rect: CGRect(x: 0.83, y: 0.04, width: 0.15, height: 0.28), label: "Faster", icon: "plus", style: .round))
+        }
         panel.set(buttons: b, version: "games|\(current?.title ?? "")|\(current?.status ?? "")")
     }
 
@@ -78,6 +85,8 @@ final class GameHost {
         switch id {
         case "reset": current?.reset()
         case "stop": current = nil
+        case "tempo:-": (current as? RhythmGame).map { $0.setTempo($0.bpm - 4) }
+        case "tempo:+": (current as? RhythmGame).map { $0.setTempo($0.bpm + 4) }
         default:
             if id.hasPrefix("game:"), let i = Int(id.dropFirst(5)), games.indices.contains(i) {
                 current = games[i]
