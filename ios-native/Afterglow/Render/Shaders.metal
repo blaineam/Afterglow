@@ -218,12 +218,70 @@ fragment float4 overlayFragment(OverlayOut in [[stage_in]]) {
     return in.color;
 }
 
+// ---- Media projections (360, 180, fisheye, cylinder) --------------------------------------
+
+// Drawn as a full-screen pass like the sky: each pixel's world direction is turned into a
+// texture coordinate by the projection, with the eye's half of the picture for stereo layouts.
+fragment float4 mediaFragment(SceneOut in [[stage_in]], constant FrameUniforms &frame [[buffer(0)]],
+                              constant MediaUniforms &media [[buffer(1)]],
+                              texture2d<float> picture [[texture(0)]],
+                              texture2d_array<float> eyes [[texture(1)]]) {
+    constexpr sampler s(filter::linear, address::clamp_to_edge);
+    float3 dir = worldDirection(in.ndc, frame.eyes[in.eye]);
+    // Turn the picture to face `yaw`.
+    float cy = cos(-media.yaw), sy = sin(-media.yaw);
+    dir = float3(dir.x * cy - dir.z * sy, dir.y, dir.x * sy + dir.z * cy);
+    float2 uv;
+    bool inside = true;
+    if (media.projection == MediaProjectionEquirect360) {
+        float lon = atan2(dir.x, -dir.z);               // 0 ahead, + to the right
+        float lat = asin(clamp(dir.y, -1.0, 1.0));
+        uv = float2(0.5 + lon / (2.0 * M_PI_F), 0.5 - lat / M_PI_F);
+    } else if (media.projection == MediaProjectionEquirect180) {
+        float lon = atan2(dir.x, -dir.z);
+        float lat = asin(clamp(dir.y, -1.0, 1.0));
+        float halfSpan = media.span * 0.5;
+        inside = abs(lon) <= halfSpan;
+        uv = float2(0.5 + lon / media.span, 0.5 - lat / M_PI_F);
+    } else if (media.projection == MediaProjectionFisheye180) {
+        // Equidistant: the angle from the axis maps linearly to the radius.
+        float angle = acos(clamp(-dir.z, -1.0, 1.0));
+        float halfSpan = media.span * 0.5;
+        inside = angle <= halfSpan;
+        float r = angle / halfSpan * 0.5;
+        float2 flat = normalize(float2(dir.x, dir.y) + 1e-6);
+        uv = float2(0.5 + flat.x * r, 0.5 - flat.y * r);
+    } else {
+        // Cylinder: longitude across the band, height by tangent.
+        float lon = atan2(dir.x, -dir.z);
+        float halfSpan = media.span * 0.5;
+        float horizontal = length(float2(dir.x, dir.z));
+        float t = dir.y / max(horizontal, 1e-4);
+        inside = abs(lon) <= halfSpan && abs(t) <= media.height;
+        uv = float2(0.5 + lon / media.span, 0.5 - t / (2.0 * media.height));
+    }
+    if (!inside) {
+        return float4(0.02, 0.01, 0.05, 1.0);
+    }
+    uint eye = media.swapEyes != 0 ? 1 - in.eye : in.eye;
+    float4 c;
+    if (media.layout == MediaLayoutArray) {
+        c = eyes.sample(s, uv, eye);
+    } else {
+        if (media.layout == MediaLayoutSideBySide) uv.x = uv.x * 0.5 + (eye == 0 ? 0.0 : 0.5);
+        else if (media.layout == MediaLayoutTopBottom) uv.y = uv.y * 0.5 + (eye == 0 ? 0.0 : 0.5);
+        c = picture.sample(s, uv);
+    }
+    return float4(c.rgb * media.brightness, 1.0);
+}
+
 // ---- Textured quads (the browser window) --------------------------------------------------
 
 struct QuadOut {
     float4 position [[position]];
     uint layer [[render_target_array_index]];
     float2 uv;
+    ushort eye [[flat]];
 };
 
 vertex QuadOut quadVertex(uint vid [[vertex_id]], ushort amp [[amplification_id]],
@@ -234,6 +292,7 @@ vertex QuadOut quadVertex(uint vid [[vertex_id]], ushort amp [[amplification_id]
     out.position = frame.eyes[amp].viewProjection * float4(v.position, 1);
     out.layer = 0;
     out.uv = v.uv;
+    out.eye = amp;
     return out;
 }
 
@@ -244,6 +303,25 @@ fragment float4 quadFragment(QuadOut in [[stage_in]], texture2d<float> page [[te
     constexpr sampler s(filter::linear, address::clamp_to_edge);
     float4 c = page.sample(s, in.uv);
     return float4(c.rgb * tint.rgb, tint.a);
+}
+
+// A flat picture or video in a frame ahead, with the eye's half for stereo layouts and no lens
+// stretching: the quad pipeline's vertices, this fragment.
+fragment float4 mediaQuadFragment(QuadOut in [[stage_in]], constant MediaUniforms &media [[buffer(1)]],
+                                  texture2d<float> picture [[texture(0)]],
+                                  texture2d_array<float> eyes [[texture(1)]]) {
+    constexpr sampler s(filter::linear, address::clamp_to_edge);
+    uint eye = media.swapEyes != 0 ? 1 - in.eye : in.eye;
+    float2 uv = in.uv;
+    float4 c;
+    if (media.layout == MediaLayoutArray) {
+        c = eyes.sample(s, uv, eye);
+    } else {
+        if (media.layout == MediaLayoutSideBySide) uv.x = uv.x * 0.5 + (eye == 0 ? 0.0 : 0.5);
+        else if (media.layout == MediaLayoutTopBottom) uv.y = uv.y * 0.5 + (eye == 0 ? 0.0 : 0.5);
+        c = picture.sample(s, uv);
+    }
+    return float4(c.rgb * media.brightness, 1.0);
 }
 
 // ---- Lens distortion -----------------------------------------------------------------------

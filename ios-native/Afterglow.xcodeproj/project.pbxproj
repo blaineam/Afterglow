@@ -31,9 +31,11 @@
 		97305D4E9B52CAA27CC13956 /* Browser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47EDB0FC1E0D6EF4E3D1AE0 /* Browser.swift */; };
 		998F8E4E9A185C881C5B74DC /* SessionLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97890D6EB3536CA74C71E09 /* SessionLog.swift */; };
 		A60D870018233AC8AD7E288C /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = ECB85CC898B2F8A77E2B54A9 /* index.html */; };
+		ADFAB9F747817AFE897DE790 /* MediaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57EB9465CB5A756B4F53BEC0 /* MediaApp.swift */; };
 		AED9AC2DB5CA264371AF1869 /* HandGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */; };
 		B11BEA3C83C4B14B3E457065 /* LensDistortion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4402EC68CCA81B671B468EE8 /* LensDistortion.swift */; };
 		BA4BD6BE9A09CCCEFC49BB63 /* BrowserStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF67DFEAB12B2149E6F36069 /* BrowserStore.swift */; };
+		BACE2FF920E1A6E965CE609E /* MediaLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F9D56A9273E547BF13DE6FB /* MediaLibrary.swift */; };
 		BC2DD9993B328B9BFE55C0D8 /* PinchDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E2E0B57207F4DEAA2DF268C /* PinchDetector.swift */; };
 		C41DAACF85D3845C8E068C10 /* WebTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9D14AF0F2015E62D345D07C /* WebTab.swift */; };
 		C803CA1BEC03B79551EFB51B /* UltraWideProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */; };
@@ -44,6 +46,7 @@
 		E386311B4A1748A01C31E880 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = F3791EB1A750663D58286739 /* Shaders.metal */; };
 		E7BA05E46A062EE88CE62A42 /* AfterglowApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A07A7A60E0764F6995F5B5 /* AfterglowApp.swift */; };
 		F0433297A0D001C5C4CA77C7 /* HandGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12EF0275572665780B091BD3 /* HandGeometry.swift */; };
+		F6B76CD3BD4B02E11FDCA409 /* VideoPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8B3564A698DE6CBC60A74CF /* VideoPlayer.swift */; };
 		F6FFC447E3208CC29FA6EAB3 /* HandTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 135AAF215BBE3C9874DB7911 /* HandTracker.swift */; };
 /* End PBXBuildFile section */
 
@@ -60,6 +63,7 @@
 /* Begin PBXFileReference section */
 		06F0D4D6403D9E0E7319F313 /* Afterglow.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Afterglow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		078E21E05BF54EC00E0F4308 /* PolynomialRadialDistortion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PolynomialRadialDistortion.swift; sourceTree = "<group>"; };
+		0F9D56A9273E547BF13DE6FB /* MediaLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaLibrary.swift; sourceTree = "<group>"; };
 		12EF0275572665780B091BD3 /* HandGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandGeometry.swift; sourceTree = "<group>"; };
 		135AAF215BBE3C9874DB7911 /* HandTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandTracker.swift; sourceTree = "<group>"; };
 		1558F78E920E5997115FF985 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -71,6 +75,7 @@
 		407B733E5D15B248CD512A98 /* BrowserWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserWindow.swift; sourceTree = "<group>"; };
 		4402EC68CCA81B671B468EE8 /* LensDistortion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensDistortion.swift; sourceTree = "<group>"; };
 		57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalLog.swift; sourceTree = "<group>"; };
+		57EB9465CB5A756B4F53BEC0 /* MediaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaApp.swift; sourceTree = "<group>"; };
 		5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandGeometryTests.swift; sourceTree = "<group>"; };
 		62905D062521A7CC64D592BA /* Panels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels.swift; sourceTree = "<group>"; };
 		67A818255D526B59948B967F /* ShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
@@ -83,6 +88,7 @@
 		A7F27D509791361AD2011E47 /* ScreenMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenMetrics.swift; sourceTree = "<group>"; };
 		B2A07A7A60E0764F6995F5B5 /* AfterglowApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AfterglowApp.swift; sourceTree = "<group>"; };
 		B81BBB54C49B3845F94E2832 /* Toolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toolbar.swift; sourceTree = "<group>"; };
+		B8B3564A698DE6CBC60A74CF /* VideoPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayer.swift; sourceTree = "<group>"; };
 		BB1258CEE15BE1B0F0A68046 /* ViewerParams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerParams.swift; sourceTree = "<group>"; };
 		BF67DFEAB12B2149E6F36069 /* BrowserStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserStore.swift; sourceTree = "<group>"; };
 		C4592C811D59569C81790593 /* afterglow-helper.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "afterglow-helper.js"; sourceTree = "<group>"; };
@@ -200,6 +206,7 @@
 				1E150F1B8FD54F8E79628E24 /* Home */,
 				6A349F2B742FA042961ED828 /* Input */,
 				D8C250DD6830DB4EB6EA5DA9 /* Log */,
+				D089D7A15A6C2FEA7F5D1C46 /* Media */,
 				F7AE949468DC1E095BBA8ECB /* Render */,
 				86E626DEA1D101755C49D099 /* Stereo */,
 				3BCFD31138C584DC604CCC1A /* Tracking */,
@@ -230,6 +237,16 @@
 				C91B7EF79664E589DD136246 /* StreamingAssets */,
 			);
 			path = Assets;
+			sourceTree = "<group>";
+		};
+		D089D7A15A6C2FEA7F5D1C46 /* Media */ = {
+			isa = PBXGroup;
+			children = (
+				57EB9465CB5A756B4F53BEC0 /* MediaApp.swift */,
+				0F9D56A9273E547BF13DE6FB /* MediaLibrary.swift */,
+				B8B3564A698DE6CBC60A74CF /* VideoPlayer.swift */,
+			);
+			path = Media;
 			sourceTree = "<group>";
 		};
 		D8C250DD6830DB4EB6EA5DA9 /* Log */ = {
@@ -407,6 +424,8 @@
 				F6FFC447E3208CC29FA6EAB3 /* HandTracker.swift in Sources */,
 				E1962322F97DB95D45A90270 /* HeadsetTap.swift in Sources */,
 				B11BEA3C83C4B14B3E457065 /* LensDistortion.swift in Sources */,
+				ADFAB9F747817AFE897DE790 /* MediaApp.swift in Sources */,
+				BACE2FF920E1A6E965CE609E /* MediaLibrary.swift in Sources */,
 				7A38FB3AAA8E460C9F4F65D7 /* OneEuroFilter.swift in Sources */,
 				1084C85F476B2C5EB0582CBF /* Panels.swift in Sources */,
 				BC2DD9993B328B9BFE55C0D8 /* PinchDetector.swift in Sources */,
@@ -421,6 +440,7 @@
 				77C5951CAE44BFA58BE8C46A /* Toolbar.swift in Sources */,
 				91E95FC2F446BEEE1D5D8481 /* UltraWideController.swift in Sources */,
 				C803CA1BEC03B79551EFB51B /* UltraWideProbe.swift in Sources */,
+				F6B76CD3BD4B02E11FDCA409 /* VideoPlayer.swift in Sources */,
 				87FA55609E5C45D423B33A4C /* ViewerParams.swift in Sources */,
 				3B611AB1D9B01C012F739B97 /* WebBridge.swift in Sources */,
 				C41DAACF85D3845C8E068C10 /* WebTab.swift in Sources */,

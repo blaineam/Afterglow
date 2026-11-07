@@ -187,6 +187,11 @@ foundation at all. The honest picture:
   in the scene, dictation, the double tap on the viewer, and immersive WebXR sessions (both
   eyes lens-warped by the shim, the pose and hands pushed). The toolbar (quick toggles, recent
   apps, More) and the menu with the settings behind it are in. To be tried on the phone.
+- **Phase 4 built 2026-11-06, proven in the Simulator**: the Photos library's albums and items,
+  spatial photos with an eye each, flat pictures and videos in a frame, panoramas on a cylinder,
+  360 and 180 (mono, SBS, TB), fisheye, the player's controls and format cycling, spatial MV-HEVC
+  video through tagged buffers (untested without a spatial video). The Files app and file
+  metadata (st3d, sv3d, GPano) are next in this phase.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

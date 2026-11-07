@@ -4,7 +4,8 @@ The native port of Afterglow for iOS: Swift, SwiftUI for the shell, Metal for th
 ARKit for tracking and the camera. It sits beside the Unity app and takes over from it phase by
 phase (see "A native port?" in [ROADMAP.md](../ROADMAP.md)). Done so far: **phase 1**, the stereo
 rig, head tracking and passthrough; **phase 2**, hands and pinch; **phase 3**, the browser and
-WebXR. Nothing here touches the Unity app's code.
+WebXR; **phase 4**, media; the toolbar and menu of phase 5. Nothing here touches the Unity app's
+code.
 
 ## What it does
 
@@ -126,6 +127,37 @@ scroll, type, key, fill, select and end.
 
 Launch options: `web` (1: open at launch), `url <address>`, `textScale` (150), `actions <script>`.
 
+## Phase 4: media
+
+The Photos library in the viewer (`Media/`), after the Unity app's `VideoDemo` and its plugins:
+
+- **Library** (`MediaLibrary.swift`): the smart albums with content (Recents, Favorites, Panoramas,
+  Videos, Spatial, Screenshots, Live) and the user's albums, each item classified the Unity way
+  (spatial by the subtype, a panorama by the subtype or an aspect of 2.4 and over, 360 by a 2:1
+  shape), thumbnails through `PHCachingImageManager`, pictures decoded to BGRA textures (4096 px,
+  panoramas 8192), and a spatial photo's two eyes from the HEIC's stereo pair group (or its first
+  two images when unmarked, as an imported one is) into a two-slice array.
+- **Video** (`VideoPlayer.swift`): `AVPlayer` with `AVPlayerItemVideoOutput` for ordinary videos
+  and `AVPlayerVideoOutput` with the stereoscopic and monoscopic tag collections for spatial
+  (MV-HEVC) ones, BGRA and Metal-compatible, every frame wrapped as a texture through a texture
+  cache with no copy; the original version is asked of Photos so a spatial video's second layer
+  survives edits. Looping, play, pause, ±10 s, a ten-step seek bar.
+- **Projections** (`mediaFragment` in `Shaders.metal`): one full-screen pass turns each pixel's
+  direction into a texture coordinate for the whole sphere (360), the front hemisphere (180), an
+  equidistant fisheye, or a cylinder band (panoramas, 60° tall, span = aspect × 60° between 60°
+  and 360°), with mono, side-by-side, top-bottom (left eye on top, as the Unity app) and
+  two-slice (spatial) layouts, and a yaw to turn the picture; flat pictures and videos hang in a
+  1.6 m frame ahead. The format button cycles Flat, Flat SBS, Flat TB, 360, 360 SBS, 360 TB, 180,
+  180 SBS, 180 TB, Fisheye, Fisheye SBS, Panorama.
+- **Panels**: the album grid and the item grid with thumbnails (five across, fifteen a page), and
+  the player's controls below the picture.
+
+Proven in the Simulator with the Unity repo's fixture media (`Tools/sim_add_media.sh` makes it;
+`xcrun simctl addmedia` adds it): a 360 video around the viewer, a spatial HEIC with an eye each,
+portrait and landscape photos upright in the frame, the panorama and 360 still on their
+projections, the flat video with its controls. Spatial MV-HEVC video and iCloud items await the
+phone.
+
 ## 3DoF on the ultra-wide
 
 ARKit's world tracking has no ultra-wide format on the iPhone and stops the moment another
@@ -226,6 +258,8 @@ ios-native/
   Afterglow/Tracking/         CameraSource, ARController (6DoF), UltraWideController (3DoF), PosePredictor
   Afterglow/Hands/            HandTracker (Vision), HandGeometry, OneEuroFilter, PinchDetector, HandOverlay + GrabDemo
   Afterglow/Browser/          Browser, WebTab, WebBridge, BrowserWindow, Panels (chrome + keyboard), BrowserStore, CredentialStore, web/afterglow-helper.js
+  Afterglow/Media/            MediaLibrary (Photos), VideoPlayer, MediaApp (grids, viewer, formats)
+  Afterglow/Home/             Toolbar (quick toggles, recent apps, the menu with the settings)
   Afterglow/Input/            HeadsetTap (double tap on the viewer), Dictation
   Afterglow/Log/              SessionLog, FrameTimingLog, ThermalLog
   AfterglowTests/             the optics against the Unity app's numbers

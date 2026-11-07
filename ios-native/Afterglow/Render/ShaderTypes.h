@@ -32,6 +32,34 @@ typedef struct {
     unsigned int eye;
 } DistortionVertex;
 
+// Media projections: how a picture or video wraps around the viewer. One shader draws every
+// kind from a direction per pixel; `layout` says where each eye's picture sits in the texture.
+typedef enum {
+    MediaProjectionFlat = 0,          // a flat screen ahead (handled by the quad pipeline)
+    MediaProjectionEquirect360 = 1,   // the whole sphere, longitude across, latitude down
+    MediaProjectionEquirect180 = 2,   // the front hemisphere, 180 degrees across
+    MediaProjectionFisheye180 = 3,    // an equidistant fisheye circle, 180 degrees
+    MediaProjectionCylinder = 4,      // a panorama band: `span` radians across, `height` tall
+} MediaProjection;
+
+typedef enum {
+    MediaLayoutMono = 0,              // one picture for both eyes
+    MediaLayoutSideBySide = 1,        // left eye on the left half, right eye on the right
+    MediaLayoutTopBottom = 2,         // left eye on top, right eye below
+    MediaLayoutArray = 3,             // one picture per slice of a texture array (spatial media)
+} MediaLayout;
+
+typedef struct {
+    int projection;                   // MediaProjection
+    int layout;                       // MediaLayout
+    float span;                       // cylinder: radians across; 180/fisheye: field in radians
+    float height;                     // cylinder: half-height over radius (tan of the half angle)
+    float yaw;                        // where the picture's centre faces, radians
+    float brightness;
+    int swapEyes;                     // 1 when the halves are the other way round
+    int pad;
+} MediaUniforms;
+
 // Textured quads in the world (the browser window, panels): position and texture coordinate.
 typedef struct {
     vector_float3 position;

@@ -21,6 +21,9 @@ final class Renderer {
     private var distortionPipeline: MTLRenderPipelineState!
     private var overlayPipeline: MTLRenderPipelineState!
     private var quadPipeline: MTLRenderPipelineState!
+    private var mediaPipeline: MTLRenderPipelineState!
+    private var mediaQuadPipeline: MTLRenderPipelineState!
+    private(set) var media: MediaApp?
     private var quadBuffers: [MTLBuffer] = []
     private var quadBufferIndex = 0
     /// The browser and its panels in the scene; nil until opened.
@@ -163,10 +166,16 @@ final class Renderer {
 
     func launch(_ app: AppKind) {
         toolbar?.noteOpened(app)
+        if app != openApp { closeApp() }
         switch app {
         case .browser:
             settings.browserOpen = true
             openApp = .browser
+        case .media:
+            let media = MediaApp(device: device)
+            media.open(head: lastHead)
+            self.media = media
+            openApp = .media
         default:
             log("[Home] \(app.rawValue) is not built yet")
         }
@@ -175,6 +184,7 @@ final class Renderer {
 
     func closeApp() {
         if openApp == .browser { settings.browserOpen = false }
+        if openApp == .media { media?.close(); media = nil }
         openApp = nil
     }
 
@@ -213,6 +223,7 @@ final class Renderer {
         case "press":
             if let keyboard, keyboard.panel.buttons.contains(where: { $0.id == argument }) { pressPanel(keyboard.panel, id: argument) }
             else if let chrome, chrome.panel.buttons.contains(where: { $0.id == argument }) { pressPanel(chrome.panel, id: argument) }
+            else if let media, (media.screen == .viewing ? media.controls : media.grid).buttons.contains(where: { $0.id == argument }) { media.press(argument) }
             else if let toolbar { toolbar.press(argument) }
         case "type": browser?.type(argument)
         case "key": browser?.key(argument)
@@ -301,6 +312,8 @@ final class Renderer {
         passthroughPipeline = try scene("fullscreenVertex", "passthroughFragment")
         overlayPipeline = try scene("overlayVertex", "overlayFragment")
         quadPipeline = try scene("quadVertex", "quadFragment")
+        mediaPipeline = try scene("fullscreenVertex", "mediaFragment")
+        mediaQuadPipeline = try scene("quadVertex", "mediaQuadFragment")
 
         let d = MTLRenderPipelineDescriptor()
         d.vertexFunction = library.makeFunction(name: "distortionVertex")
@@ -490,6 +503,31 @@ final class Renderer {
                 overlay.addSquare(at - forward * 0.01, size: 0.012, eye: origin, color: HandOverlay.pinchColor)
             }
         }
+        var mediaTextures: (picture: MTLTexture?, eyes: MTLTexture?) = (nil, nil)
+        var mediaUniforms = MediaUniforms()
+        if let media {
+            let origin = headInWorld.columns.3.xyz
+            let forward = -headInWorld.columns.2.xyz
+            let panel = media.screen == .viewing ? media.controls : media.grid
+            let hit = panel.pane.hit(origin: origin, direction: forward)
+            _ = panel.hover(hit?.uv)
+            if select, hit != nil, let id = panel.hovered {
+                media.press(id)
+                select = false
+            }
+            media.render()
+            mediaTextures = media.frame(hostTime: t2)
+            mediaUniforms = media.uniforms()
+            if media.screen == .viewing {
+                if let t = media.controls.texture { toolbarQuads.append((t, 5)) }
+            } else if let t = media.grid.texture {
+                toolbarQuads.append((t, 6))
+            }
+            if let hit {
+                let at = panel.pane.centre + panel.pane.right * ((hit.uv.x - 0.5) * panel.pane.widthMeters) + panel.pane.up * ((0.5 - hit.uv.y) * panel.pane.heightMeters)
+                overlay.addSquare(at - forward * 0.01, size: 0.012, eye: origin, color: HandOverlay.pinchColor)
+            }
+        }
         if let browser, let chrome, let keyboard {
             // The gaze on the panels, before the page: a panel under the gaze takes the select.
             let origin = headInWorld.columns.3.xyz
@@ -541,6 +579,9 @@ final class Renderer {
             vertices += keyboard?.panel.pane.quad ?? BrowserWindow().quad
             vertices += toolbar?.panel.pane.quad ?? BrowserWindow().quad
             vertices += toolbar?.menu.pane.quad ?? BrowserWindow().quad
+            vertices += media?.controls.pane.quad ?? BrowserWindow().quad
+            vertices += media?.grid.pane.quad ?? BrowserWindow().quad
+            vertices += media?.flatQuad() ?? BrowserWindow().quad
             while quadBuffers.count < 3 { quadBuffers.append(device.makeBuffer(length: 8192, options: .storageModeShared)!) }
             quadBufferIndex = (quadBufferIndex + 1) % quadBuffers.count
             let buffer = quadBuffers[quadBufferIndex]
@@ -594,6 +635,12 @@ final class Renderer {
                 encoder.setFragmentTexture(frame.luma, index: 0)
                 encoder.setFragmentTexture(frame.chroma, index: 1)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            } else if let media, media.isProjected, mediaTextures.picture != nil || mediaTextures.eyes != nil {
+                encoder.setRenderPipelineState(mediaPipeline)
+                encoder.setFragmentBytes(&mediaUniforms, length: MemoryLayout<MediaUniforms>.stride, index: 1)
+                encoder.setFragmentTexture(mediaTextures.picture ?? mediaTextures.eyes, index: 0)
+                encoder.setFragmentTexture(mediaTextures.eyes ?? eyeTexture, index: 1)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
             } else {
                 encoder.setRenderPipelineState(skyPipeline)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
@@ -608,6 +655,13 @@ final class Renderer {
                     encoder.setFragmentTexture(texture, index: 0)
                     encoder.setFragmentBytes(&tint, length: MemoryLayout<SIMD4<Float>>.stride, index: 2)
                     encoder.drawPrimitives(type: .triangle, vertexStart: slot * 6, vertexCount: 6)
+                }
+                if let media, media.screen == .viewing, !media.isProjected, mediaTextures.picture != nil || mediaTextures.eyes != nil {
+                    encoder.setRenderPipelineState(mediaQuadPipeline)
+                    encoder.setFragmentBytes(&mediaUniforms, length: MemoryLayout<MediaUniforms>.stride, index: 1)
+                    encoder.setFragmentTexture(mediaTextures.picture ?? mediaTextures.eyes, index: 0)
+                    encoder.setFragmentTexture(mediaTextures.eyes ?? eyeTexture, index: 1)
+                    encoder.drawPrimitives(type: .triangle, vertexStart: 7 * 6, vertexCount: 6)
                 }
             }
             if let overlayBuffer {
