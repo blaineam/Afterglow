@@ -103,6 +103,8 @@ final class StereoModel: ObservableObject {
         }
         renderer.onDictate = { [weak self] in self?.dictate() }
         renderer.startSource()
+        NotificationCenter.default.addObserver(forName: .afterglowBackground, object: nil, queue: .main) { _ in MainActor.assumeIsolated { renderer.appBackgrounded() } }
+        NotificationCenter.default.addObserver(forName: .afterglowForeground, object: nil, queue: .main) { _ in MainActor.assumeIsolated { renderer.appForegrounded() } }
     }
 
     /// Push to talk: a press starts listening, the next stops it and types what was heard.
@@ -116,7 +118,8 @@ final class StereoModel: ObservableObject {
             guard await dictation.requestPermission() else { return }
             dictation.start { text in
                 guard !text.isEmpty else { return }
-                if let media = renderer.media, media.isFiles { media.type(text) } else { renderer.browser?.type(text) }
+                if renderer.places != nil, renderer.isPromptingForPlace { renderer.places?.generate(prompt: text); renderer.endPlacePrompt() }
+                else if let media = renderer.media, media.isFiles { media.type(text) } else { renderer.browser?.type(text) }
             }
         }
     }

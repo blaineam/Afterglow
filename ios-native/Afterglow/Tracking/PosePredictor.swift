@@ -51,6 +51,8 @@ final class PosePredictor: @unchecked Sendable {
     let taps = HeadsetTapDetector()
     /// Called on the motion queue with 1 for a first tap and 2 for a double tap.
     var onTap: ((Int) -> Void)?
+    /// Gravity and rotation rate, for the lock's reading of whether the viewer is still on.
+    var onMotion: ((SIMD3<Double>, SIMD3<Double>, Double) -> Void)?
 
     // The 3DoF world: CoreMotion's reference frame (z up, x arbitrary) turned to y up, with the
     // heading at the first reading taken as straight ahead (-z), as ARKit's gravity alignment does.
@@ -110,6 +112,9 @@ final class PosePredictor: @unchecked Sendable {
             self.lock.unlock()
             let tap = self.taps.feed(data)
             if tap != 0 { self.onTap?(tap) }
+            if self.motionCount % 25 == 0 {
+                self.onMotion?(SIMD3(data.gravity.x, data.gravity.y, data.gravity.z), SIMD3(data.rotationRate.x, data.rotationRate.y, data.rotationRate.z), data.timestamp)
+            }
         }
         log("[Pose] Device motion at 100 Hz drives head prediction; camera axes = device axes turned 90 degrees about z")
     }

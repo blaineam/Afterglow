@@ -14,6 +14,8 @@
 		11DE11B2F262E90405DBEE7D /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3675F8D2A8455F705C68C25 /* Renderer.swift */; };
 		16D3E9D0732259261E2D92C5 /* PosePredictor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9966FF18394C15E0D6C282F /* PosePredictor.swift */; };
 		1C7E6B56FEE2873026D56C48 /* RhythmGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F6B9BCCCC55995285EE0920 /* RhythmGame.swift */; };
+		236DFF0648D3937CF4BA8D85 /* WindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A831ACB0D368CC926A366F /* WindowManager.swift */; };
+		347582F364588BCF278B1C27 /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E2E34385880FD6215E765AF /* AppLock.swift */; };
 		348FA203915A0E073B48490F /* afterglow-webxr.js in Resources */ = {isa = PBXBuildFile; fileRef = 1AA30D699725082AF000DBAB /* afterglow-webxr.js */; };
 		3B611AB1D9B01C012F739B97 /* WebBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C758612B9495CD314D59EF61 /* WebBridge.swift */; };
 		3C5D52A1580439FA628A5336 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1558F78E920E5997115FF985 /* ContentView.swift */; };
@@ -47,15 +49,19 @@
 		BC2DD9993B328B9BFE55C0D8 /* PinchDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E2E0B57207F4DEAA2DF268C /* PinchDetector.swift */; };
 		C41DAACF85D3845C8E068C10 /* WebTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9D14AF0F2015E62D345D07C /* WebTab.swift */; };
 		C803CA1BEC03B79551EFB51B /* UltraWideProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */; };
+		C98279B37E7AA0E328071EA7 /* MusicApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2DC482C4113CBF72B365D3 /* MusicApp.swift */; };
 		CD88B09669D877C78226AE06 /* CameraSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D94EC27CAA1FF1943486BB0 /* CameraSource.swift */; };
+		D2DF1EF2F8AE43E483DE4DA9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1DF1BAF17D795352DAC505E /* Assets.xcassets */; };
 		D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */; };
 		D9D3FFB7F662E475F947FD3C /* EyeRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCEC5C5D9ABB975443C7DE91 /* EyeRecorder.swift */; };
 		DD58B4FD2C93E71F18D6592E /* Games.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A39A4CC8DC935824223E5A /* Games.swift */; };
+		E13FF8F6F98AF4B5D65CBB41 /* SkyboxGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45D18B331C2B01FABE57BF49 /* SkyboxGenerator.swift */; };
 		E1962322F97DB95D45A90270 /* HeadsetTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87C4D44511F04B6AD7D43D31 /* HeadsetTap.swift */; };
 		E1F20C8F70E32B1C44AA3A59 /* ScreenMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F27D509791361AD2011E47 /* ScreenMetrics.swift */; };
 		E386311B4A1748A01C31E880 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = F3791EB1A750663D58286739 /* Shaders.metal */; };
 		E7BA05E46A062EE88CE62A42 /* AfterglowApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2A07A7A60E0764F6995F5B5 /* AfterglowApp.swift */; };
 		ED5D8F15E38998A94A259426 /* MediaMetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 959D50A1EB5EED9EC6FE9AF1 /* MediaMetadataTests.swift */; };
+		EE2AE67EB8156EB501AED089 /* SettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1BE27FFB5F7BF0CBB5D4956 /* SettingsWindow.swift */; };
 		F0433297A0D001C5C4CA77C7 /* HandGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12EF0275572665780B091BD3 /* HandGeometry.swift */; };
 		F6B76CD3BD4B02E11FDCA409 /* VideoPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8B3564A698DE6CBC60A74CF /* VideoPlayer.swift */; };
 		F6FFC447E3208CC29FA6EAB3 /* HandTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 135AAF215BBE3C9874DB7911 /* HandTracker.swift */; };
@@ -80,6 +86,7 @@
 		135AAF215BBE3C9874DB7911 /* HandTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandTracker.swift; sourceTree = "<group>"; };
 		1558F78E920E5997115FF985 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		1AA30D699725082AF000DBAB /* afterglow-webxr.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "afterglow-webxr.js"; sourceTree = "<group>"; };
+		1E2E34385880FD6215E765AF /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
 		1F1932938E01769D5BD70302 /* ExternalDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalDisplay.swift; sourceTree = "<group>"; };
 		229FF7FB92EB617B3FAE073F /* PlacesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacesApp.swift; sourceTree = "<group>"; };
 		27D58785E652A50828B3FA73 /* ARController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARController.swift; sourceTree = "<group>"; };
@@ -89,6 +96,8 @@
 		38B30CD74969D37109A6EC5B /* AfterglowTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AfterglowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		407B733E5D15B248CD512A98 /* BrowserWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserWindow.swift; sourceTree = "<group>"; };
 		4402EC68CCA81B671B468EE8 /* LensDistortion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensDistortion.swift; sourceTree = "<group>"; };
+		44A831ACB0D368CC926A366F /* WindowManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowManager.swift; sourceTree = "<group>"; };
+		45D18B331C2B01FABE57BF49 /* SkyboxGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkyboxGenerator.swift; sourceTree = "<group>"; };
 		5703D6F0702885C2F804B15B /* GameHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameHost.swift; sourceTree = "<group>"; };
 		57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalLog.swift; sourceTree = "<group>"; };
 		57EB9465CB5A756B4F53BEC0 /* MediaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaApp.swift; sourceTree = "<group>"; };
@@ -96,6 +105,7 @@
 		62905D062521A7CC64D592BA /* Panels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels.swift; sourceTree = "<group>"; };
 		67A818255D526B59948B967F /* ShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
 		7854AEB3ED92FB2970560611 /* HandOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandOverlay.swift; sourceTree = "<group>"; };
+		7E2DC482C4113CBF72B365D3 /* MusicApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicApp.swift; sourceTree = "<group>"; };
 		7F6B9BCCCC55995285EE0920 /* RhythmGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RhythmGame.swift; sourceTree = "<group>"; };
 		87C4D44511F04B6AD7D43D31 /* HeadsetTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadsetTap.swift; sourceTree = "<group>"; };
 		937E65EAEBF6C26F50ED3B34 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -106,6 +116,8 @@
 		A3675F8D2A8455F705C68C25 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		A7F27D509791361AD2011E47 /* ScreenMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenMetrics.swift; sourceTree = "<group>"; };
 		A988740926B41E19A4D4C598 /* RoomModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomModel.swift; sourceTree = "<group>"; };
+		B1BE27FFB5F7BF0CBB5D4956 /* SettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindow.swift; sourceTree = "<group>"; };
+		B1DF1BAF17D795352DAC505E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B2A07A7A60E0764F6995F5B5 /* AfterglowApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AfterglowApp.swift; sourceTree = "<group>"; };
 		B81BBB54C49B3845F94E2832 /* Toolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toolbar.swift; sourceTree = "<group>"; };
 		B8B3564A698DE6CBC60A74CF /* VideoPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayer.swift; sourceTree = "<group>"; };
@@ -154,7 +166,11 @@
 		1E150F1B8FD54F8E79628E24 /* Home */ = {
 			isa = PBXGroup;
 			children = (
+				1E2E34385880FD6215E765AF /* AppLock.swift */,
+				7E2DC482C4113CBF72B365D3 /* MusicApp.swift */,
+				B1BE27FFB5F7BF0CBB5D4956 /* SettingsWindow.swift */,
 				B81BBB54C49B3845F94E2832 /* Toolbar.swift */,
+				44A831ACB0D368CC926A366F /* WindowManager.swift */,
 			);
 			path = Home;
 			sourceTree = "<group>";
@@ -214,6 +230,7 @@
 			children = (
 				229FF7FB92EB617B3FAE073F /* PlacesApp.swift */,
 				A988740926B41E19A4D4C598 /* RoomModel.swift */,
+				45D18B331C2B01FABE57BF49 /* SkyboxGenerator.swift */,
 			);
 			path = Room;
 			sourceTree = "<group>";
@@ -232,6 +249,7 @@
 		9BFC2DC2C15F790660B215F4 /* Afterglow */ = {
 			isa = PBXGroup;
 			children = (
+				B1DF1BAF17D795352DAC505E /* Assets.xcassets */,
 				937E65EAEBF6C26F50ED3B34 /* Info.plist */,
 				6977E4302D248A13F4C272D6 /* App */,
 				FEF5E09E6BBB32ED16C89585 /* Browser */,
@@ -443,6 +461,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D2DF1EF2F8AE43E483DE4DA9 /* Assets.xcassets in Resources */,
 				85FC0F60F815AACB5EB653D6 /* afterglow-helper.js in Resources */,
 				348FA203915A0E073B48490F /* afterglow-webxr.js in Resources */,
 				A60D870018233AC8AD7E288C /* index.html in Resources */,
@@ -469,6 +488,7 @@
 			files = (
 				0113CE32E718FC51FC3EBD4B /* ARController.swift in Sources */,
 				E7BA05E46A062EE88CE62A42 /* AfterglowApp.swift in Sources */,
+				347582F364588BCF278B1C27 /* AppLock.swift in Sources */,
 				97305D4E9B52CAA27CC13956 /* Browser.swift in Sources */,
 				BA4BD6BE9A09CCCEFC49BB63 /* BrowserStore.swift in Sources */,
 				75BE77AC84FBAB02AE1C6FB8 /* BrowserWindow.swift in Sources */,
@@ -491,6 +511,7 @@
 				ADFAB9F747817AFE897DE790 /* MediaApp.swift in Sources */,
 				BACE2FF920E1A6E965CE609E /* MediaLibrary.swift in Sources */,
 				11C794030430803513B767C4 /* MediaMetadata.swift in Sources */,
+				C98279B37E7AA0E328071EA7 /* MusicApp.swift in Sources */,
 				7A38FB3AAA8E460C9F4F65D7 /* OneEuroFilter.swift in Sources */,
 				1084C85F476B2C5EB0582CBF /* Panels.swift in Sources */,
 				BC2DD9993B328B9BFE55C0D8 /* PinchDetector.swift in Sources */,
@@ -503,7 +524,9 @@
 				E1F20C8F70E32B1C44AA3A59 /* ScreenMetrics.swift in Sources */,
 				998F8E4E9A185C881C5B74DC /* SessionLog.swift in Sources */,
 				8A26420DC8EEC87E91BE44DA /* Settings.swift in Sources */,
+				EE2AE67EB8156EB501AED089 /* SettingsWindow.swift in Sources */,
 				E386311B4A1748A01C31E880 /* Shaders.metal in Sources */,
+				E13FF8F6F98AF4B5D65CBB41 /* SkyboxGenerator.swift in Sources */,
 				D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */,
 				77C5951CAE44BFA58BE8C46A /* Toolbar.swift in Sources */,
 				91E95FC2F446BEEE1D5D8481 /* UltraWideController.swift in Sources */,
@@ -512,6 +535,7 @@
 				87FA55609E5C45D423B33A4C /* ViewerParams.swift in Sources */,
 				3B611AB1D9B01C012F739B97 /* WebBridge.swift in Sources */,
 				C41DAACF85D3845C8E068C10 /* WebTab.swift in Sources */,
+				236DFF0648D3937CF4BA8D85 /* WindowManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -605,7 +629,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow.native.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow.tests;
 				SDKROOT = iphoneos;
 				SWIFT_OBJC_BRIDGING_HEADER = Afterglow/Render/ShaderTypes.h;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -624,8 +648,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow.native;
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow;
 				PRODUCT_NAME = Afterglow;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -708,8 +732,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow.native;
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow;
 				PRODUCT_NAME = Afterglow;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -727,7 +751,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow.native.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow.tests;
 				SDKROOT = iphoneos;
 				SWIFT_OBJC_BRIDGING_HEADER = Afterglow/Render/ShaderTypes.h;
 				TARGETED_DEVICE_FAMILY = "1,2";

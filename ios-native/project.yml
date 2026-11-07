@@ -37,12 +37,13 @@ targets:
         buildPhase: resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.wemiller.afterglow.native
+        PRODUCT_BUNDLE_IDENTIFIER: com.wemiller.afterglow
         PRODUCT_NAME: Afterglow
         INFOPLIST_FILE: Afterglow/Info.plist
         SWIFT_OBJC_BRIDGING_HEADER: Afterglow/Render/ShaderTypes.h
-        MARKETING_VERSION: "0.1.0"
+        MARKETING_VERSION: "2.0.0"
         CURRENT_PROJECT_VERSION: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
   AfterglowTests:
     type: bundle.unit-test
@@ -55,7 +56,7 @@ targets:
       - target: Afterglow
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.wemiller.afterglow.native.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.wemiller.afterglow.tests
         SWIFT_OBJC_BRIDGING_HEADER: Afterglow/Render/ShaderTypes.h
 schemes:
   Afterglow:

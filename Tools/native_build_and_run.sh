@@ -17,7 +17,8 @@
 set -u
 P=${0:A:h:h}
 N=$P/ios-native
-BUNDLE=${AFTERGLOW_NATIVE_BUNDLE_ID:-com.wemiller.afterglow.native}
+# The same bundle id as the Unity app: installing this replaces that one on the phone.
+BUNDLE=${AFTERGLOW_NATIVE_BUNDLE_ID:-com.wemiller.afterglow}
 PROJECT=$N/Afterglow.xcodeproj
 DERIVED=$P/Builds/native-derived
 LOGS=${TMPDIR:-/tmp}/afterglow

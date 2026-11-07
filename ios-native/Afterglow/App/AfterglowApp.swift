@@ -19,7 +19,8 @@ struct AfterglowApp: App {
                 .onAppear { Self.keepAwake() }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Self.keepAwake() }
+            if phase == .active { Self.keepAwake(); NotificationCenter.default.post(name: .afterglowForeground, object: nil) }
+            if phase == .background { NotificationCenter.default.post(name: .afterglowBackground, object: nil) }
         }
     }
 
@@ -31,6 +32,11 @@ struct AfterglowApp: App {
         UIApplication.shared.isIdleTimerDisabled = true
         log("[Stereo] Idle timer off: the screen stays awake while the app is up (\(UIApplication.shared.isIdleTimerDisabled))")
     }
+}
+
+extension Notification.Name {
+    static let afterglowForeground = Notification.Name("afterglow.foreground")
+    static let afterglowBackground = Notification.Name("afterglow.background")
 }
 
 /// Locks the app to landscape right (home indicator and USB port on the right), the way the phone

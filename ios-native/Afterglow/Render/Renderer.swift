@@ -38,6 +38,14 @@ final class Renderer {
     private(set) var recorder: EyeRecorder?
     private(set) var games: GameHost?
     private let controllers = Controllers()
+    private(set) var windows: WindowManager?
+    private var home: HomeMenu?
+    private var settingsWindow: SettingsWindow?
+    private var music: MusicApp?
+    private(set) var lock: AppLock?
+    private var pinchHeldFrames = 0
+    private var promptingForPlace = false
+    private var placePrompt = ""
     private var gridColor = SIMD4<Float>(0, 0, 0, 0)
     private var floorScroll: Float = 0
     /// A synthetic hand for the Simulator (`fakehand` in the test script).
@@ -157,8 +165,26 @@ final class Renderer {
         uiWindow = window
         keyboard = KeyboardPanel(device: device)
         controllers.start()
+        let windows = WindowManager(device: device)
+        windows.onClose = { [weak self] kind in self?.windowClosed(kind) }
+        self.windows = windows
+        let home = HomeMenu(device: device)
+        home.onLaunch = { [weak self] kind in self?.launch(kind) }
+        home.onLock = { [weak self] in self?.lock?.lock(reason: "the menu") }
+        self.home = home
+        let lock = AppLock(device: device)
+        self.lock = lock
+        let settingsWindow = SettingsWindow(device: device, settings: settings)
+        settingsWindow.hasPasscode = { [weak self] in self?.lock?.isSet ?? false }
+        settingsWindow.onSetPasscode = { [weak self] in self?.lock?.beginSettingNew() }
+        settingsWindow.onRemovePasscode = { [weak self] in self?.lock?.removePasscode() }
+        self.settingsWindow = settingsWindow
+        source.predictor.onMotion = { [weak self] gravity, rate, time in
+            Task { @MainActor in self?.lock?.motion(gravity: gravity, rotationRate: rate, time: time) }
+        }
         let toolbar = Toolbar(device: device, settings: settings)
         toolbar.onLaunch = { [weak self] app in self?.launch(app) }
+        toolbar.onMore = { [weak self] in self?.launch(WindowKind.home) }
         toolbar.onRecentre = { [weak self] in self?.recentre() }
         toolbar.onCloseApp = { [weak self] in self?.closeApp() }
         toolbar.onRecord = { [weak self] eye in self?.toggleRecording(eye: eye) }
@@ -191,55 +217,103 @@ final class Renderer {
         chrome = nil
     }
 
-    func launch(_ app: AppKind) {
-        toolbar?.noteOpened(app)
-        if app != openApp { closeApp() }
-        switch app {
-        case .browser:
-            settings.browserOpen = true
-            openApp = .browser
-        case .media, .files:
-            let media = MediaApp(device: device)
-            media.onPickFolder = { [weak self] in
-                guard let self, let root = self.uiWindow?.rootViewController, let files = self.media?.files else { return }
-                files.pickFolder(from: root)
-            }
-            if app == .files { media.openFiles(head: lastHead) } else { media.open(head: lastHead) }
-            self.media = media
-            openApp = app
-        case .games:
-            let games = GameHost(device: device)
-            games.open(head: lastHead)
-            if let portal = games.games.compactMap({ $0 as? PortalGame }).first {
-                portal.onWorldChange = { [weak self] world in
-                    let c = PortalGame.palettes[world % PortalGame.palettes.count]
-                    self?.gridColor = world == 0 ? SIMD4(0, 0, 0, 0) : SIMD4(c, 1)
-                }
-            }
-            self.games = games
-            openApp = .games
-        case .environments:
-            let places = PlacesApp(device: device)
-            places.open(head: lastHead)
-            places.onChoice = { [weak self] choice in
-                self?.environment = choice
-                self?.settings.passthrough = (choice == .room)
-                if case .room = choice { self?.settings.surfaces = true }
-            }
-            self.places = places
-            openApp = .environments
-        default:
-            log("[Home] \(app.rawValue) is not built yet")
+    /// Opens an app as a window (several can be open at once).
+    func launch(_ kind: WindowKind) {
+        guard let windows else { return }
+        let aspect: Float
+        switch kind {
+        case .browser: aspect = 1280.0 / 800.0
+        case .media, .files: aspect = 1.6
+        case .games: aspect = 1600.0 / 560.0
+        case .places: aspect = 1600.0 / 900.0
+        case .settings: aspect = 1.4
+        case .music: aspect = 1200.0 / 700.0
+        case .home: aspect = 1600.0 / 900.0
         }
-        log("[Home] Opened \(app.rawValue)")
+        let window = windows.open(kind, head: lastHead, aspect: aspect)
+        switch kind {
+        case .browser:
+            toolbar?.noteOpened(.browser)
+            settings.browserOpen = true
+            if browser == nil { openBrowser() }
+            browser?.window = window.pane
+            // The window's bar sits above the browser's own chrome.
+            window.barGap = (chrome?.panel.pane.heightMeters ?? 0.23) + 0.03
+        case .media, .files:
+            toolbar?.noteOpened(kind == .media ? .media : .files)
+            if media == nil || (media?.isFiles ?? false) != (kind == .files) {
+                media?.close()
+                let m = MediaApp(device: device)
+                m.onPickFolder = { [weak self] in
+                    guard let self, let root = self.uiWindow?.rootViewController, let files = self.media?.files else { return }
+                    files.pickFolder(from: root)
+                }
+                if kind == .files { m.openFiles(head: lastHead) } else { m.open(head: lastHead) }
+                media = m
+            }
+        case .games:
+            toolbar?.noteOpened(.games)
+            if games == nil {
+                let g = GameHost(device: device)
+                g.open(head: lastHead)
+                if let portal = g.games.compactMap({ $0 as? PortalGame }).first {
+                    portal.onWorldChange = { [weak self] world in
+                        let c = PortalGame.palettes[world % PortalGame.palettes.count]
+                        self?.gridColor = world == 0 ? SIMD4(0, 0, 0, 0) : SIMD4(c, 1)
+                    }
+                }
+                games = g
+            }
+        case .places:
+            toolbar?.noteOpened(.environments)
+            if places == nil {
+                let p = PlacesApp(device: device)
+                p.open(head: lastHead)
+                p.onChoice = { [weak self] choice in
+                    self?.environment = choice
+                    self?.settings.passthrough = (choice == .room)
+                    if case .room = choice { self?.settings.surfaces = true }
+                }
+                p.onWantPrompt = { [weak self] in self?.promptingForPlace = true; self?.placePrompt = "" }
+                places = p
+            }
+        case .music:
+            if music == nil { music = MusicApp(device: device) }
+        case .settings, .home:
+            break
+        }
+        log("[Home] Opened \(kind.rawValue)")
     }
 
+    private func windowClosed(_ kind: WindowKind) {
+        switch kind {
+        case .browser: settings.browserOpen = false; closeBrowser()
+        case .media, .files: media?.close(); media = nil
+        case .games: games = nil; gridColor = SIMD4(0, 0, 0, 0)
+        case .places: places = nil
+        case .music: music = nil
+        case .settings, .home: break
+        }
+    }
+
+    func launch(_ app: AppKind) {
+        switch app {
+        case .browser: launch(WindowKind.browser)
+        case .media: launch(WindowKind.media)
+        case .files: launch(WindowKind.files)
+        case .games: launch(WindowKind.games)
+        case .environments: launch(WindowKind.places)
+        case .settings: launch(WindowKind.settings)
+        }
+        }
+
+    var isPromptingForPlace: Bool { promptingForPlace }
+    func endPlacePrompt() { promptingForPlace = false }
+    func appBackgrounded() { lock?.backgrounded() }
+    func appForegrounded() { lock?.foregrounded() }
+
     func closeApp() {
-        if openApp == .browser { settings.browserOpen = false }
-        if openApp == .media || openApp == .files { media?.close(); media = nil }
-        if openApp == .environments { places = nil }
-        if openApp == .games { games = nil; gridColor = SIMD4(0, 0, 0, 0) }
-        openApp = nil
+        if let last = windows?.visible.last { windows?.close(last.kind) }
     }
 
     /// Re-hangs the window and the toolbar where the head looks now.
@@ -304,6 +378,15 @@ final class Renderer {
             else if let media, (media.screen == .viewing ? media.controls : media.grid).buttons.contains(where: { $0.id == argument }) { media.press(argument) }
             else if let places, places.panel.buttons.contains(where: { $0.id == argument }) { if places.press(argument) { settings.surfaces.toggle() } }
             else if let games, games.panel.buttons.contains(where: { $0.id == argument }) { games.press(argument) }
+            else if let home, windows?.window(.home)?.minimized == false, home.panel.buttons.contains(where: { $0.id == argument }) { if home.press(argument) { windows?.close(.home) } }
+            else if let settingsWindow, windows?.window(.settings)?.minimized == false, settingsWindow.panel.buttons.contains(where: { $0.id == argument }) { settingsWindow.press(argument) }
+            else if let music, music.panel.buttons.contains(where: { $0.id == argument }) { music.press(argument) }
+            else if let lock, lock.locked, lock.panel.buttons.contains(where: { $0.id == argument }) { lock.press(argument) }
+            else if argument.hasPrefix("win:"), let windows {
+                // win:<kind>:<button>
+                let parts = argument.split(separator: ":").map(String.init)
+                if parts.count == 3, let kind = WindowKind(rawValue: parts[1]), let w = windows.window(kind) { windows.press(w, id: parts[2]) }
+            }
             else if let toolbar { toolbar.press(argument) }
         case "type": if let media, media.isFiles { media.type(argument) } else { browser?.type(argument) }
         case "key": if let media, media.isFiles { media.key(argument) } else { browser?.key(argument) }
@@ -325,6 +408,8 @@ final class Renderer {
             if argument == "off" { fakeHand = nil }
             else if argument == "punch" { fakeHand = (fakeHand?.pinched ?? false, now + 0.2) }
             else { fakeHand = (argument == "1", 0) }
+        case "open": if let kind = WindowKind(rawValue: argument) { launch(kind) }
+        case "lock": lock?.lock(reason: "the script")
         case "fakeplanes": (source as? ARController)?.room.addFake(floorY: floorHeight); settings.surfaces = true
         case "js":
             browser?.current?.webView.evaluateJavaScript(argument) { result, error in
@@ -579,8 +664,8 @@ final class Renderer {
         uniforms.passthroughBlend = settings.passthrough ? 1 : 0
 
         lastHead = headInWorld
-        if settings.browserOpen && browser == nil && uiWindow != nil { openBrowser() }
-        if !settings.browserOpen && browser != nil { closeBrowser() }
+        if settings.browserOpen && browser == nil && uiWindow != nil && windows?.window(.browser) == nil { launch(WindowKind.browser) }
+        if !settings.browserOpen && browser != nil { windows?.close(.browser) }
 
         // The hands as of this frame, and the grab demo they drive.
         overlay.clear()
@@ -589,6 +674,19 @@ final class Renderer {
         if let hands = source.hands {
             tracked = hands.hands(at: predictTo)
             hands.hertz = settings.handHzLive
+        }
+        // The lock: while locked only the keypad draws and takes the gaze.
+        var lockedNow = false
+        if let lock, lock.locked {
+            lockedNow = true
+            if lock.panel.pane.centre == .zero || simd_distance(lock.panel.pane.centre, headInWorld.columns.3.xyz) > 3 {
+                lock.panel.pane.place(ahead: headInWorld, distance: 1.0)
+            }
+            let origin = headInWorld.columns.3.xyz
+            let forward = -headInWorld.columns.2.xyz
+            let hit = lock.panel.pane.hit(origin: origin, direction: forward)
+            _ = lock.panel.hover(hit?.uv)
+            lock.render()
         }
         if let fake = fakeHand {
             // A flat hand 0.4 m ahead and a little right and down, punched forward when asked.
@@ -630,14 +728,97 @@ final class Renderer {
                 select = true
             }
         }
-        if browser == nil {
+        if lockedNow, let lock {
+            if select, lock.panel.pane.hit(origin: headInWorld.columns.3.xyz, direction: -headInWorld.columns.2.xyz) != nil, let id = lock.panel.hovered {
+                lock.press(id)
+            }
+            select = false
+        }
+        // The windows: title bars, drags, sizes; the app panes follow their windows.
+        var pinchHeld = tracked.contains { $0.pinched }
+        if fakeHand?.pinched == true { pinchHeld = true }
+        if let windows, !lockedNow {
+            let result = windows.frame(head: headInWorld, select: select, pinchHeld: pinchHeld, time: t2)
+            if result.consumed { select = false }
+            for w in windows.visible {
+                switch w.kind {
+                case .browser: if let browser { browser.window = w.pane }
+                case .media, .files:
+                    if let media {
+                        media.grid.pane.centre = w.pane.centre; media.grid.pane.right = w.pane.right; media.grid.pane.up = w.pane.up; media.grid.pane.widthMeters = w.pane.widthMeters
+                        media.window = w.pane
+                        media.controls.pane.right = w.pane.right; media.controls.pane.up = w.pane.up
+                        media.controls.pane.centre = w.pane.centre - w.pane.up * (w.pane.heightMeters / 2 + 0.1)
+                        media.controls.pane.widthMeters = w.pane.widthMeters
+                    }
+                case .games:
+                    if let games { games.panel.pane.centre = w.pane.centre; games.panel.pane.right = w.pane.right; games.panel.pane.up = w.pane.up; games.panel.pane.widthMeters = w.pane.widthMeters }
+                case .places:
+                    if let places { places.panel.pane.centre = w.pane.centre; places.panel.pane.right = w.pane.right; places.panel.pane.up = w.pane.up; places.panel.pane.widthMeters = w.pane.widthMeters }
+                case .settings:
+                    if let settingsWindow { settingsWindow.panel.pane = w.pane }
+                case .music:
+                    if let music { music.panel.pane = w.pane }
+                case .home:
+                    if let home { home.panel.pane = w.pane }
+                }
+                if let t = w.titleBar.texture { toolbarQuads.append((t, 8 + windows.visible.firstIndex { $0 === w }!)) }
+            }
+            // The home menu, the settings and music windows: panels with buttons.
+            let origin = headInWorld.columns.3.xyz
+            let forward = -headInWorld.columns.2.xyz
+            if windows.window(.home)?.minimized == false, let home {
+                home.layout(open: windows.windows.map(\.kind))
+                let hit = home.panel.pane.hit(origin: origin, direction: forward)
+                _ = home.panel.hover(hit?.uv)
+                if select, hit != nil, let id = home.panel.hovered { if home.press(id) { windows.close(.home) }; select = false }
+                home.render()
+                if let t = home.panel.texture { toolbarQuads.append((t, 20)) }
+            }
+            if windows.window(.settings)?.minimized == false, let settingsWindow {
+                let hit = settingsWindow.panel.pane.hit(origin: origin, direction: forward)
+                _ = settingsWindow.panel.hover(hit?.uv)
+                if select, hit != nil, let id = settingsWindow.panel.hovered { settingsWindow.press(id); select = false }
+                settingsWindow.layout()
+                settingsWindow.render()
+                if let t = settingsWindow.panel.texture { toolbarQuads.append((t, 21)) }
+            }
+            if windows.window(.music)?.minimized == false, let music {
+                let hit = music.panel.pane.hit(origin: origin, direction: forward)
+                _ = music.panel.hover(hit?.uv)
+                if select, hit != nil, let id = music.panel.hovered { music.press(id); select = false }
+                music.render()
+                if let t = music.panel.texture { toolbarQuads.append((t, 22)) }
+            }
+            // A prompt for a generated place: the keyboard types it, Go sends it.
+            if promptingForPlace, let keyboard, let places {
+                keyboard.panel.pane = places.panel.pane
+                keyboard.panel.pane.centre = places.panel.pane.centre - places.panel.pane.up * (places.panel.pane.heightMeters / 2 + keyboard.panel.pane.heightMeters * 0.5)
+                let hit = keyboard.panel.pane.hit(origin: origin, direction: forward)
+                _ = keyboard.panel.hover(hit?.uv)
+                if select, hit != nil, let id = keyboard.panel.hovered {
+                    switch keyboard.press(id) {
+                    case .text(let t): placePrompt += t
+                    case .key("Backspace"): if !placePrompt.isEmpty { placePrompt.removeLast() }
+                    case .key("Clear"): placePrompt = ""
+                    case .key("Enter"): promptingForPlace = false; places.generate(prompt: placePrompt)
+                    case .mic: onDictate?()
+                    default: break
+                    }
+                    select = false
+                }
+                keyboard.render()
+                if let t = keyboard.panel.texture { toolbarQuads.append((t, 2)) }
+            }
+        }
+        if browser == nil && games == nil && !lockedNow {
             grabDemo.update(hands: tracked, time: predictTo)
             grabDemo.draw(into: &overlay)
         }
-        if let games {
+        if let games, !lockedNow {
             let origin = headInWorld.columns.3.xyz
             let forward = -headInWorld.columns.2.xyz
-            let hit = games.panel.pane.hit(origin: origin, direction: forward)
+            let hit = windows?.window(.games)?.minimized == false ? games.panel.pane.hit(origin: origin, direction: forward) : nil
             _ = games.panel.hover(hit?.uv)
             var gameSelect = select
             if select, hit != nil, let id = games.panel.hovered {
@@ -651,7 +832,7 @@ final class Renderer {
             games.frame(context, overlay: &overlay)
             if let ride = games.current as? GridRide { floorScroll = ride.distance } 
             games.render()
-            if let t = games.panel.texture { toolbarQuads.append((t, 6)) }
+            if windows?.window(.games)?.minimized == false, let t = games.panel.texture { toolbarQuads.append((t, 6)) }
             if let hit {
                 let at = games.panel.pane.centre + games.panel.pane.right * ((hit.uv.x - 0.5) * games.panel.pane.widthMeters) + games.panel.pane.up * ((0.5 - hit.uv.y) * games.panel.pane.heightMeters)
                 overlay.addSquare(at - forward * 0.01, size: 0.012, eye: origin, color: HandOverlay.pinchColor)
@@ -664,7 +845,7 @@ final class Renderer {
             for hand in tracked { overlay.addHand(hand, eye: eyeMid) }
         }
         var quads: [(MTLBuffer?, MTLTexture, SIMD4<Float>, Int)] = []
-        if let toolbar, !(browser?.isImmersive ?? false) {
+        if let toolbar, !(browser?.isImmersive ?? false), !lockedNow {
             let origin = headInWorld.columns.3.xyz
             let forward = -headInWorld.columns.2.xyz
             var hit: (ScenePanel, SIMD2<Float>)?
@@ -687,7 +868,7 @@ final class Renderer {
             }
         }
         // Places: the panel, and the scan it asks for.
-        if let places {
+        if let places, windows?.window(.places)?.minimized == false, !lockedNow {
             let origin = headInWorld.columns.3.xyz
             let forward = -headInWorld.columns.2.xyz
             let hit = places.panel.pane.hit(origin: origin, direction: forward)
@@ -697,7 +878,7 @@ final class Renderer {
                 select = false
             }
             places.render()
-            if let t = places.panel.texture { toolbarQuads.append((t, 6)) }
+            if let t = places.panel.texture { toolbarQuads.append((t, 25)) }
             if let hit {
                 let at = places.panel.pane.centre + places.panel.pane.right * ((hit.uv.x - 0.5) * places.panel.pane.widthMeters) + places.panel.pane.up * ((0.5 - hit.uv.y) * places.panel.pane.heightMeters)
                 overlay.addSquare(at - forward * 0.01, size: 0.012, eye: origin, color: HandOverlay.pinchColor)
@@ -728,7 +909,7 @@ final class Renderer {
         }
         var mediaTextures: (picture: MTLTexture?, eyes: MTLTexture?) = (nil, nil)
         var mediaUniforms = MediaUniforms()
-        if let media {
+        if let media, windows?.visible.contains(where: { $0.kind == .media || $0.kind == .files }) == true, !lockedNow {
             let origin = headInWorld.columns.3.xyz
             let forward = -headInWorld.columns.2.xyz
             let panel = media.screen == .viewing ? media.controls : media.grid
@@ -766,14 +947,14 @@ final class Renderer {
             if media.screen == .viewing {
                 if let t = media.controls.texture { toolbarQuads.append((t, 5)) }
             } else if let t = media.grid.texture {
-                toolbarQuads.append((t, 6))
+                toolbarQuads.append((t, 24))
             }
             if let hit {
                 let at = panel.pane.centre + panel.pane.right * ((hit.uv.x - 0.5) * panel.pane.widthMeters) + panel.pane.up * ((0.5 - hit.uv.y) * panel.pane.heightMeters)
                 overlay.addSquare(at - forward * 0.01, size: 0.012, eye: origin, color: HandOverlay.pinchColor)
             }
         }
-        if let browser, let chrome, let keyboard {
+        if let browser, let chrome, let keyboard, windows?.window(.browser)?.minimized == false, !lockedNow {
             // The gaze on the panels, before the page: a panel under the gaze takes the select.
             let origin = headInWorld.columns.3.xyz
             let forward = -headInWorld.columns.2.xyz
@@ -815,6 +996,7 @@ final class Renderer {
             }
         }
         var quadBuffer: MTLBuffer?
+        if lockedNow, let t = lock?.panel.texture { toolbarQuads.append((t, 23)) }
         for (texture, slot) in toolbarQuads { quads.append((nil, texture, SIMD4(1, 1, 1, 1), slot)) }
         if !quads.isEmpty {
             // Five quads' vertices in one buffer: the window, the chrome, the keyboard, the toolbar, the menu.
@@ -824,10 +1006,21 @@ final class Renderer {
             vertices += keyboard?.panel.pane.quad ?? BrowserWindow().quad
             vertices += toolbar?.panel.pane.quad ?? BrowserWindow().quad
             vertices += toolbar?.menu.pane.quad ?? BrowserWindow().quad
-            vertices += media?.controls.pane.quad ?? BrowserWindow().quad
-            vertices += media?.grid.pane.quad ?? BrowserWindow().quad
-            vertices += media?.flatQuad() ?? BrowserWindow().quad
-            while quadBuffers.count < 3 { quadBuffers.append(device.makeBuffer(length: 8192, options: .storageModeShared)!) }
+            vertices += media?.controls.pane.quad ?? BrowserWindow().quad   // 5
+            vertices += games?.panel.pane.quad ?? BrowserWindow().quad   // 6
+            vertices += media?.flatQuad() ?? BrowserWindow().quad   // 7... no: 7+ are title bars
+            // Title bars 8..19, then home 20, settings 21, music 22, lock 23.
+            while vertices.count < 8 * 6 { vertices += BrowserWindow().quad }
+            for i in 0..<12 {
+                if let w = windows?.visible.dropFirst(i).first { vertices += w.titleBar.pane.quad } else { vertices += BrowserWindow().quad }
+            }
+            vertices += home?.panel.pane.quad ?? BrowserWindow().quad
+            vertices += settingsWindow?.panel.pane.quad ?? BrowserWindow().quad
+            vertices += music?.panel.pane.quad ?? BrowserWindow().quad
+            vertices += lock?.panel.pane.quad ?? BrowserWindow().quad   // 23
+            vertices += media?.grid.pane.quad ?? BrowserWindow().quad    // 24
+            vertices += places?.panel.pane.quad ?? BrowserWindow().quad  // 25
+            while quadBuffers.count < 3 { quadBuffers.append(device.makeBuffer(length: 65536, options: .storageModeShared)!) }
             quadBufferIndex = (quadBufferIndex + 1) % quadBuffers.count
             let buffer = quadBuffers[quadBufferIndex]
             vertices.withUnsafeBytes { buffer.contents().copyMemory(from: $0.baseAddress!, byteCount: $0.count) }

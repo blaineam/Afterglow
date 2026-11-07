@@ -35,6 +35,7 @@ final class Toolbar {
     var onRecentre: (() -> Void)?
     var onCloseApp: (() -> Void)?
     var onRecord: ((Int) -> Void)?
+    var onMore: (() -> Void)?
     var isRecording: () -> Bool = { false }
 
     init(device: MTLDevice, settings: Settings) {
@@ -134,7 +135,7 @@ final class Toolbar {
         case "record:0": onRecord?(0)
         case "record:1": onRecord?(1)
         case "recentre": onRecentre?()
-        case "more": menuOpen = true
+        case "more": if let onMore { onMore() } else { menuOpen = true }
         case "closemenu": menuOpen = false
         case "closeapp": onCloseApp?(); menuOpen = false
         case "minus:renderScale": settings.renderScalePercent = max(25, settings.renderScalePercent - 10)

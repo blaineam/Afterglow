@@ -26,6 +26,8 @@
 	<string>Afterglow uses the camera to follow your head and hands, and to show the room around you.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Afterglow shows the photos and videos in your library through the viewer: spatial photos in 3D, panoramas and 360 stills all around you.</string>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>Afterglow shows and controls what Apple Music is playing, so you can run your music from inside the viewer.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Afterglow listens only while you hold the dictate button, to type what you say into the browser.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>

@@ -258,6 +258,31 @@ heading taken as straight ahead), the camera sits at the origin, and the hands r
 but without LiDAR, so they are placed by the flat fit at the learned palm size and the depth
 guards on the pinch are off. The 6DoF wide mode (`dof 6`, the default) is unchanged.
 
+## Windows, Home, settings, lock, music
+
+- **Windows** (`Home/WindowManager.swift`): every app is a window in the scene with a title bar
+  above its pane: a move mode (✥, the window follows the gaze until the next select), size
+  steps (− +, five widths from 0.8 to 2.6 m), minimize (▁, to a chip on the dock) and close (✕);
+  holding a pinch on the title drags the window at the distance it was grabbed. Several windows
+  are open at once; new ones hang 40° to the right of the last, round the user. The browser,
+  media, files, games, places, settings and music are all windows.
+- **Home** (`HomeMenu`): the toolbar's More opens the Home window, tiles for every app (a dot on
+  the open ones), a lock button; launching closes Home.
+- **Settings** (`Home/SettingsWindow.swift`): render scale, frame rate, browser text, hand rate,
+  head prediction as rows with − and +; passthrough, hands, 6DoF/3DoF, surfaces, occlusion and
+  the passcode as toggles.
+- **Lock** (`Home/AppLock.swift`): a six-digit passcode kept as `salt$hash` in the Keychain (the
+  Unity app's format); asked for at launch, after a minute in the background, and when the
+  viewer comes off, which the motion sensors tell: the phone laid flat for two seconds, or held
+  still for thirty. While locked only the keypad draws and takes the gaze. Set and removed from
+  Settings; the Home menu locks on demand.
+- **Music** (`Home/MusicApp.swift`): Apple Music through the system player: what is playing with
+  its artwork, play, pause, next and previous. No MusicKit authorization is needed to drive the
+  system player.
+- **Branding**: the bundle id is now `com.wemiller.afterglow`, the same as the Unity app's, so
+  installing the native app replaces it on the phone; the icon is the Unity app's
+  (`Assets/_Project/Branding/AppIcon.png`) in an asset catalog; version 2.0.0.
+
 ## Build and run
 
 ```sh
@@ -300,7 +325,7 @@ screen shows a control strip for the first four, whose values are kept between r
 | `ultraTest` | 0 | an experiment: open the ultra-wide through AVFoundation this many seconds in and log what ARKit does (it stops) |
 | `web`, `url`, `textScale` | 1, –, 150 | the browser open at launch, a page to open, the page zoom in percent |
 | `surfaces`, `occlusion` | 0, 1 | scan and show the room's surfaces; hide placed things behind the real room (LiDAR, 6DoF, passthrough) |
-| `actions` | – | a test script: `wait N; press <button>; type <text>; key <Backspace\|Clear\|Enter>; look <yaw> <pitch>; tap; dump; screenshot; immersive; end; js <expr>; record <eye>; fakeplanes; fakehand <1\|0\|punch\|off>` |
+| `actions` | – | a test script: `wait N; press <button>; type <text>; key <Backspace\|Clear\|Enter>; look <yaw> <pitch>; tap; dump; screenshot; immersive; end; js <expr>; record <eye>; fakeplanes; fakehand <1\|0\|punch\|off>; open <window>; lock; press win:<window>:<move\|larger\|smaller\|minimize\|close>` |
 | `cold` | 0 | 1 vouches the phone is cold, so `[Thermal]` times the run from cold despite a recent run |
 | `hands`, `handHz`, `handDepth`, `showHands` | 1, 20, 1, 1 | hand tracking on, its image rate, LiDAR depth for the hands, the hands drawn |
 
@@ -347,8 +372,8 @@ ios-native/
   Afterglow/Hands/            HandTracker (Vision), HandGeometry, OneEuroFilter, PinchDetector, HandOverlay + GrabDemo
   Afterglow/Browser/          Browser, WebTab, WebBridge, BrowserWindow, Panels (chrome + keyboard), BrowserStore, CredentialStore, web/afterglow-helper.js
   Afterglow/Media/            MediaLibrary (Photos), VideoPlayer, MediaApp (grids, viewer, formats)
-  Afterglow/Home/             Toolbar (quick toggles, recent apps, the menu with the settings)
-  Afterglow/Room/             RoomModel (surfaces, floor), PlacesApp (environments)
+  Afterglow/Home/             Toolbar (dock), WindowManager + HomeMenu, SettingsWindow, AppLock, MusicApp
+  Afterglow/Room/             RoomModel (surfaces, floor), PlacesApp (environments), SkyboxGenerator (Skybox AI)
   Afterglow/Capture/          EyeRecorder (one eye to a movie), ExternalDisplay (a TV gets the left eye flat)
   Afterglow/Games/            GameHost, Games (Paint, Blobs, Vacuum, Toys, Golf, Ride, Portal), RhythmGame (+ Synth)
   Afterglow/Input/            HeadsetTap, Dictation, Controllers (GameController pads)

@@ -205,8 +205,15 @@ foundation at all. The honest picture:
   gravity and surface collisions, putting golf, a grid flight, the portal), each run by script in
   the Simulator with a synthetic hand; then the rhythm game on a built-in synthesiser's beat, and
   controllers through the GameController framework (A select, B back, sticks scroll and look,
-  motion kept for a 3DoF pointer). Still to come: MusicKit for the rhythm game, 3D models in the
-  toy box, the detailed environments, WebXR AR features, and everything above on the phone.
+  motion kept for a 3DoF pointer).
+- **Windows, Home, settings, lock, music, branding built 2026-11-06 evening** (the owner's
+  second list): a window manager with title bars (move, size, minimize, close), several windows
+  at once, a Home menu, a settings window, the passcode lock with headset-removal detection,
+  Apple Music controls, the bundle id taken over from the Unity app with its icon; and any 360
+  photo from Photos, the Media folder or Documents/Environments as a place, with Skybox AI
+  generation behind an API key file. Still to come: the Apple Watch app (double tap as the
+  primary action), the games rebuilt as lit HD experiences with the toy box's wake-up button,
+  MusicKit for the rhythm game, WebXR AR features, and everything above on the phone.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the
@@ -247,6 +254,17 @@ works properly (passthrough already gives some of the AR feel). In the order to 
    like Joy-Cons. To check: iOS 16+ pairs Joy-Cons through the GameController framework; whether
    their motion data (`GCMotion`) comes through, as it does for DualSense and DualShock, decides
    between 3DoF arms and buttons only. No controller pairs to an iPhone with camera-tracked 6DoF.
+
+### Environments from AI photospheres (owner, 2026-11-06 evening)
+
+The drawn places read as 1980s CGI; the owner wants modern generated photospheres instead. The
+native app's pipeline for that: any fully 360 picture is a place (the Photos library's 360
+pictures, the Media folder, any bookmarked folder, and `Documents/Environments`, which file
+sharing exposes to Finder and the Files app), so panoramas from any generator drop in; and
+Places has a Generate button that asks the Blockade Labs Skybox AI service for one from a
+prompt when its API key is in `Documents/skybox-api-key.txt`. The drawn places stay as the
+offline fallback. Bundling a set of generated environments with the app is the next step once a
+generator the owner likes is chosen.
 
 ## Later
 
