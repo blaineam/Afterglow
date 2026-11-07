@@ -210,7 +210,9 @@ foundation at all. The honest picture:
   second list): a window manager with title bars (move, size, minimize, close), several windows
   at once, a Home menu, a settings window, the passcode lock with headset-removal detection,
   Apple Music controls, the bundle id taken over from the Unity app with its icon; and any 360
-  photo from Photos, the Media folder or Documents/Environments as a place, with AI photosphere
+  photo from Photos, the Media folder or Documents/Environments as a place, three real
+  photospheres bundled (a beach cottage at night, an evening meadow, a clear desert night), with
+  AI photosphere
   generation behind an API key file; the Apple Watch app (its double tap is the primary
   action, the crown scrolls) built the same evening, and the games rebuilt as lit experiences
   on a mesh scene (generated meshes, materials, one sun with a hemisphere, blob shadows, glow

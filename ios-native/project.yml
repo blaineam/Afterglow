@@ -32,6 +32,9 @@ targets:
         excludes:
           - "**/* 2.*"
       # The WebXR shim and the start page, shared with the Unity app as they are.
+      - path: Afterglow/Places
+        type: folder
+        buildPhase: resources
       - path: ../Assets/StreamingAssets/webxr/afterglow-webxr.js
         buildPhase: resources
       - path: ../Assets/StreamingAssets/webxr/index.html

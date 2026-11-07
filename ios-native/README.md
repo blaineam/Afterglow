@@ -190,6 +190,13 @@ phone.
   night), a desert (dunes, ripples), a beach (a sea with moving waves and foam), ruins (columns,
   flagstones), a cyberpunk city (lit towers, wet streets), the Moon (no air, the Earth hanging,
   craters) and Mars (butterscotch sky, red rock). Clouds drift and stars twinkle.
+- **Bundled photospheres** (`Afterglow/Places/`, copied into the app as a folder): real 360
+  pictures the owner chose, listed first among the 360 files in Places: a beach cottage at night
+  (an Insta360 photo), an evening meadow and a clear desert night under the Milky Way (two 4K
+  HDRIs tone-mapped from EXR with an ACES curve to sRGB). Each is a 4096×2048 JPEG at quality
+  85, 1–1.8 MB, so the app grows by 4.5 MB. To add one: drop a 2:1 JPEG into that folder and
+  regenerate the project; EXRs go through `Tools/exr_to_place.py` (OpenEXR, numpy and Pillow in a
+  venv), which takes an exposure multiplier.
 
 The Simulator proves the drawing with a synthetic floor and wall (`fakeplanes` in the test
 script); plane detection, the floor height and occlusion need the phone.

@@ -44,7 +44,8 @@ final class PlacesApp {
     /// bookmarked folder, then the Photos library's 360 pictures (by shape or the Spatial/360
     /// albums), newest first.
     func scan() async {
-        var found: [URL] = []
+        // The photospheres shipped in the app come first, then the user's own.
+        var found: [URL] = (Bundle.main.urls(forResourcesWithExtension: "jpg", subdirectory: "Places") ?? []).sorted { $0.lastPathComponent < $1.lastPathComponent }
         let environments = SkyboxGenerator.environmentsFolder
         let envFolder = FileSource.Folder(id: "environments", name: "Environments", url: environments, bookmark: nil)
         for folder in [envFolder] + files.folders {
@@ -84,7 +85,7 @@ final class PlacesApp {
         }
         b.append(.init(id: "night", rect: CGRect(x: 0.75, y: 0.60, width: 0.22, height: 0.17), label: night ? "🌙 Night" : "☀️ Day", wide: true))
         // The 360 pictures, four a row, paged; a generate button and a rescan.
-        let all: [(String, String)] = panoramas.map { ("pano:" + $0.path, String($0.deletingPathExtension().lastPathComponent.prefix(14))) }
+        let all: [(String, String)] = panoramas.map { ("pano:" + $0.path, String($0.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "-", with: " ").prefix(16))) }
             + libraryItems.map { ("lib:" + $0.id, "📷 " + String($0.title.prefix(12))) }
         let perPage = 4
         let shown = all.dropFirst(page * perPage).prefix(perPage)
@@ -100,6 +101,12 @@ final class PlacesApp {
         b.append(.init(id: "generate", rect: CGRect(x: 0.26, y: 0.95, width: 0.36, height: 0.045), label: generating ? generatorStatus : "✨ Generate a place (AI)", wide: true))
         b.append(.init(id: "rescan", rect: CGRect(x: 0.64, y: 0.95, width: 0.33, height: 0.045), label: "↻ Rescan 360 photos", wide: true))
         panel.set(buttons: b, version: "places|\(choice)|\(night)|\(panoramas.count)|\(libraryItems.count)|\(page)|\(generating)|\(generatorStatus)")
+    }
+
+    /// The test script: the first 360 file whose name contains `name` becomes the surroundings.
+    func choose(named name: String) {
+        if let url = panoramas.first(where: { $0.lastPathComponent.localizedCaseInsensitiveContains(name) }) { _ = press("pano:" + url.path) }
+        else { log("[Places] No 360 file named like \(name) among \(panoramas.count)") }
     }
 
     func press(_ id: String) -> Bool {

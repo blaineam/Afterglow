@@ -421,6 +421,7 @@ final class Renderer {
             else { fakeHand = (argument == "1", 0) }
         case "open": if let kind = WindowKind(rawValue: argument) { launch(kind) }
         case "lock": lock?.lock(reason: "the script")
+        case "place": places?.choose(named: argument)
         case "fakeplanes": (source as? ARController)?.room.addFake(floorY: floorHeight); settings.surfaces = true
         case "js":
             browser?.current?.webView.evaluateJavaScript(argument) { result, error in

@@ -15,6 +15,7 @@
 		15ABF46890760A0AF897089C /* AfterglowWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C733774A6D18BA201F8F99F1 /* AfterglowWatchApp.swift */; };
 		16D3E9D0732259261E2D92C5 /* PosePredictor.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9966FF18394C15E0D6C282F /* PosePredictor.swift */; };
 		1C7E6B56FEE2873026D56C48 /* RhythmGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F6B9BCCCC55995285EE0920 /* RhythmGame.swift */; };
+		21ED85F6B9E48ADF702FFA39 /* beach-cottage-night.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 8796DF6115EB58EFFCE33BF6 /* beach-cottage-night.jpg */; };
 		236DFF0648D3937CF4BA8D85 /* WindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A831ACB0D368CC926A366F /* WindowManager.swift */; };
 		347582F364588BCF278B1C27 /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E2E34385880FD6215E765AF /* AppLock.swift */; };
 		348FA203915A0E073B48490F /* afterglow-webxr.js in Resources */ = {isa = PBXBuildFile; fileRef = 1AA30D699725082AF000DBAB /* afterglow-webxr.js */; };
@@ -24,6 +25,7 @@
 		41D13DAC96C560971D3E2F8C /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE734763626DCDC395851D92 /* CredentialStore.swift */; };
 		44349A8E8C2D2B5B72308FA2 /* FileSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9E0657D69D500D52FC6B5D /* FileSource.swift */; };
 		4752687B06DCC27E53D2DE95 /* LensDistortionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */; };
+		5EEE72D16F54283324E12570 /* Places in Resources */ = {isa = PBXBuildFile; fileRef = E34AF1523B2C160E1CAD5784 /* Places */; };
 		5FADCF4942F922DF8FD0C5C4 /* HandOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7854AEB3ED92FB2970560611 /* HandOverlay.swift */; };
 		63D96A7059EA72FC002BF7E8 /* GameHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5703D6F0702885C2F804B15B /* GameHost.swift */; };
 		75ADA160809141FED2BF671A /* ExternalDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F1932938E01769D5BD70302 /* ExternalDisplay.swift */; };
@@ -54,10 +56,12 @@
 		C803CA1BEC03B79551EFB51B /* UltraWideProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */; };
 		C98279B37E7AA0E328071EA7 /* MusicApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2DC482C4113CBF72B365D3 /* MusicApp.swift */; };
 		CD88B09669D877C78226AE06 /* CameraSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D94EC27CAA1FF1943486BB0 /* CameraSource.swift */; };
+		D151E7F53F6F570BD5827F0C /* evening-meadow.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E430EDBD572B0C5A3B147DBA /* evening-meadow.jpg */; };
 		D2DF1EF2F8AE43E483DE4DA9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1DF1BAF17D795352DAC505E /* Assets.xcassets */; };
 		D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */; };
 		D9D3FFB7F662E475F947FD3C /* EyeRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCEC5C5D9ABB975443C7DE91 /* EyeRecorder.swift */; };
 		DD58B4FD2C93E71F18D6592E /* Games.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A39A4CC8DC935824223E5A /* Games.swift */; };
+		DE359C4BB4ED9F7CD98C51A3 /* clear-night.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 16BBDD1B2CF15D129C4B076F /* clear-night.jpg */; };
 		E13FF8F6F98AF4B5D65CBB41 /* SkyboxGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45D18B331C2B01FABE57BF49 /* SkyboxGenerator.swift */; };
 		E1962322F97DB95D45A90270 /* HeadsetTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87C4D44511F04B6AD7D43D31 /* HeadsetTap.swift */; };
 		E1F20C8F70E32B1C44AA3A59 /* ScreenMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F27D509791361AD2011E47 /* ScreenMetrics.swift */; };
@@ -111,6 +115,7 @@
 		12EF0275572665780B091BD3 /* HandGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandGeometry.swift; sourceTree = "<group>"; };
 		135AAF215BBE3C9874DB7911 /* HandTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandTracker.swift; sourceTree = "<group>"; };
 		1558F78E920E5997115FF985 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		16BBDD1B2CF15D129C4B076F /* clear-night.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "clear-night.jpg"; sourceTree = "<group>"; };
 		1AA30D699725082AF000DBAB /* afterglow-webxr.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "afterglow-webxr.js"; sourceTree = "<group>"; };
 		1E2E34385880FD6215E765AF /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
 		1F1932938E01769D5BD70302 /* ExternalDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalDisplay.swift; sourceTree = "<group>"; };
@@ -134,6 +139,7 @@
 		7854AEB3ED92FB2970560611 /* HandOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandOverlay.swift; sourceTree = "<group>"; };
 		7E2DC482C4113CBF72B365D3 /* MusicApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicApp.swift; sourceTree = "<group>"; };
 		7F6B9BCCCC55995285EE0920 /* RhythmGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RhythmGame.swift; sourceTree = "<group>"; };
+		8796DF6115EB58EFFCE33BF6 /* beach-cottage-night.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "beach-cottage-night.jpg"; sourceTree = "<group>"; };
 		87C4D44511F04B6AD7D43D31 /* HeadsetTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadsetTap.swift; sourceTree = "<group>"; };
 		937E65EAEBF6C26F50ED3B34 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		959D50A1EB5EED9EC6FE9AF1 /* MediaMetadataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaMetadataTests.swift; sourceTree = "<group>"; };
@@ -163,7 +169,9 @@
 		D97890D6EB3536CA74C71E09 /* SessionLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLog.swift; sourceTree = "<group>"; };
 		DCEC5C5D9ABB975443C7DE91 /* EyeRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EyeRecorder.swift; sourceTree = "<group>"; };
 		DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensDistortionTests.swift; sourceTree = "<group>"; };
+		E34AF1523B2C160E1CAD5784 /* Places */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Places; path = Afterglow/Places; sourceTree = SOURCE_ROOT; };
 		E35E9E8510A0D1E59C07510F /* Controllers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Controllers.swift; sourceTree = "<group>"; };
+		E430EDBD572B0C5A3B147DBA /* evening-meadow.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "evening-meadow.jpg"; sourceTree = "<group>"; };
 		E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UltraWideProbe.swift; sourceTree = "<group>"; };
 		ECB85CC898B2F8A77E2B54A9 /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
 		F03EB15525A4EC358532B829 /* UltraWideController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UltraWideController.swift; sourceTree = "<group>"; };
@@ -278,11 +286,22 @@
 			path = Stereo;
 			sourceTree = "<group>";
 		};
+		97E0267EAFA9F7BC847C9490 /* Places */ = {
+			isa = PBXGroup;
+			children = (
+				8796DF6115EB58EFFCE33BF6 /* beach-cottage-night.jpg */,
+				16BBDD1B2CF15D129C4B076F /* clear-night.jpg */,
+				E430EDBD572B0C5A3B147DBA /* evening-meadow.jpg */,
+			);
+			path = Places;
+			sourceTree = "<group>";
+		};
 		9BFC2DC2C15F790660B215F4 /* Afterglow */ = {
 			isa = PBXGroup;
 			children = (
 				B1DF1BAF17D795352DAC505E /* Assets.xcassets */,
 				937E65EAEBF6C26F50ED3B34 /* Info.plist */,
+				E34AF1523B2C160E1CAD5784 /* Places */,
 				6977E4302D248A13F4C272D6 /* App */,
 				FEF5E09E6BBB32ED16C89585 /* Browser */,
 				EE23577D125C45ED3D4430A9 /* Capture */,
@@ -292,6 +311,7 @@
 				6A349F2B742FA042961ED828 /* Input */,
 				D8C250DD6830DB4EB6EA5DA9 /* Log */,
 				D089D7A15A6C2FEA7F5D1C46 /* Media */,
+				97E0267EAFA9F7BC847C9490 /* Places */,
 				F7AE949468DC1E095BBA8ECB /* Render */,
 				73AEA6FE99EBDFAACF35437F /* Room */,
 				86E626DEA1D101755C49D099 /* Stereo */,
@@ -528,8 +548,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				D2DF1EF2F8AE43E483DE4DA9 /* Assets.xcassets in Resources */,
+				5EEE72D16F54283324E12570 /* Places in Resources */,
 				85FC0F60F815AACB5EB653D6 /* afterglow-helper.js in Resources */,
 				348FA203915A0E073B48490F /* afterglow-webxr.js in Resources */,
+				21ED85F6B9E48ADF702FFA39 /* beach-cottage-night.jpg in Resources */,
+				DE359C4BB4ED9F7CD98C51A3 /* clear-night.jpg in Resources */,
+				D151E7F53F6F570BD5827F0C /* evening-meadow.jpg in Resources */,
 				A60D870018233AC8AD7E288C /* index.html in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
