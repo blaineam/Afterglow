@@ -16,6 +16,10 @@ struct CapturedFrame: @unchecked Sendable {
     // cache entries are retained, so they travel with the frame.
     let lumaRef: CVMetalTexture
     let chromaRef: CVMetalTexture
+    /// The LiDAR scene depth and confidence as textures, for occlusion; nil without.
+    var depth: MTLTexture? = nil
+    var depthConfidence: MTLTexture? = nil
+    var depthRefs: [CVMetalTexture] = []
     // And the pixel buffer itself: ARKit recycles it for a new capture once its frame is released,
     // which showed as coloured static in passthrough (2026-11-06).
     let pixelBuffer: CVPixelBuffer
@@ -45,6 +49,10 @@ final class ARController: NSObject, ARSessionDelegate, CameraSource, @unchecked 
     private let wantsDepth: Bool
     /// The hand tracker fed with every frame; nil with hands off.
     let hands: HandTracker?
+    /// The surfaces found.
+    let room = RoomModel()
+    /// Whether plane detection runs (a scan); it costs CPU, so only while wanted.
+    private(set) var scanning = false
     private(set) var chosenFormatText = "none"
     private(set) var cameraName = "wide"
 
@@ -69,7 +77,7 @@ final class ARController: NSObject, ARSessionDelegate, CameraSource, @unchecked 
             return
         }
         let configuration = ARWorldTrackingConfiguration()
-        configuration.planeDetection = []
+        configuration.planeDetection = scanning ? [.horizontal, .vertical] : []
         configuration.isLightEstimationEnabled = false
         configuration.environmentTexturing = .none
         configuration.worldAlignment = .gravity
@@ -93,6 +101,19 @@ final class ARController: NSObject, ARSessionDelegate, CameraSource, @unchecked 
         predictor.stop()
         log("[AR] World tracking stopped")
     }
+
+    /// Turns plane detection on or off; the session keeps tracking across the change.
+    func setScanning(_ on: Bool) {
+        guard on != scanning, let configuration = session.configuration as? ARWorldTrackingConfiguration else { scanning = on; return }
+        scanning = on
+        configuration.planeDetection = on ? [.horizontal, .vertical] : []
+        session.run(configuration)
+        log("[Room] Scan \(on ? "started" : "ended")")
+    }
+
+    func session(_ session: ARSession, didAdd anchors: [ARAnchor]) { room.update(anchors) }
+    func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) { room.update(anchors) }
+    func session(_ session: ARSession, didRemove anchors: [ARAnchor]) { room.remove(anchors) }
 
     func predictedCameraTransform(at time: Double) -> simd_float4x4? {
         guard let frame = latestFrame else { return nil }
@@ -169,6 +190,17 @@ final class ARController: NSObject, ARSessionDelegate, CameraSource, @unchecked 
         }
         // Entries the renderer no longer holds go back to the pool.
         if let textureCache { CVMetalTextureCacheFlush(textureCache, 0) }
+        if var c = captured, let sceneDepth = frame.sceneDepth, let cache = textureCache,
+           let d = texture(from: sceneDepth.depthMap, plane: 0, format: .r32Float, cache: cache) {
+            c.depth = d.texture
+            c.depthRefs = [d.ref]
+            if let confidenceMap = sceneDepth.confidenceMap, let cf = texture(from: confidenceMap, plane: 0, format: .r8Uint, cache: cache) {
+                c.depthConfidence = cf.texture
+                c.depthRefs.append(cf.ref)
+            }
+            captured = c
+        }
+        room.logStatus(now: frame.timestamp)
         lock.lock()
         if let captured { latest = captured }
         frameCount += 1

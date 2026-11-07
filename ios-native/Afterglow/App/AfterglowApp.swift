@@ -41,4 +41,26 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
                      supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
         .landscapeRight
     }
+
+    // A screen the phone mirrors to (an Apple TV over AirPlay) arrives as a scene of its own:
+    // ExternalDisplay shows the left eye flat on it.
+    func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession,
+                     options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+        let configuration = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
+        if connectingSceneSession.role == .windowExternalDisplayNonInteractive {
+            configuration.delegateClass = ExternalSceneDelegate.self
+        }
+        return configuration
+    }
+}
+
+final class ExternalSceneDelegate: NSObject, UIWindowSceneDelegate {
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options: UIScene.ConnectionOptions) {
+        guard let windowScene = scene as? UIWindowScene, let device = MTLCreateSystemDefaultDevice() else { return }
+        ExternalDisplay.shared.connect(to: windowScene, device: device)
+    }
+
+    func sceneDidDisconnect(_ scene: UIScene) {
+        ExternalDisplay.shared.disconnect()
+    }
 }

@@ -218,6 +218,87 @@ fragment float4 overlayFragment(OverlayOut in [[stage_in]]) {
     return in.color;
 }
 
+// ---- Detected surfaces (the room) ----------------------------------------------------------
+
+struct SurfaceOut {
+    float4 position [[position]];
+    uint layer [[render_target_array_index]];
+    float3 worldPos;
+    float2 local;
+    float2 extent;
+};
+
+vertex SurfaceOut surfaceVertex(uint vid [[vertex_id]], ushort amp [[amplification_id]],
+                                const device SurfaceVertex *vertices [[buffer(1)]],
+                                constant FrameUniforms &frame [[buffer(0)]]) {
+    SurfaceVertex v = vertices[vid];
+    SurfaceOut out;
+    out.position = frame.eyes[amp].viewProjection * float4(v.position, 1);
+    out.layer = 0;
+    out.worldPos = v.position;
+    out.local = v.local;
+    out.extent = v.extent;
+    return out;
+}
+
+// Real surfaces marked the way the Unity app marks them: small X marks on a grid, the plane's
+// edges faded, a faint fill, and a soft highlight spot where the gaze meets a surface.
+fragment float4 surfaceFragment(SurfaceOut in [[stage_in]], constant SurfaceUniforms &u [[buffer(2)]]) {
+    float2 cell = fract(in.local / u.spacing + 0.5) - 0.5;      // -0.5..0.5 within a cell
+    float2 p = abs(cell * u.spacing);                           // metres from the cell's centre
+    float arm = 0.035;
+    // An X: the distance to the diagonal, anti-aliased by the pixel's footprint so a mark is
+    // never thinner than a pixel however far the surface is.
+    float d = abs(p.x - p.y) * 0.7071;
+    float footprint = max(fwidth(in.local.x), fwidth(in.local.y));
+    float width = max(0.006, footprint * 0.8);
+    float mark = (1.0 - smoothstep(width, width + footprint, d)) * (max(p.x, p.y) < arm ? 1.0 : 0.0);
+    // The edge fade: within 0.4 m of the plane's edge the marks dim.
+    float2 toEdge = in.extent - abs(in.local);
+    float edge = clamp(min(toEdge.x, toEdge.y) / 0.4, 0.0, 1.0);
+    float fill = 0.06;
+    float3 color = u.color.rgb;
+    float alpha = (fill + mark * 0.9) * edge * u.appear;
+    if (u.gazePoint.w > 0.5) {
+        float spot = 1.0 - smoothstep(0.0, 0.25, length(in.worldPos - u.gazePoint.xyz));
+        color = mix(color, u.highlightColor.rgb, spot);
+        alpha += spot * (0.16 + mark * 0.4) * edge;
+    }
+    return float4(color * alpha, alpha);
+}
+
+// ---- Occlusion by the real room ------------------------------------------------------------
+
+// Writes the LiDAR depth into the eye's depth buffer: each pixel's direction is taken into the
+// camera's axes, the depth map sampled there, and the point placed along the ray, so anything
+// virtual drawn after with a depth test hides behind real walls, tables and hands.
+struct DepthOut { float depth [[depth(any)]]; };
+
+fragment DepthOut occlusionFragment(SceneOut in [[stage_in]], constant FrameUniforms &frame [[buffer(0)]],
+                                    texture2d<float> depthMap [[texture(0)]],
+                                    texture2d<uint> confidence [[texture(1)]]) {
+    constexpr sampler s(filter::linear, address::clamp_to_edge);
+    float3 dir = worldDirection(in.ndc, frame.eyes[in.eye]);
+    float3 inCamera = (frame.captureFromWorld * float4(dir, 0)).xyz;
+    DepthOut out;
+    out.depth = 1.0;
+    if (inCamera.z >= -1e-4) return out;
+    float2 tangent = float2(inCamera.x, -inCamera.y) / -inCamera.z;
+    float2 uv = tangent * frame.captureIntrinsics.xy + frame.captureIntrinsics.zw;
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return out;
+    uint c = confidence.read(uint2(uv * float2(confidence.get_width(), confidence.get_height()))).r;
+    if (c < 1) return out;
+    float z = depthMap.sample(s, uv).r;              // metres along the camera's axis
+    if (z <= 0.05) return out;
+    // The point in the eye's clip space: along the eye's ray by the same distance (the eye and the
+    // camera sit a few centimetres apart, which at room distances is below the depth map's grain).
+    float3 eye = frame.eyes[in.eye].eyePosition.xyz;
+    float3 world = eye + dir * (z / -inCamera.z);
+    float4 clip = frame.eyes[in.eye].viewProjection * float4(world, 1);
+    out.depth = clamp(clip.z / clip.w, 0.0, 1.0);
+    return out;
+}
+
 // ---- Media projections (360, 180, fisheye, cylinder) --------------------------------------
 
 // Drawn as a full-screen pass like the sky: each pixel's world direction is turned into a
@@ -352,3 +433,23 @@ fragment float4 distortionFragment(DistortionOut in [[stage_in]],
 }
 
 // The screen between the two eyes' meshes, and outside them, is cleared black by the pass itself.
+
+// ---- A flat copy of one eye (casting to a TV) ---------------------------------------------
+
+struct BlitOut {
+    float4 position [[position]];
+    float2 uv;
+};
+
+vertex BlitOut blitVertex(uint vid [[vertex_id]]) {
+    const float2 corners[3] = { float2(-1, -1), float2(3, -1), float2(-1, 3) };
+    BlitOut out;
+    out.position = float4(corners[vid], 0, 1);
+    out.uv = float2((corners[vid].x + 1) * 0.5, 1.0 - (corners[vid].y + 1) * 0.5);
+    return out;
+}
+
+fragment float4 blitFragment(BlitOut in [[stage_in]], texture2d_array<float> eyes [[texture(0)]], constant uint &slice [[buffer(0)]]) {
+    constexpr sampler s(filter::linear, address::clamp_to_edge);
+    return float4(eyes.sample(s, in.uv, slice).rgb, 1.0);
+}

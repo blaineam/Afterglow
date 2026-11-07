@@ -23,7 +23,25 @@ final class Renderer {
     private var quadPipeline: MTLRenderPipelineState!
     private var mediaPipeline: MTLRenderPipelineState!
     private var mediaQuadPipeline: MTLRenderPipelineState!
+    private var surfacePipeline: MTLRenderPipelineState!
+    private var occlusionPipeline: MTLRenderPipelineState!
+    private var overlayDepthPipeline: MTLRenderPipelineState!
+    private var depthTexture: MTLTexture?
+    private var depthTestState: MTLDepthStencilState!
+    private var depthWriteState: MTLDepthStencilState!
+    private var depthNoneState: MTLDepthStencilState!
+    private var surfaceBuffers: [MTLBuffer] = []
+    private var surfaceBufferIndex = 0
     private(set) var media: MediaApp?
+    private(set) var places: PlacesApp?
+    private var blitPipeline: MTLRenderPipelineState!
+    private(set) var recorder: EyeRecorder?
+    private var castEye = 0
+    private var surfaceDrawLogged = false
+    private var environment = PlacesApp.Choice.synthwave
+    private var panoramaKeep: MTLTexture?
+    private var overlayUnoccludedStart = 0
+    private var surfacesAppear: Float = 0
     private var quadBuffers: [MTLBuffer] = []
     private var quadBufferIndex = 0
     /// The browser and its panels in the scene; nil until opened.
@@ -135,6 +153,8 @@ final class Renderer {
         toolbar.onLaunch = { [weak self] app in self?.launch(app) }
         toolbar.onRecentre = { [weak self] in self?.recentre() }
         toolbar.onCloseApp = { [weak self] in self?.closeApp() }
+        toolbar.onRecord = { [weak self] eye in self?.toggleRecording(eye: eye) }
+        toolbar.isRecording = { [weak self] in self?.isRecording ?? false }
         toolbar.place(ahead: lastHead)
         self.toolbar = toolbar
         source.predictor.onTap = { [weak self] kind in
@@ -179,6 +199,16 @@ final class Renderer {
             if app == .files { media.openFiles(head: lastHead) } else { media.open(head: lastHead) }
             self.media = media
             openApp = app
+        case .environments:
+            let places = PlacesApp(device: device)
+            places.open(head: lastHead)
+            places.onChoice = { [weak self] choice in
+                self?.environment = choice
+                self?.settings.passthrough = (choice == .room)
+                if case .room = choice { self?.settings.surfaces = true }
+            }
+            self.places = places
+            openApp = .environments
         default:
             log("[Home] \(app.rawValue) is not built yet")
         }
@@ -188,6 +218,7 @@ final class Renderer {
     func closeApp() {
         if openApp == .browser { settings.browserOpen = false }
         if openApp == .media || openApp == .files { media?.close(); media = nil }
+        if openApp == .environments { places = nil }
         openApp = nil
     }
 
@@ -198,6 +229,20 @@ final class Renderer {
         layoutPanels()
         log("[Home] Recentred")
     }
+
+    /// Starts or stops recording one eye to a movie in Documents/Recordings.
+    func toggleRecording(eye: Int) {
+        if let recorder, recorder.isRecording {
+            recorder.stop(saveToPhotos: true)
+            return
+        }
+        guard let eyeTexture else { return }
+        let recorder = EyeRecorder(device: device)
+        recorder.start(eye: eye, width: eyeTexture.width, height: eyeTexture.height, frameRate: settings.targetFrameRate)
+        self.recorder = recorder
+    }
+
+    var isRecording: Bool { recorder?.isRecording ?? false }
 
     /// A tap on the screen (desk mode, or the viewer's button): a select.
     func screenTapped() { tapRequests.value = 2 }
@@ -237,6 +282,7 @@ final class Renderer {
             }
             else if let chrome, chrome.panel.buttons.contains(where: { $0.id == argument }) { pressPanel(chrome.panel, id: argument) }
             else if let media, (media.screen == .viewing ? media.controls : media.grid).buttons.contains(where: { $0.id == argument }) { media.press(argument) }
+            else if let places, places.panel.buttons.contains(where: { $0.id == argument }) { if places.press(argument) { settings.surfaces.toggle() } }
             else if let toolbar { toolbar.press(argument) }
         case "type": if let media, media.isFiles { media.type(argument) } else { browser?.type(argument) }
         case "key": if let media, media.isFiles { media.key(argument) } else { browser?.key(argument) }
@@ -253,6 +299,8 @@ final class Renderer {
                 + "if(b){b.click();return 'clicked '+(b.textContent||'').trim().slice(0,40);}return 'no button';})()"
             browser?.current?.webView.evaluateJavaScript(script) { result, _ in log("[Actions] immersive: \(result ?? "?")") }
         case "end": browser?.endSession()
+        case "record": toggleRecording(eye: Int(argument) ?? 0)
+        case "fakeplanes": (source as? ARController)?.room.addFake(floorY: floorHeight); settings.surfaces = true
         case "js":
             browser?.current?.webView.evaluateJavaScript(argument) { result, error in
                 log("[Actions] js: \(result.map { "\($0)" } ?? error?.localizedDescription ?? "nil")")
@@ -309,11 +357,20 @@ final class Renderer {
     }
 
     private func buildPipelines() throws {
-        func scene(_ vertex: String, _ fragment: String) throws -> MTLRenderPipelineState {
+        func scene(_ vertex: String, _ fragment: String, blend: Bool = false, depthOnly: Bool = false) throws -> MTLRenderPipelineState {
             let d = MTLRenderPipelineDescriptor()
             d.vertexFunction = library.makeFunction(name: vertex)
             d.fragmentFunction = library.makeFunction(name: fragment)
             d.colorAttachments[0].pixelFormat = .bgra8Unorm
+            d.depthAttachmentPixelFormat = .depth32Float
+            if depthOnly { d.colorAttachments[0].writeMask = [] }
+            if blend {
+                d.colorAttachments[0].isBlendingEnabled = true
+                d.colorAttachments[0].sourceRGBBlendFactor = .one
+                d.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
+                d.colorAttachments[0].sourceAlphaBlendFactor = .one
+                d.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
+            }
             if amplifies { d.maxVertexAmplificationCount = 2 }
             // Writing render_target_array_index needs the topology stated up front.
             d.inputPrimitiveTopology = .triangle
@@ -327,6 +384,27 @@ final class Renderer {
         quadPipeline = try scene("quadVertex", "quadFragment")
         mediaPipeline = try scene("fullscreenVertex", "mediaFragment")
         mediaQuadPipeline = try scene("quadVertex", "mediaQuadFragment")
+        surfacePipeline = try scene("surfaceVertex", "surfaceFragment", blend: true)
+        occlusionPipeline = try scene("fullscreenVertex", "occlusionFragment", depthOnly: true)
+        overlayDepthPipeline = try scene("overlayVertex", "overlayFragment")
+        let b = MTLRenderPipelineDescriptor()
+        b.vertexFunction = library.makeFunction(name: "blitVertex")
+        b.fragmentFunction = library.makeFunction(name: "blitFragment")
+        b.colorAttachments[0].pixelFormat = .bgra8Unorm
+        b.label = "blit"
+        blitPipeline = try device.makeRenderPipelineState(descriptor: b)
+        let test = MTLDepthStencilDescriptor()
+        test.depthCompareFunction = .lessEqual
+        test.isDepthWriteEnabled = true
+        depthTestState = device.makeDepthStencilState(descriptor: test)
+        let write = MTLDepthStencilDescriptor()
+        write.depthCompareFunction = .always
+        write.isDepthWriteEnabled = true
+        depthWriteState = device.makeDepthStencilState(descriptor: write)
+        let none = MTLDepthStencilDescriptor()
+        none.depthCompareFunction = .always
+        none.isDepthWriteEnabled = false
+        depthNoneState = device.makeDepthStencilState(descriptor: none)
 
         let d = MTLRenderPipelineDescriptor()
         d.vertexFunction = library.makeFunction(name: "distortionVertex")
@@ -388,6 +466,16 @@ final class Renderer {
         d.storageMode = .private
         eyeTexture = device.makeTexture(descriptor: d)
         eyeTexture?.label = "eyes"
+        let dd = MTLTextureDescriptor()
+        dd.textureType = .type2DArray
+        dd.arrayLength = 2
+        dd.pixelFormat = .depth32Float
+        dd.width = width
+        dd.height = height
+        dd.usage = .renderTarget
+        dd.storageMode = amplifies ? .memoryless : .private
+        depthTexture = device.makeTexture(descriptor: dd)
+        depthTexture?.label = "eye depth"
         eyeTextureScale = scale
         log(String(format: "[Stereo] Eye textures %dx%d each (render scale %.2f), two slices of one array", width, height, scale))
     }
@@ -424,7 +512,8 @@ final class Renderer {
             let pitch = simd_quatf(angle: deskPitch, axis: SIMD3(1, 0, 0))
             cameraInWorld = simd_float4x4(yaw * pitch)
         }
-        let step = Float(min(max(t2 - lastDrawTime, 0), 0.1)) / 0.5
+        let frameDt = Float(min(max(t2 - lastDrawTime, 0), 0.1))
+        let step = frameDt / 0.5
         lastDrawTime = t2
         let target: Float = settings.passthrough ? 1 : 0
         eyesAtCamera += min(max(target - eyesAtCamera, -step), step)
@@ -467,10 +556,6 @@ final class Renderer {
         var tracked: [TrackedHandState] = []
         if let hands = source.hands {
             tracked = hands.hands(at: predictTo)
-            let eyeMid = headInWorld.columns.3.xyz
-            if settings.showHandsLive {
-                for hand in tracked { overlay.addHand(hand, eye: eyeMid) }
-            }
             hands.hertz = settings.handHzLive
         }
         // Selects this frame: a pinch beginning, a screen tap, or a double tap on the viewer.
@@ -491,6 +576,12 @@ final class Renderer {
         if browser == nil {
             grabDemo.update(hands: tracked, time: predictTo)
             grabDemo.draw(into: &overlay)
+        }
+        // Everything before this point can hide behind the room; the hands and reticles cannot.
+        overlayUnoccludedStart = overlay.vertices.count
+        if settings.showHandsLive {
+            let eyeMid = headInWorld.columns.3.xyz
+            for hand in tracked { overlay.addHand(hand, eye: eyeMid) }
         }
         var quads: [(MTLBuffer?, MTLTexture, SIMD4<Float>, Int)] = []
         var toolbarQuads: [(MTLTexture, Int)] = []
@@ -514,6 +605,46 @@ final class Renderer {
                 let (panel, uv) = hit!
                 let at = panel.pane.centre + panel.pane.right * ((uv.x - 0.5) * panel.pane.widthMeters) + panel.pane.up * ((0.5 - uv.y) * panel.pane.heightMeters)
                 overlay.addSquare(at - forward * 0.01, size: 0.012, eye: origin, color: HandOverlay.pinchColor)
+            }
+        }
+        // Places: the panel, and the scan it asks for.
+        if let places {
+            let origin = headInWorld.columns.3.xyz
+            let forward = -headInWorld.columns.2.xyz
+            let hit = places.panel.pane.hit(origin: origin, direction: forward)
+            _ = places.panel.hover(hit?.uv)
+            if select, hit != nil, let id = places.panel.hovered {
+                if places.press(id) { settings.surfaces.toggle() }
+                select = false
+            }
+            places.render()
+            if let t = places.panel.texture { toolbarQuads.append((t, 6)) }
+            if let hit {
+                let at = places.panel.pane.centre + places.panel.pane.right * ((hit.uv.x - 0.5) * places.panel.pane.widthMeters) + places.panel.pane.up * ((0.5 - hit.uv.y) * places.panel.pane.heightMeters)
+                overlay.addSquare(at - forward * 0.01, size: 0.012, eye: origin, color: HandOverlay.pinchColor)
+            }
+        }
+        if let ar = source as? ARController { ar.setScanning(settings.surfaces) }
+        let room = (source as? ARController)?.room
+        surfacesAppear += (settings.surfaces ? 1 : -1) * frameDt / 0.6
+        surfacesAppear = min(max(surfacesAppear, 0), 1)
+        var surfaceBuffer: MTLBuffer?
+        var surfaceVertexCount = 0
+        if surfacesAppear > 0.01, let room {
+            var vertices: [SurfaceVertex] = []
+            for surface in room.all {
+                for i in surface.indices where Int(i) < surface.vertices.count { vertices.append(surface.vertices[Int(i)]) }
+            }
+            if !vertices.isEmpty {
+                let bytes = vertices.count * MemoryLayout<SurfaceVertex>.stride
+                while surfaceBuffers.count < 3 { surfaceBuffers.append(device.makeBuffer(length: 1 << 20, options: .storageModeShared)!) }
+                surfaceBufferIndex = (surfaceBufferIndex + 1) % surfaceBuffers.count
+                let buffer = surfaceBuffers[surfaceBufferIndex]
+                if bytes <= buffer.length {
+                    vertices.withUnsafeBytes { buffer.contents().copyMemory(from: $0.baseAddress!, byteCount: bytes) }
+                    surfaceBuffer = buffer
+                    surfaceVertexCount = vertices.count
+                }
             }
         }
         var mediaTextures: (picture: MTLTexture?, eyes: MTLTexture?) = (nil, nil)
@@ -582,7 +713,7 @@ final class Renderer {
             }
             if doubleTapPending && select { doubleTapPending = false }
             let gaze = browser.frame(head: headInWorld, hands: tracked, select: pageSelect || (select && browser.isImmersive), time: predictTo,
-                                     deltaTime: Float(min(max(t2 - lastDrawTime, 0), 0.1)))
+                                     deltaTime: frameDt)
             if !browser.isImmersive {
                 chrome.update(browser: browser)
                 chrome.render(typing: !browser.typed.isEmpty)
@@ -648,9 +779,14 @@ final class Renderer {
             scenePass.colorAttachments[0].loadAction = .clear
             scenePass.colorAttachments[0].storeAction = .store
             scenePass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+            scenePass.depthAttachment.texture = depthTexture
+            scenePass.depthAttachment.loadAction = .clear
+            scenePass.depthAttachment.storeAction = .dontCare
+            scenePass.depthAttachment.clearDepth = 1
             var passUniforms = uniforms
             if let slice {
                 scenePass.colorAttachments[0].slice = slice
+                scenePass.depthAttachment.slice = slice
                 // The shaders index the eyes by the amplification id, which is 0 here.
                 if slice == 1 { passUniforms.eyes.0 = uniforms.eyes.1 }
             } else {
@@ -665,11 +801,26 @@ final class Renderer {
             }
             encoder.setVertexBytes(&passUniforms, length: MemoryLayout<FrameUniforms>.stride, index: 0)
             encoder.setFragmentBytes(&passUniforms, length: MemoryLayout<FrameUniforms>.stride, index: 0)
+            encoder.setDepthStencilState(depthNoneState)
             if settings.passthrough, let frame {
                 encoder.setRenderPipelineState(passthroughPipeline)
                 encoder.setFragmentTexture(frame.luma, index: 0)
                 encoder.setFragmentTexture(frame.chroma, index: 1)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            } else if case .panorama = environment, let texture = places?.panoramaTexture ?? panoramaKeep {
+                var u = MediaUniforms()
+                let kind = places?.panoramaItem?.kind ?? .photo360
+                u.projection = Int32(kind == .panorama ? MediaProjectionCylinder.rawValue : MediaProjectionEquirect360.rawValue)
+                u.layout = Int32(MediaLayoutMono.rawValue)
+                u.span = kind == .panorama ? min(2 * .pi, max(.pi / 3, Float(texture.width) / Float(max(texture.height, 1)) * .pi / 3)) : 2 * .pi
+                u.height = tan(Float.pi / 6)
+                u.brightness = 1
+                encoder.setRenderPipelineState(mediaPipeline)
+                encoder.setFragmentBytes(&u, length: MemoryLayout<MediaUniforms>.stride, index: 1)
+                encoder.setFragmentTexture(texture, index: 0)
+                encoder.setFragmentTexture(eyeTexture, index: 1)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                panoramaKeep = texture
             } else if let media, media.isProjected, mediaTextures.picture != nil || mediaTextures.eyes != nil {
                 encoder.setRenderPipelineState(mediaPipeline)
                 encoder.setFragmentBytes(&mediaUniforms, length: MemoryLayout<MediaUniforms>.stride, index: 1)
@@ -682,6 +833,30 @@ final class Renderer {
                 encoder.setRenderPipelineState(floorPipeline)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
             }
+            // The real room's depth, so what follows can hide behind it; then its surfaces.
+            if settings.occlusion, settings.passthrough, let frame, let depth = frame.depth, let confidence = frame.depthConfidence {
+                encoder.setRenderPipelineState(occlusionPipeline)
+                encoder.setDepthStencilState(depthWriteState)
+                encoder.setFragmentTexture(depth, index: 0)
+                encoder.setFragmentTexture(confidence, index: 1)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+            }
+            if let surfaceBuffer, surfaceVertexCount > 0 {
+                if !surfaceDrawLogged { surfaceDrawLogged = true; log("[Room] Drawing \(surfaceVertexCount / 3) surface triangles") }
+                var su = SurfaceUniforms()
+                su.color = SIMD4(0.55, 0.85, 1, 1)
+                su.highlightColor = SIMD4(1, 0.8, 0.3, 1)
+                su.gazePoint = SIMD4(0, 0, 0, 0)
+                su.appear = surfacesAppear
+                su.spacing = 0.2
+                su.time = Float(t2 - launchTime)
+                encoder.setRenderPipelineState(surfacePipeline)
+                encoder.setDepthStencilState(depthNoneState)
+                encoder.setVertexBuffer(surfaceBuffer, offset: 0, index: 1)
+                encoder.setFragmentBytes(&su, length: MemoryLayout<SurfaceUniforms>.stride, index: 2)
+                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: surfaceVertexCount)
+            }
+            encoder.setDepthStencilState(depthNoneState)
             if let quadBuffer {
                 encoder.setRenderPipelineState(quadPipeline)
                 encoder.setVertexBuffer(quadBuffer, offset: 0, index: 1)
@@ -701,8 +876,17 @@ final class Renderer {
             }
             if let overlayBuffer {
                 encoder.setRenderPipelineState(overlayPipeline)
+                // Placed things hide behind the real room; the hands and the reticle do not (the
+                // LiDAR sees the hand itself, which would hide its own skeleton).
+                encoder.setDepthStencilState(settings.occlusion && settings.passthrough ? depthTestState : depthNoneState)
                 encoder.setVertexBuffer(overlayBuffer, offset: 0, index: 1)
-                encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: overlay.vertices.count)
+                if overlayUnoccludedStart > 0 {
+                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: overlayUnoccludedStart)
+                }
+                encoder.setDepthStencilState(depthNoneState)
+                if overlay.vertices.count > overlayUnoccludedStart {
+                    encoder.drawPrimitives(type: .triangle, vertexStart: overlayUnoccludedStart, vertexCount: overlay.vertices.count - overlayUnoccludedStart)
+                }
             }
             encoder.endEncoding()
         }
@@ -721,6 +905,14 @@ final class Renderer {
             encoder.drawIndexedPrimitives(type: .triangle, indexCount: indexCount, indexType: .uint32,
                                           indexBuffer: indexBuffer, indexBufferOffset: 0)
             encoder.endEncoding()
+        }
+
+        // A recording of one eye, and the flat copy for a mirrored screen.
+        if let recorder, recorder.isRecording {
+            recorder.capture(eyeTexture: eyeTexture, commandBuffer: commandBuffer, time: t2)
+        }
+        if ExternalDisplay.shared.isConnected {
+            ExternalDisplay.shared.present(eyeTexture: eyeTexture, eye: castEye, commandBuffer: commandBuffer, device: device, pipeline: blitPipeline)
         }
 
         let lastGpuMs = self.lastGpuMs

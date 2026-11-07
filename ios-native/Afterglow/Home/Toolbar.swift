@@ -34,6 +34,8 @@ final class Toolbar {
     var onLaunch: ((AppKind) -> Void)?
     var onRecentre: (() -> Void)?
     var onCloseApp: (() -> Void)?
+    var onRecord: ((Int) -> Void)?
+    var isRecording: () -> Bool = { false }
 
     init(device: MTLDevice, settings: Settings) {
         self.settings = settings
@@ -84,10 +86,11 @@ final class Toolbar {
         add("toggle:passthrough", settings.passthrough ? "👁 Room" : "👁 Scene", 0.11)
         add("toggle:hands", settings.showHands ? "✋ On" : "✋ Off", 0.09)
         add("toggle:dof", settings.degreesOfFreedom == 3 ? "3DoF" : "6DoF", 0.09)
+        add("toggle:surfaces", settings.surfaces ? "▦ On" : "▦ Off", 0.09)
         add("recentre", "⌖", 0.06)
         for app in recents.prefix(4) { add("app:\(app.rawValue)", app.label, 0.13) }
         add("more", "⋯ More", 0.11)
-        panel.set(buttons: buttons, version: "toolbar|\(settings.passthrough)|\(settings.showHands)|\(settings.degreesOfFreedom)|\(recents.map(\.rawValue).joined())")
+        panel.set(buttons: buttons, version: "toolbar|\(settings.passthrough)|\(settings.showHandsLive)|\(settings.degreesOfFreedom)|\(settings.surfaces)|\(recents.map(\.rawValue).joined())")
 
         // The menu: every app, then the settings as rows of value and +/-.
         var m: [ScenePanel.Button] = []
@@ -112,9 +115,13 @@ final class Toolbar {
             m.append(.init(id: "plus:\(id)", rect: CGRect(x: 0.85, y: ry, width: 0.12, height: 0.12), label: "+"))
             ry += 0.135
         }
+        m.append(.init(id: "toggle:occlusion", rect: CGRect(x: 0.36, y: 0.9, width: 0.3, height: 0.09), label: settings.occlusion ? "Occlusion on" : "Occlusion off", wide: true))
+        let recording = isRecording()
+        m.append(.init(id: "record:0", rect: CGRect(x: 0.02, y: 0.80, width: 0.3, height: 0.09), label: recording ? "■ Stop recording" : "● Record left eye", wide: true))
+        m.append(.init(id: "record:1", rect: CGRect(x: 0.36, y: 0.80, width: 0.3, height: 0.09), label: recording ? "■ Stop recording" : "● Record right eye", wide: true))
         m.append(.init(id: "closeapp", rect: CGRect(x: 0.02, y: 0.9, width: 0.3, height: 0.09), label: "Close app", wide: true))
         m.append(.init(id: "closemenu", rect: CGRect(x: 0.68, y: 0.9, width: 0.3, height: 0.09), label: "Done", wide: true))
-        menu.set(buttons: m, version: "menu|\(rows.map { $0.2 }.joined())|\(recents.map(\.rawValue).joined())")
+        menu.set(buttons: m, version: "menu|\(rows.map { $0.2 }.joined())|\(settings.occlusion)|\(recording)|\(recents.map(\.rawValue).joined())")
     }
 
     func press(_ id: String) {
@@ -122,6 +129,10 @@ final class Toolbar {
         case "toggle:passthrough": settings.passthrough.toggle()
         case "toggle:hands": settings.showHandsLive.toggle()
         case "toggle:dof": settings.degreesOfFreedom = settings.degreesOfFreedom == 3 ? 6 : 3
+        case "toggle:surfaces": settings.surfaces.toggle()
+        case "toggle:occlusion": settings.occlusion.toggle()
+        case "record:0": onRecord?(0)
+        case "record:1": onRecord?(1)
         case "recentre": onRecentre?()
         case "more": menuOpen = true
         case "closemenu": menuOpen = false

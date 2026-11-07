@@ -167,6 +167,40 @@ portrait and landscape photos upright in the frame, the panorama and 360 still o
 projections, the flat video with its controls. Spatial MV-HEVC video and iCloud items await the
 phone.
 
+## Surfaces, occlusion and places
+
+- **Surfaces** (`Room/RoomModel.swift`): ARKit's plane anchors, horizontal and vertical, kept as
+  world-space meshes with each vertex's place on its plane, and the floor as the lowest large
+  horizontal one. Plane detection costs CPU, so it runs only while the surfaces are wanted (the
+  toolbar's ▦ toggle, the Places panel's "Scan room", or the room environment). They are drawn
+  the Unity way (`surfaceFragment`): small X marks on a 20 cm grid, the plane's edges faded, a
+  faint fill, fading in and out over half a second.
+- **Occlusion** (`occlusionFragment`): with passthrough on in 6DoF, a depth-only pass writes the
+  LiDAR scene depth into the eyes' depth buffer (each pixel's ray taken into the camera, the
+  depth read where the confidence is at least medium, the point placed along the ray), so placed
+  things drawn after it with a depth test hide behind real walls, tables and hands. The hands'
+  own skeleton and the reticle are drawn without the test, since the LiDAR sees the hand itself.
+  Off with `occlusion 0` or the menu's toggle; there is no depth in the 3DoF mode or without
+  LiDAR.
+- **Places** (`Room/PlacesApp.swift`): the surroundings are the synthwave scene, the real room
+  (passthrough with the surfaces marked), or a 360 photo or panorama from the Media folder drawn
+  all round through the media projection; and the toolbar's 3DoF switch gives a stationary mode.
+  Later: a 360 photo from the Photos library, and the detailed environments on the roadmap.
+
+The Simulator proves the drawing with a synthetic floor and wall (`fakeplanes` in the test
+script); plane detection, the floor height and occlusion need the phone.
+
+## Recording and casting
+
+- **Recording** (`Capture/EyeRecorder.swift`): the menu's "Record left eye" / "Record right eye"
+  copies that eye's undistorted picture every frame into a pool buffer and encodes it as H.264
+  through an AVAssetWriter at the display's rate; the movie lands in `Documents/Recordings` and
+  is saved to Photos. The Simulator proved 240 frames in four seconds with none dropped.
+- **Casting** (`Capture/ExternalDisplay.swift`): when the phone mirrors to an Apple TV (or any
+  screen), iOS gives the app an external-display scene; a Metal layer on it shows the left eye
+  flat, letterboxed, blitted each frame. The lens-warped phone screen itself is not what the TV
+  gets. Untested without a second display.
+
 ## 3DoF on the ultra-wide
 
 ARKit's world tracking has no ultra-wide format on the iPhone and stops the moment another
@@ -221,6 +255,7 @@ screen shows a control strip for the first four, whose values are kept between r
 | `dump` | 0 | save both eyes' textures to `Documents/eye-left.png` and `eye-right.png` this many seconds after launch |
 | `ultraTest` | 0 | an experiment: open the ultra-wide through AVFoundation this many seconds in and log what ARKit does (it stops) |
 | `web`, `url`, `textScale` | 1, –, 150 | the browser open at launch, a page to open, the page zoom in percent |
+| `surfaces`, `occlusion` | 0, 1 | scan and show the room's surfaces; hide placed things behind the real room (LiDAR, 6DoF, passthrough) |
 | `actions` | – | a test script: `wait N; press <button>; type <text>; key <Backspace\|Clear\|Enter>; look <yaw> <pitch>; tap; dump; screenshot; immersive; end` |
 | `cold` | 0 | 1 vouches the phone is cold, so `[Thermal]` times the run from cold despite a recent run |
 | `hands`, `handHz`, `handDepth`, `showHands` | 1, 20, 1, 1 | hand tracking on, its image rate, LiDAR depth for the hands, the hands drawn |
@@ -269,6 +304,8 @@ ios-native/
   Afterglow/Browser/          Browser, WebTab, WebBridge, BrowserWindow, Panels (chrome + keyboard), BrowserStore, CredentialStore, web/afterglow-helper.js
   Afterglow/Media/            MediaLibrary (Photos), VideoPlayer, MediaApp (grids, viewer, formats)
   Afterglow/Home/             Toolbar (quick toggles, recent apps, the menu with the settings)
+  Afterglow/Room/             RoomModel (surfaces, floor), PlacesApp (environments)
+  Afterglow/Capture/          EyeRecorder (one eye to a movie), ExternalDisplay (a TV gets the left eye flat)
   Afterglow/Input/            HeadsetTap (double tap on the viewer), Dictation
   Afterglow/Log/              SessionLog, FrameTimingLog, ThermalLog
   AfterglowTests/             the optics against the Unity app's numbers

@@ -60,6 +60,24 @@ typedef struct {
     int pad;
 } MediaUniforms;
 
+// A detected surface's mesh: world position and the point's place on the plane (metres from
+// the plane's centre along its own axes), for the marks and the edge fade.
+typedef struct {
+    vector_float3 position;
+    vector_float2 local;
+    vector_float2 extent;             // the plane's half extents, for fading its edges
+} SurfaceVertex;
+
+typedef struct {
+    vector_float4 color;
+    vector_float4 highlightColor;
+    vector_float4 gazePoint;          // world, w = 1 when the gaze is on a surface
+    float appear;                     // 0..1 as surfaces fade in or out
+    float spacing;                    // metres between marks
+    float time;
+    float pad;
+} SurfaceUniforms;
+
 // Textured quads in the world (the browser window, panels): position and texture coordinate.
 typedef struct {
     vector_float3 position;

@@ -190,8 +190,16 @@ foundation at all. The honest picture:
 - **Phase 4 built 2026-11-06, proven in the Simulator**: the Photos library's albums and items,
   spatial photos with an eye each, flat pictures and videos in a frame, panoramas on a cylinder,
   360 and 180 (mono, SBS, TB), fisheye, the player's controls and format cycling, spatial MV-HEVC
-  video through tagged buffers (untested without a spatial video). The Files app and file
-  metadata (st3d, sv3d, GPano) are next in this phase.
+  video through tagged buffers (untested without a spatial video), then the Files app (a
+  bookmarked folder streamed in place, searched from the keyboard) and the file metadata reader.
+- **Surfaces, occlusion and places built 2026-11-06**: ARKit planes drawn with the Unity marks,
+  LiDAR depth written into the eyes' depth buffer so placed things hide behind the room, and a
+  Places panel choosing the synthwave scene, the real room, or a 360 photo from the Media folder
+  as the surroundings. Proven in the Simulator with a synthetic floor and wall; detection and
+  occlusion need the phone.
+- **Recording and casting built 2026-11-06**: one eye to an H.264 movie in Documents/Recordings
+  and Photos (proven in the Simulator), and an external-display scene that shows the left eye
+  flat on a mirrored Apple TV (untested).
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

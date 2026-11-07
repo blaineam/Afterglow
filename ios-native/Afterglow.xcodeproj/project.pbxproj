@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0113CE32E718FC51FC3EBD4B /* ARController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27D58785E652A50828B3FA73 /* ARController.swift */; };
+		0D89C799428F9CFFFF206D6E /* PlacesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229FF7FB92EB617B3FAE073F /* PlacesApp.swift */; };
 		1084C85F476B2C5EB0582CBF /* Panels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62905D062521A7CC64D592BA /* Panels.swift */; };
 		11C794030430803513B767C4 /* MediaMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BF024C3B411C1CCCC0C7D01 /* MediaMetadata.swift */; };
 		11DE11B2F262E90405DBEE7D /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3675F8D2A8455F705C68C25 /* Renderer.swift */; };
@@ -19,6 +20,7 @@
 		44349A8E8C2D2B5B72308FA2 /* FileSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9E0657D69D500D52FC6B5D /* FileSource.swift */; };
 		4752687B06DCC27E53D2DE95 /* LensDistortionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */; };
 		5FADCF4942F922DF8FD0C5C4 /* HandOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7854AEB3ED92FB2970560611 /* HandOverlay.swift */; };
+		75ADA160809141FED2BF671A /* ExternalDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F1932938E01769D5BD70302 /* ExternalDisplay.swift */; };
 		75BE77AC84FBAB02AE1C6FB8 /* BrowserWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407B733E5D15B248CD512A98 /* BrowserWindow.swift */; };
 		77C5951CAE44BFA58BE8C46A /* Toolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B81BBB54C49B3845F94E2832 /* Toolbar.swift */; };
 		7A38FB3AAA8E460C9F4F65D7 /* OneEuroFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B54E68953FBF0A4BF468CAE /* OneEuroFilter.swift */; };
@@ -28,6 +30,7 @@
 		87FA55609E5C45D423B33A4C /* ViewerParams.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1258CEE15BE1B0F0A68046 /* ViewerParams.swift */; };
 		8A26420DC8EEC87E91BE44DA /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F383C9716F8214D0A4E65E7D /* Settings.swift */; };
 		8C25915865BFF7086BB43B56 /* BrowserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D8895069D15A18068ACE71 /* BrowserTests.swift */; };
+		9053B9FD4E934468FB7313A1 /* RoomModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A988740926B41E19A4D4C598 /* RoomModel.swift */; };
 		9095BA84A3DC061A60F4CD65 /* Dictation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9423C371E42B4C272012AA5 /* Dictation.swift */; };
 		91E95FC2F446BEEE1D5D8481 /* UltraWideController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F03EB15525A4EC358532B829 /* UltraWideController.swift */; };
 		97305D4E9B52CAA27CC13956 /* Browser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47EDB0FC1E0D6EF4E3D1AE0 /* Browser.swift */; };
@@ -43,6 +46,7 @@
 		C803CA1BEC03B79551EFB51B /* UltraWideProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */; };
 		CD88B09669D877C78226AE06 /* CameraSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D94EC27CAA1FF1943486BB0 /* CameraSource.swift */; };
 		D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */; };
+		D9D3FFB7F662E475F947FD3C /* EyeRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCEC5C5D9ABB975443C7DE91 /* EyeRecorder.swift */; };
 		E1962322F97DB95D45A90270 /* HeadsetTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87C4D44511F04B6AD7D43D31 /* HeadsetTap.swift */; };
 		E1F20C8F70E32B1C44AA3A59 /* ScreenMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F27D509791361AD2011E47 /* ScreenMetrics.swift */; };
 		E386311B4A1748A01C31E880 /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = F3791EB1A750663D58286739 /* Shaders.metal */; };
@@ -71,6 +75,8 @@
 		135AAF215BBE3C9874DB7911 /* HandTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandTracker.swift; sourceTree = "<group>"; };
 		1558F78E920E5997115FF985 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		1AA30D699725082AF000DBAB /* afterglow-webxr.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "afterglow-webxr.js"; sourceTree = "<group>"; };
+		1F1932938E01769D5BD70302 /* ExternalDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalDisplay.swift; sourceTree = "<group>"; };
+		229FF7FB92EB617B3FAE073F /* PlacesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacesApp.swift; sourceTree = "<group>"; };
 		27D58785E652A50828B3FA73 /* ARController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARController.swift; sourceTree = "<group>"; };
 		2B54E68953FBF0A4BF468CAE /* OneEuroFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OneEuroFilter.swift; sourceTree = "<group>"; };
 		2B9E0657D69D500D52FC6B5D /* FileSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSource.swift; sourceTree = "<group>"; };
@@ -92,6 +98,7 @@
 		9E2E0B57207F4DEAA2DF268C /* PinchDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinchDetector.swift; sourceTree = "<group>"; };
 		A3675F8D2A8455F705C68C25 /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
 		A7F27D509791361AD2011E47 /* ScreenMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenMetrics.swift; sourceTree = "<group>"; };
+		A988740926B41E19A4D4C598 /* RoomModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomModel.swift; sourceTree = "<group>"; };
 		B2A07A7A60E0764F6995F5B5 /* AfterglowApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AfterglowApp.swift; sourceTree = "<group>"; };
 		B81BBB54C49B3845F94E2832 /* Toolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toolbar.swift; sourceTree = "<group>"; };
 		B8B3564A698DE6CBC60A74CF /* VideoPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayer.swift; sourceTree = "<group>"; };
@@ -105,6 +112,7 @@
 		D42BBF82DA32DCFE7BA0AD50 /* FrameTimingLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameTimingLog.swift; sourceTree = "<group>"; };
 		D47EDB0FC1E0D6EF4E3D1AE0 /* Browser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Browser.swift; sourceTree = "<group>"; };
 		D97890D6EB3536CA74C71E09 /* SessionLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLog.swift; sourceTree = "<group>"; };
+		DCEC5C5D9ABB975443C7DE91 /* EyeRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EyeRecorder.swift; sourceTree = "<group>"; };
 		DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensDistortionTests.swift; sourceTree = "<group>"; };
 		E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UltraWideProbe.swift; sourceTree = "<group>"; };
 		ECB85CC898B2F8A77E2B54A9 /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
@@ -192,6 +200,15 @@
 			path = Input;
 			sourceTree = "<group>";
 		};
+		73AEA6FE99EBDFAACF35437F /* Room */ = {
+			isa = PBXGroup;
+			children = (
+				229FF7FB92EB617B3FAE073F /* PlacesApp.swift */,
+				A988740926B41E19A4D4C598 /* RoomModel.swift */,
+			);
+			path = Room;
+			sourceTree = "<group>";
+		};
 		86E626DEA1D101755C49D099 /* Stereo */ = {
 			isa = PBXGroup;
 			children = (
@@ -209,12 +226,14 @@
 				937E65EAEBF6C26F50ED3B34 /* Info.plist */,
 				6977E4302D248A13F4C272D6 /* App */,
 				FEF5E09E6BBB32ED16C89585 /* Browser */,
+				EE23577D125C45ED3D4430A9 /* Capture */,
 				EDA76F939C41E1DAB52320CA /* Hands */,
 				1E150F1B8FD54F8E79628E24 /* Home */,
 				6A349F2B742FA042961ED828 /* Input */,
 				D8C250DD6830DB4EB6EA5DA9 /* Log */,
 				D089D7A15A6C2FEA7F5D1C46 /* Media */,
 				F7AE949468DC1E095BBA8ECB /* Render */,
+				73AEA6FE99EBDFAACF35437F /* Room */,
 				86E626DEA1D101755C49D099 /* Stereo */,
 				3BCFD31138C584DC604CCC1A /* Tracking */,
 			);
@@ -278,6 +297,15 @@
 				9E2E0B57207F4DEAA2DF268C /* PinchDetector.swift */,
 			);
 			path = Hands;
+			sourceTree = "<group>";
+		};
+		EE23577D125C45ED3D4430A9 /* Capture */ = {
+			isa = PBXGroup;
+			children = (
+				1F1932938E01769D5BD70302 /* ExternalDisplay.swift */,
+				DCEC5C5D9ABB975443C7DE91 /* EyeRecorder.swift */,
+			);
+			path = Capture;
 			sourceTree = "<group>";
 		};
 		F7AE949468DC1E095BBA8ECB /* Render */ = {
@@ -428,6 +456,8 @@
 				3C5D52A1580439FA628A5336 /* ContentView.swift in Sources */,
 				41D13DAC96C560971D3E2F8C /* CredentialStore.swift in Sources */,
 				9095BA84A3DC061A60F4CD65 /* Dictation.swift in Sources */,
+				75ADA160809141FED2BF671A /* ExternalDisplay.swift in Sources */,
+				D9D3FFB7F662E475F947FD3C /* EyeRecorder.swift in Sources */,
 				44349A8E8C2D2B5B72308FA2 /* FileSource.swift in Sources */,
 				80531BEAA4C2E3BD43B155AB /* FrameTimingLog.swift in Sources */,
 				F0433297A0D001C5C4CA77C7 /* HandGeometry.swift in Sources */,
@@ -441,9 +471,11 @@
 				7A38FB3AAA8E460C9F4F65D7 /* OneEuroFilter.swift in Sources */,
 				1084C85F476B2C5EB0582CBF /* Panels.swift in Sources */,
 				BC2DD9993B328B9BFE55C0D8 /* PinchDetector.swift in Sources */,
+				0D89C799428F9CFFFF206D6E /* PlacesApp.swift in Sources */,
 				8600C1861C53352DF6521570 /* PolynomialRadialDistortion.swift in Sources */,
 				16D3E9D0732259261E2D92C5 /* PosePredictor.swift in Sources */,
 				11DE11B2F262E90405DBEE7D /* Renderer.swift in Sources */,
+				9053B9FD4E934468FB7313A1 /* RoomModel.swift in Sources */,
 				E1F20C8F70E32B1C44AA3A59 /* ScreenMetrics.swift in Sources */,
 				998F8E4E9A185C881C5B74DC /* SessionLog.swift in Sources */,
 				8A26420DC8EEC87E91BE44DA /* Settings.swift in Sources */,

@@ -23,6 +23,10 @@ final class Settings: ObservableObject {
     @Published var degreesOfFreedom: Int { didSet { save("dof", degreesOfFreedom) } }
     /// Prefer the ultra-wide camera's formats when ARKit lists any.
     let ultraWide: Bool
+    /// Occlusion of virtual things by the real room, from the LiDAR depth (6DoF only).
+    @Published var occlusion: Bool { didSet { save("occlusion", occlusion ? 1 : 0) } }
+    /// Show the detected surfaces (scan the room).
+    @Published var surfaces: Bool { didSet { save("surfaces", surfaces ? 1 : 0) } }
     /// Hold the render scale and frame rate down while the phone is serious or critical, as the
     /// Unity app does; off compares the two at their set values.
     let thermalCap: Bool
@@ -70,6 +74,8 @@ final class Settings: ObservableObject {
         extraPredictionMs = Self.read("predictionMs", options: options, default: 0)
         degreesOfFreedom = Self.read("dof", options: options, default: 6) == 3 ? 3 : 6
         ultraWide = Self.read("camUltraWide", options: options, default: 1) != 0
+        occlusion = Self.read("occlusion", options: options, default: 1) != 0
+        surfaces = Self.read("surfaces", options: options, default: 0) != 0
         thermalCap = Self.read("thermalCap", options: options, default: 1) != 0
         cameraToEyesMm = SIMD3(Self.read("eyesX", options: options, default: 60),
                                Self.read("eyesY", options: options, default: -10),
