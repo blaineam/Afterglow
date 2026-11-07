@@ -283,6 +283,17 @@ guards on the pinch are off. The 6DoF wide mode (`dof 6`, the default) is unchan
   installing the native app replaces it on the phone; the icon is the Unity app's
   (`Assets/_Project/Branding/AppIcon.png`) in an asset catalog; version 2.0.0.
 
+## Apple Watch as a controller
+
+`AfterglowWatch/` is a single-target watchOS app embedded in the iOS app. Its one button carries
+`handGestureShortcut(.primaryAction)`, so the watch's double-tap gesture (and a tap on the
+button) sends `select` to the phone over WatchConnectivity, and turning the Digital Crown sends
+`scroll` with a delta. On the phone `Input/WatchReceiver.swift` turns `select` into the same
+request as a double tap on the headset (select what the gaze is on, or pinch for the games) and
+`scroll` into browser scrolling. The watch app needs no authorization; it is reachable whenever
+the phone app is in the foreground. Not tried on a real watch yet: the Simulator cannot pair
+one with the phone build the harness uses.
+
 ## Build and run
 
 ```sh
@@ -373,7 +384,7 @@ ios-native/
   Afterglow/Browser/          Browser, WebTab, WebBridge, BrowserWindow, Panels (chrome + keyboard), BrowserStore, CredentialStore, web/afterglow-helper.js
   Afterglow/Media/            MediaLibrary (Photos), VideoPlayer, MediaApp (grids, viewer, formats)
   Afterglow/Home/             Toolbar (dock), WindowManager + HomeMenu, SettingsWindow, AppLock, MusicApp
-  Afterglow/Room/             RoomModel (surfaces, floor), PlacesApp (environments), SkyboxGenerator (Skybox AI)
+  Afterglow/Room/             RoomModel (surfaces, floor), PlacesApp (environments), SkyboxGenerator (AI photospheres)
   Afterglow/Capture/          EyeRecorder (one eye to a movie), ExternalDisplay (a TV gets the left eye flat)
   Afterglow/Games/            GameHost, Games (Paint, Blobs, Vacuum, Toys, Golf, Ride, Portal), RhythmGame (+ Synth)
   Afterglow/Input/            HeadsetTap, Dictation, Controllers (GameController pads)

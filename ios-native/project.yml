@@ -6,6 +6,7 @@ options:
   bundleIdPrefix: com.wemiller
   deploymentTarget:
     iOS: "26.0"
+    watchOS: "11.0"
   xcodeVersion: "27.0"
   createIntermediateGroups: true
   generateEmptyDirectories: false
@@ -35,6 +36,8 @@ targets:
         buildPhase: resources
       - path: ../Assets/StreamingAssets/webxr/index.html
         buildPhase: resources
+    dependencies:
+      - target: AfterglowWatch
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.wemiller.afterglow
@@ -57,7 +60,25 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.wemiller.afterglow.tests
-        SWIFT_OBJC_BRIDGING_HEADER: Afterglow/Render/ShaderTypes.h
+  AfterglowWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - path: AfterglowWatch
+        excludes:
+          - "**/* 2.*"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wemiller.afterglow.watchkitapp
+        PRODUCT_NAME: AfterglowWatch
+        INFOPLIST_FILE: AfterglowWatch/Info.plist
+        MARKETING_VERSION: "2.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "4"
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_OBJC_BRIDGING_HEADER: ""
+        ONLY_ACTIVE_ARCH: YES
 schemes:
   Afterglow:
     build:

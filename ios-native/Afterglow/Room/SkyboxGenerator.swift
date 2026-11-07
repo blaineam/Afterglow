@@ -1,6 +1,6 @@
 import Foundation
 
-/// Photospheres from an AI world generator: the Blockade Labs Skybox AI service, which turns a
+/// Photospheres from an AI world generator: a hosted service that turns a
 /// prompt into an equirectangular 360 image. The API key is read from Documents/skybox-api-key.txt
 /// (dropped in through the Files app or Finder); the generated image is saved to
 /// Documents/Environments and becomes a place. Logs [Skybox].

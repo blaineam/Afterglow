@@ -337,9 +337,11 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
     // MARK: Messages from the page
 
     nonisolated func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard let body = message.body as? [String: Any], let event = body["event"] as? String else { return }
-        let payload = body
-        Task { @MainActor in self.handle(event, payload) }
+        // WKScriptMessage is delivered on the main thread; read its body there.
+        MainActor.assumeIsolated {
+            guard let body = message.body as? [String: Any], let event = body["event"] as? String else { return }
+            self.handle(event, body)
+        }
     }
 
     private func handle(_ event: String, _ body: [String: Any]) {

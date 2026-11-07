@@ -38,6 +38,7 @@ final class Renderer {
     private(set) var recorder: EyeRecorder?
     private(set) var games: GameHost?
     private let controllers = Controllers()
+    private let watch = WatchReceiver()
     private(set) var windows: WindowManager?
     private var home: HomeMenu?
     private var settingsWindow: SettingsWindow?
@@ -165,6 +166,9 @@ final class Renderer {
         uiWindow = window
         keyboard = KeyboardPanel(device: device)
         controllers.start()
+        watch.onSelect = { [weak self] in self?.tapRequests.value = 2 }
+        watch.onScroll = { [weak self] dy in Task { @MainActor in self?.browser?.scroll(dy: dy) } }
+        watch.start()
         let windows = WindowManager(device: device)
         windows.onClose = { [weak self] kind in self?.windowClosed(kind) }
         self.windows = windows

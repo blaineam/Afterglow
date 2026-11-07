@@ -97,7 +97,9 @@ final class EyeRecorder: @unchecked Sendable {
         input.markAsFinished()
         let url = self.url
         let frames = self.frames, dropped = self.dropped
+        let boxed = Unchecked(writer)
         writer.finishWriting { [weak self] in
+            let writer = boxed.value
             log("[Capture] Recording finished: \(frames) frames, \(dropped) dropped, \(url?.lastPathComponent ?? "?") (\(writer.status == .completed ? "ok" : writer.error?.localizedDescription ?? "failed"))")
             if saveToPhotos, writer.status == .completed, let url {
                 PHPhotoLibrary.shared().performChanges({ PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url) }) { ok, error in

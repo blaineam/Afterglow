@@ -97,7 +97,7 @@ final class PlacesApp {
         }
         b.append(.init(id: "prevpage", rect: CGRect(x: 0.03, y: 0.95, width: 0.1, height: 0.045), label: "◀"))
         b.append(.init(id: "nextpage", rect: CGRect(x: 0.14, y: 0.95, width: 0.1, height: 0.045), label: "▶"))
-        b.append(.init(id: "generate", rect: CGRect(x: 0.26, y: 0.95, width: 0.36, height: 0.045), label: generating ? generatorStatus : "✨ Generate a place (Skybox AI)", wide: true))
+        b.append(.init(id: "generate", rect: CGRect(x: 0.26, y: 0.95, width: 0.36, height: 0.045), label: generating ? generatorStatus : "✨ Generate a place (AI)", wide: true))
         b.append(.init(id: "rescan", rect: CGRect(x: 0.64, y: 0.95, width: 0.33, height: 0.045), label: "↻ Rescan 360 photos", wide: true))
         panel.set(buttons: b, version: "places|\(choice)|\(night)|\(panoramas.count)|\(libraryItems.count)|\(page)|\(generating)|\(generatorStatus)")
     }

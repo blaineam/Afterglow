@@ -210,9 +210,9 @@ foundation at all. The honest picture:
   second list): a window manager with title bars (move, size, minimize, close), several windows
   at once, a Home menu, a settings window, the passcode lock with headset-removal detection,
   Apple Music controls, the bundle id taken over from the Unity app with its icon; and any 360
-  photo from Photos, the Media folder or Documents/Environments as a place, with Skybox AI
-  generation behind an API key file. Still to come: the Apple Watch app (double tap as the
-  primary action), the games rebuilt as lit HD experiences with the toy box's wake-up button,
+  photo from Photos, the Media folder or Documents/Environments as a place, with AI photosphere
+  generation behind an API key file; the Apple Watch app (its double tap is the primary
+  action, the crown scrolls) built the same evening. Still to come: the games rebuilt as lit HD experiences with the toy box's wake-up button,
   MusicKit for the rhythm game, WebXR AR features, and everything above on the phone.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
@@ -261,7 +261,7 @@ The drawn places read as 1980s CGI; the owner wants modern generated photosphere
 native app's pipeline for that: any fully 360 picture is a place (the Photos library's 360
 pictures, the Media folder, any bookmarked folder, and `Documents/Environments`, which file
 sharing exposes to Finder and the Files app), so panoramas from any generator drop in; and
-Places has a Generate button that asks the Blockade Labs Skybox AI service for one from a
+Places has a Generate button that asks an AI photosphere generation service for one from a
 prompt when its API key is in `Documents/skybox-api-key.txt`. The drawn places stay as the
 offline fallback. Bundling a set of generated environments with the app is the next step once a
 generator the owner likes is chosen.
