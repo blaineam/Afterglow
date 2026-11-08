@@ -60,7 +60,7 @@ targets:
         INFOPLIST_FILE: Afterglow/Info.plist
         SWIFT_OBJC_BRIDGING_HEADER: Afterglow/Render/ShaderTypes.h
         MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "3"
+        CURRENT_PROJECT_VERSION: "4"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SUPPORTED_PLATFORMS: "iphoneos iphonesimulator"
   AfterglowTests:
@@ -88,7 +88,7 @@ targets:
         PRODUCT_NAME: AfterglowWatch
         INFOPLIST_FILE: AfterglowWatch/Info.plist
         MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "3"
+        CURRENT_PROJECT_VERSION: "4"
         SWIFT_VERSION: "6.0"
         TARGETED_DEVICE_FAMILY: "4"
         GENERATE_INFOPLIST_FILE: YES

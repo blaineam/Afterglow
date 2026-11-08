@@ -301,8 +301,9 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
 
     /// Called every frame with the head and the hands. Pushes the pose during a session, hovers
     /// the page at the gaze, scrolls at the page's edges. `select` is a pinch starting or a
-    /// double tap: a click on the page (windowed) or a select (immersive).
-    func frame(head: simd_float4x4, hands: [TrackedHandState], select: Bool, time: Double, deltaTime: Float,
+    /// double tap: a click on the page (windowed) or a select (immersive). `plainSelect` says it
+    /// came from a controller or the watch, so a page holding the hands gets it as a select too.
+    func frame(head: simd_float4x4, hands: [TrackedHandState], select: Bool, plainSelect: Bool = false, time: Double, deltaTime: Float,
                eyeAboveFloor: Float? = nil, room: RoomModel? = nil) -> Gaze? {
         guard let tab = current else { return nil }
         if isImmersive {
@@ -338,7 +339,7 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
                 if !hands.isEmpty || handsWereSent { run(WebBridge.hands(values)) }
                 handsWereSent = !hands.isEmpty
             }
-            if select && (hands.isEmpty || !handsAllowed) { run(WebBridge.select) }
+            if select && (plainSelect || hands.isEmpty || !handsAllowed) { run(WebBridge.select) }
             return nil
         }
         if placing {

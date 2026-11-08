@@ -34,15 +34,15 @@ TUNED FOR COMFORT
 Head smoothing you can adjust, 3DoF mode on the ultra-wide camera, and adjustable render scale and frame rate.
 
 WHAT YOU NEED
-A phone viewer you can put your iPhone in, and an iPhone with a LiDAR Scanner. For the best experience, use iPhone 17 Pro Max or iPhone 18 Pro Max. Any other iPhone Pro with a LiDAR Scanner, such as iPhone 15 Pro, can work too. The plans for a viewer you can print yourself are free. No viewer to hand? Phone view runs it all in your hand.
+A phone viewer you can put your iPhone in, and an iPhone with a LiDAR Scanner. For the best experience, use iPhone 17 Pro Max or iPhone 18 Pro Max. Any other iPhone Pro with a LiDAR Scanner, such as iPhone 15 Pro, can work too. You can print a viewer yourself from the published plans. No viewer to hand? Phone view runs it all in your hand.
 
-Free, with no account and no ads. It is open source, and it does not collect your data: your camera, your hands and your voice stay on your iPhone.
+No account and no ads. It is open source, and it does not collect your data: your camera, your hands and your voice stay on your iPhone.
 
 ## keywords
 vr,virtual reality,headset,webxr,ar,xr,passthrough,360,spatial,panorama,hand tracking,viewer,lidar
 
 ## promotional_text
-Your iPhone is a headset now: real head tracking, your hands, your room, your photos in 3D, a WebXR browser and twelve games. Free, with no account.
+Your iPhone is a headset now: real head tracking, your hands, your room, your photos in 3D, a WebXR browser and twelve games. No account needed.
 
 ## marketing_url
 https://wemiller.com/apps/afterglow/

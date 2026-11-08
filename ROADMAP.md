@@ -294,6 +294,11 @@ foundation at all. The honest picture:
 - **The App Store, 2026-11-08**: Afterglow XR's listing, framed screenshots and first TestFlight
   build; iPhone only. The tempo lookup moves to audiometa.io. Still to come: the owner's submission,
   and the privacy answers only App Store Connect's site can take.
+- **The Apple Watch, 2026-11-08**: the link now proven end to end over paired Simulators
+  (`Tools/test_watch_link.sh`). Select is a plain select and never an exit, the crown also scrolls
+  media grids, and the first real message no longer stops the phone app. Still to do: a real watch.
+- **The store art, 2026-11-08**: header and search result art in all nine languages, the watch shot
+  in its Monkr frame, and no mention of price anywhere in the listing.
 - **The tree, 2026-11-08**: the Unity app removed (it remains in git history), and the native app
   moved to `app/`.
 - **Recommendation**: do it, in a new repository or an `app/` tree beside this one, with

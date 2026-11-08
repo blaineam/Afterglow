@@ -35,15 +35,15 @@ AJUSTADO PARA O SEU CONFORTO
 Suavização da cabeça ajustável, modo 3DoF na câmera ultra-angular, além de escala de renderização e taxa de quadros ajustáveis.
 
 O QUE VOCÊ PRECISA TER
-Um visor em que caiba o seu iPhone e um iPhone com scanner LiDAR. Para a melhor experiência, use o iPhone 17 Pro Max ou o iPhone 18 Pro Max. Qualquer outro iPhone Pro com scanner LiDAR, como o iPhone 15 Pro, também pode funcionar. Os projetos de um visor para você mesmo imprimir são gratuitos. Está sem visor? A visualização no celular roda tudo na sua mão.
+Um visor em que caiba o seu iPhone e um iPhone com scanner LiDAR. Para a melhor experiência, use o iPhone 17 Pro Max ou o iPhone 18 Pro Max. Qualquer outro iPhone Pro com scanner LiDAR, como o iPhone 15 Pro, também pode funcionar. Você pode imprimir seu próprio visor com os projetos publicados. Está sem visor? A visualização no celular roda tudo na sua mão.
 
-Gratuito, sem conta e sem anúncios. É de código aberto e não coleta seus dados: sua câmera, suas mãos e sua voz ficam no seu iPhone.
+Sem conta e sem anúncios. É de código aberto e não coleta seus dados: sua câmera, suas mãos e sua voz ficam no seu iPhone.
 
 ## keywords
 vr,realidade virtual,óculos,webxr,ar,ra,passthrough,360,espacial,panorama,visualizador,lidar,mãos
 
 ## promotional_text
-Seu iPhone agora é um headset: rastreamento real da cabeça, suas mãos, seu ambiente, suas fotos em 3D, navegador WebXR e doze jogos. Grátis e sem conta.
+Seu iPhone agora é um headset: rastreamento real da cabeça, suas mãos, seu ambiente, suas fotos em 3D, navegador WebXR e doze jogos. Sem precisar de conta.
 
 ## marketing_url
 https://wemiller.com/apps/afterglow/

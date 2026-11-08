@@ -35,15 +35,15 @@ PENSADO PARA TU COMODIDAD
 Suavizado de la cabeza ajustable, modo 3DoF con la cámara ultra gran angular, y escala de renderizado y tasa de fotogramas ajustables.
 
 QUÉ NECESITAS
-Un visor para móvil en el que quepa tu iPhone y un iPhone con escáner LiDAR. Para disfrutar de la mejor experiencia, usa un iPhone 17 Pro Max o un iPhone 18 Pro Max. Cualquier otro iPhone Pro con escáner LiDAR, como el iPhone 15 Pro, también puede funcionar. Los planos para imprimir tu propio visor son gratuitos. ¿No tienes un visor a mano? La vista de teléfono lo ejecuta todo en tu mano.
+Un visor para móvil en el que quepa tu iPhone y un iPhone con escáner LiDAR. Para disfrutar de la mejor experiencia, usa un iPhone 17 Pro Max o un iPhone 18 Pro Max. Cualquier otro iPhone Pro con escáner LiDAR, como el iPhone 15 Pro, también puede funcionar. Puedes imprimir tu propio visor con los planos publicados. ¿No tienes un visor a mano? La vista de teléfono lo ejecuta todo en tu mano.
 
-Gratis, sin cuenta y sin anuncios. Es de código abierto y no recopila tus datos: tu cámara, tus manos y tu voz se quedan en tu iPhone.
+Sin cuenta y sin anuncios. Es de código abierto y no recopila tus datos: tu cámara, tus manos y tu voz se quedan en tu iPhone.
 
 ## keywords
 vr,realidad virtual,aumentada,gafas,visor,webxr,ar,passthrough,360,espacial,panorámica,manos,lidar
 
 ## promotional_text
-Tu iPhone ya es un visor: seguimiento real de la cabeza, tus manos, tu habitación, tus fotos en 3D, un navegador WebXR y doce juegos. Gratis y sin cuenta.
+Tu iPhone ya es un visor: seguimiento real de la cabeza, tus manos, tu habitación, tus fotos en 3D, un navegador WebXR y doce juegos. Sin necesidad de cuenta.
 
 ## marketing_url
 https://wemiller.com/apps/afterglow/

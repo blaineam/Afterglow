@@ -35,15 +35,15 @@ AUF KOMFORT ABGESTIMMT
 Einstellbare Kopfglättung, ein 3DoF-Modus mit der Ultraweitwinkelkamera sowie anpassbare Renderskalierung und Bildrate.
 
 DAS BRAUCHST DU
-Eine Smartphone-Brille, in die dein iPhone passt, und ein iPhone mit LiDAR-Scanner. Am besten läuft die App auf dem iPhone 17 Pro Max oder iPhone 18 Pro Max. Auch andere iPhone Pro-Modelle mit LiDAR-Scanner, etwa das iPhone 15 Pro, können funktionieren. Die Pläne für eine Brille zum Selberdrucken sind kostenlos. Keine Brille zur Hand? In der Telefonansicht läuft alles direkt in deiner Hand.
+Eine Smartphone-Brille, in die dein iPhone passt, und ein iPhone mit LiDAR-Scanner. Am besten läuft die App auf dem iPhone 17 Pro Max oder iPhone 18 Pro Max. Auch andere iPhone Pro-Modelle mit LiDAR-Scanner, etwa das iPhone 15 Pro, können funktionieren. Eine Brille kannst du dir auch selbst drucken: Die Pläne sind veröffentlicht. Keine Brille zur Hand? In der Telefonansicht läuft alles direkt in deiner Hand.
 
-Kostenlos, ohne Konto und ohne Werbung. Die App ist Open Source und sammelt deine Daten nicht: Deine Kamera, deine Hände und deine Stimme bleiben auf deinem iPhone.
+Ohne Konto und ohne Werbung. Die App ist Open Source und sammelt deine Daten nicht: Deine Kamera, deine Hände und deine Stimme bleiben auf deinem iPhone.
 
 ## keywords
 VR,virtuelle Realität,VR-Brille,WebXR,AR,Passthrough,360,Panorama,Handtracking,Betrachter,LiDAR
 
 ## promotional_text
-Dein iPhone wird zum Headset: echtes Head-Tracking, deine Hände, dein Raum, deine Fotos in 3D, ein WebXR-Browser und zwölf Spiele. Kostenlos und ohne Konto.
+Dein iPhone wird zum Headset: echtes Head-Tracking, deine Hände, dein Raum, deine Fotos in 3D, ein WebXR-Browser und zwölf Spiele. Ganz ohne Konto.
 
 ## marketing_url
 https://wemiller.com/apps/afterglow/

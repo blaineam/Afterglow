@@ -35,15 +35,15 @@ Afterglow XR
 头部平滑程度可调，超广角摄像头支持 3DoF 模式，渲染比例和帧率均可调整。
 
 你需要准备
-一个可放入 iPhone 的手机头显盒，以及一部配备激光雷达扫描仪的 iPhone。想获得最佳体验，请使用 iPhone 17 Pro Max 或 iPhone 18 Pro Max。其他配备激光雷达扫描仪的 iPhone Pro 机型（如 iPhone 15 Pro）也可以运行。可自行打印的头显盒图纸免费提供。手边没有头显盒？手机视图让你手持即可体验全部内容。
+一个可放入 iPhone 的手机头显盒，以及一部配备激光雷达扫描仪的 iPhone。想获得最佳体验，请使用 iPhone 17 Pro Max 或 iPhone 18 Pro Max。其他配备激光雷达扫描仪的 iPhone Pro 机型（如 iPhone 15 Pro）也可以运行。可自行打印的头显盒图纸也已公开。手边没有头显盒？手机视图让你手持即可体验全部内容。
 
-免费使用，无需账户，没有广告。本 App 开源，不收集你的数据：摄像头画面、手部动作和语音都只留在你的 iPhone 上。
+无需账户，没有广告。本 App 开源，不收集你的数据：摄像头画面、手部动作和语音都只留在你的 iPhone 上。
 
 ## keywords
 虚拟现实,VR,VR眼镜,头显,WebXR,增强现实,AR,混合现实,透视,360度,全景,空间,手势追踪,查看器,激光雷达
 
 ## promotional_text
-iPhone 秒变头显:真实头部追踪、双手交互、融入你的房间、以 3D 重温照片,还有 WebXR 浏览器和十二款游戏。完全免费,无需注册账户。
+iPhone 秒变头显:真实头部追踪、双手交互、融入你的房间、以 3D 重温照片,还有 WebXR 浏览器和十二款游戏。无需注册账户。
 
 ## marketing_url
 https://wemiller.com/apps/afterglow/

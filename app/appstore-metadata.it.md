@@ -35,15 +35,15 @@ PENSATO PER IL COMFORT
 Stabilizzazione della testa regolabile, modalità 3DoF con la fotocamera ultra-grandangolare, scala di rendering e frame rate regolabili.
 
 COSA TI SERVE
-Un visore per telefono in cui inserire il tuo iPhone e un iPhone con scanner LiDAR. Per un'esperienza ottimale, usa iPhone 17 Pro Max o iPhone 18 Pro Max. Può funzionare anche qualsiasi altro iPhone Pro con scanner LiDAR, come iPhone 15 Pro. I progetti per stampare il visore in autonomia sono gratuiti. Non hai un visore sottomano? La vista telefono ti fa usare tutto tenendolo in mano.
+Un visore per telefono in cui inserire il tuo iPhone e un iPhone con scanner LiDAR. Per un'esperienza ottimale, usa iPhone 17 Pro Max o iPhone 18 Pro Max. Può funzionare anche qualsiasi altro iPhone Pro con scanner LiDAR, come iPhone 15 Pro. Puoi stampare il visore in autonomia con i progetti pubblicati. Non hai un visore sottomano? La vista telefono ti fa usare tutto tenendolo in mano.
 
-Gratis, senza account e senza pubblicità. È open source e non raccoglie i tuoi dati: la fotocamera, le mani e la voce restano sul tuo iPhone.
+Senza account e senza pubblicità. È open source e non raccoglie i tuoi dati: la fotocamera, le mani e la voce restano sul tuo iPhone.
 
 ## keywords
 vr,realtà virtuale,visore,webxr,ar,passthrough,360,spaziale,panorama,tracciamento mani,lidar
 
 ## promotional_text
-Il tuo iPhone ora è un visore: vero tracciamento della testa, le tue mani, la tua stanza, le tue foto in 3D, un browser WebXR e dodici giochi. Gratis, senza account.
+Il tuo iPhone ora è un visore: vero tracciamento della testa, le tue mani, la tua stanza, le tue foto in 3D, un browser WebXR e dodici giochi. Nessun account richiesto.
 
 ## marketing_url
 https://wemiller.com/apps/afterglow/

@@ -20,6 +20,9 @@ ExportedObj/
 # App Store screenshots: rebuilt by Tools/capture_store_screenshots.sh and Monkr (the .monkr embeds them)
 /app/screenshots/
 /app/docs/appstore-screenshots/*.monkr
+# Store header and search art: rebuilt by rocket assets, and hundreds of megabytes across the languages
+/app/appstore-creative/*
+!/app/appstore-creative/creative.json
 /app/build/
 
 # The tempo catalogue's key, written by Xcode Cloud's ci_pre_xcodebuild.sh

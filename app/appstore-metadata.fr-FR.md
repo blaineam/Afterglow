@@ -35,15 +35,15 @@ RÉGLÉ POUR VOTRE CONFORT
 Lissage des mouvements de la tête ajustable, mode 3DoF avec la caméra ultra grand-angle, résolution de rendu et fréquence d'images réglables.
 
 CE QU'IL VOUS FAUT
-Une visionneuse pouvant accueillir votre iPhone, et un iPhone équipé d'un scanner LiDAR. Pour une expérience optimale, utilisez un iPhone 17 Pro Max ou un iPhone 18 Pro Max. Tout autre iPhone Pro doté d'un scanner LiDAR, comme l'iPhone 15 Pro, peut également convenir. Les plans d'une visionneuse à imprimer vous-même sont gratuits. Pas de visionneuse sous la main ? Le mode Téléphone vous permet de tout utiliser en tenant simplement votre iPhone.
+Une visionneuse pouvant accueillir votre iPhone, et un iPhone équipé d'un scanner LiDAR. Pour une expérience optimale, utilisez un iPhone 17 Pro Max ou un iPhone 18 Pro Max. Tout autre iPhone Pro doté d'un scanner LiDAR, comme l'iPhone 15 Pro, peut également convenir. Vous pouvez imprimer vous-même une visionneuse à partir des plans publiés. Pas de visionneuse sous la main ? Le mode Téléphone vous permet de tout utiliser en tenant simplement votre iPhone.
 
-Gratuit, sans compte et sans publicité. L'app est open source et ne collecte aucune donnée : votre caméra, vos mains et votre voix restent sur votre iPhone.
+Sans compte et sans publicité. L'app est open source et ne collecte aucune donnée : votre caméra, vos mains et votre voix restent sur votre iPhone.
 
 ## keywords
 vr,réalité virtuelle,casque,webxr,ar,passthrough,360,spatial,panorama,suivi mains,lidar,visionneuse
 
 ## promotional_text
-Votre iPhone devient un casque : vrai suivi de la tête, vos mains, votre pièce, vos photos en 3D, un navigateur WebXR et douze jeux. Gratuit, sans compte.
+Votre iPhone devient un casque : vrai suivi de la tête, vos mains, votre pièce, vos photos en 3D, un navigateur WebXR et douze jeux. Aucun compte requis.
 
 ## marketing_url
 https://wemiller.com/apps/afterglow/

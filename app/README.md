@@ -611,7 +611,13 @@ Listed as **Afterglow XR**, version 1.0.0, in nine languages, through rocket fro
 - **Screenshots**: run `Tools/capture_gallery.sh` (needs the three URLs, see its header), then
   `rocket shots "Afterglow XR" --upload`. `Tools/capture_store_screenshots.sh` picks the ten shots,
   turns them for Monkr's frame, captures the watch app, and writes the `.monkr` files, which embed
-  the images and so are not committed.
+  the images and so are not committed. The watch shot is framed like the rest; to redo it alone, run
+  the watch part of that script, then `update-screenshots.sh --skip-capture --device watch-46mm` from
+  `_shared` with the App Store Connect key in the environment.
+- **The header and search result art** (iOS 27's Creative Assets): `rocket assets "Afterglow XR"
+  --generate --locale all`, then `--upload --locale all`. `appstore-creative/creative.json` lays the
+  phone on its side (`"landscape": true`) with the stereo view in front, on the app's own captures.
+  The listing never mentions price or that the app costs nothing, in the text or in the art.
 - **The tempo key**: stored once with
   `security add-generic-password -U -a "$USER" -s afterglow-audiometa-key -w`. It is masked in the app,
   not secret: all it allows is reading a free catalogue, at 100 requests a minute across all users.
@@ -621,11 +627,18 @@ Listed as **Afterglow XR**, version 1.0.0, in nine languages, through rocket fro
 `AfterglowWatch/` is a single-target watchOS app embedded in the iOS app. Its one button carries
 `handGestureShortcut(.primaryAction)`, so the watch's double-tap gesture (and a tap on the
 button) sends `select` to the phone over WatchConnectivity, and turning the Digital Crown sends
-`scroll` with a delta. On the phone `Input/WatchReceiver.swift` turns `select` into the same
-request as a double tap on the headset (select what the gaze is on, or pinch for the games) and
-`scroll` into browser scrolling. The watch app needs no authorization; it is reachable whenever
-the phone app is in the foreground. Not tried on a real watch yet: the Simulator cannot pair
-one with the phone build the harness uses.
+`scroll` with a delta. On the phone `Input/WatchReceiver.swift` turns `select` into a plain select
+of what the gaze is on: never an exit, so it can't end a WebXR session or the coaster, and it
+reaches a WebXR page even while the page holds the hands. `scroll` moves a media grid while one is
+open, and otherwise the page. The watch's status line says "Ready: double tap to select" when
+connected and "Open Afterglow on your iPhone" when not. The watch app needs no authorization; it is
+reachable whenever the phone app is in the foreground.
+
+`zsh Tools/test_watch_link.sh` proves the link on a paired iPhone and Apple Watch Simulator: the
+watch presses Select and turns the crown by itself (the Debug-only launch option
+`AFTERGLOW_WATCH_AUTOPRESS`), and the test passes when the phone logs them reaching its frame loop
+and is still running. From a cold boot nothing arrives for about 2.5 minutes, then everything at
+once. Not tried on a real watch yet: its double tap and Digital Crown are what the test can't press.
 
 ## Build and run
 

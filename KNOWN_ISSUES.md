@@ -295,6 +295,14 @@ the crossing can still read as one, and Vision sometimes drops the hand at the c
 image on the Neural Engine at 30 images/s whether or not a hand is in view, which is the one
 steady load the phase 1 run did not have; `handHz` lowers it.
 
+### The Apple Watch app has not run on a real watch (2026-11-08)
+
+Its select and scroll are proven between paired Simulators by `Tools/test_watch_link.sh`, which
+presses Select itself. A real watch's double tap and Digital Crown, and the delay on real hardware,
+are untested. After a Simulator's cold boot nothing arrives for about 2.5 minutes (its connectivity
+daemon logs "initial set up failed"), and then everything arrives at once. That delay is the
+Simulator's own, seen with a minimal test app too.
+
 ### Built in the Simulator, not yet run on the phone (2026-11-06 evening)
 
 Everything after phase 2 was proven only by the Simulator harness: the browser and its WebXR

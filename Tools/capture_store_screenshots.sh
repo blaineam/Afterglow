@@ -31,7 +31,7 @@ DERIVED=$HOME/Library/Developer/Afterglow/native-derived-watch
 xcodebuild -project $N/Afterglow.xcodeproj -target AfterglowWatch -sdk watchsimulator -configuration Debug \
     SYMROOT=$DERIVED CODE_SIGNING_ALLOWED=NO build >$LOGS/native-xcode-watch.log 2>&1 || { tail -5 $LOGS/native-xcode-watch.log; exit 1; }
 xcrun simctl install $WATCH $DERIVED/Debug-watchsimulator/AfterglowWatch.app
-xcrun simctl launch $WATCH com.wemiller.afterglow.watchkitapp >/dev/null
+SIMCTL_CHILD_AFTERGLOW_WATCH_SHOT=1 xcrun simctl launch --terminate-running-process $WATCH com.wemiller.afterglow.watchkitapp >/dev/null
 sleep 6
 xcrun simctl io $WATCH screenshot $WATCHDIR/01-select.png >/dev/null 2>&1
 xcrun simctl shutdown $WATCH

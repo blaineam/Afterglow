@@ -79,6 +79,7 @@
 		D0FFAE6ED53FBCC1A1BE163C /* HandAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = D394756F5B6B7845235BAC81 /* HandAccess.swift */; };
 		D151E7F53F6F570BD5827F0C /* evening-meadow.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E430EDBD572B0C5A3B147DBA /* evening-meadow.jpg */; };
 		D2DF1EF2F8AE43E483DE4DA9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1DF1BAF17D795352DAC505E /* Assets.xcassets */; };
+		D3E556F704DAFE5891FA18ED /* WatchLinkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E14D1E5241D66D35D1F7E856 /* WatchLinkTests.swift */; };
 		D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */; };
 		D9D3FFB7F662E475F947FD3C /* EyeRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCEC5C5D9ABB975443C7DE91 /* EyeRecorder.swift */; };
 		DD58B4FD2C93E71F18D6592E /* Games.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A39A4CC8DC935824223E5A /* Games.swift */; };
@@ -228,6 +229,7 @@
 		DCEC5C5D9ABB975443C7DE91 /* EyeRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EyeRecorder.swift; sourceTree = "<group>"; };
 		DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensDistortionTests.swift; sourceTree = "<group>"; };
 		DD058E5F1F960588FAF96C98 /* starship-cabin.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "starship-cabin.jpg"; sourceTree = "<group>"; };
+		E14D1E5241D66D35D1F7E856 /* WatchLinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLinkTests.swift; sourceTree = "<group>"; };
 		E34AF1523B2C160E1CAD5784 /* Places */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Places; path = Afterglow/Places; sourceTree = SOURCE_ROOT; };
 		E35E9E8510A0D1E59C07510F /* Controllers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Controllers.swift; sourceTree = "<group>"; };
 		E430EDBD572B0C5A3B147DBA /* evening-meadow.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "evening-meadow.jpg"; sourceTree = "<group>"; };
@@ -250,6 +252,7 @@
 				B231E30F358ACE88A50B67AE /* HeadSmootherTests.swift */,
 				DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */,
 				959D50A1EB5EED9EC6FE9AF1 /* MediaMetadataTests.swift */,
+				E14D1E5241D66D35D1F7E856 /* WatchLinkTests.swift */,
 			);
 			path = AfterglowTests;
 			sourceTree = "<group>";
@@ -694,6 +697,7 @@
 				9CB61EB8DC68234EE67D85A2 /* HeadSmootherTests.swift in Sources */,
 				4752687B06DCC27E53D2DE95 /* LensDistortionTests.swift in Sources */,
 				ED5D8F15E38998A94A259426 /* MediaMetadataTests.swift in Sources */,
+				D3E556F704DAFE5891FA18ED /* WatchLinkTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -869,7 +873,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Afterglow/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -955,7 +959,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Afterglow/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -992,7 +996,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AfterglowWatch/Info.plist;
 				MARKETING_VERSION = 1.0.0;
@@ -1011,7 +1015,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AfterglowWatch/Info.plist;
 				MARKETING_VERSION = 1.0.0;

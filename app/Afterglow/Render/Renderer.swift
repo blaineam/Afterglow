@@ -79,6 +79,7 @@ final class Renderer {
     /// Input for the frame: a pinch that began, a tap, a double tap on the viewer.
     private var pinchWas = [false, false]
     private let tapRequests = LockedValue<Int>(0)
+    private var watchSelectsSeen = 0
     private var doubleTapTarget: SIMD2<Float>?
     private var doubleTapPending = false
     /// Desk mode: with no tracking (the Simulator), a drag turns the head.
@@ -234,8 +235,8 @@ final class Renderer {
         if PlacesApp.hasSavedPlace, places == nil { makePlaces().restoreSaved() }
         keyboard = KeyboardPanel(device: device)
         controllers.start()
-        watch.onSelect = { [weak self] in self?.tapRequests.value = 2 }
-        watch.onScroll = { [weak self] dy in Task { @MainActor in self?.browser?.scroll(dy: dy) } }
+        watch.onSelect = { [weak self] in self?.tapRequests.value = 3 }
+        watch.onScroll = { [weak self] dy in self?.crownTurned(dy: dy) }
         watch.start()
         let windows = WindowManager(device: device)
         windows.onClose = { [weak self] kind in self?.windowClosed(kind) }
@@ -452,6 +453,15 @@ final class Renderer {
             media.scrollBy(pixels: dy)
         } else {
             browser?.scroll(dy: -dy * 2)
+        }
+    }
+    /// The watch's Digital Crown: scrolls the media grid while one is open, otherwise the page.
+    /// `dy` is in CSS pixels, down the page when positive. A photo being viewed has nothing to scroll.
+    private func crownTurned(dy: Float) {
+        if let media, windows?.window(.media)?.minimized == false || windows?.window(.files)?.minimized == false {
+            if media.screen != .viewing { media.scrollBy(pixels: -dy) }
+        } else if let browser, !browser.isImmersive {
+            browser.scroll(dy: dy)
         }
     }
     /// A long press on the screen ends an immersive session.
@@ -941,7 +951,9 @@ final class Renderer {
         // A controller: A selects, B closes a menu or app, the left stick scrolls or looks, the
         // right stick looks in desk mode.
         let pad = controllers.take()
-        if pad.select { select = true }
+        // A controller's or the watch's select isn't a pinch: a page holding the hands still gets it.
+        var plainSelect = false
+        if pad.select { select = true; plainSelect = true }
         if pad.menu { toolbar?.press("more") }
         if pad.back { if toolbar?.menuOpen == true { toolbar?.press("closemenu") } else { closeApp() } }
         if source.predictedCameraTransform(at: predictTo) == nil, simd_length(pad.rightStick) > 0.1 {
@@ -956,8 +968,15 @@ final class Renderer {
             // Kind 1 is the first tap of a pair (the target is sampled now), kind 2 the second: a
             // double tap, which ends a WebXR session or the coaster and otherwise selects. The
             // exits sat under kind 1 by mistake, so a single tap ended things and a double never
-            // reached them (owner, 2026-11-07).
-            if tap == 2, browser?.isImmersive == true { browser?.endSession(); log("[WebXR] Session ended by the viewer's double tap") }
+            // reached them (owner, 2026-11-07). Kind 3 is the watch's Select: a select and never an
+            // exit, or pressing it in a WebXR session or on the coaster would end them.
+            if tap == 3 {
+                select = true
+                plainSelect = true
+                watchSelectsSeen += 1
+                if watchSelectsSeen <= 3 { log("[Watch] Select reached the frame") }
+            }
+            else if tap == 2, browser?.isImmersive == true { browser?.endSession(); log("[WebXR] Session ended by the viewer's double tap") }
             else if tap == 2, games?.current is GridRide { games?.press("stop"); log("[Games] Coaster stopped by the viewer's double tap") }
             else if tap == 1 {
                 doubleTapPending = true
@@ -1309,7 +1328,7 @@ final class Renderer {
                 pressPanel(panel, id: id)
             }
             if doubleTapPending && select { doubleTapPending = false }
-            let gaze = browser.frame(head: pointerHead, hands: tracked, select: pageSelect || (select && browser.isImmersive), time: predictTo,
+            let gaze = browser.frame(head: pointerHead, hands: tracked, select: pageSelect || (select && browser.isImmersive), plainSelect: plainSelect, time: predictTo,
                                      deltaTime: frameDt,
                                      eyeAboveFloor: (source as? ARController)?.room.floorHeight.map { pointerHead.columns.3.y - $0 },
                                      room: (source as? ARController)?.room)
