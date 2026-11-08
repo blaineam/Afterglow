@@ -17,6 +17,9 @@ final class Settings: ObservableObject {
     @Published var targetFrameRate: Int { didSet { save("fps", targetFrameRate) } }
     /// Milliseconds added to the display latency when predicting the head pose, to tune by eye.
     @Published var extraPredictionMs: Int { didSet { save("predictionMs", extraPredictionMs) } }
+    /// How much the head's rotation is smoothed, in percent (0: off), so fast or shaky movement
+    /// doesn't shake the world (owner, 2026-11-08).
+    @Published var headSmoothing: Int { didSet { save("headSmoothing", headSmoothing) } }
     /// 6: ARKit world tracking on the wide camera. 3: the ultra-wide through AVFoundation with the
     /// head's rotation from the motion sensors and no positional tracking (ARKit cannot run beside
     /// the ultra-wide, and has no world-tracking format for it on the iPhone).
@@ -82,6 +85,7 @@ final class Settings: ObservableObject {
         renderScalePercent = min(max(Self.read("renderScale", options: options, default: 100), 25), 200)
         targetFrameRate = Self.read("fps", options: options, default: 60)
         extraPredictionMs = Self.read("predictionMs", options: options, default: 0)
+        headSmoothing = min(max(Self.read("headSmoothing", options: options, default: 50), 0), 100)
         degreesOfFreedom = Self.read("dof", options: options, default: 6) == 3 ? 3 : 6
         ultraWide = Self.read("camUltraWide", options: options, default: 1) != 0
         occlusion = Self.read("occlusion", options: options, default: 1) != 0

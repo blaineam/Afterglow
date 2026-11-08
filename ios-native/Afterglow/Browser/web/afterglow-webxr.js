@@ -170,6 +170,43 @@
         pose.q[0] = qx; pose.q[1] = qy; pose.q[2] = qz; pose.q[3] = qw;
     };
 
+    // ---------------------------------------------------------------- the exit button
+    // A button the app places at the user's feet, in the session's own space, and draws into
+    // both eyes over the page, so a session can always be left (owner, 2026-11-08: the pinch
+    // and hold to leave was unreliable). The app does the placing and the hit-testing; this
+    // only draws it.
+    var exitButton = { shown: false, c: [0, 0, 0], q: [0, 0, 0, 1], w: 0.36, h: 0.12, hovered: false };
+    window.__afterglowExit = function (cx, cy, cz, qx, qy, qz, qw, w, h, hovered) {
+        exitButton.shown = true;
+        exitButton.c[0] = cx; exitButton.c[1] = cy; exitButton.c[2] = cz;
+        exitButton.q[0] = qx; exitButton.q[1] = qy; exitButton.q[2] = qz; exitButton.q[3] = qw;
+        exitButton.w = w; exitButton.h = h; exitButton.hovered = !!hovered;
+    };
+    function exitPicture(hovered) {
+        var c = document.createElement('canvas');
+        c.width = 768; c.height = 256;
+        var g = c.getContext('2d');
+        function round(x, y, w, h, r) {
+            g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+            g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+        }
+        round(8, 8, 752, 240, 120);
+        g.fillStyle = hovered ? 'rgba(70, 20, 60, 0.92)' : 'rgba(20, 16, 34, 0.85)';
+        g.fill();
+        g.lineWidth = hovered ? 16 : 6;
+        g.strokeStyle = hovered ? '#ff4fb8' : 'rgba(255, 255, 255, 0.35)';
+        g.stroke();
+        g.fillStyle = '#ff5f57';
+        g.beginPath(); g.arc(128, 128, 72, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = '#ffffff'; g.lineWidth = 18; g.lineCap = 'round';
+        g.beginPath(); g.moveTo(100, 100); g.lineTo(156, 156); g.moveTo(156, 100); g.lineTo(100, 156); g.stroke();
+        g.fillStyle = '#ffffff';
+        g.font = '600 104px -apple-system, Helvetica, sans-serif';
+        g.textBaseline = 'middle';
+        g.fillText('Exit VR', 236, 134);
+        return c;
+    }
+
     // ---------------------------------------------------------------- WebXR surface
     function XRRigidTransform(position, orientation) {
         this.position = position || { x: 0, y: 0, z: 0, w: 1 };
@@ -731,7 +768,49 @@
             var m = distortionMesh(eye);
             d.eyes.push(mesh(m.pos, m.uv, m.idx));
         }
+        d.exit = createExit(gl, d.vao);
         return d;
+    }
+
+    var EXIT_VERT = 'attribute vec2 aPos; attribute vec2 aUv; uniform mat4 uMvp; varying vec2 vUv;' +
+                    'void main() { vUv = aUv; gl_Position = uMvp * vec4(aPos, 0.0, 1.0); }';
+    var EXIT_FRAG = 'precision mediump float; varying vec2 vUv; uniform sampler2D uTex;' +
+                    'void main() { gl_FragColor = texture2D(uTex, vUv); }';
+    // The exit button's program, unit quad and its two pictures (plain and hovered), made once.
+    function createExit(gl, vao) {
+        var p = gl.createProgram();
+        gl.attachShader(p, compile(gl, gl.VERTEX_SHADER, EXIT_VERT));
+        gl.attachShader(p, compile(gl, gl.FRAGMENT_SHADER, EXIT_FRAG));
+        gl.linkProgram(p);
+        if (!gl.getProgramParameter(p, gl.LINK_STATUS)) { console.error('[Afterglow] exit program: ' + gl.getProgramInfoLog(p)); return null; }
+        var e = { program: p, aPos: gl.getAttribLocation(p, 'aPos'), aUv: gl.getAttribLocation(p, 'aUv'),
+                  uMvp: gl.getUniformLocation(p, 'uMvp'), uTex: gl.getUniformLocation(p, 'uTex'), array: null, textures: [] };
+        if (vao) { e.array = vao.create(); vao.bind(e.array); }
+        e.pos = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, e.pos);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-0.5, -0.5, 0.5, -0.5, -0.5, 0.5, 0.5, 0.5]), gl.STATIC_DRAW);
+        if (vao) { gl.enableVertexAttribArray(e.aPos); gl.vertexAttribPointer(e.aPos, 2, gl.FLOAT, false, 0, 0); }
+        e.uv = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, e.uv);
+        // The canvas's first row is its top: the quad's top corners take v = 0.
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 1, 1, 1, 0, 0, 1, 0]), gl.STATIC_DRAW);
+        if (vao) { gl.enableVertexAttribArray(e.aUv); gl.vertexAttribPointer(e.aUv, 2, gl.FLOAT, false, 0, 0); vao.bind(null); }
+        var flip = gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL), premultiply = gl.getParameter(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+        for (var hovered = 0; hovered < 2; hovered++) {
+            var t = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, t);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, exitPicture(hovered === 1));
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            e.textures.push(t);
+        }
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flip);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, premultiply);
+        return e;
     }
 
     // Binds a mesh for drawing: its vertex array, or its attributes one by one without one.
@@ -841,12 +920,61 @@
             catch (e) { console.error('[Afterglow] frame callback: ' + (e && e.message) + ' ' + (e && e.stack ? String(e.stack).split('\n').slice(0, 3).join(' | ') : '')); }
         }
         this._frames = (this._frames || 0) + 1;
-        if (gl && this._fbo) this._composite();
+        if (gl && this._fbo) { this._drawExit(); this._composite(); }
         // The first frames, and then one in a hundred, say whether the page is drawing at all.
         if (this._frames <= 3 || this._frames % 100 === 0)
             console.log('[Afterglow] frame ' + this._frames + ': ' + due.length + ' callback(s), layer ' + (this._fbo ? 'bound' : 'none') +
                 ', pose ' + (frame._poseSeen ? 'given' : 'not asked') + ', next ' + this._callbacks.length);
         if (this._callbacks.length) this._schedule();
+    };
+
+    // Draws the exit button into each eye's half of the eye framebuffer, over whatever the page
+    // drew (no depth test: it is always visible), and puts the page's GL state back.
+    XRSession.prototype._drawExit = function () {
+        var gl = this._gl, d = this._distort;
+        var e = d && d.exit;
+        if (!e || !exitButton.shown) return;
+        var saved = saveState(gl, d.vao);
+        var blend = [gl.getParameter(gl.BLEND_SRC_RGB), gl.getParameter(gl.BLEND_DST_RGB), gl.getParameter(gl.BLEND_SRC_ALPHA),
+                     gl.getParameter(gl.BLEND_DST_ALPHA), gl.getParameter(gl.BLEND_EQUATION_RGB), gl.getParameter(gl.BLEND_EQUATION_ALPHA)];
+        var mask = gl.getParameter(gl.DEPTH_WRITEMASK);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this._fbo);
+        gl.disable(gl.DEPTH_TEST);
+        gl.disable(gl.CULL_FACE);
+        gl.disable(gl.SCISSOR_TEST);
+        gl.depthMask(false);
+        gl.enable(gl.BLEND);
+        gl.blendEquation(gl.FUNC_ADD);
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        gl.useProgram(e.program);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, e.textures[exitButton.hovered ? 1 : 0]);
+        gl.uniform1i(e.uTex, 0);
+        if (d.vao) d.vao.bind(e.array);
+        else {
+            gl.bindBuffer(gl.ARRAY_BUFFER, e.pos); gl.enableVertexAttribArray(e.aPos); gl.vertexAttribPointer(e.aPos, 2, gl.FLOAT, false, 0, 0);
+            gl.bindBuffer(gl.ARRAY_BUFFER, e.uv); gl.enableVertexAttribArray(e.aUv); gl.vertexAttribPointer(e.aUv, 2, gl.FLOAT, false, 0, 0);
+        }
+        var model = fromQuatPos(exitButton.q, exitButton.c);
+        for (var i = 0; i < 3; i++) { model[i] *= exitButton.w; model[4 + i] *= exitButton.h; }
+        var near = 0.05, far = 100;
+        var eyes = cfg.mono ? [-1] : [0, 1];
+        var half = cfg.mono ? this._fbWidth : this._fbWidth / 2;
+        for (var k = 0; k < eyes.length; k++) {
+            var eye = eyes[k];
+            var offset = eye < 0 ? [0, 0, 0] : rotateVec(pose.q, [(eye === 0 ? -0.5 : 0.5) * cfg.interLens, 0, 0]);
+            var eyePos = [pose.p[0] + offset[0], pose.p[1] + offset[1], pose.p[2] + offset[2]];
+            var view = invertRigid(fromQuatPos(pose.q, eyePos));
+            var proj = eye < 0 ? monoProjection(near, far) : projection(eye, near, far);
+            gl.viewport(eye === 1 ? half : 0, 0, half, this._fbHeight);
+            gl.uniformMatrix4fv(e.uMvp, false, multiply(proj, multiply(view, model)));
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        }
+        if (d.vao) d.vao.bind(null);
+        gl.blendFuncSeparate(blend[0], blend[1], blend[2], blend[3]);
+        gl.blendEquationSeparate(blend[4], blend[5]);
+        gl.depthMask(mask);
+        restoreState(gl, d.vao, saved);
     };
 
     // Warps both halves of the eye framebuffer onto the screen through the lens meshes, and
@@ -886,6 +1014,7 @@
     XRSession.prototype.end = function () {
         if (this._ended) return Promise.resolve();
         this._ended = true;
+        exitButton.shown = false;
         this._callbacks = [];
         for (var side in handSources) if (handSources[side]) { handSources[side]._present = false; handSources[side]._pinching = false; }
         var gl = this._gl;
@@ -967,11 +1096,24 @@
         requestSession: function (mode) {
             if (mode !== 'immersive-vr' && mode !== 'inline')
                 return Promise.reject(new Error('Afterglow supports immersive-vr and inline only'));
-            active = new XRSession();
-            active.inputSources = [new XRInputSource()];
-            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.afterglow)
-                window.webkit.messageHandlers.afterglow.postMessage({ event: 'sessionstart' });
-            return Promise.resolve(active);
+            var post = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.afterglow;
+            function start() {
+                active = new XRSession();
+                active.inputSources = [new XRInputSource()];
+                if (post) post.postMessage({ event: 'sessionstart' });
+                return active;
+            }
+            // The native app first lays the page out at 1:1 (its text zoom made the page small and
+            // broke sessions), then says ready; the resize lands before there is a session for it
+            // to end. A second without an answer starts the session anyway.
+            if (!cfg.prepareSession || !post) return Promise.resolve(start());
+            return new Promise(function (resolve) {
+                var done = false;
+                function go() { if (done) return; done = true; window.__afterglowSessionReady = null; resolve(start()); }
+                window.__afterglowSessionReady = function () { requestAnimationFrame(function () { requestAnimationFrame(go); }); };
+                setTimeout(go, 1000);
+                post.postMessage({ event: 'sessionrequest' });
+            });
         },
         addEventListener: function () {},
         removeEventListener: function () {},

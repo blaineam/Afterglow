@@ -148,6 +148,7 @@ final class Renderer {
     /// which is drawn as if seen from there. Eased over half a second, as the Unity app does.
     private var eyesAtCamera: Float = 0
     private var lastDrawTime: Double = 0
+    private var headSmoother = HeadSmoother()
     private var ultraProbe: UltraWideProbe?
 
     init?(settings: Settings, thermal: ThermalLog, screen uiScreen: UIScreen) {
@@ -729,11 +730,14 @@ final class Renderer {
         if sourceDof != settings.degreesOfFreedom { startSource() }
         let frame = source.latestFrame
         let measuredLag = presentLagMs.value
-        let predictTo = targetTimestamp + (measuredLag + Double(settings.extraPredictionMs)) / 1000
+        let predictTo = targetTimestamp + (measuredLag + Double(settings.extraPredictionMs)) / 1000 + HeadSmoother.lead(percent: settings.headSmoothing)
         var cameraInWorld = matrix_identity_float4x4
         var horizonMs = 0.0
         if let predicted = source.predictedCameraTransform(at: predictTo) {
-            cameraInWorld = predicted
+            // The rotation smoothed, the position as it is.
+            let smoothed = headSmoother.filter(simd_quatf(predicted.rotationOnly), time: targetTimestamp, percent: settings.headSmoothing)
+            cameraInWorld = simd_float4x4(smoothed)
+            cameraInWorld.columns.3 = predicted.columns.3
             if let frame { horizonMs = (predictTo - frame.pose.timestamp) * 1000 }
         } else {
             // No tracking (the Simulator): the desk look.

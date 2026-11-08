@@ -6,14 +6,18 @@
 
 ## Both platforms
 
-- **Round nine not yet on the headset (2026-11-08).** Unit-proven: the pinch count through a
-  hidden tip or a wobble, and the wrist check in any turn of the hand. Simulator-proven: the
-  Files window still lists, thumbnails and plays local files. Only the phone can prove the
-  pinch feel, the wrist fix on a real hand, and a provider folder (none in the Simulator).
-  Round eight's voice unlock has not been reported on yet.
+- **Rounds nine and ten not yet on the headset (2026-11-08).** Unit-proven: the pinch count
+  through a hidden tip or a wobble, the wrist check in any turn of the hand, and the head
+  smoother (a 12 Hz shake damped, a steady turn followed). Simulator-proven: Files still lists,
+  thumbnails and plays local files; a WebXR sample laid out at 100% for its session and back to
+  240% after; the Exit VR button drawn in both eyes, lit when looked at and ending the session
+  on a pinch. Only the phone can prove the pinch feel, the wrist fix, a provider folder, and
+  how the head smoothing feels. Round eight's voice unlock has not been reported on yet.
+- **Head smoothing trails fast turns a little.** It is a low-pass: half its lag is predicted
+  back, so a turn at Medium trails by about 15 ms. Off restores the old behaviour; Max trails more.
 - **A provider's folders can be greyed out in the folder picker.** The provider's extension must
-  declare folder picking; one that doesn't (the owner's own remotes app, as of this round) needs
-  that key added and a new build of that app.
+  declare folder picking. The owner's own remotes app has the key from its next release on;
+  until that release is on the phone, its folders stay greyed out.
 - **A provider's videos have no thumbnails** unless the provider supplies them; they are not
   downloaded for one.
 - **3D passthrough at edges.** Cells across a depth jump (a hand against a far wall) are dropped

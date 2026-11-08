@@ -200,8 +200,13 @@ final class PosePredictor: @unchecked Sendable {
         guard let first = samples.first, let last = samples.last else { return nil }
         if time <= first.timestamp { return first.attitude }
         if time >= last.timestamp {
+            // Past the newest reading, the turn goes on at the last few readings' average rate:
+            // one reading's rate is noisy, and a noisy rate carried 30-60 ms ahead shook the
+            // world on a fast head (owner, 2026-11-08).
             let dt = min(time - last.timestamp, 0.15)
-            return last.attitude * rotation(rate: last.rate, seconds: dt)
+            let recent = samples.suffix(3)
+            let rate = recent.reduce(SIMD3<Double>.zero) { $0 + $1.rate } / Double(recent.count)
+            return last.attitude * rotation(rate: rate, seconds: dt)
         }
         // Binary search for the bracket.
         var lo = 0

@@ -277,6 +277,9 @@ foundation at all. The honest picture:
   the count instead of clearing it; the tips judged before smoothing); an impossible wrist past
   the fingertips is put back; Files lists and opens folders from file providers without
   downloading them all. Still to come: the owner's run of it.
+- **Tenth phone round, 2026-11-08**: WebXR pages laid out at 1:1 for the session with the text
+  zoom restored after; an Exit VR button at the feet in every session; head smoothing with a
+  setting. Still to come: the owner's run of it.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

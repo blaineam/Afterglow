@@ -31,6 +31,7 @@
 		41D13DAC96C560971D3E2F8C /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE734763626DCDC395851D92 /* CredentialStore.swift */; };
 		44349A8E8C2D2B5B72308FA2 /* FileSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9E0657D69D500D52FC6B5D /* FileSource.swift */; };
 		4752687B06DCC27E53D2DE95 /* LensDistortionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */; };
+		4D3F508B9617433579932D70 /* HeadSmoother.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93FF80591784545974B83FB2 /* HeadSmoother.swift */; };
 		52505BE6706917719D30E6FE /* grand-library.jpg in Resources */ = {isa = PBXBuildFile; fileRef = B2EA5635963BE80E0B2E6C0B /* grand-library.jpg */; };
 		5EEE72D16F54283324E12570 /* Places in Resources */ = {isa = PBXBuildFile; fileRef = E34AF1523B2C160E1CAD5784 /* Places */; };
 		5FADCF4942F922DF8FD0C5C4 /* HandOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7854AEB3ED92FB2970560611 /* HandOverlay.swift */; };
@@ -57,6 +58,7 @@
 		93D6C51CE90E1CC4F24D1091 /* Controllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = E35E9E8510A0D1E59C07510F /* Controllers.swift */; };
 		97305D4E9B52CAA27CC13956 /* Browser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47EDB0FC1E0D6EF4E3D1AE0 /* Browser.swift */; };
 		998F8E4E9A185C881C5B74DC /* SessionLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97890D6EB3536CA74C71E09 /* SessionLog.swift */; };
+		9CB61EB8DC68234EE67D85A2 /* HeadSmootherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B231E30F358ACE88A50B67AE /* HeadSmootherTests.swift */; };
 		ADFAB9F747817AFE897DE790 /* MediaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57EB9465CB5A756B4F53BEC0 /* MediaApp.swift */; };
 		AED9AC2DB5CA264371AF1869 /* HandGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */; };
 		B11BEA3C83C4B14B3E457065 /* LensDistortion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4402EC68CCA81B671B468EE8 /* LensDistortion.swift */; };
@@ -176,6 +178,7 @@
 		8AA45D6DDB4AD16C783197CB /* storybook-station.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "storybook-station.jpg"; sourceTree = "<group>"; };
 		8F16A4AEA3051438B872ACAF /* country-kitchen.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "country-kitchen.jpg"; sourceTree = "<group>"; };
 		937E65EAEBF6C26F50ED3B34 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		93FF80591784545974B83FB2 /* HeadSmoother.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadSmoother.swift; sourceTree = "<group>"; };
 		959D50A1EB5EED9EC6FE9AF1 /* MediaMetadataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaMetadataTests.swift; sourceTree = "<group>"; };
 		9BF024C3B411C1CCCC0C7D01 /* MediaMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaMetadata.swift; sourceTree = "<group>"; };
 		9D94EC27CAA1FF1943486BB0 /* CameraSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraSource.swift; sourceTree = "<group>"; };
@@ -186,6 +189,7 @@
 		AB1DC4E70B80488B9E5CCA30 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B1BE27FFB5F7BF0CBB5D4956 /* SettingsWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindow.swift; sourceTree = "<group>"; };
 		B1DF1BAF17D795352DAC505E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B231E30F358ACE88A50B67AE /* HeadSmootherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadSmootherTests.swift; sourceTree = "<group>"; };
 		B2A07A7A60E0764F6995F5B5 /* AfterglowApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AfterglowApp.swift; sourceTree = "<group>"; };
 		B2EA5635963BE80E0B2E6C0B /* grand-library.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "grand-library.jpg"; sourceTree = "<group>"; };
 		B3A196F31F5FF25325F5EEF5 /* beach-bungalows-sunset.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "beach-bungalows-sunset.jpg"; sourceTree = "<group>"; };
@@ -233,6 +237,7 @@
 				37D8895069D15A18068ACE71 /* BrowserTests.swift */,
 				F985A23AB158BB227036EFC0 /* GamesTests.swift */,
 				5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */,
+				B231E30F358ACE88A50B67AE /* HeadSmootherTests.swift */,
 				DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */,
 				959D50A1EB5EED9EC6FE9AF1 /* MediaMetadataTests.swift */,
 			);
@@ -266,6 +271,7 @@
 			children = (
 				27D58785E652A50828B3FA73 /* ARController.swift */,
 				9D94EC27CAA1FF1943486BB0 /* CameraSource.swift */,
+				93FF80591784545974B83FB2 /* HeadSmoother.swift */,
 				C9966FF18394C15E0D6C282F /* PosePredictor.swift */,
 				F03EB15525A4EC358532B829 /* UltraWideController.swift */,
 				E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */,
@@ -633,6 +639,7 @@
 				8C25915865BFF7086BB43B56 /* BrowserTests.swift in Sources */,
 				CA5DD10BCE59171AD69681CF /* GamesTests.swift in Sources */,
 				AED9AC2DB5CA264371AF1869 /* HandGeometryTests.swift in Sources */,
+				9CB61EB8DC68234EE67D85A2 /* HeadSmootherTests.swift in Sources */,
 				4752687B06DCC27E53D2DE95 /* LensDistortionTests.swift in Sources */,
 				ED5D8F15E38998A94A259426 /* MediaMetadataTests.swift in Sources */,
 			);
@@ -662,6 +669,7 @@
 				F0433297A0D001C5C4CA77C7 /* HandGeometry.swift in Sources */,
 				5FADCF4942F922DF8FD0C5C4 /* HandOverlay.swift in Sources */,
 				F6FFC447E3208CC29FA6EAB3 /* HandTracker.swift in Sources */,
+				4D3F508B9617433579932D70 /* HeadSmoother.swift in Sources */,
 				E1962322F97DB95D45A90270 /* HeadsetTap.swift in Sources */,
 				B11BEA3C83C4B14B3E457065 /* LensDistortion.swift in Sources */,
 				ADFAB9F747817AFE897DE790 /* MediaApp.swift in Sources */,

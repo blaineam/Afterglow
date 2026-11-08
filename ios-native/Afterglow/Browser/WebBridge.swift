@@ -28,7 +28,7 @@ enum WebBridge {
             let fovText = fov.map { "[\(f($0.x)),\(f($0.y)),\(f($0.z)),\(f($0.w))]" }.joined(separator: ",")
             return "{\"screen\":[\(f(screenMeters.x)),\(f(screenMeters.y))],\"screenToLens\":\(f(screenToLens)),\"interLens\":\(f(interLens))," +
                 "\"yEyeOffset\":\(f(yEyeOffset)),\"k\":[\(k.map(f).joined(separator: ","))],\"fov\":[\(fovText)],\"hasPosition\":\(hasPosition)," +
-                "\"screenPixels\":[\(screenPixels.x),\(screenPixels.y)],\"renderScale\":\(renderScale),\"mono\":false,\"monoFov\":1.0472,\"eyeHeight\":\(f(eyeHeight))}"
+                "\"screenPixels\":[\(screenPixels.x),\(screenPixels.y)],\"renderScale\":\(renderScale),\"mono\":false,\"monoFov\":1.0472,\"eyeHeight\":\(f(eyeHeight)),\"prepareSession\":true}"
         }
     }
 
@@ -69,7 +69,13 @@ enum WebBridge {
         "window.__afterglowHands&&window.__afterglowHands([" + values.prefix(256).map { String(format: "%.4f", $0) }.joined(separator: ",") + "])"
     }
     static let select = "window.__afterglowSelect&&window.__afterglowSelect()"
+    /// The exit button at the feet, in the session's space: its centre, orientation, size and hover.
+    static func exit(_ c: SIMD3<Float>, _ q: simd_quatf, size: SIMD2<Float>, hovered: Bool) -> String {
+        String(format: "window.__afterglowExit&&window.__afterglowExit(%.4f,%.4f,%.4f,%.5f,%.5f,%.5f,%.5f,%.3f,%.3f,%d)",
+               c.x, c.y, c.z, q.vector.x, q.vector.y, q.vector.z, q.vector.w, size.x, size.y, hovered ? 1 : 0)
+    }
     static let endSession = "window.__afterglowEndSession&&window.__afterglowEndSession()"
+    static let sessionReady = "window.__afterglowSessionReady&&window.__afterglowSessionReady()"
     static func click(_ u: Float, _ v: Float) -> String { String(format: "window.__afterglowClick&&window.__afterglowClick(%.5f,%.5f)", u, v) }
     static func hover(_ u: Float, _ v: Float) -> String { String(format: "window.__afterglowHover&&window.__afterglowHover(%.5f,%.5f)", u, v) }
     static func scroll(_ u: Float, _ v: Float, _ dx: Float, _ dy: Float) -> String {

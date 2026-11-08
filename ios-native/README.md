@@ -529,6 +529,22 @@ and floor are right now. This round fixes what was left.
   folder picking (`NSExtensionFileProviderSupportsPickingFolders`); one that doesn't is greyed
   out in the picker.
 
+## Tenth phone round (2026-11-08)
+
+- **WebXR at 1:1**: the browser's text zoom laid the page out small and broke WebXR. When a page
+  asks for a session, the app lays it out at 100% first and the shim waits for that (a resize
+  during a session made a player end it), then starts the session; the zoom comes back when
+  the session ends, or after 3 s if the page never starts one.
+- **Exit button at the feet**: every WebXR session has an "Exit VR" button 1.2 m below the eyes
+  and 0.55 m ahead, tilted to face them. The app places it in the session's space and hit-tests
+  it; the shim draws it into both eyes over the page. It follows lazily, only once you walk
+  35 cm or turn 45° away, so looking down at it doesn't move it. Look at it (it turns pink) and
+  pinch or tap, or pinch with your fingers on it. The double tap still ends a session too.
+- **Head smoothing**: a low-pass on the predicted head rotation, set in Settings (Off, Low,
+  Medium, High, Max; Medium by default, 5.4 Hz). Half its lag is predicted back, so a steady
+  turn keeps up; a jump (a recentre, a tracking switch) is taken at once. The prediction past
+  the newest gyro reading now uses the last three readings' average rate instead of one.
+
 ## Apple Watch as a controller
 
 `AfterglowWatch/` is a single-target watchOS app embedded in the iOS app. Its one button carries
@@ -575,6 +591,7 @@ screen shows a control strip for the first four, whose values are kept between r
 | `renderScale` | 100 | eye texture size relative to half the screen, percent (25–200) |
 | `fps` | 60 | the display link's rate (30, 60, 90, 120) |
 | `predictionMs` | 0 | milliseconds added to the display latency when predicting the head |
+| `headSmoothing` | 50 | how much the head's rotation is smoothed, percent (0 off; Settings: Off, Low, Medium, High, Max) |
 | `camUltraWide` | 1 | prefer the ultra-wide camera's format when ARKit lists one |
 | `thermalCap` | 1 | hold render scale to 80 % at "serious" and 60 %/30 fps at "critical", as the Unity app does |
 | `eyesX`, `eyesY`, `eyesZ` | 60, -10, 66 | the eyes' midpoint relative to the camera, mm, camera axes (x right, y up, z back) |

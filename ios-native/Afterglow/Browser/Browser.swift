@@ -274,7 +274,13 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
             let local = fromWorld * head
             let p = local.columns.3.xyz
             let q = simd_quatf(local.rotationOnly)
-            run(WebBridge.pose(p, q))
+            let exit = placeExit(head: local, hands: hands.map { $0.pinchPoint }.map { (fromWorld * SIMD4($0, 1)).xyz }, time: time)
+            run(WebBridge.pose(p, q) + ";" + WebBridge.exit(exit.centre, exit.orientation, size: Self.exitSize, hovered: exit.hovered))
+            if select && exit.hovered {
+                log("[WebXR] Session ended by the exit button at the feet")
+                endSession()
+                return nil
+            }
             var values: [Float] = [Float(hands.count)]
             for hand in hands {
                 values.append(hand.isRight ? 1 : 0)
@@ -315,6 +321,76 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
         return gaze.map { Gaze(uv: $0.uv, point: $0.point) }
     }
 
+    // MARK: The exit button
+
+    /// The exit button lies at the feet, a little ahead, tilted to face the eyes, and follows
+    /// the user lazily: only once they have walked or turned well away from it, so looking down
+    /// at it doesn't move it (owner, 2026-11-08: the pinch and hold to leave was unreliable; a
+    /// button to pinch was wanted, always there). Looking at it and pinching or tapping, or
+    /// pinching with the fingers on it, ends the session.
+    static let exitSize = SIMD2<Float>(0.36, 0.12)
+    private static let exitDrop: Float = 1.2        // below the eyes, metres
+    private static let exitAhead: Float = 0.55
+    private var exitAnchor: (position: SIMD3<Float>, forward: SIMD3<Float>)?
+    private var exitTarget: (position: SIMD3<Float>, forward: SIMD3<Float>)?
+    private var exitLastTime: Double = 0
+    private var exitLogged = false
+    private var exitWasHovered = false
+
+    private func placeExit(head: simd_float4x4, hands: [SIMD3<Float>], time: Double) -> (centre: SIMD3<Float>, orientation: simd_quatf, hovered: Bool) {
+        let eye = head.columns.3.xyz
+        // Where the body faces: the gaze's level part, plus the head's up vector's, which points
+        // ahead when the head is bowed to look down (the gaze's alone spins then).
+        var forward = -head.columns.2.xyz + head.columns.1.xyz
+        forward.y = 0
+        forward = simd_length(forward) > 1e-3 ? simd_normalize(forward) : (exitAnchor?.forward ?? SIMD3(0, 0, -1))
+        let ground = SIMD3(eye.x, eye.y - Self.exitDrop, eye.z)
+        if exitTarget == nil || !isImmersive || exitAnchor == nil {
+            exitTarget = (ground, forward)
+            exitAnchor = exitTarget
+        } else if let target = exitTarget {
+            let moved = simd_distance(SIMD2(ground.x, ground.z), SIMD2(target.position.x, target.position.z)) > 0.35
+            let turned = simd_dot(forward, target.forward) < cos(Float.pi / 4)
+            if moved || turned || abs(ground.y - target.position.y) > 0.3 { exitTarget = (ground, forward) }
+        }
+        // Glides to where it is wanted.
+        let dt = Float(min(max(time - exitLastTime, 0), 0.1))
+        exitLastTime = time
+        if var anchor = exitAnchor, let target = exitTarget {
+            let k = 1 - exp(-4 * dt)
+            anchor.position += (target.position - anchor.position) * k
+            let f = anchor.forward + (target.forward - anchor.forward) * k
+            anchor.forward = simd_length(f) > 1e-3 ? simd_normalize(f) : target.forward
+            exitAnchor = anchor
+        }
+        let anchor = exitAnchor!
+        let centre = anchor.position + anchor.forward * Self.exitAhead
+        // Faces the eyes, its top edge away from the user so the label reads upright.
+        let normal = simd_normalize(eye - centre)
+        let up = simd_normalize(anchor.forward - normal * simd_dot(anchor.forward, normal))
+        let right = simd_cross(up, normal)
+        let orientation = simd_quatf(simd_float3x3(columns: (right, up, normal)))
+
+        // Hovered: the gaze on it, or a hand's pinch point on it.
+        var hovered = false
+        let direction = -head.columns.2.xyz
+        let facing = simd_dot(direction, normal)
+        if facing < -1e-3 {
+            let t = simd_dot(centre - eye, normal) / facing
+            if t > 0 {
+                let hit = eye + direction * t - centre
+                hovered = abs(simd_dot(hit, right)) < Self.exitSize.x / 2 + 0.03 && abs(simd_dot(hit, up)) < Self.exitSize.y / 2 + 0.03
+            }
+        }
+        if !hovered { hovered = hands.contains { simd_distance($0, centre) < 0.12 } }
+        if !exitLogged {
+            exitLogged = true
+            log(String(format: "[WebXR] Exit button at (%.2f, %.2f, %.2f), eyes at (%.2f, %.2f, %.2f)", centre.x, centre.y, centre.z, eye.x, eye.y, eye.z))
+        }
+        if hovered != exitWasHovered { exitWasHovered = hovered; log("[WebXR] Exit button \(hovered ? "looked at" : "left")") }
+        return (centre, orientation, hovered)
+    }
+
     // MARK: Sessions
 
     /// The session's world in the tracker's: set from the head on the session's first frame, and
@@ -322,10 +398,35 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
     private var xrOrigin: simd_float4x4?
     func recentreSession() { if isImmersive { xrOrigin = nil } }
 
+    /// The page's text zoom laid it out small and broke WebXR (owner, 2026-11-08): before a
+    /// session starts the page is laid out at 1:1, and gets the owner's zoom back when it ends.
+    /// The page waits for this (a resize during a session made a player end it, 2026-11-07).
+    private var zoomHeldForSession = false
+    private func prepareSession() {
+        let zoomed = textScalePercent != 100
+        if zoomed {
+            current?.setTextScale(percent: 100)
+            zoomHeldForSession = true
+            log("[WebXR] Text scale 100% for the session (was \(textScalePercent)%)")
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + (zoomed ? 0.3 : 0)) { [weak self] in self?.run(WebBridge.sessionReady) }
+        // A page that asked and never started gets its zoom back.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let self, self.zoomHeldForSession, !self.isImmersive else { return }
+            self.zoomHeldForSession = false
+            for tab in self.tabs { tab.setTextScale(percent: self.textScalePercent) }
+            log("[WebXR] No session after the request: text scale \(self.textScalePercent)% back")
+        }
+    }
+
     private func beginSession() {
         guard !isImmersive else { return }
         isImmersive = true
         xrOrigin = nil
+        exitAnchor = nil
+        exitTarget = nil
+        exitLogged = false
+        exitWasHovered = false
         // The page zoom that makes text readable in the window would show the session's canvas
         // at 1.5x, one eye across the screen and the other off its edge: the page draws at 1:1
         // for the session and gets its zoom back after.
@@ -352,6 +453,11 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
     private func sessionEnded(why: String) {
         guard isImmersive else { return }
         isImmersive = false
+        if zoomHeldForSession {
+            zoomHeldForSession = false
+            for tab in tabs { tab.setTextScale(percent: textScalePercent) }
+            log("[WebXR] Text scale \(textScalePercent)% back")
+        }
         veil.alpha = 0.01
         layoutVeil()
         log("[WebXR] Session ended (\(why))")
@@ -369,6 +475,7 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
 
     private func handle(_ event: String, _ body: [String: Any]) {
         switch event {
+        case "sessionrequest": prepareSession()
         case "sessionstart": beginSession()
         case "sessionend": sessionEnded(why: (body["why"] as? String).map { String($0.prefix(120)) } ?? "the page ended it")
         case "startpage": sendLists()

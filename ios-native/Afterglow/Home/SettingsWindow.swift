@@ -25,13 +25,14 @@ final class SettingsWindow {
             ("textScale", "Browser text", "\(settings.textScaleLive)%", "textformat.size"),
             ("handHz", "Hand images a second", "\(settings.handHzLive)", "hand.raised"),
             ("prediction", "Head prediction", "+\(settings.extraPredictionMs) ms", "clock"),
+            ("smoothing", "Head smoothing", Self.smoothingName(settings.headSmoothing), "water.waves"),
         ]
         var ry: CGFloat = 0.04
         for (id, name, value, icon) in rows {
-            m.append(.init(id: "label:\(id)", rect: CGRect(x: 0.03, y: ry, width: 0.6, height: 0.095), label: name, wide: true, icon: icon, style: .row, value: value, accent: true))
-            m.append(.init(id: "minus:\(id)", rect: CGRect(x: 0.66, y: ry, width: 0.14, height: 0.095), label: "−", icon: "minus", style: .round))
-            m.append(.init(id: "plus:\(id)", rect: CGRect(x: 0.83, y: ry, width: 0.14, height: 0.095), label: "+", icon: "plus", style: .round))
-            ry += 0.11
+            m.append(.init(id: "label:\(id)", rect: CGRect(x: 0.03, y: ry, width: 0.6, height: 0.082), label: name, wide: true, icon: icon, style: .row, value: value, accent: true))
+            m.append(.init(id: "minus:\(id)", rect: CGRect(x: 0.66, y: ry, width: 0.14, height: 0.082), label: "−", icon: "minus", style: .round))
+            m.append(.init(id: "plus:\(id)", rect: CGRect(x: 0.83, y: ry, width: 0.14, height: 0.082), label: "+", icon: "plus", style: .round))
+            ry += 0.092
         }
         let toggles: [(String, String, Bool)] = [
             ("passthrough", "Passthrough", settings.passthrough),
@@ -62,6 +63,8 @@ final class SettingsWindow {
         case "plus:handHz": settings.handHzLive = min(60, settings.handHzLive + 5)
         case "minus:prediction": settings.extraPredictionMs = max(0, settings.extraPredictionMs - 4)
         case "plus:prediction": settings.extraPredictionMs = min(60, settings.extraPredictionMs + 4)
+        case "minus:smoothing": settings.headSmoothing = max(0, settings.headSmoothing - 25)
+        case "plus:smoothing": settings.headSmoothing = min(100, settings.headSmoothing + 25)
         case "toggle:passthrough": settings.passthrough.toggle()
         case "toggle:hands": settings.showHandsLive.toggle()
         case "toggle:dof": settings.degreesOfFreedom = settings.degreesOfFreedom == 3 ? 6 : 3
@@ -73,6 +76,16 @@ final class SettingsWindow {
         default: break
         }
         layout()
+    }
+
+    static func smoothingName(_ percent: Int) -> String {
+        switch percent {
+        case ..<1: "Off"
+        case ..<26: "Low"
+        case ..<51: "Medium"
+        case ..<76: "High"
+        default: "Max"
+        }
     }
 
     func render() {
