@@ -80,12 +80,20 @@ final class TempoAnalyzer {
         guard let key = try? String(contentsOf: keyURL, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty else { return nil }
         let lookup = "song:\(title)" + (artist.isEmpty ? "" : " artist:\(artist)")
         guard let q = lookup.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let url = URL(string: "https://api.getsongbpm.com/search/?api_key=\(key)&type=both&lookup=\(q)") else { return nil }
+              let url = URL(string: "https://api.getsong.co/search/?type=both&lookup=\(q)") else { return nil }
+        var request = URLRequest(url: url)
+        request.setValue(key, forHTTPHeaderField: "X-API-KEY")   // the key stays out of the URL and any log of it
         do {
-            let (data, _) = try await URLSession.shared.data(from: url)
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+                log("[Tempo] Second catalogue answered \(http.statusCode)")
+                return nil
+            }
             guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any], let hits = json["search"] as? [[String: Any]] else { return nil }
             for hit in hits {
-                if let text = hit["tempo"] as? String, let bpm = Double(text), bpm > 40 {
+                // The catalogue returns the tempo as a string ("220") in its examples and as a number elsewhere.
+                let bpm = (hit["tempo"] as? Double) ?? Double((hit["tempo"] as? String) ?? "") ?? 0
+                if bpm > 40 {
                     log(String(format: "[Tempo] Second catalogue: %@ at %.1f bpm", title, bpm))
                     return bpm
                 }
