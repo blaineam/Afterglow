@@ -25,6 +25,8 @@ final class MusicApp {
     /// The playing song's tempo, measured from its audio when the device holds it unprotected.
     let tempo = TempoAnalyzer()
     private(set) var currentTempo: Double?
+    /// What the tempo lookup said, for the Music window.
+    private(set) var tempoNote = ""
     var nowPlayingId: String { (player.queue.currentEntry?.id ?? "") }
     var nowPlayingTitle: String { nowTitle }
 
@@ -90,7 +92,12 @@ final class MusicApp {
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     let bpm = await self.tempo.tempo(forTitle: title, artist: subtitle.components(separatedBy: " — ").first ?? "", id: id)
-                    if self.nowTitle == title { self.currentTempo = bpm; self.version += 1; self.layout() }
+                    if self.nowTitle == title {
+                        self.currentTempo = bpm
+                        self.tempoNote = bpm.map { String(format: "%.0f bpm", $0) } ?? "tempo unknown: not in the catalogues"
+                        self.version += 1
+                        self.layout()
+                    }
                 }
             }
         }
@@ -154,7 +161,7 @@ final class MusicApp {
 
     func render() {
         panel.render(MusicView(size: CGSize(width: 1400, height: 1000), buttons: panel.buttons, hovered: panel.hovered,
-                               title: showingLibrary ? nil : nowTitle, subtitle: nowSubtitle, artwork: showingLibrary ? nil : artwork))
+                               title: showingLibrary ? nil : nowTitle, subtitle: nowSubtitle + (tempoNote.isEmpty ? "" : "  ·  " + tempoNote), artwork: showingLibrary ? nil : artwork))
     }
 }
 

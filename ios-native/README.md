@@ -299,8 +299,10 @@ furniture like the panels do. The games (`Games/Games.swift`):
   autocorrelation between 70 and 180 bpm, and keeps the answer by song id. A protected Apple
   Music stream gives no samples, so a public music catalogue is asked for the track's tempo
   by title and artist, then a second, keyed catalogue when `Documents/tempo-api-key.txt` holds
-  a key for it; the tempo set with the slower and faster buttons stands when neither knows.
-  With Apple Music playing the style buttons are gone: the song decides. Without music a built-in synthesiser plays in a style picked on
+  a key for it; the tempo set with the slower and faster buttons stands when neither knows,
+  else the style's default (112 for synthwave), and the status and the Music window say which
+  it was, so a default never reads as a match (the first phone rounds found no song in the
+  free catalogue, 2026-11-07). With Apple Music playing the style buttons are gone. Without music a built-in synthesiser plays in a style picked on
   the games panel: synthwave, techno, lo-fi, drum and bass or chiptune, each with its own
   tempo, drums and lead.
 

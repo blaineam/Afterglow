@@ -25,6 +25,8 @@ final class RhythmGame: Game {
     func cycleStyle() {
         style = Style(rawValue: (style.rawValue + 1) % Style.allCases.count) ?? .synthwave
         bpm = style.bpm
+        tempoSet = false
+        tempoSource = "style"
         reset()
     }
     private(set) var bpm: Double = 112
@@ -38,10 +40,13 @@ final class RhythmGame: Game {
     private let motion = HandMotionTracker()
     private var lastHit: [Bool: Double] = [:]
     private var hits: [(lane: Int, time: Double)] = []
-    var status: String { started ? "Score \(score), combo \(combo) · \(Int(bpm)) bpm\(usingMusic ? " · Apple Music" : "")" : "Starting…" }
+    /// Where the tempo came from, so a default never reads as a match (owner, 2026-11-07).
+    private(set) var tempoSource = "style"
+    var status: String { started ? "Score \(score), combo \(combo) · \(Int(bpm)) bpm (\(tempoSource))" : "Starting…" }
 
     /// The tempo, from the games panel; a change restarts the notes to it.
-    func setTempo(_ value: Double) { bpm = min(max(value, 60), 200); reset() }
+    private var tempoSet = false
+    func setTempo(_ value: Double) { bpm = min(max(value, 60), 200); tempoSet = true; reset() }
 
     func reset() {
         notes.removeAll()
@@ -64,7 +69,7 @@ final class RhythmGame: Game {
         usingMusic = music?.isPlaying ?? false
         if usingMusic {
             // The song's measured tempo, when its audio could be read; else the tempo set.
-            if let measured = music?.currentTempo { bpm = measured }
+            if let measured = music?.currentTempo { bpm = measured; tempoSource = tempoSet ? "set by you" : "from the song" } else { tempoSource = tempoSet ? "set by you" : "default, song unknown" }
             // The beat grid starts on the next whole beat of the song's clock.
             let t = music?.playbackTime ?? 0
             startTime = time + (beat - t.truncatingRemainder(dividingBy: beat))
