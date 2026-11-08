@@ -29,6 +29,12 @@ arrive on one thread), and `acos` clamped when reading a rotation's angle.
 Copyright 2019 Google LLC. Licensed under the Apache License, Version 2.0:
 http://www.apache.org/licenses/LICENSE-2.0
 
+## Song tempo data
+
+The rhythm game's keyed tempo lookup uses the [GetSongBPM](https://getsongbpm.com) API. The API is
+free on condition that the project links back to it; the README's Credits section and the
+project page carry that link.
+
 ## ZXing.Net
 
 `Assets/Plugins/ZXing/zxing.dll` is ZXing.Net 0.16.11 (https://github.com/micjahn/ZXing.Net),

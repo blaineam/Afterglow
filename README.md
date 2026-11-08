@@ -83,6 +83,10 @@ Everything runs on the phone. The network is used only by the browser, by Apple 
 MusicKit when you play it, and by two optional lookups the rhythm game makes for a song's
 tempo (the second behind a key file you place). Nothing is sent anywhere else.
 
+## Credits
+
+Song tempo data for the rhythm game is provided by [GetSongBPM](https://getsongbpm.com).
+
 ## License
 
 Apache-2.0, as the upstream project. Third-party notices, including the Unity app's packages,
