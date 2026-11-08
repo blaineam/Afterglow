@@ -161,4 +161,22 @@ final class GamesTests: XCTestCase {
         XCTAssertLessThan(bottom.y, top.y)
         XCTAssertGreaterThan(bottom.z, top.z, "the bottom edge is nearer, like a keyboard on a desk")
     }
+
+    /// Only this song's record gives a tempo: another song's is worse than none.
+    func testTempoCatalogueMatching() {
+        let hits = [
+            TempoAnalyzer.CatalogueHit(id: "cover", title: "Dracula", artists: ["Someone Else"]),
+            TempoAnalyzer.CatalogueHit(id: "other", title: "Dracula Teeth", artists: ["Tame Impala"]),
+            TempoAnalyzer.CatalogueHit(id: "guest", title: "Dracula (with JENNIE)", artists: ["Tame Impala", "JENNIE"]),
+            TempoAnalyzer.CatalogueHit(id: "master", title: "Dracula - Remastered 2024", artists: ["Tame Impala"]),
+        ]
+        XCTAssertEqual(TempoAnalyzer.matches(hits, title: "Dracula", artist: "Tame Impala"), ["guest", "master"])
+        XCTAssertEqual(TempoAnalyzer.matches(hits, title: "Dracula", artist: ""), ["cover", "guest", "master"])
+        XCTAssertEqual(TempoAnalyzer.matches(hits, title: "Dracula", artist: "Tame Impala & JENNIE"), ["guest", "master"])
+        XCTAssertTrue(TempoAnalyzer.matches(hits, title: "Unwritten", artist: "Tame Impala").isEmpty)
+
+        XCTAssertEqual(TempoAnalyzer.tempo(ofTrack: ["audio_features": ["tempo": 115.0]]), 115)
+        XCTAssertNil(TempoAnalyzer.tempo(ofTrack: ["audio_features": ["tempo": 0]]), "unknown tempos are not beats")
+        XCTAssertNil(TempoAnalyzer.tempo(ofTrack: ["audio_features": NSNull()]))
+    }
 }

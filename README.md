@@ -101,12 +101,13 @@ copies it after a launch and `--log` pulls it any time. Known issues are in
 ## Privacy and the network
 
 Everything runs on the phone. The network is used only by the browser, by Apple Music through
-MusicKit when you play it, and by two optional lookups the rhythm game makes for a song's
-tempo (the second behind a key file you place). Nothing is sent anywhere else.
+MusicKit when you play it, and by the rhythm game's lookup of a song's tempo, which sends only its
+title and artist to audiometa.io, and only when the song's own audio can't be read. Nothing is sent
+anywhere else.
 
 ## Credits
 
-Song tempo data for the rhythm game is provided by [GetSongBPM](https://getsongbpm.com).
+Song tempo data for the rhythm game is provided by [audiometa.io](https://audiometa.io).
 
 ## License
 

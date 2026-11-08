@@ -291,6 +291,9 @@ foundation at all. The honest picture:
 - **Focus click-and-lock, 2026-11-08** (`Hardware/focus-brake/`): a new focus wheel with 60 rim
   teeth (0.50 mm a click) and a clip whose pawl holds it, with a slider that locks it solid, because
   the carriage back-drove under gravity. Checked against the printed meshes, not yet printed.
+- **The App Store, 2026-11-08**: Afterglow XR's listing, framed screenshots and first TestFlight
+  build; iPhone only. The tempo lookup moves to audiometa.io. Still to come: the owner's submission,
+  and the privacy answers only App Store Connect's site can take.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

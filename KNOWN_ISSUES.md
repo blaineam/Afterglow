@@ -98,17 +98,10 @@
   model guessed a pinch; no pinch starts within the edge margin now. Two hands clapped or palm
   to palm read as one or swap: Vision reports them as it can and the tracker matches regions by
   distance, so overlapping hands aren't told apart; keep them a hand's width apart.
-- **The keyed tempo catalogue has no key yet (2026-11-07).** Its key form demands a visible
-  credit link on the project's page before it issues one; the page carries the link in every
-  form, and the form still answered "link not found" three times. The project page's edge
-  refused TLS 1.2 at first (lowered since, no change), and it still offers only an ECDSA
-  certificate, so a client limited to RSA cannot connect. The README's Credits section is a
-  second backlink on the repository page, which any client can fetch; try it in both URL
-  fields. Until the key sits in
-  `Documents/tempo-api-key.txt` the rhythm game falls back to the free catalogue (which knew
-  none of the first phone rounds' songs) and then to the tempo buttons or the style's default,
-  labelled as such. The lookup now talks to the catalogue's current API host with the key in a
-  header and reads the tempo as a string or a number.
+- **Online tempos are only as good as a new catalogue.** audiometa.io is young and says it still has
+  gaps. A song it lacks falls back to the tempo buttons or the style's default, labelled as such. Its
+  100 requests a minute are per key, so they are shared by every user of the app; the app asks once
+  per song and keeps the answer.
 - **A tall photo sphere is drawn on a cylinder.** A GPano crop gives a panorama's exact span and
   height, and the band is a cylinder, which is right up to about 90° tall; a sphere cropped to,
   say, 360° × 150° stretches towards its top and bottom on it. The whole sphere (or near enough,

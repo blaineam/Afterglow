@@ -31,9 +31,7 @@ http://www.apache.org/licenses/LICENSE-2.0
 
 ## Song tempo data
 
-The rhythm game's keyed tempo lookup uses the [GetSongBPM](https://getsongbpm.com) API. The API is
-free on condition that the project links back to it; the README's Credits section and the
-project page carry that link.
+The rhythm game's tempo lookup uses the free [audiometa.io](https://audiometa.io) music data API.
 
 ## ZXing.Net
 

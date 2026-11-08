@@ -319,10 +319,9 @@ furniture like the panels do. The games (`Games/Games.swift`):
   seconds of the song's own audio through AVAssetReader (when the device holds it unprotected:
   purchased, matched or ripped), takes an onset curve from the energy's rises and the strongest
   autocorrelation between 70 and 180 bpm, and keeps the answer by song id. A protected Apple
-  Music stream gives no samples, so a public music catalogue is asked for the track's tempo
-  by title and artist, then a second, keyed catalogue when `Documents/tempo-api-key.txt` holds
-  a key for it (sent as a header to its current API host, which answers the song's tempo as a
-  string or a number; its key form requires a visible credit link on the project page, 2026-11-07); the tempo set with the slower and faster buttons stands when neither knows,
+  Music stream gives no samples, so audiometa.io's free music data API is asked for the track's
+  tempo by title and artist, and only an exact match of title and artist is believed. Its key
+  comes from the builder's Keychain at build time (`Tools/embed_tempo_key.sh`); the tempo set with the slower and faster buttons stands when neither knows,
   else the style's default (112 for synthwave), and the status and the Music window say which
   it was, so a default never reads as a match (the first phone rounds found no song in the
   free catalogue, 2026-11-07). With Apple Music playing the style buttons are gone. Without music a built-in synthesiser plays in a style picked on
@@ -583,6 +582,23 @@ and floor are right now. This round fixes what was left.
 - **A gallery**: `Tools/capture_gallery.sh` renders what each experience looks like from inside to
   `docs/gallery`, using the new `shot <name>` and `world <n>` script verbs. The marketing page's
   drawn mockups are gone in favour of these captures.
+
+## The App Store (2026-11-08)
+
+Listed as **Afterglow XR**, version 1.0.0, in nine languages, through rocket from this folder:
+`appstore-metadata*.md` (the review phone is set on the draft directly, since this repo is public),
+`.local-ci.conf` and `.local-screenshots.conf`.
+
+- **iPhone only**: `TARGETED_DEVICE_FAMILY` has to be set on the app target, or XcodeGen's iPhone and
+  iPad preset wins over the project-wide value. `telephony` in the required capabilities keeps it
+  off iPads in compatibility mode too.
+- **Screenshots**: run `Tools/capture_gallery.sh` (needs the three URLs, see its header), then
+  `rocket shots "Afterglow XR" --upload`. `Tools/capture_store_screenshots.sh` picks the ten shots,
+  turns them for Monkr's frame, captures the watch app, and writes the `.monkr` files, which embed
+  the images and so are not committed.
+- **The tempo key**: stored once with
+  `security add-generic-password -U -a "$USER" -s afterglow-audiometa-key -w`. It is masked in the app,
+  not secret: all it allows is reading a free catalogue, at 100 requests a minute across all users.
 
 ## Apple Watch as a controller
 

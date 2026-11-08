@@ -49,59 +49,94 @@ final class TempoAnalyzer {
         return bpm
     }
 
-    /// The catalogue: a search for the track, then its record, which carries a tempo when known.
+    /// The catalogue: audiometa.io's free music data API. A search by title and artist, then the
+    /// closest track's record, whose audio features carry a tempo when known. Only the title and
+    /// artist are sent, and only when the song's own audio can't be read.
     nonisolated static func lookup(title: String, artist: String) async -> Double? {
-        var query = "track:\"\(title)\""
-        if !artist.isEmpty { query += " artist:\"\(artist)\"" }
-        guard let q = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let searchURL = URL(string: "https://api.deezer.com/search?q=\(q)&limit=3") else { return nil }
+        guard let key = apiKey() else {
+            log("[Tempo] No catalogue key in this build")
+            return nil
+        }
+        var components = URLComponents(string: "https://api.audiometa.io/v1/search")
+        components?.queryItems = [URLQueryItem(name: "q", value: artist.isEmpty ? title : "\(title) \(artist)"),
+                                  URLQueryItem(name: "type", value: "track"), URLQueryItem(name: "limit", value: "10")]
+        guard let searchURL = components?.url else { return nil }
         do {
-            let (data, _) = try await URLSession.shared.data(from: searchURL)
-            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any], let hits = json["data"] as? [[String: Any]] else { return nil }
-            for hit in hits {
-                guard let id = hit["id"] as? Int, let trackURL = URL(string: "https://api.deezer.com/track/\(id)") else { continue }
-                let (trackData, _) = try await URLSession.shared.data(from: trackURL)
-                if let track = try JSONSerialization.jsonObject(with: trackData) as? [String: Any], let bpm = track["bpm"] as? Double, bpm > 40 {
-                    log(String(format: "[Tempo] Catalogue: %@ at %.1f bpm", title, bpm))
-                    return bpm
-                }
+            guard let search = try await catalogue(searchURL, key: key), let tracks = search["tracks"] as? [String: Any],
+                  let items = tracks["items"] as? [[String: Any]] else { return nil }
+            let hits = items.compactMap { item -> CatalogueHit? in
+                guard let id = item["id"] as? String, let name = item["name"] as? String else { return nil }
+                let artists = (item["artists"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
+                return CatalogueHit(id: id, title: name, artists: artists)
+            }
+            for id in matches(hits, title: title, artist: artist).prefix(3) {
+                guard let trackURL = URL(string: "https://api.audiometa.io/v1/tracks/\(id)"), let track = try await catalogue(trackURL, key: key),
+                      let bpm = tempo(ofTrack: track) else { continue }
+                log(String(format: "[Tempo] Catalogue: %@ at %.1f bpm", title, bpm))
+                return bpm
             }
             log("[Tempo] Catalogue has no tempo for \(title)")
         } catch {
             log("[Tempo] Catalogue lookup failed: \(error.localizedDescription)")
         }
-        return await lookupKeyed(title: title, artist: artist)
+        return nil
     }
 
-    /// A second catalogue of tempos that needs a key: `Documents/tempo-api-key.txt` holds it
-    /// (dropped in through the Files app or Finder); without the file this is skipped.
-    nonisolated static func lookupKeyed(title: String, artist: String) async -> Double? {
-        let keyURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("tempo-api-key.txt")
-        guard let key = try? String(contentsOf: keyURL, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !key.isEmpty else { return nil }
-        let lookup = "song:\(title)" + (artist.isEmpty ? "" : " artist:\(artist)")
-        guard let q = lookup.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let url = URL(string: "https://api.getsong.co/search/?type=both&lookup=\(q)") else { return nil }
-        var request = URLRequest(url: url)
-        request.setValue(key, forHTTPHeaderField: "X-API-KEY")   // the key stays out of the URL and any log of it
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            if let http = response as? HTTPURLResponse, http.statusCode != 200 {
-                log("[Tempo] Second catalogue answered \(http.statusCode)")
-                return nil
+    struct CatalogueHit: Sendable {
+        var id: String
+        var title: String
+        var artists: [String]
+    }
+
+    /// The hits that are this song, best first: the same title once versions and guests are set
+    /// aside ("(feat. …)", "- Remastered 2011"), by the same artist when one is known. Another
+    /// song's tempo is worse than none, so anything else is left out.
+    nonisolated static func matches(_ hits: [CatalogueHit], title: String, artist: String) -> [String] {
+        let wanted = plain(title)
+        let by = artist.lowercased()
+        let same = hits.filter { plain($0.title) == wanted }
+        guard !by.isEmpty else { return same.map(\.id) }
+        return same.filter { hit in
+            hit.artists.contains { name in
+                let n = name.lowercased()
+                return by.contains(n) || n.contains(by)
             }
-            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any], let hits = json["search"] as? [[String: Any]] else { return nil }
-            for hit in hits {
-                // The catalogue returns the tempo as a string ("220") in its examples and as a number elsewhere.
-                let bpm = (hit["tempo"] as? Double) ?? Double((hit["tempo"] as? String) ?? "") ?? 0
-                if bpm > 40 {
-                    log(String(format: "[Tempo] Second catalogue: %@ at %.1f bpm", title, bpm))
-                    return bpm
-                }
-            }
-        } catch {
-            log("[Tempo] Second catalogue failed: \(error.localizedDescription)")
+        }.map(\.id)
+    }
+
+    nonisolated private static func plain(_ title: String) -> String {
+        var t = title.lowercased()
+        for pattern in [#"\s*[\(\[][^\)\]]*[\)\]]"#, #"\s+-\s+.*$"#] {
+            t = t.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
         }
-        return nil
+        return t.trimmingCharacters(in: .whitespaces)
+    }
+
+    /// A track record's tempo, when it has a believable one.
+    nonisolated static func tempo(ofTrack track: [String: Any]) -> Double? {
+        guard let features = track["audio_features"] as? [String: Any], let bpm = (features["tempo"] as? NSNumber)?.doubleValue, bpm > 40 else { return nil }
+        return bpm
+    }
+
+    nonisolated private static func catalogue(_ url: URL, key: String) async throws -> [String: Any]? {
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")   // the key stays out of the URL and any log of it
+        request.timeoutInterval = 12
+        let (data, response) = try await URLSession.shared.data(for: request)
+        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+            log("[Tempo] Catalogue answered \(http.statusCode)")
+            return nil
+        }
+        return try JSONSerialization.jsonObject(with: data) as? [String: Any]
+    }
+
+    /// The catalogue's key: written into the app at build time from the builder's Keychain by
+    /// Tools/embed_tempo_key.sh, so it is never in the repository. Masked, not secret: anyone can
+    /// dig it out of the app, and all it allows is reading a free catalogue.
+    nonisolated private static func apiKey() -> String? {
+        guard let url = Bundle.main.url(forResource: "tempo-key", withExtension: "dat"), let data = try? Data(contentsOf: url) else { return nil }
+        let key = String(decoding: data.map { $0 ^ 0x5A }, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        return key.isEmpty ? nil : key
     }
 
     nonisolated static func measure(url: URL) async -> Double? {
