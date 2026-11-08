@@ -34,7 +34,7 @@ TUNED FOR COMFORT
 Head smoothing you can adjust, 3DoF mode on the ultra-wide camera, and adjustable render scale and frame rate.
 
 WHAT YOU NEED
-A phone viewer you can put your iPhone in. Afterglow XR is tuned for iPhone 18 Pro Max, and the plans for a viewer you can print yourself are free. Moving through your room, surfaces and depth use the LiDAR scanner on iPhone Pro models. No viewer to hand? Phone view runs it all in your hand.
+A phone viewer you can put your iPhone in, and an iPhone with a LiDAR Scanner. For the best experience, use iPhone 17 Pro Max or iPhone 18 Pro Max. Any other iPhone Pro with a LiDAR Scanner, such as iPhone 15 Pro, can work too. The plans for a viewer you can print yourself are free. No viewer to hand? Phone view runs it all in your hand.
 
 Free, with no account and no ads. It is open source, and it does not collect your data: your camera, your hands and your voice stay on your iPhone.
 
@@ -69,7 +69,7 @@ PERMISSIONS: Camera (tracking and passthrough; images stay on the device). Photo
 
 NETWORK: the app itself contacts no server of ours and collects no data. The browser loads the pages the user opens. The rhythm game may look up the tempo of the current song with a public music tempo service, sending only the song's title and artist. WebXR pages receive the head pose during an immersive session. They receive hand positions only after the user allows it for that site, just this time or always, in a prompt in the browser.
 
-DEVICE SUPPORT: iPhone only, and tuned for iPhone 18 Pro Max. Features that need LiDAR (surfaces, depth passthrough) are skipped on iPhones without it. The optional Apple Watch app is a clicker, and needs the iPhone app.
+DEVICE SUPPORT: iPhone only. Best on iPhone 17 Pro Max and iPhone 18 Pro Max; other iPhone Pro models with a LiDAR Scanner can work too. Features that need LiDAR (surfaces, depth passthrough) are skipped on iPhones without it. The optional Apple Watch app is a clicker, and needs the iPhone app.
 
 ## review_first_name
 Blaine
