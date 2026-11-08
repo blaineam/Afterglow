@@ -14,6 +14,8 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
     enum Prompt: Equatable {
         case save(Credential)
         case fill(host: String, credentials: [Credential])
+        /// A page asking for a WebXR session: may it have the wearer's hands?
+        case hands(host: String, ar: Bool)
     }
 
     static let maxTabs = 6
@@ -246,7 +248,35 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
             }
         case .fill(_, let credentials):
             if yes, let first = credentials.first { run(WebBridge.fill(first.username, first.password)) }
+        case .hands(let host, let ar):
+            // "Not now": the session goes ahead, with the head pose and a plain select only.
+            log("[WebXR] \(host): hand positions \(yes ? "allowed" : "not allowed") for this session")
+            handsAllowed = yes
+            startPreparedSession(ar: ar)
         }
+    }
+
+    /// "Always" on the hand question: this session, and from now on for this site.
+    func allowHandsAlways() {
+        guard case .hands(let host, let ar)? = prompt else { return }
+        prompt = nil
+        if current?.isPrivate != true { HandAccess.set(.always, for: host) }
+        log("[WebXR] \(host): hand positions always allowed")
+        handsAllowed = true
+        startPreparedSession(ar: ar)
+    }
+
+    /// The site on the bar's hand setting, for the button there.
+    var handAccessHere: HandAccess {
+        guard let host = current?.url?.host, current?.isPrivate != true else { return .ask }
+        return HandAccess.policy(for: host)
+    }
+
+    func cycleHandAccess() {
+        guard let host = current?.url?.host, current?.isPrivate != true else { return }
+        let next = HandAccess.policy(for: host).next
+        HandAccess.set(next, for: host)
+        log("[WebXR] \(host): hand positions set to \(next.rawValue)")
     }
 
     // MARK: Per frame
@@ -285,20 +315,25 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
                 endSession()
                 return nil
             }
-            var values: [Float] = [Float(hands.count)]
-            for hand in hands {
-                values.append(hand.isRight ? 1 : 0)
-                values.append(hand.pinched ? 1 : 0)
-                for joint in hand.joints { let j = (fromWorld * SIMD4(joint, 1)).xyz; values += [j.x, j.y, j.z] }
+            // A page has the hands only with the wearer's say-so; without it a pinch is a plain select.
+            if handsAllowed {
+                var values: [Float] = [Float(hands.count)]
+                for hand in hands {
+                    values.append(hand.isRight ? 1 : 0)
+                    values.append(hand.pinched ? 1 : 0)
+                    for joint in hand.joints { let j = (fromWorld * SIMD4(joint, 1)).xyz; values += [j.x, j.y, j.z] }
+                }
+                if !hands.isEmpty || handsWereSent { run(WebBridge.hands(values)) }
+                handsWereSent = !hands.isEmpty
             }
-            if !hands.isEmpty || handsWereSent { run(WebBridge.hands(values)) }
-            handsWereSent = !hands.isEmpty
-            if select && hands.isEmpty { run(WebBridge.select) }
+            if select && (hands.isEmpty || !handsAllowed) { run(WebBridge.select) }
             return nil
         }
         if placing {
             window.place(ahead: head)
         }
+        // The page that asked has gone: nothing to answer.
+        if case .hands(let host, _)? = prompt, tab.url?.host != host { prompt = nil }
         let gaze = window.gaze(from: head)
         if time - lastHover >= 1.0 / 12.0 {
             lastHover = time
@@ -441,7 +476,24 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
     /// session starts the page is laid out at 1:1, and gets the owner's zoom back when it ends.
     /// The page waits for this (a resize during a session made a player end it, 2026-11-07).
     private var zoomHeldForSession = false
-    private func prepareSession(ar: Bool) {
+    private var handsAllowed = false
+
+    /// A page asked for a session. It waits (a held request has no time limit) while the wearer
+    /// says whether it may have their hands, unless the site already has an answer.
+    private func sessionRequested(ar: Bool) {
+        run(WebBridge.sessionHold)
+        let host = current?.url?.host ?? "This page"
+        switch current?.isPrivate == true ? HandAccess.ask : HandAccess.policy(for: host) {
+        case .always: handsAllowed = true; startPreparedSession(ar: ar)
+        case .never: handsAllowed = false; startPreparedSession(ar: ar)
+        case .ask:
+            handsAllowed = false
+            prompt = .hands(host: host, ar: ar)
+            log("[WebXR] Asking whether \(host) may have the hand positions")
+        }
+    }
+
+    private func startPreparedSession(ar: Bool) {
         if ar {
             current?.setTransparent(true)
             veil.backgroundColor = .clear
@@ -528,7 +580,7 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
 
     private func handle(_ event: String, _ body: [String: Any]) {
         switch event {
-        case "sessionrequest": prepareSession(ar: body["mode"] as? String == "immersive-ar")
+        case "sessionrequest": sessionRequested(ar: body["mode"] as? String == "immersive-ar")
         case "sessionstart": beginSession(ar: body["mode"] as? String == "immersive-ar")
         case "sessionend":
             if let fps = (body["fps"] as? NSNumber)?.floatValue, fps > 0 {

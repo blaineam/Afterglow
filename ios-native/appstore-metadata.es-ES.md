@@ -49,7 +49,7 @@ Tu iPhone ya es un visor: seguimiento real de la cabeza, tus manos, tu habitaci√
 https://wemiller.com/apps/afterglow/
 
 ## support_url
-https://wemiller.com/support/
+https://wemiller.com/apps/afterglow/
 
 ## privacy_policy_url
 https://wemiller.com/privacy/

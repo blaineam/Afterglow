@@ -49,7 +49,7 @@ Votre iPhone devient un casque : vrai suivi de la tête, vos mains, votre pièce
 https://wemiller.com/apps/afterglow/
 
 ## support_url
-https://wemiller.com/support/
+https://wemiller.com/apps/afterglow/
 
 ## privacy_policy_url
 https://wemiller.com/privacy/

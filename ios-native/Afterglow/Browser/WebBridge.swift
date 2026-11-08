@@ -79,6 +79,7 @@ enum WebBridge {
     static func planes(_ values: [Float]) -> String {
         "window.__afterglowPlanes&&window.__afterglowPlanes([" + values.map { String(format: "%.4f", $0) }.joined(separator: ",") + "])"
     }
+    static let sessionHold = "window.__afterglowSessionHold&&window.__afterglowSessionHold()"
     static let sessionReady = "window.__afterglowSessionReady&&window.__afterglowSessionReady()"
     static func click(_ u: Float, _ v: Float) -> String { String(format: "window.__afterglowClick&&window.__afterglowClick(%.5f,%.5f)", u, v) }
     static func hover(_ u: Float, _ v: Float) -> String { String(format: "window.__afterglowHover&&window.__afterglowHover(%.5f,%.5f)", u, v) }

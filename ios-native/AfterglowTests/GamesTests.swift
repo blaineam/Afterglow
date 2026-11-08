@@ -175,6 +175,9 @@ final class GamesTests: XCTestCase {
         XCTAssertEqual(TempoAnalyzer.matches(hits, title: "Dracula", artist: "Tame Impala & JENNIE"), ["guest", "master"])
         XCTAssertTrue(TempoAnalyzer.matches(hits, title: "Unwritten", artist: "Tame Impala").isEmpty)
 
+        XCTAssertEqual(TempoAnalyzer.strippingVersion("Dracula (with JENNIE) - Remastered"), "Dracula")
+        XCTAssertEqual(TempoAnalyzer.strippingVersion("Chop Suey!"), "Chop Suey!")
+
         XCTAssertEqual(TempoAnalyzer.tempo(ofTrack: ["audio_features": ["tempo": 115.0]]), 115)
         XCTAssertNil(TempoAnalyzer.tempo(ofTrack: ["audio_features": ["tempo": 0]]), "unknown tempos are not beats")
         XCTAssertNil(TempoAnalyzer.tempo(ofTrack: ["audio_features": NSNull()]))

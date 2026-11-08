@@ -339,19 +339,28 @@ final class ChromePanel {
         round("text:+", "textformat.size.larger", "Larger text")
         let progress = browser.current?.progress ?? 1
         let loading = progress < 1 && browser.typed.isEmpty
-        buttons.append(.init(id: "address", rect: CGRect(x: x, y: row1, width: 0.26, height: h), label: loading ? "Loading \(Int(progress * 100))%  ·  " + (address.isEmpty ? "" : address) : (address.isEmpty ? "Search or address" : address), wide: true,
+        buttons.append(.init(id: "address", rect: CGRect(x: x, y: row1, width: 0.18, height: h), label: loading ? "Loading \(Int(progress * 100))%  ·  " + (address.isEmpty ? "" : address) : (address.isEmpty ? "Search or address" : address), wide: true,
                              icon: loading ? "arrow.triangle.2.circlepath" : (browser.current?.isPrivate == true ? "eyeglasses" : "globe"), style: .pill, accent: !browser.typed.isEmpty || loading))
-        x += 0.27
+        x += 0.19
         round("keys", "keyboard", "Keyboard")
         round("mic", "mic.fill", "Dictate")
+        let handAccess = browser.handAccessHere
+        round("handsite", handAccess == .always ? "hand.raised.fill" : (handAccess == .never ? "hand.raised.slash" : "hand.raised"),
+              handAccess == .always ? "This site always gets your hands" : (handAccess == .never ? "This site never gets your hands" : "This site asks for your hands"), accent: handAccess == .always)
         round("star", browser.isBookmarked() ? "star.fill" : "star", "Bookmark", accent: browser.isBookmarked())
         round("home", "house.fill", "Start")
-        // The second row: the tabs as pills, a new tab, a private tab; or a login prompt.
-        if let prompt = browser.prompt {
+        // The second row: the tabs as pills, a new tab, a private tab; or a prompt.
+        if case .hands(let host, _)? = browser.prompt {
+            buttons.append(.init(id: "prompt", rect: CGRect(x: 0.01, y: row2, width: 0.46, height: h), label: "Hands for \(WebBridge.shorten(host))?", wide: true, icon: "hand.raised.fill", style: .pill))
+            buttons.append(.init(id: "no", rect: CGRect(x: 0.48, y: row2, width: 0.15, height: h), label: "Not now", wide: true, style: .pill))
+            buttons.append(.init(id: "yes", rect: CGRect(x: 0.64, y: row2, width: 0.2, height: h), label: "Just this time", wide: true, style: .pill))
+            buttons.append(.init(id: "handsAlways", rect: CGRect(x: 0.85, y: row2, width: 0.14, height: h), label: "Always", wide: true, style: .pill, accent: true))
+        } else if let prompt = browser.prompt {
             let text: String
             switch prompt {
             case .save(let c): text = "Save the password for \(c.host)\(c.username.isEmpty ? "" : " (\(c.username))")?"
             case .fill(let host, let cs): text = "Fill the login for \(host)\(cs.first.map { $0.username.isEmpty ? "" : " (\($0.username))" } ?? "")?"
+            case .hands: text = ""
             }
             buttons.append(.init(id: "prompt", rect: CGRect(x: 0.01, y: row2, width: 0.66, height: h), label: text, wide: true, icon: "key.fill", style: .pill))
             buttons.append(.init(id: "yes", rect: CGRect(x: 0.68, y: row2, width: 0.15, height: h), label: "Yes", wide: true, style: .pill, accent: true))
@@ -370,7 +379,7 @@ final class ChromePanel {
                 buttons.append(.init(id: "close", rect: CGRect(x: 0.80 - 0.1, y: row2, width: 0.095, height: h), label: "Close tab", icon: "xmark", style: .round))
             }
         }
-        panel.set(buttons: buttons, version: "chrome|\(address)|\(browser.tabs.count)|\(browser.currentIndex)|\(browser.prompt.map { "\($0)" } ?? "")|\(browser.placing)|\(browser.isBookmarked())|\(Int(progress * 20))")
+        panel.set(buttons: buttons, version: "chrome|\(address)|\(browser.tabs.count)|\(browser.currentIndex)|\(browser.prompt.map { "\($0)" } ?? "")|\(browser.handAccessHere.rawValue)|\(browser.placing)|\(browser.isBookmarked())|\(Int(progress * 20))")
         lastAddress = address
     }
 

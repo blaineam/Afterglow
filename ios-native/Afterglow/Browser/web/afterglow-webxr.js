@@ -1228,13 +1228,15 @@
             }
             // The native app first lays the page out at 1:1 (its text zoom made the page small and
             // broke sessions), then says ready; the resize lands before there is a session for it
-            // to end. A second without an answer starts the session anyway.
+            // to end. A second without even a hold from the app starts the session anyway.
             if (!cfg.prepareSession || !post) return Promise.resolve(start());
             return new Promise(function (resolve) {
-                var done = false;
-                function go() { if (done) return; done = true; window.__afterglowSessionReady = null; resolve(start()); }
+                var done = false, timer = null;
+                function go() { if (done) return; done = true; window.__afterglowSessionReady = null; window.__afterglowSessionHold = null; resolve(start()); }
                 window.__afterglowSessionReady = function () { requestAnimationFrame(function () { requestAnimationFrame(go); }); };
-                setTimeout(go, 1000);
+                // The app holds the request while the wearer answers whether the page may have their hands.
+                window.__afterglowSessionHold = function () { clearTimeout(timer); };
+                timer = setTimeout(go, 1000);
                 post.postMessage({ event: 'sessionrequest', mode: mode });
             });
         },

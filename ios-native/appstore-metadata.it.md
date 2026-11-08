@@ -49,7 +49,7 @@ Il tuo iPhone ora è un visore: vero tracciamento della testa, le tue mani, la t
 https://wemiller.com/apps/afterglow/
 
 ## support_url
-https://wemiller.com/support/
+https://wemiller.com/apps/afterglow/
 
 ## privacy_policy_url
 https://wemiller.com/privacy/

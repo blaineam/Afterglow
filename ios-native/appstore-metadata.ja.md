@@ -49,7 +49,7 @@ iPhoneがそのままヘッドセットに。本格的なヘッドトラッキ�
 https://wemiller.com/apps/afterglow/
 
 ## support_url
-https://wemiller.com/support/
+https://wemiller.com/apps/afterglow/
 
 ## privacy_policy_url
 https://wemiller.com/privacy/

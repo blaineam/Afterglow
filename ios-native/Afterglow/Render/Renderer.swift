@@ -532,6 +532,10 @@ final class Renderer {
             shotName = argument
             actionWaitUntil = now + 0.5
         case "world": if let places, let n = Int(argument) { places.showWorld(n) }
+        case "tempo":
+            // tempo <title>|<artist>: the catalogue lookup itself, for checking it from the Mac.
+            let parts = argument.split(separator: "|", maxSplits: 1).map(String.init)
+            Task { let bpm = await TempoAnalyzer.lookup(title: parts.first ?? "", artist: parts.count > 1 ? parts[1] : ""); log("[Actions] tempo \(argument): \(bpm.map { String($0) } ?? "none")") }
         case "tower": if let n = Int(argument) { (games?.current as? TowerGame)?.stackUp(n) }
         case "place": places?.choose(named: argument)
         case "fakeplanes": (source as? ARController)?.room.addFake(floorY: floorHeight); settings.surfaces = true
@@ -1683,6 +1687,8 @@ extension Renderer {
         case "mic": onDictate?()
         case "close": browser.closeTab()
         case "yes": browser.answerPrompt(yes: true)
+        case "handsAlways": browser.allowHandsAlways()
+        case "handsite": browser.cycleHandAccess()
         case "no": browser.answerPrompt(yes: false)
         default:
             if id.hasPrefix("tab:"), let i = Int(id.dropFirst(4)) { browser.switchTab(i) }

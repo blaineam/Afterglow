@@ -75,6 +75,7 @@
 		C98279B37E7AA0E328071EA7 /* MusicApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2DC482C4113CBF72B365D3 /* MusicApp.swift */; };
 		CA5DD10BCE59171AD69681CF /* GamesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F985A23AB158BB227036EFC0 /* GamesTests.swift */; };
 		CD88B09669D877C78226AE06 /* CameraSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D94EC27CAA1FF1943486BB0 /* CameraSource.swift */; };
+		D0FFAE6ED53FBCC1A1BE163C /* HandAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = D394756F5B6B7845235BAC81 /* HandAccess.swift */; };
 		D151E7F53F6F570BD5827F0C /* evening-meadow.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E430EDBD572B0C5A3B147DBA /* evening-meadow.jpg */; };
 		D2DF1EF2F8AE43E483DE4DA9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1DF1BAF17D795352DAC505E /* Assets.xcassets */; };
 		D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */; };
@@ -217,6 +218,7 @@
 		C9966FF18394C15E0D6C282F /* PosePredictor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosePredictor.swift; sourceTree = "<group>"; };
 		C9D14AF0F2015E62D345D07C /* WebTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebTab.swift; sourceTree = "<group>"; };
 		CE734763626DCDC395851D92 /* CredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialStore.swift; sourceTree = "<group>"; };
+		D394756F5B6B7845235BAC81 /* HandAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandAccess.swift; sourceTree = "<group>"; };
 		D42BBF82DA32DCFE7BA0AD50 /* FrameTimingLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameTimingLog.swift; sourceTree = "<group>"; };
 		D47EDB0FC1E0D6EF4E3D1AE0 /* Browser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Browser.swift; sourceTree = "<group>"; };
 		D97890D6EB3536CA74C71E09 /* SessionLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLog.swift; sourceTree = "<group>"; };
@@ -486,6 +488,7 @@
 				BF67DFEAB12B2149E6F36069 /* BrowserStore.swift */,
 				407B733E5D15B248CD512A98 /* BrowserWindow.swift */,
 				CE734763626DCDC395851D92 /* CredentialStore.swift */,
+				D394756F5B6B7845235BAC81 /* HandAccess.swift */,
 				62905D062521A7CC64D592BA /* Panels.swift */,
 				C758612B9495CD314D59EF61 /* WebBridge.swift */,
 				C9D14AF0F2015E62D345D07C /* WebTab.swift */,
@@ -664,7 +667,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "#!/bin/zsh\n# Xcode build phase: writes the audiometa.io API key from this Mac's Keychain into the app, masked,\n# so it is never in the repository. Without the Keychain item the app builds fine and just skips\n# the online tempo lookup. To store the key (it asks for the value, and nothing is logged):\n#   security add-generic-password -U -a \"$USER\" -s afterglow-audiometa-key -w\nOUT=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/tempo-key.dat\"\nrm -f \"$OUT\"\nKEY=$(/usr/bin/security find-generic-password -a \"$USER\" -s afterglow-audiometa-key -w 2>/dev/null)\nif [ -z \"$KEY\" ]; then\n    echo \"note: no afterglow-audiometa-key in the Keychain; this build skips the online tempo lookup\"\n    exit 0\nfi\nprint -rn -- \"$KEY\" | /usr/bin/perl -pe 's/(.)/chr(ord($1) ^ 0x5A)/ges' > \"$OUT\"\necho \"Embedded the tempo catalogue key\"\n";
+			shellScript = "#!/bin/sh\n# Xcode build phase: writes the audiometa.io API key from this Mac's Keychain into the app, masked,\n# so it is never in the repository. Without the Keychain item the app builds fine and just skips\n# the online tempo lookup. To store the key (it asks for the value, and nothing is logged):\n#   security add-generic-password -U -a \"$USER\" -s afterglow-audiometa-key -w\nOUT=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/tempo-key.dat\"\nrm -f \"$OUT\"\nKEY=$(/usr/bin/security find-generic-password -a \"$USER\" -s afterglow-audiometa-key -w 2>/dev/null)\nif [ -z \"$KEY\" ]; then\n    echo \"note: no afterglow-audiometa-key in the Keychain; this build skips the online tempo lookup\"\n    exit 0\nfi\nprintf %s \"$KEY\" | /usr/bin/perl -pe 's/(.)/chr(ord($1) ^ 0x5A)/ges' > \"$OUT\"\necho \"Embedded the tempo catalogue key\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -712,6 +715,7 @@
 				80531BEAA4C2E3BD43B155AB /* FrameTimingLog.swift in Sources */,
 				63D96A7059EA72FC002BF7E8 /* GameHost.swift in Sources */,
 				DD58B4FD2C93E71F18D6592E /* Games.swift in Sources */,
+				D0FFAE6ED53FBCC1A1BE163C /* HandAccess.swift in Sources */,
 				F0433297A0D001C5C4CA77C7 /* HandGeometry.swift in Sources */,
 				5FADCF4942F922DF8FD0C5C4 /* HandOverlay.swift in Sources */,
 				F6FFC447E3208CC29FA6EAB3 /* HandTracker.swift in Sources */,
@@ -861,7 +865,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Afterglow/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -947,7 +951,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_FILE = Afterglow/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -984,7 +988,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AfterglowWatch/Info.plist;
 				MARKETING_VERSION = 1.0.0;
@@ -1003,7 +1007,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AfterglowWatch/Info.plist;
 				MARKETING_VERSION = 1.0.0;

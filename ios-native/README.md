@@ -583,6 +583,14 @@ and floor are right now. This round fixes what was left.
   `docs/gallery`, using the new `shot <name>` and `world <n>` script verbs. The marketing page's
   drawn mockups are gone in favour of these captures.
 
+## Hands in WebXR (2026-11-08)
+
+A page gets the wearer's hand positions only if they say so. When a page asks for a session, the
+browser's bar asks "Hands for <site>?": Not now, Just this time, or Always. The answer holds the
+page's request until given. Without it, the page still has the head pose, and a pinch is a plain
+select. The hand button on the bar changes a site's answer: ask, always, never. A private tab
+remembers nothing. See `HandAccess`.
+
 ## The App Store (2026-11-08)
 
 Listed as **Afterglow XR**, version 1.0.0, in nine languages, through rocket from this folder:

@@ -57,23 +57,29 @@ final class TempoAnalyzer {
             log("[Tempo] No catalogue key in this build")
             return nil
         }
-        var components = URLComponents(string: "https://api.audiometa.io/v1/search")
-        components?.queryItems = [URLQueryItem(name: "q", value: artist.isEmpty ? title : "\(title) \(artist)"),
-                                  URLQueryItem(name: "type", value: "track"), URLQueryItem(name: "limit", value: "10")]
-        guard let searchURL = components?.url else { return nil }
         do {
-            guard let search = try await catalogue(searchURL, key: key), let tracks = search["tracks"] as? [String: Any],
-                  let items = tracks["items"] as? [[String: Any]] else { return nil }
-            let hits = items.compactMap { item -> CatalogueHit? in
-                guard let id = item["id"] as? String, let name = item["name"] as? String else { return nil }
-                let artists = (item["artists"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
-                return CatalogueHit(id: id, title: name, artists: artists)
-            }
-            for id in matches(hits, title: title, artist: artist).prefix(3) {
-                guard let trackURL = URL(string: "https://api.audiometa.io/v1/tracks/\(id)"), let track = try await catalogue(trackURL, key: key),
-                      let bpm = tempo(ofTrack: track) else { continue }
-                log(String(format: "[Tempo] Catalogue: %@ at %.1f bpm", title, bpm))
-                return bpm
+            // Its search matches track names only: a query with the artist in it finds nothing or
+            // fails (tested 2026-11-08), so the artist is checked on the results. The title as it
+            // stands first, then without "(feat. …)" or "- Remastered", since the name must match.
+            var queries = [title]
+            let bare = strippingVersion(title)
+            if bare != title { queries.append(bare) }
+            for query in queries {
+                var components = URLComponents(string: "https://api.audiometa.io/v1/search")
+                components?.queryItems = [URLQueryItem(name: "q", value: query), URLQueryItem(name: "type", value: "track"), URLQueryItem(name: "limit", value: "20")]
+                guard let searchURL = components?.url, let search = try await catalogue(searchURL, key: key),
+                      let tracks = search["tracks"] as? [String: Any], let items = tracks["items"] as? [[String: Any]] else { continue }
+                let hits = items.compactMap { item -> CatalogueHit? in
+                    guard let id = item["id"] as? String, let name = item["name"] as? String else { return nil }
+                    let artists = (item["artists"] as? [[String: Any]])?.compactMap { $0["name"] as? String } ?? []
+                    return CatalogueHit(id: id, title: name, artists: artists)
+                }
+                for id in matches(hits, title: title, artist: artist).prefix(3) {
+                    guard let trackURL = URL(string: "https://api.audiometa.io/v1/tracks/\(id)"), let track = try await catalogue(trackURL, key: key),
+                          let bpm = tempo(ofTrack: track) else { continue }
+                    log(String(format: "[Tempo] Catalogue: %@ at %.1f bpm", title, bpm))
+                    return bpm
+                }
             }
             log("[Tempo] Catalogue has no tempo for \(title)")
         } catch {
@@ -105,7 +111,12 @@ final class TempoAnalyzer {
     }
 
     nonisolated private static func plain(_ title: String) -> String {
-        var t = title.lowercased()
+        strippingVersion(title).lowercased()
+    }
+
+    /// The title without what says which version or who guests.
+    nonisolated static func strippingVersion(_ title: String) -> String {
+        var t = title
         for pattern in [#"\s*[\(\[][^\)\]]*[\)\]]"#, #"\s+-\s+.*$"#] {
             t = t.replacingOccurrences(of: pattern, with: "", options: .regularExpression)
         }
@@ -121,13 +132,22 @@ final class TempoAnalyzer {
     nonisolated private static func catalogue(_ url: URL, key: String) async throws -> [String: Any]? {
         var request = URLRequest(url: url)
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")   // the key stays out of the URL and any log of it
-        request.timeoutInterval = 12
-        let (data, response) = try await URLSession.shared.data(for: request)
-        if let http = response as? HTTPURLResponse, http.statusCode != 200 {
-            log("[Tempo] Catalogue answered \(http.statusCode)")
-            return nil
+        request.timeoutInterval = 30
+        // A young service: it took 2 to 28 seconds and gave the odd 502 when tested (2026-11-08), so
+        // a slow answer or a server error gets two more tries, in the background of the game.
+        for attempt in 0..<3 {
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+                if status == 200 { return try JSONSerialization.jsonObject(with: data) as? [String: Any] }
+                log("[Tempo] Catalogue answered \(status)")
+                guard status >= 500 else { return nil }
+            } catch let error as URLError where error.code == .timedOut || error.code == .networkConnectionLost {
+                log("[Tempo] Catalogue timed out")
+            }
+            if attempt < 2 { try await Task.sleep(for: .seconds(2)) }
         }
-        return try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        return nil
     }
 
     /// The catalogue's key: written into the app at build time from the builder's Keychain by

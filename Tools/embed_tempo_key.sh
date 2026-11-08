@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/sh
 # Xcode build phase: writes the audiometa.io API key from this Mac's Keychain into the app, masked,
 # so it is never in the repository. Without the Keychain item the app builds fine and just skips
 # the online tempo lookup. To store the key (it asks for the value, and nothing is logged):
@@ -10,5 +10,5 @@ if [ -z "$KEY" ]; then
     echo "note: no afterglow-audiometa-key in the Keychain; this build skips the online tempo lookup"
     exit 0
 fi
-print -rn -- "$KEY" | /usr/bin/perl -pe 's/(.)/chr(ord($1) ^ 0x5A)/ges' > "$OUT"
+printf %s "$KEY" | /usr/bin/perl -pe 's/(.)/chr(ord($1) ^ 0x5A)/ges' > "$OUT"
 echo "Embedded the tempo catalogue key"

@@ -49,7 +49,7 @@ Seu iPhone agora é um headset: rastreamento real da cabeça, suas mãos, seu am
 https://wemiller.com/apps/afterglow/
 
 ## support_url
-https://wemiller.com/support/
+https://wemiller.com/apps/afterglow/
 
 ## privacy_policy_url
 https://wemiller.com/privacy/

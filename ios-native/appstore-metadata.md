@@ -48,7 +48,7 @@ Your iPhone is a headset now: real head tracking, your hands, your room, your ph
 https://wemiller.com/apps/afterglow/
 
 ## support_url
-https://wemiller.com/support/
+https://wemiller.com/apps/afterglow/
 
 ## privacy_policy_url
 https://wemiller.com/privacy/
@@ -67,7 +67,7 @@ FASTEST REVIEW PATH (about 3 minutes, in landscape):
 
 PERMISSIONS: Camera (tracking and passthrough; images stay on the device). Photos and Apple Music only when those windows are opened. Microphone and Speech Recognition only when dictating into the browser or saying a passcode; a spoken passcode is recognised on device only and never logged.
 
-NETWORK: the app itself contacts no server of ours and collects no data. The browser loads the pages the user opens. The rhythm game may look up the tempo of the current song with a public music tempo service, sending only the song's title and artist. WebXR pages receive head and hand positions during an immersive session, as WebXR defines.
+NETWORK: the app itself contacts no server of ours and collects no data. The browser loads the pages the user opens. The rhythm game may look up the tempo of the current song with a public music tempo service, sending only the song's title and artist. WebXR pages receive the head pose during an immersive session. They receive hand positions only after the user allows it for that site, just this time or always, in a prompt in the browser.
 
 DEVICE SUPPORT: iPhone only, and tuned for iPhone 18 Pro Max. Features that need LiDAR (surfaces, depth passthrough) are skipped on iPhones without it. The optional Apple Watch app is a clicker, and needs the iPhone app.
 

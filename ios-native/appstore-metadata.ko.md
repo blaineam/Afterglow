@@ -49,7 +49,7 @@ iPhone이 이제 헤드셋이 됩니다. 실제 헤드 트래킹, 내 손과 내
 https://wemiller.com/apps/afterglow/
 
 ## support_url
-https://wemiller.com/support/
+https://wemiller.com/apps/afterglow/
 
 ## privacy_policy_url
 https://wemiller.com/privacy/

@@ -67,4 +67,20 @@ final class BrowserTests: XCTestCase {
     }
 
     struct FakeMotion { var magnitude: Double; var time: Double }
+
+    /// A site's say over the hands is its own, and the button cycles ask, always, never.
+    func testHandAccessPerSite() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "afterglow.test.handaccess"))
+        defaults.removePersistentDomain(forName: "afterglow.test.handaccess")
+        XCTAssertEqual(HandAccess.policy(for: "a.example", in: defaults), .ask)
+        HandAccess.set(.always, for: "a.example", in: defaults)
+        XCTAssertEqual(HandAccess.policy(for: "a.example", in: defaults), .always)
+        XCTAssertEqual(HandAccess.policy(for: "b.example", in: defaults), .ask, "one site's answer is not another's")
+        XCTAssertEqual(HandAccess.ask.next, .always)
+        XCTAssertEqual(HandAccess.always.next, .never)
+        XCTAssertEqual(HandAccess.never.next, .ask)
+        HandAccess.set(.ask, for: "a.example", in: defaults)
+        XCTAssertEqual(HandAccess.policy(for: "a.example", in: defaults), .ask)
+        defaults.removePersistentDomain(forName: "afterglow.test.handaccess")
+    }
 }
