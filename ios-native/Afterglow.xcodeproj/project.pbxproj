@@ -66,6 +66,7 @@
 		BACE2FF920E1A6E965CE609E /* MediaLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F9D56A9273E547BF13DE6FB /* MediaLibrary.swift */; };
 		BC2DD9993B328B9BFE55C0D8 /* PinchDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E2E0B57207F4DEAA2DF268C /* PinchDetector.swift */; };
 		C41DAACF85D3845C8E068C10 /* WebTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9D14AF0F2015E62D345D07C /* WebTab.swift */; };
+		C61785CDCD7A825AC739933F /* start.html in Resources */ = {isa = PBXBuildFile; fileRef = 59B24A5435D6E0888F87049B /* start.html */; };
 		C803CA1BEC03B79551EFB51B /* UltraWideProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */; };
 		C98279B37E7AA0E328071EA7 /* MusicApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2DC482C4113CBF72B365D3 /* MusicApp.swift */; };
 		CD88B09669D877C78226AE06 /* CameraSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D94EC27CAA1FF1943486BB0 /* CameraSource.swift */; };
@@ -161,6 +162,7 @@
 		5703D6F0702885C2F804B15B /* GameHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameHost.swift; sourceTree = "<group>"; };
 		57E2AA1E88E12E4FB80DBD66 /* ThermalLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThermalLog.swift; sourceTree = "<group>"; };
 		57EB9465CB5A756B4F53BEC0 /* MediaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaApp.swift; sourceTree = "<group>"; };
+		59B24A5435D6E0888F87049B /* start.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = start.html; sourceTree = "<group>"; };
 		5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandGeometryTests.swift; sourceTree = "<group>"; };
 		62905D062521A7CC64D592BA /* Panels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels.swift; sourceTree = "<group>"; };
 		67A818255D526B59948B967F /* ShaderTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderTypes.h; sourceTree = "<group>"; };
@@ -284,6 +286,7 @@
 			isa = PBXGroup;
 			children = (
 				C4592C811D59569C81790593 /* afterglow-helper.js */,
+				59B24A5435D6E0888F87049B /* start.html */,
 			);
 			path = web;
 			sourceTree = "<group>";
@@ -636,6 +639,7 @@
 				807788B2D8EEBE3F6D84194F /* sequoia-ferns.jpg in Resources */,
 				F36D3CB29CBD862A26231676 /* space-station.jpg in Resources */,
 				2DD06DB7B09858DE25C7D2C7 /* starship-cabin.jpg in Resources */,
+				C61785CDCD7A825AC739933F /* start.html in Resources */,
 				E7FA97D93DC749774CA30914 /* steampunk-greenhouse.jpg in Resources */,
 				E0124F44E0DFEF7B9BB3F186 /* stone-village-street.jpg in Resources */,
 				F3B74C3204EEAC6ACF229472 /* storybook-coast.jpg in Resources */,

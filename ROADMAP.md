@@ -256,8 +256,13 @@ foundation at all. The honest picture:
   carries the rider through the world with the right seat math and the interface away; the golf
   course stands on a deck the room's depth cannot hide, with the flag on its pole; paint filters
   depth noise; every game but the coaster runs in 6DoF; the lock fires only after ten still
-  seconds. The 3DoF camera's 10 fps traced to hand tracking at 30 images a second. Still to
-  come: WebXR AR, the next phone round.
+  seconds. The 3DoF camera's 10 fps traced to hand tracking at 30 images a second.
+- **Seventh phone round, 2026-11-07**: the games' look rotation made right-handed (the golf
+  felt was mirrored, the coaster world upside down); the viewer's double tap (not its first
+  tap) ends sessions and rides; the coaster is a random closed two-minute loop with a station,
+  worlds and an exit at the feet; paint strokes are smooth spline tubes and ribbons; the Music
+  window is sized to its content with controls on the dock; a native start page. Still to come:
+  the repository restructured round the native app, WebXR AR, the next phone round.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

@@ -234,8 +234,11 @@ furniture like the panels do. The games (`Games/Games.swift`):
 
 - **Paint**: pinch and move to paint in the air. The palette, in the game's own controls
   window, picks the colour (eight swatches, or a rainbow by the hand's height), the size, the
-  brush (a glossy tube, a flat ribbon facing you, or a glowing bead trail) and dynamics (the
-  stroke thins as the hand speeds up); undo takes the last stroke. Sparks trail the brush. A
+  brush (a glossy tube, a flat ribbon facing where you stood, or a glowing tube) and dynamics
+  (the stroke thins as the hand speeds up); undo takes the last stroke. Each stroke is one
+  smooth mesh: a Catmull-Rom spline through its points with the diameter blending along it, a
+  ring of vertices at each sample on a parallel-transported frame, rebuilt only while it
+  grows (a chain of capsules read as lumps). Sparks trail the brush. A
   stroke carries on through a pinch that flickers open for up to a second (dots were left
   before), the brush point is smoothed per hand and a jump past 30 cm between results is
   dropped (the flat hand fit jitters in depth when the hand moves fast, which painted jets
@@ -276,14 +279,18 @@ furniture like the panels do. The games (`Games/Games.swift`):
   three holes abreast and six deep in a serpentine, 1.6 times the first draft's size, each on
   its dark base with rounded rails on the bumpers, lamps at its corners and its flag numbered;
   a scoreboard by the first tee shows the card in beads. Only the current hole has the ball.
-- **Coaster**: a roller coaster over the grid. The course is poses half a metre apart from a
-  list of segments (a chain lift, a drop, hills, a loop, banked turns, dips), repeated as the
-  rider nears its end; the car follows it, gaining speed down the drops, losing it up the
-  climbs, lifted by the chain on the way up. The rider is carried: the camera moves by the
-  car's pose relative to where the ride began (a point at the rider's start head maps to the
-  seat, so the view never leaves the car), and the whole world, floor and sky included, climbs,
-  tilts and spins round them through the loop. The interface stays out of the way while riding;
-  the viewer's double tap ends the ride, as does Stop beforehand. Rails on
+- **Coaster**: a roller coaster through whichever world Places has up. The course is random
+  each ride and always a closed loop of about two minutes: four banked turns make a racetrack
+  whose two long sides carry the features drawn at random (a chain lift and its drop, hills,
+  dips, loops), padded with straights so opposite sides match and the shape closes, the
+  straights scaled and padded until a simulated lap takes two minutes, the last stretch pulled
+  onto the start. The car waits at the station with its controls window up (Next world cycles
+  the bundled photospheres, New course draws another, Ride starts); once riding the camera
+  moves by the car's pose relative to where the ride began (a point at the rider's start head
+  maps to the seat), so the whole world climbs, tilts and spins round them, the interface stays
+  out of the way, and the round button at the feet, kept a metre below the head in the rider's
+  own frame whatever the world is doing, reads Exit ride; the viewer's double tap ends it too.
+  Rails on
   sleepers and pylons (none where the track passes under itself, as in the loop, where a pylon
   would run through the rails), arch lamps, the car's tub, nose, wheels and lap bar.
   Passthrough is off while the coaster runs: it is a ride through the scene.
@@ -352,10 +359,14 @@ and the whole thing a pile of button grids, so the interface was remade on one d
 - **Windows**: traffic lights at the top left of every window (red close, yellow minimize,
   green size, cycling four widths from 1.3 to 3.2 m), the name as a grab handle (hold a pinch
   on it to drag), move on the right. New windows open 40 degrees to the right of the last.
-- **The dock**: six tiles low ahead (Apps, Scene/Room, Hands, Recentre, Record, Settings)
-  and a chip for each minimized window, which brings it back; hidden until asked for: a round Apps button lies on the floor half a metre ahead of the feet
+- **The dock**: six tiles low ahead (Apps, Scene/Room, Hands, Recentre, Record, Settings),
+  a chip for each minimized window, which brings it back, and, when Apple Music has a song
+  queued, back, play or pause and next; hidden until asked for: a round Apps button lies on the floor half a metre ahead of the feet
   (look straight down), a select on it brings the dock for ten seconds. Neither shows during a
   WebXR session, 360 playback, or while the keyboard is up.
+- **Start page**: the app's own (`Browser/web/start.html`), in the glass design: the mark, a
+  line on how to type, the bookmarks and history as tiles the app fills in, and three tips for
+  the viewer. The page shared with the Unity app stays as the fallback.
 - **Browser chrome**: back, forward, reload, the address pill (select it for the keyboard;
   while a page loads it shows the progress), keyboard, dictation, bookmark and start on the
   first row; tabs as pills with new, private and close on the second; a login prompt takes the
@@ -437,8 +448,9 @@ it reaches the camera's edge.
   locked only the keypad draws and takes the gaze. Set and removed from
   Settings; the Home menu locks on demand.
 - **Music** (`Home/MusicApp.swift`): Apple Music through MusicKit (authorization asked on first
-  open): what is playing with its artwork and the transport, and the library (playlists, then
-  albums) as a paged list to play from; the music keeps playing under the other apps.
+  open): what is playing with its artwork, its tempo's source and the transport in a window
+  sized to that, and the library (playlists, then albums) as a paged list to play from; the
+  music keeps playing under the other apps.
 - **Branding**: the bundle id is now `com.wemiller.afterglow`, the same as the Unity app's, so
   installing the native app replaces it on the phone; the icon is the Unity app's
   (`Assets/_Project/Branding/AppIcon.png`) in an asset catalog; version 2.0.0.

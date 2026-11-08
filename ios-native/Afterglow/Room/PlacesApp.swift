@@ -148,6 +148,14 @@ final class PlacesApp {
         }.value
     }
 
+    /// The next world: synthwave, then each bundled and found 360 picture in turn, round again.
+    func nextWorld() {
+        var index = -1
+        if case .panorama(let url) = choice, let i = panoramas.firstIndex(where: { $0.path == url.path }) { index = i }
+        let next = index + 1
+        if next < panoramas.count { _ = press("pano:" + panoramas[next].path) } else { _ = press("synth") }
+    }
+
     /// The test script: the first 360 file whose name contains `name` becomes the surroundings.
     func choose(named name: String) {
         if let url = panoramas.first(where: { $0.lastPathComponent.localizedCaseInsensitiveContains(name) }) { _ = press("pano:" + url.path) }

@@ -44,6 +44,11 @@ final class Toolbar {
     /// The minimized windows, shown on the dock as chips that bring them back.
     var minimized: [WindowKind] = [] { didSet { if minimized != oldValue { layout() } } }
     var onRestore: ((WindowKind) -> Void)?
+    /// Music on the dock: nil when nothing is queued, else whether it plays; three small controls.
+    var musicPlaying: Bool? = nil { didSet { if musicPlaying != oldValue { layout() } } }
+    var onMusic: ((String) -> Void)?
+    /// On the coaster the Apps button becomes the way off the ride.
+    var riding = false { didSet { if riding != oldValue { layout() } } }
     var isRecording: () -> Bool = { false }
 
     init(device: MTLDevice, settings: Settings) {
@@ -72,15 +77,22 @@ final class Toolbar {
     func hideDock() { dockShown = false }
     func tick(time: Double) { if dockShown && time - dockShownAt > Self.dockSeconds { dockShown = false } }
 
-    /// The Apps button lies flat on the floor half a metre ahead of the feet.
-    func placeFeet(head: simd_float4x4, floor: Float) {
+    /// The Apps button lies flat on the floor half a metre ahead of the feet; on a ride, where
+    /// the world may be upside down, it hangs a metre below the head in the rider's frame (its
+    /// `up`), ahead of the feet, so it is always in the same place to look down at.
+    func placeFeet(head: simd_float4x4, floor: Float, rideUp: SIMD3<Float>? = nil) {
         let position = head.columns.3.xyz
+        let up = rideUp.map { simd_normalize($0) } ?? SIMD3(0, 1, 0)
         var f = -head.columns.2.xyz
-        f.y = 0
-        if simd_length(f) < 1e-3 { f = SIMD3(0, 0, -1) }
+        f -= up * simd_dot(f, up)
+        if simd_length(f) < 1e-3 { f = simd_normalize(simd_cross(up, head.columns.0.xyz)) }
         f = simd_normalize(f)
-        menu.pane.centre = SIMD3(position.x, floor + 0.03, position.z) + f * 0.45
-        menu.pane.right = simd_normalize(simd_cross(f, SIMD3(0, 1, 0)))
+        if rideUp == nil {
+            menu.pane.centre = SIMD3(position.x, floor + 0.03, position.z) + f * 0.45
+        } else {
+            menu.pane.centre = position - up * 1.0 + f * 0.45
+        }
+        menu.pane.right = simd_normalize(simd_cross(f, up))
         menu.pane.up = f
     }
 
@@ -113,7 +125,8 @@ final class Toolbar {
             ("app:settings", "gearshape.fill", "Settings"),
         ]
         let chips = minimized.prefix(4)
-        let count = CGFloat(tiles.count + chips.count)
+        let musicControls: [(String, String, String)] = musicPlaying.map { playing in [("music:prev", "backward.fill", "Back"), ("music:play", playing ? "pause.fill" : "play.fill", playing ? "Pause" : "Play"), ("music:next", "forward.fill", "Next")] } ?? []
+        let count = CGFloat(tiles.count + chips.count + musicControls.count)
         let gap: CGFloat = 0.008
         let w = min(0.158, (1 - gap * (count - 1)) / count)
         var x: CGFloat = (1 - (w * count + gap * (count - 1))) / 2
@@ -131,8 +144,12 @@ final class Toolbar {
             buttons.append(.init(id: "win:\(kind.rawValue)", rect: CGRect(x: x, y: 0.06, width: w, height: 0.88), label: kind.title, wide: true, icon: icon, style: .tile, accent: true))
             x += w + gap
         }
-        panel.set(buttons: buttons, version: "dock|\(settings.passthrough)|\(settings.showHandsLive)|\(isRecording())|\(minimized.map(\.rawValue).joined())")
-        menu.set(buttons: [.init(id: "feet", rect: CGRect(x: 0.08, y: 0.08, width: 0.84, height: 0.84), label: "Apps", icon: "square.grid.2x2.fill", style: .round, accent: true)], version: "feet")
+        for (id, icon, label) in musicControls {
+            buttons.append(.init(id: id, rect: CGRect(x: x, y: 0.06, width: w, height: 0.88), label: label, wide: true, icon: icon, style: .tile, accent: id == "music:play"))
+            x += w + gap
+        }
+        panel.set(buttons: buttons, version: "dock|\(settings.passthrough)|\(settings.showHandsLive)|\(isRecording())|\(minimized.map(\.rawValue).joined())|\(String(describing: musicPlaying))")
+        menu.set(buttons: [.init(id: "feet", rect: CGRect(x: 0.08, y: 0.08, width: 0.84, height: 0.84), label: riding ? "Exit ride" : "Apps", icon: riding ? "xmark" : "square.grid.2x2.fill", style: .round, accent: true, light: riding ? 1 : 0)], version: "feet|\(riding)")
     }
 
     func press(_ id: String) {
@@ -160,6 +177,7 @@ final class Toolbar {
         case "plus:prediction": settings.extraPredictionMs = min(60, settings.extraPredictionMs + 4)
         default:
             if id.hasPrefix("win:"), let kind = WindowKind(rawValue: String(id.dropFirst(4))) { onRestore?(kind) }
+            else if id.hasPrefix("music:") { onMusic?(String(id.dropFirst(6))) }
             else if id.hasPrefix("app:"), let app = AppKind(rawValue: String(id.dropFirst(4))) { onLaunch?(app); menuOpen = false }
         }
         layout()

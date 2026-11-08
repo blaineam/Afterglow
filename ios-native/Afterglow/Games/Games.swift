@@ -9,11 +9,14 @@ enum G {
     static func roll(_ a: Float) -> simd_quatf { simd_quatf(angle: a, axis: SIMD3(0, 0, 1)) }
     /// A rotation whose -z faces `forward` with y as near up as it can.
     static func look(_ forward: SIMD3<Float>, up: SIMD3<Float> = SIMD3(0, 1, 0)) -> simd_quatf {
+        // Right-handed: right = forward x up, up = right x forward, -z = forward. The first
+        // version took up x forward, a reflection, which mirrored the golf felt against its
+        // walls and turned the coaster's world upside down (2026-11-07).
         let f = simd_normalize(forward)
-        var r = simd_cross(up, f)
+        var r = simd_cross(f, up)
         if simd_length(r) < 1e-4 { r = SIMD3(1, 0, 0) }
         r = simd_normalize(r)
-        let u = simd_cross(f, r)
+        let u = simd_cross(r, f)
         return simd_quatf(simd_float3x3(columns: (r, u, -f)))
     }
     /// A rotation taking +y onto `direction` (for capsules and cylinders laid along a line).
@@ -62,7 +65,7 @@ final class PaintGame: Game {
         var name: String { switch self { case .tube: return "Tube"; case .ribbon: return "Ribbon"; case .glow: return "Glow" } }
         var icon: String { switch self { case .tube: return "paintbrush.pointed.fill"; case .ribbon: return "scribble.variable"; case .glow: return "sparkles" } }
     }
-    private struct Stroke { var color: SIMD4<Float>; var points: [SIMD3<Float>]; var radii: [Float]; var brush: Brush }
+    private struct Stroke { var color: SIMD4<Float>; var points: [SIMD3<Float>]; var radii: [Float]; var brush: Brush; var built = -1 }
     private var strokes: [Stroke] = []
     private var drawing: [Bool: Int] = [:]
     private var lastPoint: [Bool: (SIMD3<Float>, Double)] = [:]
@@ -88,6 +91,7 @@ final class PaintGame: Game {
 
     func reset() { strokes.removeAll(); drawing.removeAll(); strokeGrewAt.removeAll() }
     func undo() { if !strokes.isEmpty { strokes.removeLast() } }
+    // Mesh names are by index, so a removed stroke's slot is rebuilt by the next stroke to take it (`built` differs).
     func pick(swatch index: Int?) { swatch = index }
     func cycleSize() { sizeIndex = (sizeIndex + 1) % Self.sizes.count }
     func cycleBrush() { brush = Brush(rawValue: (brush.rawValue + 1) % Brush.allCases.count) ?? .tube }
@@ -155,30 +159,34 @@ final class PaintGame: Game {
     func draw(into scene: inout Scene3D, context c: GameContext) {
         let m = c.meshes
         let eye = c.headPosition
-        for stroke in strokes {
+        // Each stroke is one smooth mesh: a spline through its points with the diameter blending
+        // along it (the earlier chain of capsules read as lumps, owner 2026-11-07); rebuilt only
+        // while it grows. A ribbon is a flat strip facing where the painter stood; glow is a
+        // thin emissive tube with sprites along it.
+        for (s, stroke) in strokes.enumerated() {
+            let name = "paint-\(s)"
+            let stale = stroke.built != stroke.points.count
+            var mesh: MeshLibrary.Mesh?
+            if stale {
+                let (v, i): ([MeshVertex], [UInt32])
+                switch stroke.brush {
+                case .tube: (v, i) = MeshLibrary.tube(points: stroke.points, radii: stroke.radii, sides: 12)
+                case .ribbon: (v, i) = MeshLibrary.tube(points: stroke.points, radii: stroke.radii.map { $0 * 3 }, flat: true, facing: simd_normalize(eye - stroke.points[0]))
+                case .glow: (v, i) = MeshLibrary.tube(points: stroke.points, radii: stroke.radii.map { $0 * 0.7 }, sides: 8)
+                }
+                mesh = m.dynamic(name, vertices: v, indices: i)
+                strokes[s].built = stroke.points.count
+            } else {
+                mesh = m.existing(name)
+            }
+            guard let mesh, mesh.indexCount > 0 else { continue }
             switch stroke.brush {
-            case .tube:
-                scene.add(m.smallSphere, at: stroke.points[0], scale: SIMD3(repeating: stroke.radii[0]), color: stroke.color, roughness: 0.2, shadow: false)
-                for i in 1..<max(stroke.points.count, 1) {
-                    let r = (stroke.radii[i - 1] + stroke.radii[i]) / 2
-                    scene.capsule(m, stroke.points[i - 1], stroke.points[i], radius: r, color: stroke.color, roughness: 0.2)
-                }
-            case .ribbon:
-                for i in 1..<max(stroke.points.count, 1) {
-                    let a = stroke.points[i - 1], b = stroke.points[i]
-                    let d = b - a
-                    let len = simd_length(d)
-                    guard len > 1e-4 else { continue }
-                    let toEye = simd_normalize(eye - (a + b) / 2)
-                    let side = simd_normalize(simd_cross(d / len, toEye))
-                    let up = simd_cross(side, d / len)
-                    let rot = simd_quatf(simd_float3x3(columns: (side, up, -d / len)))
-                    scene.add(m.box, at: (a + b) / 2, rotation: rot, scale: SIMD3(stroke.radii[i] * 4, 0.003, len + stroke.radii[i]), color: stroke.color, roughness: 0.35, shadow: false)
-                }
+            case .tube: scene.add(mesh, at: .zero, scale: SIMD3(repeating: 1), color: stroke.color, roughness: 0.2, shadow: false)
+            case .ribbon: scene.add(mesh, at: .zero, scale: SIMD3(repeating: 1), color: stroke.color, roughness: 0.4, shadow: false)
             case .glow:
-                for (i, p) in stroke.points.enumerated() {
-                    scene.add(m.smallSphere, at: p, scale: SIMD3(repeating: stroke.radii[i] * 0.8), color: stroke.color, roughness: 0.1, emissive: 1.0, shadow: false)
-                    scene.glow(p, size: stroke.radii[i] * 8, eye: eye, color: stroke.color * SIMD4(1, 1, 1, 0.35))
+                scene.add(mesh, at: .zero, scale: SIMD3(repeating: 1), color: stroke.color, roughness: 0.1, emissive: 1.1, shadow: false)
+                for (i, p) in stroke.points.enumerated() where i % 2 == 0 {
+                    scene.glow(p, size: stroke.radii[i] * 7, eye: eye, color: stroke.color * SIMD4(1, 1, 1, 0.3))
                 }
             }
         }
@@ -1181,11 +1189,132 @@ final class GridRide: Game {
     let title = "🎢 Coaster"
     struct Pose { var position: SIMD3<Float>; var orientation: simd_quatf }
     private enum Segment { case straight(Float), pitch(Float, Float), yaw(Float, Float, bank: Float), loop(Float) }
-    private static let course: [Segment] = [
-        .straight(10), .pitch(14, .pi / 7), .straight(8), .pitch(16, -.pi / 3.2), .straight(6), .pitch(6, .pi / 6),
-        .pitch(6, -.pi / 6), .loop(5.5), .straight(8), .yaw(16, .pi / 2, bank: 0.6), .straight(6), .pitch(5, .pi / 8), .pitch(5, -.pi / 8),
-        .pitch(5, -.pi / 8), .pitch(5, .pi / 8), .yaw(16, -.pi / 2, bank: -0.6), .straight(12), .pitch(8, .pi / 10), .pitch(8, -.pi / 10),
-    ]
+    /// The course: random each ride, a closed loop (owner, 2026-11-07). Four banked 90-degree
+    /// turns make a racetrack; the two long sides carry the features (a chain lift and a drop,
+    /// hills, dips, a loop) drawn at random, padded with straights so opposite sides match in
+    /// length and every climb has its drop, which closes the shape and the height; the side
+    /// lengths are scaled until a simulated lap takes about two minutes.
+    private var course: [Segment] = []
+
+    private static func features(_ rng: inout SystemRandomNumberGenerator, lift: Bool) -> [Segment] {
+        var out: [Segment] = []
+        if lift {
+            let h = Float.random(in: 10...16, using: &rng)
+            out += [.pitch(h, .pi / 6), .straight(4), .pitch(h * 0.65, -.pi / 3.6)]   // up slowly, down hard: the same height
+        }
+        let count = Int.random(in: 2...4, using: &rng)
+        for _ in 0..<count {
+            switch Int.random(in: 0..<4, using: &rng) {
+            case 0: let l = Float.random(in: 5...8, using: &rng); out += [.pitch(l, .pi / 7), .pitch(l, -.pi / 7)]            // a hill
+            case 1: let l = Float.random(in: 4...7, using: &rng); out += [.pitch(l, -.pi / 8), .pitch(l, .pi / 8)]            // a dip
+            case 2: out += [.loop(Float.random(in: 4.5...6.5, using: &rng))]                                                   // a loop
+            default: out += [.straight(Float.random(in: 6...12, using: &rng))]
+            }
+        }
+        return out
+    }
+
+    /// The plan length of a run of segments (loops and hills add no plan length beyond their footprint).
+    private static func planLength(_ segments: [Segment]) -> Float {
+        segments.reduce(0) { total, s in
+            switch s {
+            case .straight(let l): return total + l
+            case .pitch(let l, let a): return total + l * cos(a / 2)
+            case .loop: return total + 1.0
+            case .yaw: return total
+            }
+        }
+    }
+
+    private func makeCourse(scale: Float, rng: inout SystemRandomNumberGenerator) -> [Segment] {
+        var a = Self.features(&rng, lift: true), c = Self.features(&rng, lift: false)
+        // The long sides match: the shorter one gets a straight.
+        let la = Self.planLength(a), lc = Self.planLength(c)
+        if la > lc { c.append(.straight(la - lc)) } else if lc > la { a.append(.straight(lc - la)) }
+        let short: Float = Float.random(in: 14...24, using: &rng)
+        func scaled(_ segs: [Segment]) -> [Segment] {
+            segs.map { s in
+                switch s {
+                case .straight(let l): return .straight(l * scale)
+                case .pitch(let l, let ang): return .pitch(l * scale, ang)
+                default: return s
+                }
+            }
+        }
+        let turnRadius: Float = 8
+        let turn = Segment.yaw(turnRadius * .pi / 2, -.pi / 2, bank: -0.55)
+        return scaled(a) + [turn, .straight(short * scale), turn] + scaled(c) + [turn, .straight(short * scale), turn]
+    }
+
+    /// The same course with its straights at another scale (the features keep their shape).
+    private static func rescale(_ segments: [Segment], straightsTo scale: Float) -> [Segment] {
+        var total: Float = 0, count: Float = 0
+        for s in segments { if case .straight(let l) = s { total += l; count += 1 } }
+        let mean = count > 0 ? total / count : 10
+        return segments.map { s in
+            if case .straight(let l) = s { return .straight(max(2, mean * scale * (l / max(mean, 1)))) }
+            return s
+        }
+    }
+
+    /// The course with a straight added before each of the first and third turns (the long sides).
+    private static func padded(_ segments: [Segment], by metres: Float) -> [Segment] {
+        var out: [Segment] = []
+        var turns = 0
+        for s in segments {
+            if case .yaw = s { if turns == 0 || turns == 2 { out.append(.straight(metres)) }; turns += 1 }
+            out.append(s)
+        }
+        return out
+    }
+
+    /// Lays the segments from a start pose and returns the poses and the seconds a lap takes.
+    private static func lay(_ course: [Segment], from start: Pose) -> ([Pose], Float) {
+        var p = start
+        var poses: [Pose] = []
+        for segment in course {
+            switch segment {
+            case .straight(let length):
+                let n = max(1, Int(length / step))
+                for _ in 0..<n { p.position += p.orientation.act(SIMD3(0, 0, -step)); poses.append(p) }
+            case .pitch(let length, let angle):
+                let n = max(1, Int(length / step))
+                let each = simd_quatf(angle: angle / Float(n), axis: SIMD3(1, 0, 0))
+                for _ in 0..<n { p.orientation = simd_normalize(p.orientation * each); p.position += p.orientation.act(SIMD3(0, 0, -step)); poses.append(p) }
+            case .yaw(let length, let angle, let bankAngle):
+                let n = max(1, Int(length / step))
+                let each = simd_quatf(angle: angle / Float(n), axis: SIMD3(0, 1, 0))
+                for i in 0..<n {
+                    p.orientation = simd_normalize(each * p.orientation)
+                    p.position += p.orientation.act(SIMD3(0, 0, -step))
+                    let t = Float(i) / Float(max(n - 1, 1))
+                    var banked = p
+                    banked.orientation = simd_normalize(p.orientation * simd_quatf(angle: sin(t * .pi) * bankAngle, axis: SIMD3(0, 0, 1)))
+                    poses.append(banked)
+                }
+            case .loop(let radius):
+                let n = Int(2 * .pi * radius / step)
+                let each = simd_quatf(angle: 2 * .pi / Float(n), axis: SIMD3(1, 0, 0))
+                for _ in 0..<n {
+                    p.orientation = simd_normalize(p.orientation * each)
+                    p.position += p.orientation.act(SIMD3(0.02, 0, -step))
+                    poses.append(p)
+                }
+            }
+        }
+        // A lap's time: the same physics as the ride, run along the poses.
+        var speed: Float = 4, seconds: Float = 0
+        for pose in poses {
+            let fy = pose.orientation.act(SIMD3(0, 0, -1)).y
+            var a: Float = -9.8 * fy
+            if speed < 4.5 && fy > 0.05 { a = max(a, 0); speed = max(speed, 4.5) }
+            a -= 0.012 * speed * speed
+            let dt = step / speed
+            speed = min(max(speed + a * dt, 4), 24)
+            seconds += dt
+        }
+        return (poses, seconds)
+    }
     private var poses: [Pose] = []
     private var along: Float = 0
     private(set) var speed: Float = 4
@@ -1198,53 +1327,62 @@ final class GridRide: Game {
     private var anchorHead = SIMD3<Float>.zero
     private var anchorYaw: simd_quatf = simd_quatf(angle: 0, axis: SIMD3(0, 1, 0))
     private static let seatHeight: Float = 1.1
-    var status: String { String(format: "%.0f m at %.0f km/h", distance, speed * 3.6) }
+    var status: String { riding ? String(format: "%.0f m at %.0f km/h · lap %.0f s", distance, speed * 3.6, lapSeconds) : String(format: "At the station · a %.0f s lap · pick a world, then Ride", lapSeconds) }
 
-    func reset() { poses.removeAll(); along = 0; speed = 4; distance = 0; built = false; riderTransform = matrix_identity_float4x4 }
+    func reset() { poses.removeAll(); along = 0; speed = 4; distance = 0; built = false; riderTransform = matrix_identity_float4x4; lapSeconds = 0; riding = false }
+    /// The worlds the ride can run through: the Places app's choices, cycled from the controls.
+    var onNextWorld: (() -> Void)?
+    private(set) var lapSeconds: Float = 0
+    /// The ride waits at the station until Ride is pressed, so a world can be picked first.
+    private(set) var riding = false
+    func go() { riding = true }
 
     private static let step: Float = 0.5
 
-    private func build(from start: Pose, laps: Int) {
-        var p = start
-        for _ in 0..<laps {
-            for segment in Self.course {
-                switch segment {
-                case .straight(let length):
-                    let n = Int(length / Self.step)
-                    for _ in 0..<n { p.position += p.orientation.act(SIMD3(0, 0, -Self.step)); poses.append(p) }
-                case .pitch(let length, let angle):
-                    let n = Int(length / Self.step)
-                    let each = simd_quatf(angle: angle / Float(n), axis: SIMD3(1, 0, 0))
-                    for _ in 0..<n { p.orientation = simd_normalize(p.orientation * each); p.position += p.orientation.act(SIMD3(0, 0, -Self.step)); poses.append(p) }
-                case .yaw(let length, let angle, let bankAngle):
-                    let n = Int(length / Self.step)
-                    let each = simd_quatf(angle: angle / Float(n), axis: SIMD3(0, 1, 0))
-                    for i in 0..<n {
-                        p.orientation = simd_normalize(each * p.orientation)
-                        p.position += p.orientation.act(SIMD3(0, 0, -Self.step))
-                        let t = Float(i) / Float(max(n - 1, 1))
-                        var banked = p
-                        banked.orientation = simd_normalize(p.orientation * simd_quatf(angle: sin(t * .pi) * bankAngle, axis: SIMD3(0, 0, 1)))
-                        poses.append(banked)
-                    }
-                case .loop(let radius):
-                    let n = Int(2 * .pi * radius / Self.step)
-                    let each = simd_quatf(angle: 2 * .pi / Float(n), axis: SIMD3(1, 0, 0))
-                    for _ in 0..<n {
-                        p.orientation = simd_normalize(p.orientation * each)
-                        p.position += p.orientation.act(SIMD3(0.02, 0, -Self.step))
-                        poses.append(p)
-                    }
-                }
+    /// A new random course from the start pose, its sides scaled until a lap is near two minutes.
+    private func build(from start: Pose) {
+        var rng = SystemRandomNumberGenerator()
+        var scale: Float = 1
+        // The features are drawn once; the straights are scaled towards two minutes a lap, with
+        // damping since longer drops also mean more speed, then padded at the slow end.
+        var candidate = makeCourse(scale: scale, rng: &rng)
+        for _ in 0..<10 {
+            let (laid, seconds) = Self.lay(candidate, from: start)
+            course = candidate
+            poses = laid
+            lapSeconds = seconds
+            if abs(seconds - 120) < 8 { break }
+            scale *= pow(120 / max(seconds, 20), 0.7)
+            scale = min(max(scale, 0.4), 6)
+            candidate = Self.rescale(course, straightsTo: scale)
+        }
+        if lapSeconds < 112 {
+            // Still short: a slow straight at the end of each long side makes up the time.
+            let pad = (120 - lapSeconds) * 4.5 / 2
+            candidate = Self.padded(course, by: pad)
+            let (laid, seconds) = Self.lay(candidate, from: start)
+            course = candidate
+            poses = laid
+            lapSeconds = seconds
+        }
+        // Close the loop: the last pose is pulled onto the first, spread over the final stretch.
+        if let first = poses.first, let last = poses.last {
+            let gap = first.position - last.position
+            let n = min(poses.count, 80)
+            for k in 0..<n {
+                let t = Float(k + 1) / Float(n)
+                poses[poses.count - n + k].position += gap * t
             }
         }
     }
 
     private func pose(at metres: Float) -> Pose {
         guard !poses.isEmpty else { return Pose(position: .zero, orientation: simd_quatf(angle: 0, axis: SIMD3(0, 1, 0))) }
-        let f = metres / Self.step
+        let lap = Float(poses.count) * Self.step
+        let wrapped = metres - floor(metres / lap) * lap
+        let f = wrapped / Self.step
         let i = min(max(Int(f), 0), poses.count - 1)
-        let j = min(i + 1, poses.count - 1)
+        let j = (i + 1) % poses.count
         let t = max(0, min(1, f - Float(i)))
         return Pose(position: simd_mix(poses[i].position, poses[j].position, SIMD3(repeating: t)),
                     orientation: simd_slerp(poses[i].orientation, poses[j].orientation, t))
@@ -1259,10 +1397,17 @@ final class GridRide: Game {
             anchorYaw = G.look(f)
             let start = Pose(position: anchorHead - SIMD3(0, Self.seatHeight, 0) - f * 1.0, orientation: anchorYaw)
             poses.removeAll()
-            build(from: start, laps: 3)
+            build(from: start)
             along = 1.0
             built = true
-            log("[Games] Coaster: \(poses.count) poses, \(Int(Float(poses.count) * Self.step)) m of track")
+            log(String(format: "[Games] Coaster: a new course of %d poses, %d m, about %.0f s a lap", poses.count, Int(Float(poses.count) * Self.step), lapSeconds))
+        }
+        guard riding else {
+            // At the station: the car at the start, the world as it is.
+            let car = pose(at: along)
+            let seat = car.position + car.orientation.act(SIMD3(0, Self.seatHeight, 0))
+            riderTransform = simd_float4x4.translation(seat) * simd_float4x4(car.orientation) * simd_float4x4(anchorYaw.inverse) * simd_float4x4.translation(-anchorHead)
+            return
         }
         let here = pose(at: along)
         let forward = here.orientation.act(SIMD3(0, 0, -1))
@@ -1272,11 +1417,9 @@ final class GridRide: Game {
         speed = min(max(speed + a * c.dt, 4), 24)
         along += speed * c.dt
         distance += speed * c.dt
-        if along > Float(poses.count) * Self.step - 60, let last = poses.last { build(from: last, laps: 1) }
-        if along > 400 && poses.count > 1200 {
-            poses.removeFirst(600)
-            along -= 600 * Self.step
-        }
+        // The loop closes: past the end is the start again.
+        let lap = Float(poses.count) * Self.step
+        if along >= lap { along -= lap; log("[Games] Coaster: another lap") }
         bank = 0
         // The camera's move: the seat's pose in the world, from the rider's start pose. A point
         // at the rider's start head maps to the seat; the room turns with the car.
@@ -1299,11 +1442,12 @@ final class GridRide: Game {
         let rail = SIMD4<Float>(0.95, 0.35, 1, 1)
         let steel = SIMD4<Float>(0.3, 0.3, 0.4, 1)
         let floor = c.floorHeight
-        let from = max(0, Int((along - 10) / Self.step)), to = min(poses.count - 1, Int((along + 90) / Self.step))
-        guard from < to else { return }
+        // The whole loop is drawn: a lap is a few hundred metres and the far side is in view.
+        let from = 0, to = poses.count
+        guard poses.count > 2 else { return }
         var i = from
         while i < to {
-            let p0 = poses[i], p1 = poses[i + 1]
+            let p0 = poses[i], p1 = poses[(i + 1) % poses.count]
             let r0 = p0.orientation.act(SIMD3(0.55, 0, 0)), r1 = p1.orientation.act(SIMD3(0.55, 0, 0))
             scene.rod(m, p0.position - r0, p1.position - r1, radius: 0.06, color: rail, roughness: 0.2, metallic: 0.6, emissive: 0.4)
             scene.rod(m, p0.position + r0, p1.position + r1, radius: 0.06, color: rail, roughness: 0.2, metallic: 0.6, emissive: 0.4)

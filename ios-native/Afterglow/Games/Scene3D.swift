@@ -24,6 +24,113 @@ final class MeshLibrary {
         return m
     }
 
+    /// A mesh rebuilt as its data changes (a paint stroke while it is drawn): the buffers grow as
+    /// needed and the mesh under `name` is replaced.
+    func dynamic(_ name: String, vertices: [MeshVertex], indices: [UInt32]) -> Mesh? {
+        guard !vertices.isEmpty, !indices.isEmpty else { return nil }
+        let vBytes = vertices.count * MemoryLayout<MeshVertex>.stride, iBytes = indices.count * MemoryLayout<UInt32>.stride
+        var vBuffer = meshes[name]?.vertices, iBuffer = meshes[name]?.indices
+        if vBuffer == nil || vBuffer!.length < vBytes { vBuffer = device.makeBuffer(length: max(vBytes * 2, 4096), options: .storageModeShared) }
+        if iBuffer == nil || iBuffer!.length < iBytes { iBuffer = device.makeBuffer(length: max(iBytes * 2, 4096), options: .storageModeShared) }
+        guard let vBuffer, let iBuffer else { return nil }
+        vertices.withUnsafeBytes { vBuffer.contents().copyMemory(from: $0.baseAddress!, byteCount: vBytes) }
+        indices.withUnsafeBytes { iBuffer.contents().copyMemory(from: $0.baseAddress!, byteCount: iBytes) }
+        let m = Mesh(vertices: vBuffer, indices: iBuffer, indexCount: indices.count)
+        meshes[name] = m
+        return m
+    }
+    func forget(_ name: String) { meshes[name] = nil }
+    func existing(_ name: String) -> Mesh? { meshes[name] }
+
+    /// A smooth tube along a polyline: the points run through a Catmull-Rom spline (four
+    /// samples a segment), the radii blend along it, and a ring of `sides` vertices is laid at
+    /// each sample with a parallel-transported frame, so the tube has no kinks or twists. Caps
+    /// close the ends. `flat` lays a ribbon instead: two vertices a sample, `width` across,
+    /// facing `facing`.
+    static func tube(points: [SIMD3<Float>], radii: [Float], sides: Int = 10, flat: Bool = false, facing: SIMD3<Float> = SIMD3(0, 0, 1)) -> ([MeshVertex], [UInt32]) {
+        guard points.count >= 2 else {
+            let p = points.first ?? .zero, r = radii.first ?? 0.01
+            let (v, i) = sphere(rings: 6, segments: 10)
+            return (v.map { MeshVertex(position: p + $0.position * r, normal: $0.normal, uv: $0.uv) }, i)
+        }
+        // Spline samples.
+        var samples: [(SIMD3<Float>, Float)] = []
+        for i in 0..<(points.count - 1) {
+            let p0 = points[max(i - 1, 0)], p1 = points[i], p2 = points[i + 1], p3 = points[min(i + 2, points.count - 1)]
+            let r1 = radii[min(i, radii.count - 1)], r2 = radii[min(i + 1, radii.count - 1)]
+            let steps = 4
+            for s in 0..<steps {
+                let t = Float(s) / Float(steps)
+                let t2 = t * t, t3 = t2 * t
+                let p = 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3)
+                samples.append((p, r1 + (r2 - r1) * t))
+            }
+        }
+        samples.append((points.last!, radii.last ?? radii.first ?? 0.01))
+        // Frames: a tangent per sample and a normal carried along (parallel transport).
+        var vertices: [MeshVertex] = []
+        var indices: [UInt32] = []
+        var normal = SIMD3<Float>(0, 1, 0)
+        var lastTangent = SIMD3<Float>(0, 0, -1)
+        let ringSize = flat ? 2 : sides
+        for (k, (p, r)) in samples.enumerated() {
+            var tangent: SIMD3<Float>
+            if k + 1 < samples.count { tangent = samples[k + 1].0 - p } else { tangent = p - samples[k - 1].0 }
+            if simd_length(tangent) < 1e-6 { tangent = lastTangent } else { tangent = simd_normalize(tangent) }
+            if k == 0 {
+                var seed = abs(tangent.y) < 0.9 ? SIMD3<Float>(0, 1, 0) : SIMD3<Float>(1, 0, 0)
+                if flat { seed = facing }
+                normal = simd_normalize(seed - tangent * simd_dot(seed, tangent))
+            } else {
+                // Carry the normal: remove the part along the new tangent.
+                normal = normal - tangent * simd_dot(normal, tangent)
+                if simd_length(normal) < 1e-5 { normal = simd_normalize(simd_cross(tangent, lastTangent)) }
+                normal = simd_normalize(normal)
+            }
+            lastTangent = tangent
+            let binormal = simd_cross(tangent, normal)
+            if flat {
+                let side = simd_normalize(simd_cross(tangent, facing))
+                let s = side * r
+                vertices.append(MeshVertex(position: p - s, normal: facing, uv: SIMD2(0, Float(k) * 0.1)))
+                vertices.append(MeshVertex(position: p + s, normal: facing, uv: SIMD2(1, Float(k) * 0.1)))
+            } else {
+                for j in 0..<sides {
+                    let a = Float(j) / Float(sides) * 2 * .pi
+                    let n = normal * cos(a) + binormal * sin(a)
+                    vertices.append(MeshVertex(position: p + n * r, normal: n, uv: SIMD2(Float(j) / Float(sides), Float(k) * 0.1)))
+                }
+            }
+            if k > 0 {
+                let base = UInt32((k - 1) * ringSize), next = UInt32(k * ringSize)
+                if flat {
+                    indices += [base, base + 1, next, base + 1, next + 1, next, base, next, base + 1, base + 1, next, next + 1]   // both faces
+                } else {
+                    for j in 0..<sides {
+                        let j2 = UInt32((j + 1) % sides)
+                        let a = base + UInt32(j), b = base + j2, c = next + UInt32(j), d = next + j2
+                        indices += [a, c, b, b, c, d]
+                    }
+                }
+            }
+        }
+        if !flat {
+            // Caps: a centre vertex and a fan at each end.
+            for end in [0, samples.count - 1] {
+                let (p, _) = samples[end]
+                let tangent = end == 0 ? samples[0].0 - samples[1].0 : samples[end].0 - samples[end - 1].0
+                let centre = UInt32(vertices.count)
+                vertices.append(MeshVertex(position: p, normal: simd_normalize(tangent), uv: SIMD2(0.5, 0.5)))
+                let ring = UInt32(end * sides)
+                for j in 0..<sides {
+                    let j2 = UInt32((j + 1) % sides)
+                    if end == 0 { indices += [centre, ring + UInt32(j), ring + j2] } else { indices += [centre, ring + j2, ring + UInt32(j)] }
+                }
+            }
+        }
+        return (vertices, indices)
+    }
+
     var sphere: Mesh { mesh("sphere") { Self.sphere(rings: 24, segments: 36) } }
     var smallSphere: Mesh { mesh("sphere12") { Self.sphere(rings: 12, segments: 18) } }
     var capsule: Mesh { mesh("capsule") { Self.capsule(rings: 10, segments: 24, length: 1) } }

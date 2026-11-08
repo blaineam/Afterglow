@@ -213,6 +213,11 @@ final class Renderer {
         toolbar.onLaunch = { [weak self] app in self?.launch(app) }
         toolbar.onMore = { [weak self] in self?.launch(WindowKind.home) }
         toolbar.onRestore = { [weak self] kind in self?.launch(kind) }
+        toolbar.onMusic = { [weak self] action in
+            guard let self else { return }
+            if self.music == nil { self.music = MusicApp(device: self.device) }
+            switch action { case "prev": self.music?.press("prevTrack"); case "next": self.music?.press("nextTrack"); default: self.music?.press("play") }
+        }
         toolbar.onRecentre = { [weak self] in self?.recentre() }
         toolbar.onCloseApp = { [weak self] in self?.closeApp() }
         toolbar.onRecord = { [weak self] eye in self?.toggleRecording(eye: eye) }
@@ -256,7 +261,7 @@ final class Renderer {
         case .gameControls: aspect = 1600.0 / 300.0
         case .places: aspect = 1600.0 / 900.0
         case .settings: aspect = 1.4
-        case .music: aspect = 1400.0 / 1000.0
+        case .music: aspect = 1400.0 / 760.0
         case .home: aspect = 1600.0 / 900.0
         }
         let window = windows.open(kind, head: lastHead, aspect: aspect)
@@ -285,6 +290,13 @@ final class Renderer {
             if games == nil {
                 let g = GameHost(device: device)
                 g.open(head: lastHead)
+                if let ride = g.games.compactMap({ $0 as? GridRide }).first {
+                    ride.onNextWorld = { [weak self] in
+                        guard let self else { return }
+                        if self.places == nil { self.launch(WindowKind.places); self.windows?.minimize(.places) }
+                        self.places?.nextWorld()
+                    }
+                }
                 if let portal = g.games.compactMap({ $0 as? PortalGame }).first {
                     portal.onWorldChange = { [weak self] world in
                         let c = PortalGame.palettes[world % PortalGame.palettes.count]
@@ -436,7 +448,7 @@ final class Renderer {
             else if let chrome, chrome.panel.buttons.contains(where: { $0.id == argument }) { pressPanel(chrome.panel, id: argument) }
             else if let media, (media.screen == .viewing ? media.controls : media.grid).buttons.contains(where: { $0.id == argument }) { media.press(argument) }
             else if let places, places.panel.buttons.contains(where: { $0.id == argument }) { if places.press(argument) { settings.surfaces.toggle() } }
-            else if let games, games.panel.buttons.contains(where: { $0.id == argument }) { games.press(argument) }
+            else if let games, games.panel.buttons.contains(where: { $0.id == argument }) || games.controlsPanel.buttons.contains(where: { $0.id == argument }) { games.press(argument) }
             else if let home, windows?.window(.home)?.minimized == false, home.panel.buttons.contains(where: { $0.id == argument }) { if home.press(argument) { windows?.close(.home) } }
             else if let settingsWindow, windows?.window(.settings)?.minimized == false, settingsWindow.panel.buttons.contains(where: { $0.id == argument }) { settingsWindow.press(argument) }
             else if let music, music.panel.buttons.contains(where: { $0.id == argument }) { music.press(argument) }
@@ -716,7 +728,7 @@ final class Renderer {
         lastDrawTime = t2
         // Passthrough for this frame: the setting, except on the coaster, which is a ride through
         // the scene and makes no sense over the room (owner, 2026-11-07).
-        let passthroughNow = settings.passthrough && !(games?.current is GridRide)
+        let passthroughNow = settings.passthrough && !((games?.current as? GridRide)?.riding ?? false)
         let target: Float = passthroughNow ? 1 : 0
         eyesAtCamera += min(max(target - eyesAtCamera, -step), step)
         let headInWorld = cameraInWorld * simd_float4x4.translation(cameraToEyes * (1 - eyesAtCamera))
@@ -872,10 +884,13 @@ final class Renderer {
         let tap = tapRequests.value
         if tap != 0 {
             tapRequests.value = 0
-            if tap == 1 {
-                // A double tap on the viewer ends a WebXR session, or the coaster: distinct from any pinch.
-                if browser?.isImmersive == true { browser?.endSession(); log("[WebXR] Session ended by the viewer's double tap") }
-                if games?.current is GridRide { games?.press("stop"); log("[Games] Coaster stopped by the viewer's double tap") }
+            // Kind 1 is the first tap of a pair (the target is sampled now), kind 2 the second: a
+            // double tap, which ends a WebXR session or the coaster and otherwise selects. The
+            // exits sat under kind 1 by mistake, so a single tap ended things and a double never
+            // reached them (owner, 2026-11-07).
+            if tap == 2, browser?.isImmersive == true { browser?.endSession(); log("[WebXR] Session ended by the viewer's double tap") }
+            else if tap == 2, games?.current is GridRide { games?.press("stop"); log("[Games] Coaster stopped by the viewer's double tap") }
+            else if tap == 1 {
                 doubleTapPending = true
                 doubleTapTarget = browser?.window.gaze(from: pointerHead)?.uv
             } else {
@@ -891,7 +906,7 @@ final class Renderer {
         // The windows: title bars, drags, sizes; the app panes follow their windows.
         var pinchHeld = tracked.contains { $0.pinched }
         if fakeHand?.pinched == true { pinchHeld = true }
-        let ridingNow = games?.current is GridRide
+        let ridingNow = (games?.current as? GridRide)?.riding ?? false
         if let windows, !lockedNow, !ridingNow {
             let result = windows.frame(head: pointerHead, select: select, pinchHeld: pinchHeld, time: t2)
             if result.consumed { select = false }
@@ -1035,19 +1050,25 @@ final class Renderer {
         var quads: [(MTLBuffer?, MTLTexture, SIMD4<Float>, Int)] = []
         // The dock: hidden while the keyboard hangs where it would be.
         // The dock and its Apps button at the feet: neither during a WebXR session or 360 playback.
-        if let toolbar, !(browser?.isImmersive ?? false), !lockedNow, !ridingNow, !(browser?.keyboardShown ?? false), !(media?.isProjected ?? false) {
+        if let toolbar, !(browser?.isImmersive ?? false), !lockedNow, !(browser?.keyboardShown ?? false), !(media?.isProjected ?? false) {
             let origin = pointerOrigin
             let forward = pointerDirection
             toolbar.tick(time: t2)
             toolbar.minimized = windows?.minimized.map(\.kind) ?? []
-            toolbar.placeFeet(head: headInWorld, floor: (source as? ARController)?.room.floorHeight ?? floorHeight)
+            toolbar.musicPlaying = (music?.hasQueue ?? false) ? music?.isPlaying : nil
+            toolbar.riding = ridingNow
+            if ridingNow { toolbar.hideDock() }
+            let rideUp: SIMD3<Float>? = ridingNow ? (rideTransform * SIMD4<Float>(0, 1, 0, 0)).xyz : nil
+            toolbar.placeFeet(head: headInWorld, floor: (source as? ARController)?.room.floorHeight ?? floorHeight, rideUp: rideUp)
             var hit: (ScenePanel, SIMD2<Float>)?
             if toolbar.dockShown, let h = toolbar.panel.pane.hit(origin: origin, direction: forward) { hit = (toolbar.panel, h.uv) }
             else if !toolbar.dockShown, let h = toolbar.menu.pane.hit(origin: origin, direction: forward) { hit = (toolbar.menu, h.uv) }
             _ = toolbar.panel.hover(hit?.0 === toolbar.panel ? hit?.1 : nil)
             _ = toolbar.menu.hover(hit?.0 === toolbar.menu ? hit?.1 : nil)
             if select, let (panel, _) = hit, let id = panel.hovered {
-                if id == "feet" { toolbar.showDock(time: t2) } else { toolbar.press(id); toolbar.showDock(time: t2) }
+                if id == "feet" {
+                    if ridingNow { games?.press("stop"); log("[Games] Coaster stopped from the button at the feet") } else { toolbar.showDock(time: t2) }
+                } else { toolbar.press(id); toolbar.showDock(time: t2) }
                 select = false
             }
             toolbar.render()

@@ -83,7 +83,7 @@ final class GameHost {
     }
 
     /// Whether the running game has controls of its own to show.
-    var hasControls: Bool { current is PaintGame || current is RhythmGame || current is GolfGame }
+    var hasControls: Bool { current is PaintGame || current is RhythmGame || current is GolfGame || current is GridRide }
 
     /// The controls window's content for the running game.
     private func layoutControls() {
@@ -110,6 +110,11 @@ final class GameHost {
             b.append(.init(id: "tempo", rect: CGRect(x: 0.65, y: 0.06, width: 0.2, height: 0.42), label: "\(Int(rhythm.bpm)) bpm", wide: true, style: .label))
             b.append(.init(id: "tempo:+", rect: CGRect(x: 0.86, y: 0.06, width: 0.12, height: 0.42), label: "Faster", icon: "plus", style: .round))
             b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: "Restart", wide: true, icon: "arrow.counterclockwise", style: .pill))
+            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
+        } else if current is GridRide {
+            b.append(.init(id: "ride:world", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: "Next world", wide: true, icon: "globe.americas.fill", style: .pill))
+            b.append(.init(id: "reset", rect: CGRect(x: 0.52, y: 0.06, width: 0.46, height: 0.42), label: "New course", wide: true, icon: "shuffle", style: .pill))
+            b.append(.init(id: "ride:go", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: "Ride", wide: true, icon: "play.fill", style: .pill, accent: true))
             b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
         } else if current is GolfGame {
             b.append(.init(id: "golf:next", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: "Next hole", wide: true, icon: "flag.fill", style: .pill))
@@ -140,6 +145,8 @@ final class GameHost {
         case "paint:color:rainbow": (current as? PaintGame)?.pick(swatch: nil)
         case "golf:next": (current as? GolfGame)?.nextHole()
         case "golf:step": (current as? GolfGame)?.stepToBallNow()
+        case "ride:world": (current as? GridRide)?.onNextWorld?()
+        case "ride:go": (current as? GridRide)?.go()
         default:
             if id.hasPrefix("paint:color:"), let i = Int(id.dropFirst(12)) { (current as? PaintGame)?.pick(swatch: i) }
             else if id.hasPrefix("game:"), let i = Int(id.dropFirst(5)), games.indices.contains(i) {

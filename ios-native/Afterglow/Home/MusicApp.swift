@@ -31,7 +31,7 @@ final class MusicApp {
     var nowPlayingTitle: String { nowTitle }
 
     init(device: MTLDevice) {
-        panel = ScenePanel(device: device, pixelWidth: 1400, pixelHeight: 1000)
+        panel = ScenePanel(device: device, pixelWidth: 1400, pixelHeight: 760)
         layout()
         Task { @MainActor in await self.start() }
     }
@@ -66,6 +66,7 @@ final class MusicApp {
     }
 
     var isPlaying: Bool { player.state.playbackStatus == .playing }
+    var hasQueue: Bool { player.queue.currentEntry != nil }
     /// Seconds into the playing song, for a game that keeps time to it.
     var playbackTime: Double { player.playbackTime }
 
@@ -118,11 +119,11 @@ final class MusicApp {
             b.append(.init(id: "next", rect: CGRect(x: 0.47, y: 0.87, width: 0.12, height: 0.11), label: "Next", icon: "chevron.right", style: .round))
             b.append(.init(id: "nowplaying", rect: CGRect(x: 0.63, y: 0.87, width: 0.34, height: 0.11), label: "Now playing", wide: true, icon: "play.circle", style: .pill))
         } else {
-            let y: CGFloat = 0.48, h: CGFloat = 0.2
+            let y: CGFloat = 0.50, h: CGFloat = 0.24
             b.append(.init(id: "prevTrack", rect: CGRect(x: 0.14, y: y, width: 0.2, height: h), label: "Previous", icon: "backward.fill", style: .round))
             b.append(.init(id: "play", rect: CGRect(x: 0.40, y: y, width: 0.2, height: h), label: isPlaying ? "Pause" : "Play", icon: isPlaying ? "pause.fill" : "play.fill", style: .round, accent: true))
             b.append(.init(id: "nextTrack", rect: CGRect(x: 0.66, y: y, width: 0.2, height: h), label: "Next", icon: "forward.fill", style: .round))
-            b.append(.init(id: "library", rect: CGRect(x: 0.03, y: 0.76, width: 0.94, height: 0.2), label: authorized ? "Your library" : "Allow Apple Music in Settings", wide: true, icon: "music.note.list", style: .pill))
+            b.append(.init(id: "library", rect: CGRect(x: 0.03, y: 0.78, width: 0.94, height: 0.19), label: authorized ? "Your library" : "Allow Apple Music in Settings", wide: true, icon: "music.note.list", style: .pill))
         }
         panel.set(buttons: b, version: "music|\(version)|\(isPlaying)|\(showingLibrary)|\(page)|\(playlists.count)|\(albums.count)|\(authorized)")
     }
@@ -160,7 +161,7 @@ final class MusicApp {
     }
 
     func render() {
-        panel.render(MusicView(size: CGSize(width: 1400, height: 1000), buttons: panel.buttons, hovered: panel.hovered,
+        panel.render(MusicView(size: CGSize(width: 1400, height: 760), buttons: panel.buttons, hovered: panel.hovered,
                                title: showingLibrary ? nil : nowTitle, subtitle: nowSubtitle + (tempoNote.isEmpty ? "" : "  ·  " + tempoNote), artwork: showingLibrary ? nil : artwork))
     }
 }
@@ -179,9 +180,9 @@ struct MusicView: View {
             if let title {
                 HStack(alignment: .center, spacing: 36) {
                     if let artwork {
-                        Image(uiImage: artwork).resizable().aspectRatio(contentMode: .fill).frame(width: 360, height: 360).clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+                        Image(uiImage: artwork).resizable().aspectRatio(contentMode: .fill).frame(width: 280, height: 280).clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                     } else {
-                        RoundedRectangle(cornerRadius: 32, style: .continuous).fill(PanelStyle.key).frame(width: 360, height: 360).overlay(Image(systemName: "music.note").font(.system(size: 150)).foregroundStyle(PanelStyle.dim))
+                        RoundedRectangle(cornerRadius: 28, style: .continuous).fill(PanelStyle.key).frame(width: 280, height: 280).overlay(Image(systemName: "music.note").font(.system(size: 120)).foregroundStyle(PanelStyle.dim))
                     }
                     VStack(alignment: .leading, spacing: 18) {
                         Text("Apple Music").font(.system(size: 40, weight: .medium, design: .rounded)).foregroundStyle(PanelStyle.accent)
@@ -190,7 +191,7 @@ struct MusicView: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(44)
+                .padding(.horizontal, 44).padding(.top, 36)
             }
         }
     }

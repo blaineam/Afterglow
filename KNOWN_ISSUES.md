@@ -279,6 +279,14 @@ occlusion, plane detection and the floor height, spatial MV-HEVC video, dictatio
 tap's threshold, AirPlay casting, the Files picker, and the heat all of it adds. Expect a round
 of fixes from the first device runs, as phases 1 and 2 had.
 
+### Geometry that was mirrored (native, fixed 2026-11-07)
+
+The games' `look` rotation took up x forward for its right axis, a left-handed frame, which
+mirrored every mesh oriented with it: the golf felt sat flipped against its walls, the
+coaster's car frame took the world upside down (and the lock keypad with it). It is right-
+handed now. If a placed thing ever looks mirrored or inverted again, check its rotation's
+handedness before anything else.
+
 ### The browser (native)
 
 The owner's own WebXR video player ends its session within a second of starting while the

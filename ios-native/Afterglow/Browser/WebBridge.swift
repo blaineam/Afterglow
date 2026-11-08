@@ -49,7 +49,8 @@ enum WebBridge {
         return scripts
     }
 
-    static var startPage: URL? { Bundle.main.url(forResource: "index", withExtension: "html") }
+    /// The native app's own start page, else the one shared with the Unity app.
+    static var startPage: URL? { Bundle.main.url(forResource: "start", withExtension: "html") ?? Bundle.main.url(forResource: "index", withExtension: "html") }
     static let startPageAddress = "afterglow://start"
 
     /// A JavaScript string literal, escaped the way the plugin does it.
