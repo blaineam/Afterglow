@@ -28,7 +28,20 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
     @Published private(set) var isImmersive = false
     /// The session is immersive-ar: the page draws over the app's passthrough, in 6DoF.
     private(set) var isAR = false
-    @Published var typed = ""
+    /// What is being typed for the address bar, with its cursor.
+    @Published private(set) var addressEdit = TextEdit()
+    var typed: String {
+        get { addressEdit.text }
+        set { addressEdit = TextEdit(newValue) }
+    }
+    /// The focused page field as the page last reported it, split at its cursor (a password's
+    /// characters are dots by then: the helper never reports them).
+    private(set) var fieldBefore = ""
+    private(set) var fieldAfter = ""
+    /// What the keyboard's bar shows: the page's field, or the address being typed.
+    var keyboardField: (before: String, after: String) {
+        fieldFocused ? (fieldBefore, fieldAfter) : (addressEdit.before, addressEdit.after)
+    }
     @Published private(set) var prompt: Prompt?
     @Published private(set) var fieldFocused = false
     @Published private(set) var keyboardShown = false
@@ -219,7 +232,7 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
     /// Text from the scene keyboard, a Bluetooth keyboard or dictation: into the page's focused
     /// field, else the address bar.
     func type(_ text: String) {
-        if fieldFocused { run(WebBridge.type(text)) } else { typed += text }
+        if fieldFocused { run(WebBridge.type(text)) } else { addressEdit.insert(text) }
     }
 
     func key(_ name: String) {
@@ -228,8 +241,7 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
             return
         }
         switch name {
-        case "Backspace": if !typed.isEmpty { typed.removeLast() }
-        case "Clear": typed = ""
+        case "Backspace", "Clear", "ArrowLeft", "ArrowRight": addressEdit.key(name)
         case "Enter": go(typed)
         default: break
         }
@@ -612,7 +624,14 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
         case "focus":
             let has = (body["has"] as? Int ?? 0) != 0
             fieldFocused = has
-            if has { keyboardShown = true }
+            if has { keyboardShown = true } else { fieldBefore = ""; fieldAfter = "" }
+        case "field":
+            // Never logged: this is what the wearer is typing.
+            let text = body["text"] as? String ?? ""
+            let units = Array(text.utf16)
+            let caret = min(max(body["caret"] as? Int ?? units.count, 0), units.count)
+            fieldBefore = String(decoding: units[0..<caret], as: UTF16.self)
+            fieldAfter = String(decoding: units[caret...], as: UTF16.self)
         case "click":
             log("[WebXR] page click: \(body["hit"] ?? "") \(body["note"] ?? "")")
         case "typed", "key":

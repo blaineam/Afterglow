@@ -83,4 +83,44 @@ final class BrowserTests: XCTestCase {
         XCTAssertEqual(HandAccess.policy(for: "a.example", in: defaults), .ask)
         defaults.removePersistentDomain(forName: "afterglow.test.handaccess")
     }
+
+    /// A correction goes in at the cursor, and what comes after it stays (owner, 2026-11-08).
+    func testTextEditCorrectsInPlace() {
+        var edit = TextEdit("helo world")
+        XCTAssertEqual(edit.caret, 10)
+        for _ in 0..<7 { edit.left() }
+        XCTAssertEqual(edit.before, "hel")
+        edit.insert("l")
+        XCTAssertEqual(edit.text, "hello world")
+        XCTAssertEqual(edit.before, "hell")
+        edit.backspace()
+        XCTAssertEqual(edit.text, "helo world")
+        edit.right()
+        XCTAssertEqual(edit.before, "helo")
+        for _ in 0..<20 { edit.right() }
+        XCTAssertEqual(edit.caret, 10)
+        for _ in 0..<20 { edit.left() }
+        XCTAssertEqual(edit.caret, 0)
+        edit.backspace()
+        XCTAssertEqual(edit.text, "helo world", "nothing before the start to delete")
+        var emoji = TextEdit("a😀b")
+        emoji.left(); emoji.left()
+        XCTAssertEqual(emoji.before, "a", "an emoji is one step")
+        XCTAssertFalse(emoji.key("Enter"))
+        emoji.key("Clear")
+        XCTAssertEqual(emoji, TextEdit())
+    }
+
+    /// The bar shows the part round the cursor and says where it runs on.
+    @MainActor func testKeyboardBarLine() {
+        XCTAssertEqual(KeyboardPanel.fieldLine(before: "", after: ""), "▏")
+        XCTAssertEqual(KeyboardPanel.fieldLine(before: "hel", after: "lo"), "hel▏lo")
+        let long = String(repeating: "a", count: 100)
+        let line = KeyboardPanel.fieldLine(before: long, after: long, fits: 40)
+        XCTAssertTrue(line.hasPrefix("…"))
+        XCTAssertTrue(line.hasSuffix("…"))
+        XCTAssertTrue(line.contains("▏"))
+        XCTAssertLessThanOrEqual(line.count, 43)
+        XCTAssertTrue(KeyboardPanel.fieldLine(before: long, after: "", fits: 40).hasSuffix("▏"))
+    }
 }

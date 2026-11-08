@@ -54,7 +54,8 @@ final class Renderer {
     private(set) var lock: AppLock?
     private var pinchHeldFrames = 0
     private var promptingForPlace = false
-    private var placePrompt = ""
+    private var placeEdit = TextEdit()
+    private var placePrompt: String { placeEdit.text }
     private var gridColor = SIMD4<Float>(0, 0, 0, 0)
     private var floorScroll: Float = 0
     /// A synthetic hand for the Simulator (`fakehand` in the test script).
@@ -222,7 +223,7 @@ final class Renderer {
             self?.settings.passthrough = (choice == .room)
             if case .room = choice { self?.settings.surfaces = true }
         }
-        p.onWantPrompt = { [weak self] in self?.promptingForPlace = true; self?.placePrompt = "" }
+        p.onWantPrompt = { [weak self] in self?.promptingForPlace = true; self?.placeEdit = TextEdit() }
         places = p
         return p
     }
@@ -430,12 +431,12 @@ final class Renderer {
     func screenTapped(at point: SIMD2<Float>) { pendingTapPoint = point; tapRequests.value = 2 }
     /// Text from the system keyboard (the phone view's double tap) goes where dictation does.
     func typed(_ text: String) {
-        if places != nil, promptingForPlace { placePrompt += text; return }
+        if places != nil, promptingForPlace { placeEdit.insert(text); return }
         if let media, media.isFiles { media.type(text) } else { browser?.type(text) }
     }
     func typedKey(_ key: String) {
         if places != nil, promptingForPlace {
-            if key == "Backspace", !placePrompt.isEmpty { placePrompt.removeLast() }
+            placeEdit.key(key)
             if key == "Enter" { promptingForPlace = false; places?.generate(prompt: placePrompt) }
             return
         }
@@ -1053,15 +1054,15 @@ final class Renderer {
                 _ = keyboard.panel.hover(hit?.uv)
                 if select, hit != nil, let id = keyboard.panel.hovered {
                     switch keyboard.press(id) {
-                    case .text(let t): placePrompt += t
-                    case .key("Backspace"): if !placePrompt.isEmpty { placePrompt.removeLast() }
-                    case .key("Clear"): placePrompt = ""
+                    case .text(let t): placeEdit.insert(t)
                     case .key("Enter"): promptingForPlace = false; places.generate(prompt: placePrompt)
+                    case .key(let k): placeEdit.key(k)
                     case .mic: onDictate?()
                     default: break
                     }
                     select = false
                 }
+                keyboard.setField(before: placeEdit.before, after: placeEdit.after)
                 keyboard.render()
                 if let t = keyboard.panel.texture { toolbarQuads.append((t, 2)) }
             }
@@ -1268,6 +1269,7 @@ final class Renderer {
                     }
                     select = false
                 }
+                keyboard.setField(before: media.queryEdit.before, after: media.queryEdit.after)
                 keyboard.render()
                 if let t = keyboard.panel.texture { toolbarQuads.append((t, 2)) }
                 if hit == nil, let keyHit { hit = keyHit; _ = keyHit }
@@ -1314,6 +1316,7 @@ final class Renderer {
             if !browser.isImmersive {
                 chrome.update(browser: browser)
                 chrome.render(typing: !browser.typed.isEmpty)
+                keyboard.setField(before: browser.keyboardField.before, after: browser.keyboardField.after)
                 keyboard.render()
                 layoutPanels()
                 if let texture = browser.current?.texture { quads.append((nil, texture, SIMD4(1, 1, 1, 1), 0)) }

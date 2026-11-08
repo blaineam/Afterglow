@@ -591,6 +591,14 @@ page's request until given. Without it, the page still has the head pose, and a 
 select. The hand button on the bar changes a site's answer: ask, always, never. A private tab
 remembers nothing. See `HandAccess`.
 
+## The keyboard's text bar (2026-11-08)
+
+A bar across the top of the keyboard shows what is in the field, with its cursor, and left and right
+arrows move it: typing and deleting happen there, so a mistake is fixed without deleting what came
+after it. The address bar, Files search and a place's prompt are `TextEdit`s; a page's field is
+reported by the helper (`field` messages, never logged, a password only ever as dots), which also
+keeps the cursor itself for email and number inputs, since those expose no selection.
+
 ## The App Store (2026-11-08)
 
 Listed as **Afterglow XR**, version 1.0.0, in nine languages, through rocket from this folder:

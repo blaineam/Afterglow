@@ -50,6 +50,7 @@
 		85FC0F60F815AACB5EB653D6 /* afterglow-helper.js in Resources */ = {isa = PBXBuildFile; fileRef = C4592C811D59569C81790593 /* afterglow-helper.js */; };
 		8600C1861C53352DF6521570 /* PolynomialRadialDistortion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 078E21E05BF54EC00E0F4308 /* PolynomialRadialDistortion.swift */; };
 		87FA55609E5C45D423B33A4C /* ViewerParams.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1258CEE15BE1B0F0A68046 /* ViewerParams.swift */; };
+		88FCEC9B63B18B6513909B86 /* TextEdit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F6DB3CC1730726AC2FC981E /* TextEdit.swift */; };
 		8A26420DC8EEC87E91BE44DA /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F383C9716F8214D0A4E65E7D /* Settings.swift */; };
 		8C25915865BFF7086BB43B56 /* BrowserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D8895069D15A18068ACE71 /* BrowserTests.swift */; };
 		9053B9FD4E934468FB7313A1 /* RoomModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A988740926B41E19A4D4C598 /* RoomModel.swift */; };
@@ -143,6 +144,7 @@
 		08642CA95FBD721718437E89 /* steampunk-greenhouse.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "steampunk-greenhouse.jpg"; sourceTree = "<group>"; };
 		0B577727CAF3A49AE4D41D83 /* WatchReceiver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchReceiver.swift; sourceTree = "<group>"; };
 		0E4D62799C1BFC30A6A04742 /* fjord-village.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "fjord-village.jpg"; sourceTree = "<group>"; };
+		0F6DB3CC1730726AC2FC981E /* TextEdit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextEdit.swift; sourceTree = "<group>"; };
 		0F9D56A9273E547BF13DE6FB /* MediaLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaLibrary.swift; sourceTree = "<group>"; };
 		12EF0275572665780B091BD3 /* HandGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandGeometry.swift; sourceTree = "<group>"; };
 		135AAF215BBE3C9874DB7911 /* HandTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandTracker.swift; sourceTree = "<group>"; };
@@ -313,6 +315,7 @@
 				E35E9E8510A0D1E59C07510F /* Controllers.swift */,
 				F9423C371E42B4C272012AA5 /* Dictation.swift */,
 				87C4D44511F04B6AD7D43D31 /* HeadsetTap.swift */,
+				0F6DB3CC1730726AC2FC981E /* TextEdit.swift */,
 				0B577727CAF3A49AE4D41D83 /* WatchReceiver.swift */,
 			);
 			path = Input;
@@ -744,6 +747,7 @@
 				E386311B4A1748A01C31E880 /* Shaders.metal in Sources */,
 				E13FF8F6F98AF4B5D65CBB41 /* SkyboxGenerator.swift in Sources */,
 				E9741B6C668F03D1A01BDAF2 /* TempoAnalyzer.swift in Sources */,
+				88FCEC9B63B18B6513909B86 /* TextEdit.swift in Sources */,
 				D976EBA3580A60D1C9F2D0A2 /* ThermalLog.swift in Sources */,
 				77C5951CAE44BFA58BE8C46A /* Toolbar.swift in Sources */,
 				91E95FC2F446BEEE1D5D8481 /* UltraWideController.swift in Sources */,
@@ -932,7 +936,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				MTL_TREAT_WARNINGS_AS_ERRORS = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

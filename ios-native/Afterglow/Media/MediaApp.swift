@@ -149,7 +149,12 @@ final class MediaApp {
     /// A provider's file being downloaded to view, or the download's failure, shown on the controls.
     private var fetchState: String?
     private var folder: FileSource.Folder?
-    private(set) var query = ""
+    /// The Files search, with its cursor.
+    private(set) var queryEdit = TextEdit()
+    private var query: String {
+        get { queryEdit.text }
+        set { queryEdit = TextEdit(newValue) }
+    }
     var isFiles: Bool { files != nil }
 
     init(device: MTLDevice) {
@@ -194,14 +199,14 @@ final class MediaApp {
 
     /// Text from the keyboard while the Files grid is up: the search.
     func type(_ text: String) {
-        query += text
+        queryEdit.insert(text)
         refreshFolder()
     }
 
     func key(_ name: String) {
         switch name {
-        case "Backspace": if !query.isEmpty { query.removeLast() }
-        case "Clear": query = ""
+        case "ArrowLeft", "ArrowRight": queryEdit.key(name); return   // the same search, a new cursor
+        case "Backspace", "Clear": queryEdit.key(name)
         default: return
         }
         refreshFolder()

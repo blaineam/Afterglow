@@ -252,16 +252,43 @@ final class KeyboardPanel {
     private static let symbolRows = ["1234567890", "-/:;()$&@\"", ".,?!'[]{}#"]
 
     init(device: MTLDevice) {
-        panel = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 620)
+        panel = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: Self.pixelHeight)
         panel.pane.widthMeters = 1.8
         layout()
     }
 
+    private static let pixelHeight = 640
+    private var fieldBefore = ""
+    private var fieldAfter = ""
+
+    /// What the bar at the top shows: the field's text either side of the cursor.
+    func setField(before: String, after: String) {
+        guard before != fieldBefore || after != fieldAfter else { return }
+        fieldBefore = before
+        fieldAfter = after
+        layout()
+    }
+
+    /// The bar's line: as much as fits around the cursor, with an ellipsis where it runs on.
+    nonisolated static func fieldLine(before: String, after: String, fits: Int = 56) -> String {
+        if before.isEmpty && after.isEmpty { return "▏" }
+        let room = max(fits - 1, 2)
+        let wantAfter = min(after.count, room / 3)
+        let shownBefore = min(before.count, room - wantAfter)
+        let shownAfter = min(after.count, room - shownBefore)
+        return (shownBefore < before.count ? "…" : "") + String(before.suffix(shownBefore)) + "▏"
+            + String(after.prefix(shownAfter)) + (shownAfter < after.count ? "…" : "")
+    }
+
     private func layout() {
         var buttons: [ScenePanel.Button] = []
+        // The bar: everything typed so far, with the arrows that move the cursor through it.
+        buttons.append(.init(id: "ArrowLeft", rect: CGRect(x: 0.01, y: 0.012, width: 0.09, height: 0.125), label: "Cursor left", icon: "arrow.left", style: .round))
+        buttons.append(.init(id: "field", rect: CGRect(x: 0.115, y: 0.012, width: 0.77, height: 0.125), label: Self.fieldLine(before: fieldBefore, after: fieldAfter), style: .label))
+        buttons.append(.init(id: "ArrowRight", rect: CGRect(x: 0.90, y: 0.012, width: 0.09, height: 0.125), label: "Cursor right", icon: "arrow.right", style: .round))
         let rows = symbols ? Self.symbolRows : Self.letterRows
-        let rowHeight: CGFloat = 0.2
-        let top: CGFloat = 0.03
+        let rowHeight: CGFloat = 0.194
+        let top: CGFloat = 0.15
         for (r, row) in rows.enumerated() {
             let n = CGFloat(row.count)
             let keyWidth = 0.094
@@ -280,7 +307,7 @@ final class KeyboardPanel {
             buttons.append(.init(id: id, rect: CGRect(x: x, y: bottom, width: width, height: rowHeight), label: label, wide: true, icon: icon, style: icon != nil && label.isEmpty ? .round : .key, accent: id == "go"))
             x += width
         }
-        panel.set(buttons: buttons, version: "kb\(shifted)\(symbols)")
+        panel.set(buttons: buttons, version: "kb\(shifted)\(symbols)|\(fieldBefore)|\(fieldAfter)")
     }
 
     /// What a press of a button means for the browser: text, a key, or a toggle handled here.
@@ -294,6 +321,7 @@ final class KeyboardPanel {
         case "backspace": return .key("Backspace")
         case "clear": return .key("Clear")
         case "go": return .key("Enter")
+        case "ArrowLeft", "ArrowRight": return .key(id)
         case "mic": return .mic
         default:
             if id.hasPrefix("k:") {
@@ -306,7 +334,7 @@ final class KeyboardPanel {
     }
 
     func render() {
-        panel.render(ButtonsView(size: CGSize(width: 1600, height: 620), buttons: panel.buttons, hovered: panel.hovered, title: nil, titleHighlight: false))
+        panel.render(ButtonsView(size: CGSize(width: 1600, height: CGFloat(Self.pixelHeight)), buttons: panel.buttons, hovered: panel.hovered, title: nil, titleHighlight: false))
     }
 }
 

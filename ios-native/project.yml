@@ -18,12 +18,17 @@ settings:
     SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
     GCC_TREAT_WARNINGS_AS_ERRORS: YES
     MTL_TREAT_WARNINGS_AS_ERRORS: YES
-    MTL_ENABLE_DEBUG_INFO: INCLUDE_SOURCE
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: 8ZVSPZYSVF
     TARGETED_DEVICE_FAMILY: "1"
     IPHONEOS_DEPLOYMENT_TARGET: "26.0"
     ENABLE_USER_SCRIPT_SANDBOXING: YES
+  configs:
+    # Shader source only in Debug: App Store Connect flags it in a release (ITMS-91306).
+    Debug:
+      MTL_ENABLE_DEBUG_INFO: INCLUDE_SOURCE
+    Release:
+      MTL_ENABLE_DEBUG_INFO: NO
 targets:
   Afterglow:
     type: application

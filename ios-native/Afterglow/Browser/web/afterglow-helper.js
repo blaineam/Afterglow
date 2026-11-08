@@ -470,11 +470,59 @@
     }
   }
 
+  // Where the cursor is in a field. An email or number input gives no selection at all, so the
+  // cursor is kept here for them and edits are spliced in at it.
+  function caretOf(el) {
+    if (el.isContentEditable) {
+      try {
+        var sel = el.ownerDocument.getSelection();
+        if (!sel || !sel.rangeCount) return (el.textContent || '').length;
+        var r = sel.getRangeAt(0), pre = r.cloneRange();
+        pre.selectNodeContents(el);
+        pre.setEnd(r.endContainer, r.endOffset);
+        return pre.toString().length;
+      } catch (e) { return (el.textContent || '').length; }
+    }
+    var n = (el.value || '').length;
+    var s = null;
+    try { s = el.selectionStart; } catch (e) { s = null; }
+    if (typeof s === 'number') return s;
+    return typeof el.__afterglowCaret === 'number' ? Math.min(el.__afterglowCaret, n) : n;
+  }
+  function setCaret(el, at) {
+    var done = false;
+    try {
+      if (typeof el.selectionStart === 'number') { el.setSelectionRange(at, at); done = true; }
+    } catch (e) { done = false; }
+    if (!done) el.__afterglowCaret = at;
+  }
+  // One step, without landing inside an emoji's two code units.
+  function stepped(v, at, by) {
+    var to = Math.max(0, Math.min(v.length, at + by));
+    var c = v.charCodeAt(to);
+    if (to > 0 && to < v.length && c >= 0xDC00 && c <= 0xDFFF) to += by;
+    return to;
+  }
+
+  // The keyboard's bar: the field's text and cursor. A password is only ever dots here, and a long
+  // field only the part round the cursor.
+  function reportField() {
+    var el = focused();
+    if (!el) return;
+    var v = valueOf(el), at = caretOf(el);
+    if ((el.type || '').toLowerCase() === 'password') v = v.replace(/[\s\S]/g, '•');
+    var from = Math.max(0, at - 200), to = Math.min(v.length, at + 200);
+    tell({ event: 'field', text: v.slice(from, to), caret: at - from });
+  }
+  document.addEventListener('input', reportField, true);
+  document.addEventListener('selectionchange', reportField, true);
+
   function reportFocus() {
     var el = focused();
     tell({ event: 'focus', has: el ? 1 : 0,
            kind: el ? ((el.tagName || '').toLowerCase() + (el.type ? ':' + el.type : '')) : '',
            value: el ? valueOf(el) : '' });
+    if (el) reportField();
   }
   document.addEventListener('focusin', reportFocus, true);
   // After the fact: at focusout the old element is still the active one.
@@ -495,16 +543,32 @@
         setValue(el, v.slice(0, start) + text + v.slice(end));
         try { el.setSelectionRange(start + text.length, start + text.length); } catch (e) { }
       } else {
-        setValue(el, v + text);
+        var at = caretOf(el);
+        setValue(el, v.slice(0, at) + text + v.slice(at));
+        el.__afterglowCaret = at + text.length;
       }
       fireInput(el, text, 'insertText');
     }
     tell({ event: 'typed', ok: 1, value: valueOf(el) });
+    reportField();
   };
 
   window.__afterglowKey = function (key) {
     var el = focused();
     if (!el) { tell({ event: 'key', ok: 0, note: 'nothing is focused', which: key }); return; }
+
+    // The keyboard's arrows move the cursor through what is already typed.
+    if (key === 'ArrowLeft' || key === 'ArrowRight') {
+      var back = key === 'ArrowLeft';
+      if (el.isContentEditable) {
+        try { el.ownerDocument.getSelection().modify('move', back ? 'backward' : 'forward', 'character'); } catch (e) { }
+      } else {
+        setCaret(el, stepped(el.value || '', caretOf(el), back ? -1 : 1));
+      }
+      tell({ event: 'key', ok: 1, which: key });
+      reportField();
+      return;
+    }
 
     if (key === 'Backspace' || key === 'Clear') {
       if (el.isContentEditable) {
@@ -521,12 +585,14 @@
         } else if (typeof s === 'number' && s > 0) {
           setValue(el, v.slice(0, s - 1) + v.slice(s));
           try { el.setSelectionRange(s - 1, s - 1); } catch (e) { }
-        } else {
-          setValue(el, v.slice(0, -1));
+        } else if (typeof s !== 'number') {
+          var at2 = caretOf(el);
+          if (at2 > 0) { setValue(el, v.slice(0, at2 - 1) + v.slice(at2)); el.__afterglowCaret = at2 - 1; }
         }
         fireInput(el, null, 'deleteContentBackward');
       }
       tell({ event: 'key', ok: 1, which: key, value: valueOf(el) });
+      reportField();
       return;
     }
 
