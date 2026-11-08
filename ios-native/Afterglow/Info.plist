@@ -20,6 +20,8 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
@@ -29,9 +31,9 @@
 	<key>NSAppleMusicUsageDescription</key>
 	<string>Afterglow shows and controls what Apple Music is playing, so you can run your music from inside the viewer.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Afterglow listens only while you hold the dictate button, to type what you say into the browser.</string>
+	<string>Afterglow listens only while you dictate into the browser or say your passcode on the lock screen.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Afterglow turns what you say into text for the browser. Recognition happens on this iPhone where it can, and your voice is not kept.</string>
+	<string>Afterglow turns what you say into text for the browser and your passcode. Recognition happens on this iPhone where it can, and your voice is not kept. A spoken passcode always stays on this iPhone.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -49,6 +51,7 @@
 		<string>arm64</string>
 		<string>metal</string>
 		<string>arkit</string>
+		<string>telephony</string>
 	</array>
 	<key>UIStatusBarHidden</key>
 	<true/>
@@ -56,9 +59,6 @@
 	<false/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UIFileSharingEnabled</key>

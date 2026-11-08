@@ -60,6 +60,7 @@
 		97305D4E9B52CAA27CC13956 /* Browser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47EDB0FC1E0D6EF4E3D1AE0 /* Browser.swift */; };
 		998F8E4E9A185C881C5B74DC /* SessionLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97890D6EB3536CA74C71E09 /* SessionLog.swift */; };
 		9CB61EB8DC68234EE67D85A2 /* HeadSmootherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B231E30F358ACE88A50B67AE /* HeadSmootherTests.swift */; };
+		AA4124763EA8066921050E7A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DB726C448FF24E5BD33CEF68 /* Assets.xcassets */; };
 		ADFAB9F747817AFE897DE790 /* MediaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57EB9465CB5A756B4F53BEC0 /* MediaApp.swift */; };
 		AED9AC2DB5CA264371AF1869 /* HandGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */; };
 		B11BEA3C83C4B14B3E457065 /* LensDistortion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4402EC68CCA81B671B468EE8 /* LensDistortion.swift */; };
@@ -67,6 +68,7 @@
 		BA4BD6BE9A09CCCEFC49BB63 /* BrowserStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF67DFEAB12B2149E6F36069 /* BrowserStore.swift */; };
 		BACE2FF920E1A6E965CE609E /* MediaLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F9D56A9273E547BF13DE6FB /* MediaLibrary.swift */; };
 		BC2DD9993B328B9BFE55C0D8 /* PinchDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E2E0B57207F4DEAA2DF268C /* PinchDetector.swift */; };
+		C028E40140B5E682ED04B0EE /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3697417D4E459E87FD52EAC2 /* PrivacyInfo.xcprivacy */; };
 		C41DAACF85D3845C8E068C10 /* WebTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9D14AF0F2015E62D345D07C /* WebTab.swift */; };
 		C61785CDCD7A825AC739933F /* start.html in Resources */ = {isa = PBXBuildFile; fileRef = 59B24A5435D6E0888F87049B /* start.html */; };
 		C803CA1BEC03B79551EFB51B /* UltraWideProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */; };
@@ -154,6 +156,7 @@
 		2B54E68953FBF0A4BF468CAE /* OneEuroFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OneEuroFilter.swift; sourceTree = "<group>"; };
 		2B9E0657D69D500D52FC6B5D /* FileSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSource.swift; sourceTree = "<group>"; };
 		318D2A1B213CEF1FE5055CA0 /* Scene3D.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scene3D.swift; sourceTree = "<group>"; };
+		3697417D4E459E87FD52EAC2 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		37D8895069D15A18068ACE71 /* BrowserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserTests.swift; sourceTree = "<group>"; };
 		38B30CD74969D37109A6EC5B /* AfterglowTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AfterglowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		407B733E5D15B248CD512A98 /* BrowserWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserWindow.swift; sourceTree = "<group>"; };
@@ -217,6 +220,7 @@
 		D42BBF82DA32DCFE7BA0AD50 /* FrameTimingLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameTimingLog.swift; sourceTree = "<group>"; };
 		D47EDB0FC1E0D6EF4E3D1AE0 /* Browser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Browser.swift; sourceTree = "<group>"; };
 		D97890D6EB3536CA74C71E09 /* SessionLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionLog.swift; sourceTree = "<group>"; };
+		DB726C448FF24E5BD33CEF68 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		DCEC5C5D9ABB975443C7DE91 /* EyeRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EyeRecorder.swift; sourceTree = "<group>"; };
 		DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensDistortionTests.swift; sourceTree = "<group>"; };
 		DD058E5F1F960588FAF96C98 /* starship-cabin.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "starship-cabin.jpg"; sourceTree = "<group>"; };
@@ -370,6 +374,7 @@
 				B1DF1BAF17D795352DAC505E /* Assets.xcassets */,
 				937E65EAEBF6C26F50ED3B34 /* Info.plist */,
 				E34AF1523B2C160E1CAD5784 /* Places */,
+				3697417D4E459E87FD52EAC2 /* PrivacyInfo.xcprivacy */,
 				6977E4302D248A13F4C272D6 /* App */,
 				FEF5E09E6BBB32ED16C89585 /* Browser */,
 				EE23577D125C45ED3D4430A9 /* Capture */,
@@ -437,6 +442,7 @@
 			isa = PBXGroup;
 			children = (
 				C733774A6D18BA201F8F99F1 /* AfterglowWatchApp.swift */,
+				DB726C448FF24E5BD33CEF68 /* Assets.xcassets */,
 				AB1DC4E70B80488B9E5CCA30 /* Info.plist */,
 			);
 			path = AfterglowWatch;
@@ -514,6 +520,7 @@
 			buildConfigurationList = 6A7B71526CF7D4BB060725A4 /* Build configuration list for PBXNativeTarget "AfterglowWatch" */;
 			buildPhases = (
 				409CBBCE8A5AE699FFC3A0C1 /* Sources */,
+				4A4111C4A004FC4776A5C1E7 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -588,12 +595,21 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		4A4111C4A004FC4776A5C1E7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA4124763EA8066921050E7A /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8FE247492FFFC171B4A7E9E0 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				D2DF1EF2F8AE43E483DE4DA9 /* Assets.xcassets in Resources */,
 				5EEE72D16F54283324E12570 /* Places in Resources */,
+				C028E40140B5E682ED04B0EE /* PrivacyInfo.xcprivacy in Resources */,
 				85FC0F60F815AACB5EB653D6 /* afterglow-helper.js in Resources */,
 				6657C0197BF45E835AA34984 /* afterglow-webxr.js in Resources */,
 				3720F035D5F83000098B192C /* baroque-church.jpg in Resources */,
@@ -823,13 +839,13 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow;
 				PRODUCT_NAME = Afterglow;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_OBJC_BRIDGING_HEADER = Afterglow/Render/ShaderTypes.h;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -907,13 +923,13 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow;
 				PRODUCT_NAME = Afterglow;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_OBJC_BRIDGING_HEADER = Afterglow/Render/ShaderTypes.h;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -940,7 +956,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AfterglowWatch/Info.plist;
-				MARKETING_VERSION = 2.0.0;
+				MARKETING_VERSION = 1.0.0;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow.watchkitapp;
 				PRODUCT_NAME = AfterglowWatch;
@@ -959,8 +975,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AfterglowWatch/Info.plist;
-				MARKETING_VERSION = 2.0.0;
-				ONLY_ACTIVE_ARCH = YES;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.wemiller.afterglow.watchkitapp;
 				PRODUCT_NAME = AfterglowWatch;
 				SDKROOT = watchos;

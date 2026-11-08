@@ -99,7 +99,7 @@ for f in $LOGS/gallery/*.png(N); do jpeg "$f" "${f:t:r}"; done
 LENS="wait 5; screenshot; wait 2; end"
 echo "== through the lenses"
 zsh $HARNESS --sim --ei view 0 --ei passthrough 0 --ei dump 10 --ei actions "$LENS" | grep -E "error:" | head
-[ -f $LOGS/native-sim-screen-1.png ] && jpeg $LOGS/native-sim-screen-1.png through-the-lenses
+[ -f $LOGS/native-sim-screen-1.png ] && { jpeg $LOGS/native-sim-screen-1.png through-the-lenses; cp $LOGS/native-sim-screen-1.png $LOGS/gallery/through-the-lenses.png; }
 webxr() {  # webxr <url> <name>
     [ -n "$1" ] || return 0
     echo "== WebXR: $2"

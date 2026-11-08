@@ -31,3 +31,8 @@ ExportedObj/
 
 # iCloud duplicates, never committed
 * 2.*
+
+# App Store screenshots: rebuilt by Tools/capture_store_screenshots.sh and Monkr (the .monkr embeds them)
+/ios-native/screenshots/
+/ios-native/docs/appstore-screenshots/*.monkr
+/ios-native/build/
