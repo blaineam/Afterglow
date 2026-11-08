@@ -80,7 +80,10 @@
   distance, so overlapping hands aren't told apart; keep them a hand's width apart.
 - **The keyed tempo catalogue has no key yet (2026-11-07).** Its key form demands a visible
   credit link on the project's page before it issues one; the page carries the link in every
-  form, and the form still answered "link not found" on the first try. Until the key sits in
+  form, and the form still answered "link not found" twice. The cause is the project page's
+  own edge, which refuses TLS 1.2 (minimum version set to 1.3), so an older server-side
+  checker cannot connect at all; the fix is in the site's CDN settings, not the page. Until
+  the key sits in
   `Documents/tempo-api-key.txt` the rhythm game falls back to the free catalogue (which knew
   none of the first phone rounds' songs) and then to the tempo buttons or the style's default,
   labelled as such. The lookup now talks to the catalogue's current API host with the key in a
