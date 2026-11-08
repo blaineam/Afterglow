@@ -366,6 +366,74 @@ fragment float4 passthroughFragment(SceneOut in [[stage_in]], constant FrameUnif
     return float4(rgb * rim, 1.0);
 }
 
+// ---- Passthrough over the depth -------------------------------------------------------------
+
+// The camera image as a mesh: a grid over the LiDAR depth map, each vertex taken out along its
+// pixel's ray to its depth and drawn from each eye, so the room has its true stereo depth. The
+// direction-only passthrough above shows every pixel at infinity, the same in both eyes, so a
+// virtual floor or a pile of dust with real stereo depth looked far above the real floor (owner,
+// 2026-11-08). Cells across a jump in depth (a hand against the far wall) are dropped, and the
+// direction-only passthrough drawn first shows through the gap.
+constant uint2 depthGrid = uint2(128, 96);
+
+struct DepthMeshOut {
+    float4 position [[position]];
+    uint layer [[render_target_array_index]];
+    float2 uv;
+    float keep;
+};
+
+static float depthAt(texture2d<float, access::read> depth, uint2 g) {
+    uint2 size = uint2(depth.get_width(), depth.get_height());
+    float2 uv = float2(g) / float2(depthGrid - 1);
+    uint2 p = min(uint2(uv * float2(size)), size - 1);
+    float d = depth.read(p).r;
+    return (d > 0.05 && d < 20.0) ? d : 4.0;
+}
+
+vertex DepthMeshOut depthPassthroughVertex(uint vid [[vertex_id]], ushort amp [[amplification_id]],
+                                           constant FrameUniforms &frame [[buffer(0)]],
+                                           texture2d<float, access::read> depth [[texture(0)]]) {
+    const uint2 corners[6] = { uint2(0, 0), uint2(1, 0), uint2(1, 1), uint2(0, 0), uint2(1, 1), uint2(0, 1) };
+    uint quad = vid / 6;
+    uint cellsX = depthGrid.x - 1;
+    uint2 cell = uint2(quad % cellsX, quad / cellsX);
+    uint2 g = cell + corners[vid % 6];
+    float d00 = depthAt(depth, cell), d10 = depthAt(depth, cell + uint2(1, 0));
+    float d11 = depthAt(depth, cell + uint2(1, 1)), d01 = depthAt(depth, cell + uint2(0, 1));
+    float nearest = min(min(d00, d10), min(d11, d01)), farthest = max(max(d00, d10), max(d11, d01));
+    float d = depthAt(depth, g);
+    float2 uv = float2(g) / float2(depthGrid - 1);
+    float2 tangent = (uv - frame.captureIntrinsics.zw) / frame.captureIntrinsics.xy;
+    float3 inCamera = float3(tangent.x, -tangent.y, -1.0) * d;
+    float4 world = frame.worldFromCapture * float4(inCamera, 1.0);
+    DepthMeshOut out;
+    out.position = frame.eyes[amp].viewProjection * world;
+    out.layer = 0;
+    out.uv = uv;
+    out.keep = farthest / max(nearest, 0.01) < 1.25 ? 1.0 : 0.0;
+    return out;
+}
+
+fragment float4 depthPassthroughFragment(DepthMeshOut in [[stage_in]], constant FrameUniforms &frame [[buffer(0)]],
+                                         texture2d<float> lumaTexture [[texture(0)]],
+                                         texture2d<float> chromaTexture [[texture(1)]]) {
+    if (in.keep < 0.999) {
+        discard_fragment();
+    }
+    constexpr sampler s(filter::linear, address::clamp_to_edge);
+    float y = lumaTexture.sample(s, in.uv).r;
+    float2 cbcr = chromaTexture.sample(s, in.uv).rg - 0.5;
+    if (frame.captureVideoRange > 0.5) {
+        y = (y - 16.0 / 255.0) * (255.0 / 219.0);
+        cbcr *= 255.0 / 224.0;
+    }
+    float3 rgb = float3(y + 1.5748 * cbcr.y,
+                        y - 0.1873 * cbcr.x - 0.4681 * cbcr.y,
+                        y + 1.8556 * cbcr.x);
+    return float4(rgb, 1.0);
+}
+
 // ---- Hands and demo objects ---------------------------------------------------------------
 
 struct OverlayOut {

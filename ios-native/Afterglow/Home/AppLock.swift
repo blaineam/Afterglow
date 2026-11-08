@@ -28,6 +28,10 @@ final class AppLock {
     private var lastGravity = SIMD3<Double>.zero
     private var lastMotionCheck: Double = 0
     private var lastUnlockOrLock: Double = 0
+    /// The passcode can be spoken: digits heard on the phone fill the dots (owner, 2026-11-08:
+    /// the gaze keypad was hard to use). Nothing heard is logged or shown.
+    private let dictation = Dictation()
+    private var heardNothing = false
 
     var isSet: Bool { Self.stored() != nil }
 
@@ -136,14 +140,66 @@ final class AppLock {
     private func layout() {
         var b: [ScenePanel.Button] = []
         let keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "✕"]
+        let listening = dictation.listening
+        b.append(.init(id: "voice", rect: CGRect(x: 0.08, y: 0.17, width: 0.84, height: 0.13),
+                       label: listening ? "Listening… say the six digits" : (heardNothing ? "Didn't catch six digits. Try again" : "Say your passcode"),
+                       wide: true, icon: listening ? "waveform" : "mic.fill", style: .pill, accent: true))
         for (i, k) in keys.enumerated() {
             let col = i % 3, row = i / 3
-            b.append(.init(id: "key:\(k)", rect: CGRect(x: 0.08 + CGFloat(col) * 0.29, y: 0.3 + CGFloat(row) * 0.165, width: 0.26, height: 0.15), label: k))
+            b.append(.init(id: "key:\(k)", rect: CGRect(x: 0.08 + CGFloat(col) * 0.29, y: 0.33 + CGFloat(row) * 0.16, width: 0.26, height: 0.145), label: k))
         }
-        panel.set(buttons: b, version: "lock|\(entered.count)|\(settingNew)|\(wrong)|\(firstNew.isEmpty)")
+        panel.set(buttons: b, version: "lock|\(entered.count)|\(settingNew)|\(wrong)|\(firstNew.isEmpty)|\(listening)|\(heardNothing)")
+    }
+
+    /// The digits in what was heard: numerals, and the spoken words for them.
+    nonisolated static func digits(from text: String) -> String {
+        let words: [String: Character] = ["zero": "0", "oh": "0", "o": "0", "one": "1", "won": "1", "two": "2", "to": "2", "too": "2",
+                                          "three": "3", "tree": "3", "four": "4", "for": "4", "fore": "4", "five": "5", "six": "6",
+                                          "seven": "7", "eight": "8", "ate": "8", "nine": "9"]
+        var out = ""
+        for token in text.lowercased().split(whereSeparator: { !$0.isLetter && !$0.isNumber }) {
+            if token.allSatisfy(\.isNumber) { out += token.filter(\.isASCII) }
+            else if let d = words[String(token)] { out.append(d) }
+        }
+        return out
+    }
+
+    /// The voice button: listen (on the phone only) until six digits are heard, or stop.
+    private func listen() {
+        if dictation.listening { dictation.stop(); return }
+        heardNothing = false
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            guard await self.dictation.requestPermission() else { log("[Lock] Voice entry needs the microphone and speech recognition"); return }
+            self.entered = ""
+            self.dictation.start(private: true) { [weak self] heard in
+                guard let self else { return }
+                let digits = String(Self.digits(from: heard).prefix(6))
+                if digits.count == 6 { self.entered = digits; self.submit() }
+                else { self.entered = ""; self.heardNothing = true; log("[Lock] Voice entry: \(digits.count) digits heard, not six") }
+                self.layout()
+            }
+            self.layout()
+        }
+    }
+
+    /// Six digits entered: a new passcode's two entries, or an unlock.
+    private func submit() {
+        if settingNew {
+            if firstNew.isEmpty { firstNew = entered; entered = "" }
+            else if firstNew == entered { setPasscode(entered); settingNew = false; firstNew = ""; unlock() }
+            else { firstNew = ""; entered = ""; wrong += 1 }
+        } else if let record = Self.stored(), Self.matches(entered, record: record) {
+            unlock()
+        } else {
+            wrong += 1
+            entered = ""
+            log("[Lock] Wrong passcode (\(wrong))")
+        }
     }
 
     func press(_ id: String) {
+        if id == "voice" { listen(); layout(); return }
         guard id.hasPrefix("key:") else { return }
         let k = String(id.dropFirst(4))
         switch k {
@@ -152,19 +208,7 @@ final class AppLock {
         default:
             guard entered.count < 6 else { return }
             entered += k
-            if entered.count == 6 {
-                if settingNew {
-                    if firstNew.isEmpty { firstNew = entered; entered = "" }
-                    else if firstNew == entered { setPasscode(entered); settingNew = false; firstNew = ""; unlock() }
-                    else { firstNew = ""; entered = ""; wrong += 1 }
-                } else if let record = Self.stored(), Self.matches(entered, record: record) {
-                    unlock()
-                } else {
-                    wrong += 1
-                    entered = ""
-                    log("[Lock] Wrong passcode (\(wrong))")
-                }
-            }
+            if entered.count == 6 { submit() }
         }
         layout()
     }
@@ -172,10 +216,17 @@ final class AppLock {
     var title: String {
         let dots = String(repeating: "●", count: entered.count) + String(repeating: "○", count: 6 - entered.count)
         if settingNew { return (firstNew.isEmpty ? "New passcode  " : "Again  ") + dots }
+        if dictation.listening { return "Listening  " + dots }
         return (wrong > 0 ? "Try again  " : "Passcode  ") + dots
     }
 
     func render() {
+        // While listening, the dots fill as digits are heard, and six stop the listening.
+        if dictation.listening {
+            let digits = String(Self.digits(from: dictation.text).prefix(6))
+            if digits.count != entered.count { entered = digits; layout() }
+            if digits.count == 6 { dictation.stop() }
+        }
         panel.render(ButtonsView(size: CGSize(width: 1000, height: 1200), buttons: panel.buttons, hovered: panel.hovered, title: title, titleHighlight: wrong > 0))
     }
 }

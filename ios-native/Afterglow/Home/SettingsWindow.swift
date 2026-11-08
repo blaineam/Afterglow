@@ -39,6 +39,7 @@ final class SettingsWindow {
             ("dof", "3DoF ultra-wide", settings.degreesOfFreedom == 3),
             ("surfaces", "Surfaces", settings.surfaces),
             ("occlusion", "Occlusion", settings.occlusion),
+            ("depth", "3D passthrough", settings.depthPassthrough),
             ("phone", "Phone view", settings.phoneView),
             ("passcode", "Passcode", hasPasscode()),
         ]
@@ -66,6 +67,7 @@ final class SettingsWindow {
         case "toggle:dof": settings.degreesOfFreedom = settings.degreesOfFreedom == 3 ? 6 : 3
         case "toggle:surfaces": settings.surfaces.toggle()
         case "toggle:occlusion": settings.occlusion.toggle()
+        case "toggle:depth": settings.depthPassthrough.toggle()
         case "toggle:phone": settings.phoneView.toggle()
         case "toggle:passcode": if hasPasscode() { onRemovePasscode?() } else { onSetPasscode?() }
         default: break

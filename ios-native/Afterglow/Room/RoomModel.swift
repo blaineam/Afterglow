@@ -18,7 +18,13 @@ final class RoomModel: @unchecked Sendable {
 
     private let lock = NSLock()
     private var surfaces: [UUID: Surface] = [:]
-    private(set) var floorHeight: Float?
+    /// The floor: a plane ARKit calls the floor, else a large level plane well below the head,
+    /// else the lowest level surface a downward ray from the camera finds. Nil until one of them.
+    var floorHeight: Float? { planeFloor ?? estimatedFloor }
+    private var planeFloor: Float?
+    private var estimatedFloor: Float?
+    private var headY: Float = 0
+    private var estimates: [(y: Float, time: Double)] = []
     private var lastLog: Double = 0
     private var added = 0
 
@@ -78,14 +84,38 @@ final class RoomModel: @unchecked Sendable {
         log("[Room] Fake floor and wall added for the desk")
     }
 
+    /// The head's height, for telling a floor from a table.
+    func noteHead(_ position: SIMD3<Float>) { headY = position.y }
+
+    /// A level surface straight below the camera (an ARKit raycast against estimated planes): the
+    /// lowest of the last ten seconds' that is at least 70 cm below the head stands in for the
+    /// floor until a plane is found.
+    func noteFloorEstimate(_ y: Float, time: Double) {
+        estimates.append((y, time))
+        estimates.removeAll { time - $0.time > 10 }
+        let lowest = estimates.filter { headY - $0.y > 0.7 }.map(\.y).min()
+        if let lowest, estimatedFloor == nil || abs(lowest - estimatedFloor!) > 0.03 {
+            estimatedFloor = lowest
+            if planeFloor == nil { log(String(format: "[Room] Floor estimated at %.2f m from a ray down (no floor plane yet)", lowest)) }
+        }
+    }
+
+    /// The floor among the planes (owner, 2026-11-08: the floor was drawn far above the real
+    /// one). A plane ARKit classifies as floor wins, the largest such, since stairs and a sunken
+    /// step are floor too; failing that, the lowest large level plane at least 90 cm below the
+    /// head, never a table, a seat or a ceiling.
     private func recomputeFloor() {
         lock.lock()
-        let candidates = surfaces.values.filter { $0.isHorizontal && $0.extent.x * $0.extent.y * 4 >= 0.5 }
-        let lowest = candidates.map { $0.center.y }.min()
+        let level = surfaces.values.filter { $0.isHorizontal && $0.classification != "ceiling" && $0.center.y < headY - 0.3 }
+        let area = { (s: Surface) -> Float in s.extent.x * s.extent.y * 4 }
+        let labelled = level.filter { $0.classification == "floor" && area($0) >= 0.3 }.max { area($0) < area($1) }
+        let fallback = level.filter { $0.classification != "table" && $0.classification != "seat" && area($0) >= 1.0 && $0.center.y < headY - 0.9 }
+            .map(\.center.y).min()
         lock.unlock()
-        if let lowest, floorHeight == nil || abs(lowest - floorHeight!) > 0.02 {
-            floorHeight = lowest
-            log(String(format: "[Room] Floor at %.2f m", lowest))
+        let chosen = labelled?.center.y ?? fallback
+        if let chosen, planeFloor == nil || abs(chosen - planeFloor!) > 0.02 {
+            planeFloor = chosen
+            log(String(format: "[Room] Floor at %.2f m (%@, head at %.2f m)", chosen, labelled != nil ? String(format: "a floor plane of %.1f m²", area(labelled!)) : "the lowest large level plane", headY))
         }
     }
 

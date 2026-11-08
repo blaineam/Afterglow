@@ -57,7 +57,7 @@ final class HandTracker: @unchecked Sendable {
     private static let edgeOnOpenness: Float = 0.4
     /// Results in a row a pinch needs to start; three in a WebXR session, where a page acts on
     /// every select (owner, 2026-11-07: pinches triggered too readily there).
-    var pinchStartResults = 2
+    var pinchStartResults = 3
     /// Fingertips whose LiDAR depths differ by more than this, metres, are apart along the camera's
     /// axis however close they look: a C-shaped hand turned so its tips cross in the image.
     private static let maxTipDepthGap: Float = 0.02

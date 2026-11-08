@@ -267,6 +267,12 @@ foundation at all. The honest picture:
   worlds and an exit at the feet; paint strokes are smooth spline tubes and ribbons; the Music
   window is sized to its content with controls on the dock; a native start page. Still to come:
   the repository restructured round the native app, WebXR AR, the next phone round.
+- **Eighth phone round, 2026-11-08**: 3D passthrough on the LiDAR depth (the floor and dust
+  looked far above the real floor); a sturdier floor; windows and WebXR worlds re-hung round
+  the view after a 6DoF/3DoF switch; tighter pinches; games switch cleanly, never act on a
+  pinch meant for a button, and end with a summary; the toy box button, the portal's placement
+  and worlds, a smooth closed coaster that stops at its station; live browser text size;
+  smaller Music window, a two-row dock, voice unlock. Still to come: the owner's run of it.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

@@ -67,9 +67,11 @@ final class HandGeometryTests: XCTestCase {
     func testPinchHysteresis() {
         var pinch = PinchDetector()
         XCTAssertFalse(pinch.update(tipDistance: 0.035))
-        XCTAssertFalse(pinch.update(tipDistance: 0.02))     // one close result is a hand passing through
-        XCTAssertTrue(pinch.update(tipDistance: 0.02))      // two in a row is a pinch (a four-result start took a second on the phone)
-        XCTAssertTrue(pinch.update(tipDistance: 0.045))     // still closed below the open distance
+        XCTAssertFalse(pinch.update(tipDistance: 0.025))    // fingers closing, not yet touching: no pinch (2026-11-08)
+        XCTAssertFalse(pinch.update(tipDistance: 0.015))    // one close result is a hand passing through
+        XCTAssertFalse(pinch.update(tipDistance: 0.015))
+        XCTAssertTrue(pinch.update(tipDistance: 0.015))     // three in a row is a pinch
+        XCTAssertTrue(pinch.update(tipDistance: 0.04))      // still closed below the open distance
         XCTAssertTrue(pinch.update(tipDistance: 0.06))      // one result apart is not a release
         XCTAssertTrue(pinch.update(tipDistance: 0.10, tipsSure: false))   // a guessed tip changes nothing
         XCTAssertTrue(pinch.update(tipDistance: 0.06))
@@ -79,9 +81,10 @@ final class HandGeometryTests: XCTestCase {
         // A start blocked midway begins the count again.
         XCTAssertFalse(pinch.update(tipDistance: 0.01, allowStart: false))
         XCTAssertFalse(pinch.update(tipDistance: 0.01))
+        XCTAssertFalse(pinch.update(tipDistance: 0.01))
         XCTAssertTrue(pinch.update(tipDistance: 0.01))
         // A hand back in view keeps its pinch only while the tips are together.
-        pinch.resume(tipDistance: 0.02)
+        pinch.resume(tipDistance: 0.015)
         XCTAssertTrue(pinch.isPinched)
         pinch.resume(tipDistance: 0.06)
         XCTAssertFalse(pinch.isPinched)

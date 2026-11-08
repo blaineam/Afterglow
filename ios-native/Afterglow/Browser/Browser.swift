@@ -193,10 +193,13 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
         run(WebBridge.scroll(0.5, 0.5, 0, dy))
     }
 
+    /// The page's text size, applied live from the settings or the bar's buttons. Never during a
+    /// WebXR session: a frame change there made a player end its session (2026-11-07).
     func setTextScale(_ percent: Int) {
-        guard percent != textScalePercent else { return }
+        guard percent != textScalePercent, !isImmersive else { return }
         textScalePercent = percent
         for tab in tabs { tab.setTextScale(percent: percent) }
+        log("[WebXR] Text scale \(percent)%")
     }
     func toggleKeyboard() { keyboardShown.toggle() }
 
@@ -258,14 +261,25 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
     func frame(head: simd_float4x4, hands: [TrackedHandState], select: Bool, time: Double, deltaTime: Float) -> Gaze? {
         guard let tab = current else { return nil }
         if isImmersive {
-            let p = head.columns.3.xyz
-            let q = simd_quatf(head.rotationOnly)
+            // The page's world starts where the head is and faces where it faces: a page's
+            // "forward" is -z, and the tracker's own zero (the motion sensor's, in 3DoF) can be
+            // anywhere, which put one page's world behind the owner (2026-11-08).
+            if xrOrigin == nil {
+                let f = -head.columns.2.xyz
+                let yaw = atan2(-f.x, -f.z)
+                xrOrigin = simd_float4x4.translation(head.columns.3.xyz) * simd_float4x4(simd_quatf(angle: yaw, axis: SIMD3(0, 1, 0)))
+                log(String(format: "[WebXR] Session world faces %.0f degrees", yaw * 180 / .pi))
+            }
+            let fromWorld = xrOrigin!.inverse
+            let local = fromWorld * head
+            let p = local.columns.3.xyz
+            let q = simd_quatf(local.rotationOnly)
             run(WebBridge.pose(p, q))
             var values: [Float] = [Float(hands.count)]
             for hand in hands {
                 values.append(hand.isRight ? 1 : 0)
                 values.append(hand.pinched ? 1 : 0)
-                for joint in hand.joints { values += [joint.x, joint.y, joint.z] }
+                for joint in hand.joints { let j = (fromWorld * SIMD4(joint, 1)).xyz; values += [j.x, j.y, j.z] }
             }
             if !hands.isEmpty || handsWereSent { run(WebBridge.hands(values)) }
             handsWereSent = !hands.isEmpty
@@ -303,9 +317,15 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
 
     // MARK: Sessions
 
+    /// The session's world in the tracker's: set from the head on the session's first frame, and
+    /// again after a tracking switch (the 3DoF switch comes a moment into a session).
+    private var xrOrigin: simd_float4x4?
+    func recentreSession() { if isImmersive { xrOrigin = nil } }
+
     private func beginSession() {
         guard !isImmersive else { return }
         isImmersive = true
+        xrOrigin = nil
         // The page zoom that makes text readable in the window would show the session's canvas
         // at 1.5x, one eye across the screen and the other off its edge: the page draws at 1:1
         // for the session and gets its zoom back after.

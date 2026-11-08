@@ -1,4 +1,5 @@
 import Metal
+import QuartzCore
 import simd
 import SwiftUI
 
@@ -12,9 +13,20 @@ struct GameContext {
     var time: Double
     var dt: Float
     var select: Bool
+    /// The pointer is on a window, the dock or the controls: a pinch now is for the interface,
+    /// and a game must not paint, spawn or swing with it (owner, 2026-11-08: changing colours
+    /// painted strokes).
+    var pointerOnInterface: Bool = false
     var meshes: MeshLibrary
     var headPosition: SIMD3<Float> { head.columns.3.xyz }
     var forward: SIMD3<Float> { -head.columns.2.xyz }
+}
+
+/// The end of a game: a title, its numbers, and the label of the button that plays again.
+struct GameSummary {
+    var title: String
+    var lines: [(String, String)]
+    var again: String = "Play again"
 }
 
 /// A game: updated every frame and drawn as lit meshes, glows and shadows into the scene (and,
@@ -27,10 +39,17 @@ protocol Game: AnyObject {
     func draw(into scene: inout Scene3D, context: GameContext)
     func draw(into overlay: inout HandOverlay, context: GameContext)
     func reset()
+    /// Set when the game has ended (the blobs got through, the round is played, the ride is
+    /// over): the host shows it with Play again and Exit (owner, 2026-11-08).
+    var summary: GameSummary? { get }
+    /// Play again after a summary.
+    func again()
 }
 
 extension Game {
     func draw(into overlay: inout HandOverlay, context: GameContext) {}
+    var summary: GameSummary? { nil }
+    func again() { reset() }
 }
 
 /// The games panel (a launcher of the games, with the running game's status and a reset) and
@@ -42,6 +61,11 @@ final class GameHost {
     /// The running game's own controls (the paint palette, the rhythm style and tempo, the golf
     /// holes), a window of their own rather than a crowd on the launcher (owner, 2026-11-07).
     let controlsPanel: ScenePanel
+    /// A finished game's numbers, with Play again and Exit, hung in front of the player.
+    let summaryPanel: ScenePanel
+    /// Which game is running, by identity: picking another game while one runs is a change too
+    /// (owner, 2026-11-08: the menu stayed open showing the new game's state).
+    var currentID: ObjectIdentifier? { current.map { ObjectIdentifier($0) } }
     private(set) var games: [Game]
     private(set) var current: Game?
     private let device: MTLDevice
@@ -56,6 +80,8 @@ final class GameHost {
         panel = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 560)
         panel.pane.widthMeters = 1.2
         controlsPanel = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 300)
+        summaryPanel = ScenePanel(device: device, pixelWidth: 1200, pixelHeight: 900)
+        summaryPanel.pane.widthMeters = 0.9
         games = [PaintGame(), BlobShooter(), VacuumGame(), ToyBox(), GolfGame(), GridRide(), PortalGame(), RhythmGame()]
         layout()
     }
@@ -68,22 +94,22 @@ final class GameHost {
         panel.pane.up = simd_quatf(angle: -0.4, axis: w.right).act(w.up)
     }
 
+    /// The menu is only the games: the running one's state, restart and stop live in its controls
+    /// window (owner, 2026-11-08: the menu kept showing the game's state and controls).
     private func layout() {
         var b: [ScenePanel.Button] = []
         for (i, game) in games.enumerated() {
             let col = i % 4, row = i / 4
             let parts = game.title.split(separator: " ", maxSplits: 1).map(String.init)
-            b.append(.init(id: "game:\(i)", rect: CGRect(x: 0.02 + CGFloat(col) * 0.2, y: 0.36 + CGFloat(row) * 0.32, width: 0.19, height: 0.3),
+            b.append(.init(id: "game:\(i)", rect: CGRect(x: 0.02 + CGFloat(col) * 0.245, y: 0.32 + CGFloat(row) * 0.34, width: 0.235, height: 0.32),
                            label: parts.last ?? game.title, wide: true, icon: parts.first, style: .tile, accent: current === game))
         }
-        b.append(.init(id: "reset", rect: CGRect(x: 0.83, y: 0.36, width: 0.15, height: 0.3), label: "Restart", icon: "arrow.counterclockwise", style: .round))
-        b.append(.init(id: "stop", rect: CGRect(x: 0.83, y: 0.68, width: 0.15, height: 0.3), label: "Stop", icon: "stop.fill", style: .round))
-        panel.set(buttons: b, version: "games|\(current?.title ?? "")|\(current?.status ?? "")")
+        panel.set(buttons: b, version: "games|\(current?.title ?? "")")
         layoutControls()
     }
 
     /// Whether the running game has controls of its own to show.
-    var hasControls: Bool { current is PaintGame || current is RhythmGame || current is GolfGame || current is GridRide }
+    var hasControls: Bool { current != nil }
 
     /// The controls window's content for the running game.
     private func layoutControls() {
@@ -116,14 +142,62 @@ final class GameHost {
             b.append(.init(id: "reset", rect: CGRect(x: 0.52, y: 0.06, width: 0.46, height: 0.42), label: "New course", wide: true, icon: "shuffle", style: .pill))
             b.append(.init(id: "ride:go", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: "Ride", wide: true, icon: "play.fill", style: .pill, accent: true))
             b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
+        } else if let toys = current as? ToyBox {
+            b.append(.init(id: "toy:wake", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: toys.awake ? "Back to sleep" : "Come alive!", wide: true, icon: toys.awake ? "moon.zzz.fill" : "sparkles", style: .pill, accent: !toys.awake))
+            b.append(.init(id: "toy:new", rect: CGRect(x: 0.52, y: 0.06, width: 0.22, height: 0.42), label: "New toy", wide: true, icon: "plus", style: .pill))
+            b.append(.init(id: "toy:tidy", rect: CGRect(x: 0.76, y: 0.06, width: 0.22, height: 0.42), label: "Tidy up", wide: true, icon: "shippingbox.fill", style: .pill))
+            b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: "Restart", wide: true, icon: "arrow.counterclockwise", style: .pill))
+            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
+        } else if current is PortalGame {
+            b.append(.init(id: "portal:through", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: "Step through", wide: true, icon: "figure.walk.motion", style: .pill, accent: true))
+            b.append(.init(id: "portal:here", rect: CGRect(x: 0.52, y: 0.06, width: 0.46, height: 0.42), label: "Move it in front of me", wide: true, icon: "scope", style: .pill))
+            b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: "Back to the room", wide: true, icon: "house.fill", style: .pill))
+            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
+        } else if current is BlobShooter || current is VacuumGame {
+            b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.3, width: 0.46, height: 0.42), label: "Restart", wide: true, icon: "arrow.counterclockwise", style: .pill))
+            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.3, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
         } else if current is GolfGame {
             b.append(.init(id: "golf:next", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: "Next hole", wide: true, icon: "flag.fill", style: .pill))
             b.append(.init(id: "golf:step", rect: CGRect(x: 0.52, y: 0.06, width: 0.46, height: 0.42), label: "Step to the ball", wide: true, icon: "figure.walk", style: .pill))
             b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: "Restart the round", wide: true, icon: "arrow.counterclockwise", style: .pill))
             b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
         }
-        let extra = (current as? PaintGame).map { "\($0.swatch ?? -1)|\($0.sizeIndex)|\($0.brush)|\($0.dynamics)" } ?? ((current as? RhythmGame).map { "\($0.style)|\($0.bpm)|\(music?.isPlaying ?? false)" } ?? "")
+        let toyState = (current as? ToyBox).map { "\($0.awake)" } ?? ""
+        let extra = toyState + ((current as? PaintGame).map { "\($0.swatch ?? -1)|\($0.sizeIndex)|\($0.brush)|\($0.dynamics)" } ?? ((current as? RhythmGame).map { "\($0.style)|\($0.bpm)|\(music?.isPlaying ?? false)" } ?? ""))
         controlsPanel.set(buttons: b, version: "controls|\(current?.title ?? "")|\(extra)")
+    }
+
+    /// The summary's rows and its two buttons.
+    private func layoutSummary() {
+        guard let summary = current?.summary else { summaryPanel.set(buttons: [], version: "summary|none"); return }
+        var b: [ScenePanel.Button] = []
+        let rowHeight: CGFloat = min(0.1, 0.5 / CGFloat(max(summary.lines.count, 1)))
+        for (i, line) in summary.lines.enumerated() {
+            b.append(.init(id: "sum:\(i)", rect: CGRect(x: 0.05, y: 0.2 + CGFloat(i) * (rowHeight + 0.01), width: 0.9, height: rowHeight), label: line.0, wide: true, style: .row, value: line.1))
+        }
+        b.append(.init(id: "again", rect: CGRect(x: 0.05, y: 0.78, width: 0.43, height: 0.17), label: summary.again, wide: true, icon: "arrow.counterclockwise", style: .pill, accent: true))
+        b.append(.init(id: "exit", rect: CGRect(x: 0.52, y: 0.78, width: 0.43, height: 0.17), label: "Exit game", wide: true, icon: "xmark", style: .pill))
+        summaryPanel.set(buttons: b, version: "summary|\(summary.title)|\(summary.lines.map { $0.0 + $0.1 }.joined())")
+    }
+
+    /// Hangs the summary ahead of the head, a little low, facing it.
+    func placeSummary(head: simd_float4x4) {
+        var w = BrowserWindow()
+        w.place(ahead: head, distance: 1.1)
+        summaryPanel.pane.centre = w.centre - SIMD3(0, 0.05, 0)
+        summaryPanel.pane.right = w.right
+        summaryPanel.pane.up = w.up
+    }
+
+    func renderSummary() {
+        // A dark backing so the windows behind do not show through the numbers, and only the two
+        // buttons light up under the gaze (the rows are not buttons).
+        let hovered = summaryPanel.hovered.flatMap { $0 == "again" || $0 == "exit" ? $0 : nil }
+        summaryPanel.render(ZStack {
+            RoundedRectangle(cornerRadius: 64, style: .continuous).fill(Color(red: 0.07, green: 0.04, blue: 0.14).opacity(0.88))
+            ButtonsView(size: CGSize(width: 1200, height: 900), buttons: summaryPanel.buttons, hovered: hovered,
+                        title: current?.summary?.title, titleHighlight: true, subtitle: current?.title)
+        })
     }
 
     func renderControls() {
@@ -134,7 +208,13 @@ final class GameHost {
     func press(_ id: String) {
         switch id {
         case "reset": current?.reset()
-        case "stop": current = nil
+        case "stop", "exit": if current != nil { log("[Games] \(id == "exit" ? "Exit from the summary" : "Stopped"): \(current!.title)") }; current = nil
+        case "again": log("[Games] Play again: \(current?.title ?? "none")"); current?.again()
+        case "toy:wake": (current as? ToyBox)?.pressButton(time: CACurrentMediaTime())
+        case "toy:new": (current as? ToyBox)?.newToy()
+        case "toy:tidy": (current as? ToyBox)?.tidy()
+        case "portal:through": (current as? PortalGame)?.stepThrough()
+        case "portal:here": (current as? PortalGame)?.moveHere()
         case "tempo:-": (current as? RhythmGame).map { $0.setTempo($0.bpm - 4) }
         case "tempo:+": (current as? RhythmGame).map { $0.setTempo($0.bpm + 4) }
         case "style": if !(music?.isPlaying ?? false) { (current as? RhythmGame)?.cycleStyle() }
@@ -156,6 +236,7 @@ final class GameHost {
             }
         }
         layout()
+        layoutSummary()
     }
 
     func start(_ index: Int) { press("game:\(index)") }
@@ -166,11 +247,12 @@ final class GameHost {
         current.draw(into: &scene, context: context)
         current.draw(into: &overlay, context: context)
         layout()
+        layoutSummary()
     }
 
     func render() {
         panel.render(ButtonsView(size: CGSize(width: 1600, height: 560), buttons: panel.buttons, hovered: panel.hovered,
-                                 title: current.map { $0.title } ?? "Games", titleHighlight: current != nil, subtitle: current?.status))
+                                 title: "Games", titleHighlight: false, subtitle: current.map { "Playing \($0.title): its controls have their own window" } ?? "Pick a game"))
     }
 }
 

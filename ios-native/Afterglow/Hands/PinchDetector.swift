@@ -15,7 +15,10 @@ struct PinchDetector {
     private var openRun = 0
     private var closeRun = 0
 
-    init(closeDistance: Float = 0.03, openDistance: Float = 0.05, releaseResults: Int = 3, startResults: Int = 2) {
+    /// 2 cm to close and three results in a row: the phone's log had real pinches start at a median
+    /// 1.6 cm, and the quarter that started between 2.2 and 3 cm fired before the fingers met
+    /// (owner, 2026-11-08). 4.5 cm to open.
+    init(closeDistance: Float = 0.02, openDistance: Float = 0.045, releaseResults: Int = 3, startResults: Int = 3) {
         self.closeDistance = closeDistance
         self.openDistance = openDistance
         self.releaseResults = releaseResults

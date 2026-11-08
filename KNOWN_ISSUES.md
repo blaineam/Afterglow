@@ -6,6 +6,16 @@
 
 ## Both platforms
 
+- **Round eight not yet on the headset (2026-11-08).** Simulator-proven: the coaster's closed
+  course and ride summary (unit test too), the games menu switch, Toys' button and controls,
+  the Blobs summary with Play again and Exit, the portal's Step through, the two-row dock,
+  window re-facing after a 3DoF switch, the browser's text buttons. Only the phone can prove
+  the 3D passthrough (no LiDAR in the Simulator), the floor choice, the pinch thresholds, the
+  WebXR facing, paint ignoring button pinches, and voice unlock (on-device speech).
+- **3D passthrough at edges.** Cells across a depth jump (a hand against a far wall) are dropped
+  and the flat, at-infinity passthrough shows there, so an object's outline can shimmer. The
+  depth map is 256 × 192, so thin things (chair legs, fingers) may float on their background.
+
 - **The browser's two crosshairs disagree.** The gaze reticle (the ring the app draws at the
   centre of each eye) and the page's own crosshair (the dot the helper script draws where the
   app says the gaze is) sit a little apart on the window, the page's higher, and a tap lands

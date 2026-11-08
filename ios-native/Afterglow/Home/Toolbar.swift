@@ -25,6 +25,9 @@ enum AppKind: String, CaseIterable, Codable, Sendable {
 @MainActor
 final class Toolbar {
     let panel: ScenePanel
+    /// A second row above the dock for the minimized windows and the music, so the dock's six
+    /// tiles keep their size (owner, 2026-11-08: a full dock felt squashed).
+    let tray: ScenePanel
     let menu: ScenePanel
     private(set) var menuOpen = false
     /// The dock shows only when asked: a round Apps button at the feet (straight down) brings it
@@ -55,6 +58,8 @@ final class Toolbar {
         self.settings = settings
         panel = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 320)
         panel.pane.widthMeters = 1.5
+        tray = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 200)
+        tray.pane.widthMeters = 1.3
         menu = ScenePanel(device: device, pixelWidth: 400, pixelHeight: 400)
         menu.pane.widthMeters = 0.28
         if let saved = UserDefaults.standard.array(forKey: recentsKey) as? [String] {
@@ -111,7 +116,18 @@ final class Toolbar {
         menu.pane.right = w.right
         menu.pane.up = w.up
         menu.pane.centre = w.centre + SIMD3(0, 0.05, 0)
+        placeTray()
     }
+
+    /// The tray sits just above the dock, tilted the same.
+    private func placeTray() {
+        tray.pane.right = panel.pane.right
+        tray.pane.up = panel.pane.up
+        tray.pane.centre = panel.pane.centre + panel.pane.up * (panel.pane.heightMeters / 2 + tray.pane.heightMeters / 2 + 0.025)
+    }
+
+    /// Whether the tray has anything on it.
+    var trayShown: Bool { dockShown && (!minimized.isEmpty || musicPlaying != nil) }
 
     func layout() {
         // The dock: six large tiles, an icon over a word each.
@@ -124,30 +140,37 @@ final class Toolbar {
             ("record:0", isRecording() ? "stop.circle.fill" : "record.circle", isRecording() ? "Stop" : "Record"),
             ("app:settings", "gearshape.fill", "Settings"),
         ]
-        let chips = minimized.prefix(4)
-        let musicControls: [(String, String, String)] = musicPlaying.map { playing in [("music:prev", "backward.fill", "Back"), ("music:play", playing ? "pause.fill" : "play.fill", playing ? "Pause" : "Play"), ("music:next", "forward.fill", "Next")] } ?? []
-        let count = CGFloat(tiles.count + chips.count + musicControls.count)
         let gap: CGFloat = 0.008
-        let w = min(0.158, (1 - gap * (count - 1)) / count)
-        var x: CGFloat = (1 - (w * count + gap * (count - 1))) / 2
+        let w = (1 - gap * CGFloat(tiles.count - 1)) / CGFloat(tiles.count)
+        var x: CGFloat = 0
         for (id, icon, label) in tiles {
             buttons.append(.init(id: id, rect: CGRect(x: x, y: 0.06, width: w, height: 0.88), label: label, wide: true, icon: icon, style: .tile,
                                  accent: id == "toggle:passthrough" && settings.passthrough || id == "record:0" && isRecording()))
             x += w + gap
         }
-        for kind in chips {
+        // The tray: a pill per minimized window, then the music's three controls, each a fixed
+        // size from the left, so a crowded tray stays readable (up to six windows).
+        var trayButtons: [ScenePanel.Button] = []
+        var tx: CGFloat = 0.01
+        let chipWidth: CGFloat = 0.24
+        for kind in minimized.prefix(musicPlaying == nil ? 4 : 3) {
             let icon: String
             switch kind {
             case .browser: icon = "safari.fill"; case .media: icon = "photo.on.rectangle.angled"; case .files: icon = "folder.fill"; case .games: icon = "gamecontroller.fill"
             case .places: icon = "mountain.2.fill"; case .music: icon = "music.note"; case .settings: icon = "gearshape.fill"; case .home: icon = "square.grid.2x2.fill"; case .gameControls: icon = "slider.horizontal.3"
             }
-            buttons.append(.init(id: "win:\(kind.rawValue)", rect: CGRect(x: x, y: 0.06, width: w, height: 0.88), label: kind.title, wide: true, icon: icon, style: .tile, accent: true))
-            x += w + gap
+            trayButtons.append(.init(id: "win:\(kind.rawValue)", rect: CGRect(x: tx, y: 0.1, width: chipWidth, height: 0.8), label: kind.title, wide: true, icon: icon, style: .pill, accent: true))
+            tx += chipWidth + 0.01
         }
-        for (id, icon, label) in musicControls {
-            buttons.append(.init(id: id, rect: CGRect(x: x, y: 0.06, width: w, height: 0.88), label: label, wide: true, icon: icon, style: .tile, accent: id == "music:play"))
-            x += w + gap
+        if let playing = musicPlaying {
+            let controls: [(String, String, String)] = [("music:prev", "backward.fill", "Back"), ("music:play", playing ? "pause.fill" : "play.fill", playing ? "Pause" : "Play"), ("music:next", "forward.fill", "Next")]
+            var mx: CGFloat = 1 - 0.01 - 3 * 0.08 - 2 * 0.005
+            for (id, icon, label) in controls {
+                trayButtons.append(.init(id: id, rect: CGRect(x: mx, y: 0.1, width: 0.08, height: 0.8), label: label, icon: icon, style: .round, accent: id == "music:play"))
+                mx += 0.085
+            }
         }
+        tray.set(buttons: trayButtons, version: "tray|\(minimized.map(\.rawValue).joined())|\(String(describing: musicPlaying))")
         panel.set(buttons: buttons, version: "dock|\(settings.passthrough)|\(settings.showHandsLive)|\(isRecording())|\(minimized.map(\.rawValue).joined())|\(String(describing: musicPlaying))")
         menu.set(buttons: [.init(id: "feet", rect: CGRect(x: 0.08, y: 0.08, width: 0.84, height: 0.84), label: riding ? "Exit ride" : "Apps", icon: riding ? "xmark" : "square.grid.2x2.fill", style: .round, accent: true, light: riding ? 1 : 0)], version: "feet|\(riding)")
     }
@@ -185,6 +208,7 @@ final class Toolbar {
 
     func render() {
         panel.render(ButtonsView(size: CGSize(width: 1600, height: 320), buttons: panel.buttons, hovered: panel.hovered, title: nil, titleHighlight: false))
+        if trayShown { tray.render(ButtonsView(size: CGSize(width: 1600, height: 230), buttons: tray.buttons, hovered: tray.hovered, title: nil, titleHighlight: false)) }
         menu.render(ButtonsView(size: CGSize(width: 400, height: 400), buttons: menu.buttons, hovered: menu.hovered, title: nil, titleHighlight: false, transparent: true))
     }
 }

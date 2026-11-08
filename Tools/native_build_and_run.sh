@@ -20,7 +20,9 @@ N=$P/ios-native
 # The same bundle id as the Unity app: installing this replaces that one on the phone.
 BUNDLE=${AFTERGLOW_NATIVE_BUNDLE_ID:-com.wemiller.afterglow}
 PROJECT=$N/Afterglow.xcodeproj
-DERIVED=$P/Builds/native-derived
+# Build output lives off iCloud: in the repo's folder iCloud made "Afterglow 2.app" conflict copies
+# that the Simulator then ran (2026-11-08). AFTERGLOW_DERIVED overrides.
+DERIVED=${AFTERGLOW_DERIVED:-$HOME/Library/Developer/Afterglow/native-derived}
 LOGS=${TMPDIR:-/tmp}/afterglow
 mkdir -p $LOGS
 cd $P || exit 1
@@ -74,7 +76,9 @@ if [ $MODE = sim ]; then
     STATUS=$?
     grep -E "warning:|error:" $LOGS/native-xcode-sim.log | sort -u | head -20
     [ $STATUS -eq 0 ] || { echo "Simulator build failed; see $LOGS/native-xcode-sim.log"; exit 1; }
-    APP=$(ls -d $DERIVED/Build/Products/Debug-iphonesimulator/*.app | head -1)
+    # By name: iCloud leaves "Afterglow 2.app" conflict copies in the build folder, which sort first
+    # and installed a stale app for a whole round of Simulator checks (2026-11-08).
+    APP=$DERIVED/Build/Products/Debug-iphonesimulator/Afterglow.app
     xcrun simctl boot $SIM 2>/dev/null; xcrun simctl bootstatus $SIM -b >/dev/null
     xcrun simctl install $SIM "$APP" || exit 1
     xcrun simctl terminate $SIM $BUNDLE 2>/dev/null
@@ -83,6 +87,9 @@ if [ $MODE = sim ]; then
     if [ -d $FIX ]; then
         DATA=$(xcrun simctl get_app_container $SIM $BUNDLE data 2>/dev/null) && mkdir -p "$DATA/Documents/Media" && cp -n $FIX/* "$DATA/Documents/Media/" 2>/dev/null
     fi
+    # The last run's log goes first: the screenshot steps are counted in it, and a stale one with
+    # more steps than this run made every screenshot fire at launch (2026-11-08).
+    rm -f "$(xcrun simctl get_app_container $SIM $BUNDLE data 2>/dev/null)/Documents/session.log"
     env "${SIMENV[@]}" xcrun simctl launch $SIM $BUNDLE >/dev/null || exit 1
     echo "== launched in the simulator ${ENVIRONMENT:+with {$ENVIRONMENT}}"
     # While the app runs, a screenshot of the Simulator's screen for every "screenshot" step the
@@ -93,7 +100,7 @@ if [ $MODE = sim ]; then
     rm -f $LOGS/native-sim-screen-*.png
     for i in $(seq 1 $(( 8 + DUMP ))); do
         sleep 1
-        COUNT=$(grep -c "\[Actions\] screenshot" "$DATA/Documents/session.log" 2>/dev/null || echo 0)
+        COUNT=$(grep -c "\[Actions\] screenshot" "$DATA/Documents/session.log" 2>/dev/null | head -1); COUNT=${COUNT:-0}
         while [ "$SHOTS" -lt "$COUNT" ]; do
             SHOTS=$(( SHOTS + 1 ))
             xcrun simctl io $SIM screenshot $LOGS/native-sim-screen-$SHOTS.png >/dev/null 2>&1 && echo "== screenshot $SHOTS: $LOGS/native-sim-screen-$SHOTS.png"
@@ -145,7 +152,8 @@ if [ $MODE = build ]; then
         echo "Xcode build failed; the full output is in $LOGS/native-xcode.log. Nothing was installed."
         exit 1
     fi
-    APP=$(ls -d $DERIVED/Build/Products/Debug-iphoneos/*.app 2>/dev/null | head -1)
+    APP=$DERIVED/Build/Products/Debug-iphoneos/Afterglow.app
+    [ -d "$APP" ] || APP=""
     [ -n "$APP" ] || { echo "No .app built"; exit 1; }
     echo "== install"
     xcrun devicectl device install app --device $UDID "$APP" > $LOGS/native-install.log 2>&1 || {

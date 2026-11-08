@@ -25,6 +25,9 @@ final class Settings: ObservableObject {
     let ultraWide: Bool
     /// Occlusion of virtual things by the real room, from the LiDAR depth (6DoF only).
     @Published var occlusion: Bool { didSet { save("occlusion", occlusion ? 1 : 0) } }
+    /// Passthrough laid over the LiDAR depth, so the room has its own stereo depth and virtual
+    /// things sit on it (owner, 2026-11-08: dust and floors looked far above the real floor).
+    @Published var depthPassthrough: Bool { didSet { save("depthPassthrough", depthPassthrough ? 1 : 0) } }
     /// Show the detected surfaces (scan the room).
     @Published var surfaces: Bool { didSet { save("surfaces", surfaces ? 1 : 0) } }
     /// Hold the render scale and frame rate down while the phone is serious or critical, as the
@@ -82,6 +85,7 @@ final class Settings: ObservableObject {
         degreesOfFreedom = Self.read("dof", options: options, default: 6) == 3 ? 3 : 6
         ultraWide = Self.read("camUltraWide", options: options, default: 1) != 0
         occlusion = Self.read("occlusion", options: options, default: 1) != 0
+        depthPassthrough = Self.read("depthPassthrough", options: options, default: 1) != 0
         surfaces = Self.read("surfaces", options: options, default: 0) != 0
         thermalCap = Self.read("thermalCap", options: options, default: 1) != 0
         cameraToEyesMm = SIMD3(Self.read("eyesX", options: options, default: 60),
@@ -90,7 +94,7 @@ final class Settings: ObservableObject {
         dumpAfterSeconds = Self.read("dump", options: options, default: 0)
         // A launch option only: the browser is an app the launcher opens, not a saved state.
         browserOpen = (options["web"].flatMap(Int.init) ?? 0) != 0
-        textScalePercent = min(max(Self.read("textScale", options: options, default: 175), 50), 300)
+        textScalePercent = min(max(Self.read("textScale", options: options, default: 220), 50), 300)
         launchURL = options["url"]
         actions = (options["actions"] ?? "").split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         assertedCold = Self.read("cold", options: options, default: 0) != 0
@@ -100,7 +104,7 @@ final class Settings: ObservableObject {
         showHands = Self.read("showHands", options: options, default: 1) != 0
         showHandsLive = showHands
         handHzLive = min(max(Self.read("handHz", options: options, default: 20), 1), 60)
-        textScaleLive = min(max(Self.read("textScale", options: options, default: 175), 50), 300)
+        textScaleLive = min(max(Self.read("textScale", options: options, default: 220), 50), 300)
         phoneView = Self.read("view", options: options, default: 0) != 0
         ultraTestSeconds = Self.read("ultraTest", options: options, default: 0)
         demo = (options["demo"].flatMap(Int.init) ?? 0) != 0

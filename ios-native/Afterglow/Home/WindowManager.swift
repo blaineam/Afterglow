@@ -153,6 +153,43 @@ final class WindowManager {
         return w
     }
 
+    /// Hangs every open window again in an arc round where the head looks now, in the order they
+    /// were in, left to right. A switch between 6DoF and 3DoF (or a fresh world-tracking start)
+    /// changes the tracker's frame, which left windows sideways or behind (owner, 2026-11-08).
+    func rearrange(head: simd_float4x4) {
+        let open = visible
+        guard !open.isEmpty else { return }
+        // Their order: by the way each faces, round the circular mean.
+        let yaws = open.map { w -> Float in let d = -w.pane.normal; return atan2(d.x, -d.z) }
+        let meanX = yaws.reduce(0) { $0 + sin($1) }, meanZ = yaws.reduce(0) { $0 + cos($1) }
+        let mean = atan2(meanX, meanZ)
+        let order = open.indices.sorted { a, b in
+            atan2(sin(yaws[a] - mean), cos(yaws[a] - mean)) < atan2(sin(yaws[b] - mean), cos(yaws[b] - mean))
+        }
+        let position = head.columns.3.xyz
+        let f = -head.columns.2.xyz
+        let aheadYaw = atan2(f.x, -f.z)
+        let distance: Float = 1.4
+        let gap: Float = 0.06
+        let arcs = order.map { atan(open[$0].pane.widthMeters / 2 / distance) }
+        let total = arcs.reduce(0) { $0 + 2 * $1 } + gap * Float(max(order.count - 1, 0))
+        var yaw = aheadYaw - total / 2
+        for (k, i) in order.enumerated() {
+            let w = open[i]
+            yaw += arcs[k]
+            let forward = SIMD3(sin(yaw), 0, -cos(yaw))
+            let lift: Float = w.kind == .gameControls ? -0.3 : 0.1
+            w.pane.centre = position + forward * distance + SIMD3(0, lift, 0)
+            w.pane.right = simd_normalize(simd_cross(forward, SIMD3(0, 1, 0)))
+            w.pane.up = SIMD3(0, 1, 0)
+            w.moving = false
+            w.placeBar()
+            yaw += arcs[k] + gap
+        }
+        dragging = nil
+        log("[Windows] Rearranged \(open.count) windows round the view")
+    }
+
     func close(_ kind: WindowKind) {
         windows.removeAll { $0.kind == kind }
         onClose?(kind)

@@ -68,6 +68,7 @@
 		C61785CDCD7A825AC739933F /* start.html in Resources */ = {isa = PBXBuildFile; fileRef = 59B24A5435D6E0888F87049B /* start.html */; };
 		C803CA1BEC03B79551EFB51B /* UltraWideProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */; };
 		C98279B37E7AA0E328071EA7 /* MusicApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2DC482C4113CBF72B365D3 /* MusicApp.swift */; };
+		CA5DD10BCE59171AD69681CF /* GamesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F985A23AB158BB227036EFC0 /* GamesTests.swift */; };
 		CD88B09669D877C78226AE06 /* CameraSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D94EC27CAA1FF1943486BB0 /* CameraSource.swift */; };
 		D151E7F53F6F570BD5827F0C /* evening-meadow.jpg in Resources */ = {isa = PBXBuildFile; fileRef = E430EDBD572B0C5A3B147DBA /* evening-meadow.jpg */; };
 		D2DF1EF2F8AE43E483DE4DA9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1DF1BAF17D795352DAC505E /* Assets.xcassets */; };
@@ -221,6 +222,7 @@
 		F3791EB1A750663D58286739 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
 		F383C9716F8214D0A4E65E7D /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
 		F9423C371E42B4C272012AA5 /* Dictation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dictation.swift; sourceTree = "<group>"; };
+		F985A23AB158BB227036EFC0 /* GamesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamesTests.swift; sourceTree = "<group>"; };
 		FCC83EA17C676F2D8C04C833 /* space-station.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "space-station.jpg"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -229,6 +231,7 @@
 			isa = PBXGroup;
 			children = (
 				37D8895069D15A18068ACE71 /* BrowserTests.swift */,
+				F985A23AB158BB227036EFC0 /* GamesTests.swift */,
 				5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */,
 				DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */,
 				959D50A1EB5EED9EC6FE9AF1 /* MediaMetadataTests.swift */,
@@ -628,6 +631,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8C25915865BFF7086BB43B56 /* BrowserTests.swift in Sources */,
+				CA5DD10BCE59171AD69681CF /* GamesTests.swift in Sources */,
 				AED9AC2DB5CA264371AF1869 /* HandGeometryTests.swift in Sources */,
 				4752687B06DCC27E53D2DE95 /* LensDistortionTests.swift in Sources */,
 				ED5D8F15E38998A94A259426 /* MediaMetadataTests.swift in Sources */,

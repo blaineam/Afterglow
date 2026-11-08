@@ -55,6 +55,8 @@ final class PlacesApp {
             found += items.filter { $0.kind == .photo360 || $0.kind == .panorama }.compactMap(\.fileURL)
         }
         panoramas = found
+        // A world asked for before the list was in (the portal opens Places and steps through at once).
+        if let pending = pendingWorld { pendingWorld = nil; showWorld(pending) }
         if await library.requestAccess() {
             var items: [MediaItem] = []
             for album in library.albums().prefix(4) {
@@ -157,6 +159,14 @@ final class PlacesApp {
     }
 
     /// The test script: the first 360 file whose name contains `name` becomes the surroundings.
+    /// The portal game's way home: the room again, with passthrough.
+    func chooseRoom() { _ = press("room") }
+    /// The portal game's other worlds: one of the photospheres, spread across them by number.
+    private var pendingWorld: Int?
+    func showWorld(_ index: Int) {
+        guard !panoramas.isEmpty else { pendingWorld = index; return }
+        _ = press("pano:" + panoramas[(max(index, 1) * 5 + 2) % panoramas.count].path)
+    }
     func choose(named name: String) {
         if let url = panoramas.first(where: { $0.lastPathComponent.localizedCaseInsensitiveContains(name) }) { _ = press("pano:" + url.path) }
         else { log("[Places] No 360 file named like \(name) among \(panoramas.count)") }

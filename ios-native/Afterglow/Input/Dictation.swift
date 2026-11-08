@@ -14,6 +14,8 @@ final class Dictation: ObservableObject {
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private var onFinal: ((String) -> Void)?
+    /// Off for a spoken passcode: what was heard never reaches the log.
+    private var logsText = true
 
     init() {
         available = recognizer?.isAvailable ?? false
@@ -29,9 +31,15 @@ final class Dictation: ObservableObject {
         return ok
     }
 
-    /// Starts listening; `onFinal` gets the text when listening stops.
-    func start(onFinal: @escaping (String) -> Void) {
+    /// Starts listening; `onFinal` gets the text when listening stops. `private` keeps the speech
+    /// on the phone (it refuses to start where only server recognition exists) and out of the log.
+    func start(private isPrivate: Bool = false, onFinal: @escaping (String) -> Void) {
         guard let recognizer, recognizer.isAvailable, !listening else { return }
+        if isPrivate && !recognizer.supportsOnDeviceRecognition {
+            log("[Speech] Not listening: this phone has no on-device recognition for a private entry")
+            return
+        }
+        logsText = !isPrivate
         self.onFinal = onFinal
         text = ""
         do {
@@ -79,6 +87,6 @@ final class Dictation: ObservableObject {
         let final = text
         onFinal?(final)
         onFinal = nil
-        log("[Speech] Heard: \(final.isEmpty ? "(nothing)" : final)")
+        log(logsText ? "[Speech] Heard: \(final.isEmpty ? "(nothing)" : final)" : "[Speech] Heard a private entry (\(final.isEmpty ? "nothing" : "not logged"))")
     }
 }

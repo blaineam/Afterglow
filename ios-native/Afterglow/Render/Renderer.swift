@@ -18,6 +18,7 @@ final class Renderer {
     private var skyPipeline: MTLRenderPipelineState!
     private var floorPipeline: MTLRenderPipelineState!
     private var passthroughPipeline: MTLRenderPipelineState!
+    private var depthPassthroughPipeline: MTLRenderPipelineState!
     private var distortionPipeline: MTLRenderPipelineState!
     private var overlayPipeline: MTLRenderPipelineState!
     private var quadPipeline: MTLRenderPipelineState!
@@ -112,7 +113,11 @@ final class Renderer {
     private var dumped = false
     private var homeOpened = false
     private var wasImmersive = false
-    private var gameWasRunning = false
+    /// The running game, by identity: a different game is a change as much as a start or a stop.
+    private var lastGameID: ObjectIdentifier?
+    /// When to re-hang the windows after a 6DoF/3DoF switch.
+    private var recentreAfterSwitch: Double?
+    private var summaryShown = false
     private var dofBeforeGame: Int?
     private var lastDrawnFrameTime: Double = 0
     private var drawnFrames = 0
@@ -264,7 +269,8 @@ final class Renderer {
         case .music: aspect = 1400.0 / 760.0
         case .home: aspect = 1600.0 / 900.0
         }
-        let window = windows.open(kind, head: lastHead, aspect: aspect)
+        // Music is a small remote, not a wall (owner, 2026-11-08: still giant).
+        let window = windows.open(kind, head: lastHead, aspect: aspect, width: kind == .music ? 1.0 : nil)
         switch kind {
         case .browser:
             toolbar?.noteOpened(.browser)
@@ -298,9 +304,16 @@ final class Renderer {
                     }
                 }
                 if let portal = g.games.compactMap({ $0 as? PortalGame }).first {
+                    // Through the gate is another place (a photosphere); back through is the room
+                    // (owner, 2026-11-08: a colour change alone was lacklustre).
                     portal.onWorldChange = { [weak self] world in
-                        let c = PortalGame.palettes[world % PortalGame.palettes.count]
-                        self?.gridColor = world == 0 ? SIMD4(0, 0, 0, 0) : SIMD4(c, 1)
+                        guard let self else { return }
+                        if world == 0 {
+                            if let places = self.places { places.chooseRoom() } else { self.environment = .room; self.settings.passthrough = true }
+                        } else {
+                            if self.places == nil { self.launch(WindowKind.places); self.windows?.minimize(.places) }
+                            self.places?.showWorld(world)
+                        }
                     }
                 }
                 g.music = music
@@ -448,7 +461,8 @@ final class Renderer {
             else if let chrome, chrome.panel.buttons.contains(where: { $0.id == argument }) { pressPanel(chrome.panel, id: argument) }
             else if let media, (media.screen == .viewing ? media.controls : media.grid).buttons.contains(where: { $0.id == argument }) { media.press(argument) }
             else if let places, places.panel.buttons.contains(where: { $0.id == argument }) { if places.press(argument) { settings.surfaces.toggle() } }
-            else if let games, games.panel.buttons.contains(where: { $0.id == argument }) || games.controlsPanel.buttons.contains(where: { $0.id == argument }) { games.press(argument) }
+            else if let games, games.panel.buttons.contains(where: { $0.id == argument }) || games.controlsPanel.buttons.contains(where: { $0.id == argument })
+                        || games.summaryPanel.buttons.contains(where: { $0.id == argument }) { games.press(argument) }
             else if let home, windows?.window(.home)?.minimized == false, home.panel.buttons.contains(where: { $0.id == argument }) { if home.press(argument) { windows?.close(.home) } }
             else if let settingsWindow, windows?.window(.settings)?.minimized == false, settingsWindow.panel.buttons.contains(where: { $0.id == argument }) { settingsWindow.press(argument) }
             else if let music, music.panel.buttons.contains(where: { $0.id == argument }) { music.press(argument) }
@@ -457,8 +471,9 @@ final class Renderer {
                 // win:<kind>:<button>
                 let parts = argument.split(separator: ":").map(String.init)
                 if parts.count == 3, let kind = WindowKind(rawValue: parts[1]), let w = windows.window(kind) { windows.press(w, id: parts[2]) }
+                else { toolbar?.press(argument) }   // win:<kind> is a dock tray chip
             }
-            else if let toolbar { toolbar.press(argument) }
+            else if let toolbar { log("[Actions] press \(argument): no panel has it; the dock (summary has \(games?.summaryPanel.buttons.map(\.id) ?? []))"); toolbar.press(argument) }
         case "type": if let media, media.isFiles { media.type(argument) } else { browser?.type(argument) }
         case "key": if let media, media.isFiles { media.key(argument) } else { browser?.key(argument) }
         case "look":
@@ -480,6 +495,7 @@ final class Renderer {
             else if argument == "punch" { fakeHand = (fakeHand?.pinched ?? false, now + 0.2) }
             else { fakeHand = (argument == "1", 0) }
         case "open": if let kind = WindowKind(rawValue: argument) { launch(kind) }
+        case "dock": toolbar?.place(ahead: lastHead); toolbar?.showDock(time: CACurrentMediaTime())
         case "lock": lock?.lock(reason: "the script")
         case "place": places?.choose(named: argument)
         case "fakeplanes": (source as? ARController)?.room.addFake(floorY: floorHeight); settings.surfaces = true
@@ -525,6 +541,9 @@ final class Renderer {
             sourceDof = settings.degreesOfFreedom
             log("[Pose] Switched to \(sourceDof)DoF (\(source.cameraName) camera)")
             wireSource()
+            // The new tracker has its own frame: once its first poses are in, the windows and
+            // any WebXR session are hung again round the way the head faces.
+            recentreAfterSwitch = CACurrentMediaTime() + 0.6
         }
         source.start()
     }
@@ -579,6 +598,7 @@ final class Renderer {
         skyPipeline = try scene("fullscreenVertex", "skyFragment")
         floorPipeline = try scene("floorVertex", "floorFragment")
         passthroughPipeline = try scene("fullscreenVertex", "passthroughFragment")
+        depthPassthroughPipeline = try scene("depthPassthroughVertex", "depthPassthroughFragment")
         overlayPipeline = try scene("overlayVertex", "overlayFragment")
         quadPipeline = try scene("quadVertex", "quadFragment", blend: true)
         mediaPipeline = try scene("fullscreenVertex", "mediaFragment")
@@ -764,13 +784,14 @@ final class Renderer {
             captureFromWorld.columns.2.w = 0
             captureFromWorld.columns.3 = SIMD4(0, 0, 0, 1)
             uniforms.captureFromWorld = captureFromWorld
+            uniforms.worldFromCapture = frame.pose.transform
             let k = frame.intrinsics
             uniforms.captureIntrinsics = SIMD4(k.columns.0.x / Float(frame.imageWidth), k.columns.1.y / Float(frame.imageHeight),
                                                k.columns.2.x / Float(frame.imageWidth), k.columns.2.y / Float(frame.imageHeight))
             uniforms.captureVideoRange = frame.videoRange ? 1 : 0
         }
         uniforms.time = Float(t2 - launchTime)
-        uniforms.floorHeight = floorHeight
+        uniforms.floorHeight = (source as? ARController)?.room.floorHeight ?? floorHeight
         uniforms.gridColor = gridColor
         uniforms.floorScroll = floorScroll
         if case .place(let kind) = environment { uniforms.environment = Int32(kind) } else { uniforms.environment = 0 }
@@ -787,7 +808,7 @@ final class Renderer {
             wasImmersive = immersiveNow
             if immersiveNow {
                 immersiveSince = t2
-                source.hands?.pinchStartResults = 3
+                source.hands?.pinchStartResults = 4
                 dofBeforeSession = settings.degreesOfFreedom
                 handHzBeforeSession = settings.handHzLive
                 // More hand images a second while a page's pointer rides on them.
@@ -796,7 +817,7 @@ final class Renderer {
                 if t2 - immersiveSince < 3 { log(String(format: "[WebXR] The session ended %.1f s after it began: the page's doing; see the Session ended line for its reason", t2 - immersiveSince)) }
                 if let before = dofBeforeSession, before != settings.degreesOfFreedom { settings.degreesOfFreedom = before; log("[WebXR] Back to \(before)DoF") }
                 if let hz = handHzBeforeSession { settings.handHzLive = hz }
-                source.hands?.pinchStartResults = 2
+                source.hands?.pinchStartResults = 3
                 dofBeforeSession = nil
             }
         }
@@ -903,6 +924,13 @@ final class Renderer {
             }
             select = false
         }
+        if let at = recentreAfterSwitch, t2 >= at {
+            recentreAfterSwitch = nil
+            windows?.rearrange(head: headInWorld)
+            browser?.recentreSession()
+            toolbar?.place(ahead: headInWorld)
+            if let games, games.current?.summary != nil { games.placeSummary(head: headInWorld) }
+        }
         // The windows: title bars, drags, sizes; the app panes follow their windows.
         var pinchHeld = tracked.contains { $0.pinched }
         if fakeHand?.pinched == true { pinchHeld = true }
@@ -913,7 +941,7 @@ final class Renderer {
             for w in windows.visible {
                 switch w.kind {
                 case .browser:
-                    if let browser { browser.window = w.pane }
+                    if let browser { browser.window = w.pane; browser.setTextScale(settings.textScaleLive) }
                     // The bar sits above the chrome, whose height follows the window's width.
                     if let chrome { w.barGap = chrome.panel.pane.heightMeters + 0.03 }
                 case .media, .files:
@@ -1006,14 +1034,19 @@ final class Renderer {
             }
             // A game's start minimizes the launcher and opens the game's own controls; its stop
             // brings the launcher back (owner, 2026-11-07: the game, not the menu, until they exit).
-            if (games.current != nil) != gameWasRunning {
-                gameWasRunning = games.current != nil
-                if gameWasRunning {
+            if games.currentID != lastGameID {
+                lastGameID = games.currentID
+                summaryShown = false
+                if games.current != nil {
                     // Hands and a body in the room need the head's position: 6DoF while a game runs
                     // (the coaster is the one that does without).
                     if !(games.current is GridRide), settings.degreesOfFreedom == 3 { dofBeforeGame = 3; settings.degreesOfFreedom = 6; log("[Games] 6DoF for the game") }
                     windows?.minimize(.games)
-                    if games.hasControls { let w = windows?.open(.gameControls, head: headInWorld, aspect: 1600.0 / 300.0, width: 1.4); w?.pane.centre.y -= 0.35 }
+                    if games.hasControls {
+                        let existed = windows?.window(.gameControls) != nil
+                        let w = windows?.open(.gameControls, head: headInWorld, aspect: 1600.0 / 300.0, width: 1.4)
+                        if !existed { w?.pane.centre.y -= 0.35 }
+                    }
                 } else {
                     windows?.close(.gameControls)
                     windows?.open(.games, head: headInWorld, aspect: 1600.0 / 560.0)
@@ -1027,9 +1060,31 @@ final class Renderer {
                 games.renderControls()
                 if let t = games.controlsPanel.texture { toolbarQuads.append((t, 26)) }
             }
+            // A finished game's summary: its numbers, Play again and Exit, ahead of the player.
+            var summaryHit = false
+            if games.current?.summary != nil {
+                if !summaryShown { games.placeSummary(head: headInWorld); summaryShown = true }
+                let hit = games.summaryPanel.pane.hit(origin: origin, direction: forward)
+                summaryHit = hit != nil
+                _ = games.summaryPanel.hover(hit?.uv)
+                if select, hit != nil, let id = games.summaryPanel.hovered, id == "again" || id == "exit" {
+                    games.press(id); select = false; gameSelect = false
+                    log("[Games] Summary: \(id == "again" ? "play again" : "exit")")
+                }
+                games.renderSummary()
+                if games.current?.summary != nil, let t = games.summaryPanel.texture { toolbarQuads.append((t, 27)) }
+            } else {
+                summaryShown = false
+            }
+            // Whether the pointer is on the interface: a pinch there is for a button, not the game.
+            let onWindow = windows?.visible.contains { w in
+                (!w.barHidden && w.titleBar.pane.hit(origin: origin, direction: forward) != nil) || w.pane.hit(origin: origin, direction: forward) != nil
+            } ?? false
+            let onDock = (toolbar?.dockShown ?? false) && (toolbar?.panel.pane.hit(origin: origin, direction: forward) != nil || toolbar?.tray.pane.hit(origin: origin, direction: forward) != nil)
             let room = (source as? ARController)?.room
-            let context = GameContext(head: headInWorld, hands: tracked, floorHeight: room?.floorHeight ?? floorHeight,
+            var context = GameContext(head: headInWorld, hands: tracked, floorHeight: room?.floorHeight ?? floorHeight,
                                       surfaces: room?.all ?? [], time: t2, dt: frameDt, select: gameSelect, meshes: games.meshes)
+            context.pointerOnInterface = onWindow || onDock || summaryHit
             scene3D.clear()
             scene3D.floorHeight = context.floorHeight
             games.frame(context, overlay: &overlay, scene: &scene3D)
@@ -1062,17 +1117,26 @@ final class Renderer {
             toolbar.placeFeet(head: headInWorld, floor: (source as? ARController)?.room.floorHeight ?? floorHeight, rideUp: rideUp)
             var hit: (ScenePanel, SIMD2<Float>)?
             if toolbar.dockShown, let h = toolbar.panel.pane.hit(origin: origin, direction: forward) { hit = (toolbar.panel, h.uv) }
+            else if toolbar.trayShown, let h = toolbar.tray.pane.hit(origin: origin, direction: forward) { hit = (toolbar.tray, h.uv) }
             else if !toolbar.dockShown, let h = toolbar.menu.pane.hit(origin: origin, direction: forward) { hit = (toolbar.menu, h.uv) }
             _ = toolbar.panel.hover(hit?.0 === toolbar.panel ? hit?.1 : nil)
+            _ = toolbar.tray.hover(hit?.0 === toolbar.tray ? hit?.1 : nil)
             _ = toolbar.menu.hover(hit?.0 === toolbar.menu ? hit?.1 : nil)
             if select, let (panel, _) = hit, let id = panel.hovered {
                 if id == "feet" {
-                    if ridingNow { games?.press("stop"); log("[Games] Coaster stopped from the button at the feet") } else { toolbar.showDock(time: t2) }
+                    if ridingNow { games?.press("stop"); log("[Games] Coaster stopped from the button at the feet") }
+                    else {
+                        // The dock opens where the head looks now (it stayed where it was first hung,
+                        // which after a turn or a 3DoF switch was off to the side).
+                        toolbar.place(ahead: headInWorld)
+                        toolbar.showDock(time: t2)
+                    }
                 } else { toolbar.press(id); toolbar.showDock(time: t2) }
                 select = false
             }
             toolbar.render()
             if toolbar.dockShown, let t = toolbar.panel.texture { toolbarQuads.append((t, 3)) }
+            if toolbar.trayShown, let t = toolbar.tray.texture { toolbarQuads.append((t, 28)) }
             if !toolbar.dockShown, let t = toolbar.menu.texture { toolbarQuads.append((t, 4)) }
             if let (panel, uv) = hit, browser == nil || panel === toolbar.menu {
                 // The reticle on the dock when nothing else draws one.
@@ -1240,6 +1304,8 @@ final class Renderer {
             vertices += media?.grid.pane.quad ?? BrowserWindow().quad    // 24
             vertices += places?.panel.pane.quad ?? BrowserWindow().quad  // 25
             vertices += games?.controlsPanel.pane.quad ?? BrowserWindow().quad  // 26
+            vertices += games?.summaryPanel.pane.quad ?? BrowserWindow().quad   // 27
+            vertices += toolbar?.tray.pane.quad ?? BrowserWindow().quad         // 28
             while quadBuffers.count < 3 { quadBuffers.append(device.makeBuffer(length: 65536, options: .storageModeShared)!) }
             quadBufferIndex = (quadBufferIndex + 1) % quadBuffers.count
             let buffer = quadBuffers[quadBufferIndex]
@@ -1319,6 +1385,12 @@ final class Renderer {
                 encoder.setFragmentTexture(frame.luma, index: 0)
                 encoder.setFragmentTexture(frame.chroma, index: 1)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+                // Over it, the same image laid on the LiDAR depth, so the room has stereo depth.
+                if settings.depthPassthrough, let depth = frame.depth {
+                    encoder.setRenderPipelineState(depthPassthroughPipeline)
+                    encoder.setVertexTexture(depth, index: 0)
+                    encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 127 * 95 * 6)
+                }
             } else if case .panorama = environment, let texture = places?.panoramaTexture ?? panoramaKeep {
                 var u = MediaUniforms()
                 let kind = places?.panoramaItem?.kind ?? .photo360
@@ -1545,6 +1617,8 @@ extension Renderer {
         case "back": browser.back()
         case "forward": browser.forward()
         case "reload": browser.reload()
+        case "text:-": settings.textScaleLive = max(50, settings.textScaleLive - 20)
+        case "text:+": settings.textScaleLive = min(300, settings.textScaleLive + 20)
         case "home": browser.home()
         case "star": browser.toggleBookmark()
         case "size": browser.cycleSize(); layoutPanels()

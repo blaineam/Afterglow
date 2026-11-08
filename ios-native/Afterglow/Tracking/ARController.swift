@@ -53,6 +53,7 @@ final class ARController: NSObject, ARSessionDelegate, CameraSource, @unchecked 
     let room = RoomModel()
     /// Whether plane detection runs (a scan); it costs CPU, so only while wanted.
     private(set) var scanning = false
+    private var lastFloorRay: TimeInterval = 0
     private(set) var chosenFormatText = "none"
     private(set) var cameraName = "wide"
 
@@ -77,7 +78,8 @@ final class ARController: NSObject, ARSessionDelegate, CameraSource, @unchecked 
             return
         }
         let configuration = ARWorldTrackingConfiguration()
-        configuration.planeDetection = scanning ? [.horizontal, .vertical] : []
+        // Level planes always, for the floor the games and the dock stand on; walls with the scan.
+        configuration.planeDetection = scanning ? [.horizontal, .vertical] : [.horizontal]
         configuration.isLightEstimationEnabled = false
         configuration.environmentTexturing = .none
         configuration.worldAlignment = .gravity
@@ -106,7 +108,7 @@ final class ARController: NSObject, ARSessionDelegate, CameraSource, @unchecked 
     func setScanning(_ on: Bool) {
         guard on != scanning, let configuration = session.configuration as? ARWorldTrackingConfiguration else { scanning = on; return }
         scanning = on
-        configuration.planeDetection = on ? [.horizontal, .vertical] : []
+        configuration.planeDetection = on ? [.horizontal, .vertical] : [.horizontal]
         session.run(configuration)
         log("[Room] Scan \(on ? "started" : "ended")")
     }
@@ -201,6 +203,14 @@ final class ARController: NSObject, ARSessionDelegate, CameraSource, @unchecked 
             captured = c
         }
         room.logStatus(now: frame.timestamp)
+        // The floor, between planes: a ray straight down from the camera once a second.
+        let cameraPosition = SIMD3(frame.camera.transform.columns.3.x, frame.camera.transform.columns.3.y, frame.camera.transform.columns.3.z)
+        room.noteHead(cameraPosition)
+        if frame.timestamp - lastFloorRay > 1, case .normal = frame.camera.trackingState {
+            lastFloorRay = frame.timestamp
+            let query = ARRaycastQuery(origin: cameraPosition, direction: SIMD3(0, -1, 0), allowing: .estimatedPlane, alignment: .horizontal)
+            if let hit = session.raycast(query).last { room.noteFloorEstimate(hit.worldTransform.columns.3.y, time: frame.timestamp) }
+        }
         lock.lock()
         if let captured { latest = captured }
         frameCount += 1

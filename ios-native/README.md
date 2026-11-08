@@ -22,7 +22,12 @@ code.
   (CoreMotion at 100 Hz, on the clock ARKit shares), and position by the velocity between poses.
   The log scores the prediction every five seconds against the pose that then arrives.
 - **Passthrough** from the camera at its true field of view, reprojected by direction as the Unity
-  app's shader does, so the room is life size and the picture only moves with head rotation. The
+  app's shader does, so the room is life size and the picture only moves with head rotation.
+  Over it, with LiDAR, **3D passthrough** (Settings, on by default; 2026-11-08): the image laid
+  on the scene depth as a 128 × 96 mesh in the world and drawn from each eye, so the room has
+  its own stereo depth and virtual things sit on it. Shown at infinity in both eyes, the room
+  made a virtual floor or the vacuum's dust look far above the real floor. Cells across a jump
+  in depth are dropped and the flat passthrough shows through the gap. The
   ultra-wide camera's 60 fps format is used when ARKit lists one; otherwise the wide camera's
   1920×1440 at 60. Both the list and the choice are logged under `[Camera]`.
 - **A synthwave surrounding** when passthrough is off: the Unity Home scene's sky (violet to hot
@@ -280,11 +285,17 @@ furniture like the panels do. The games (`Games/Games.swift`):
   its dark base with rounded rails on the bumpers, lamps at its corners and its flag numbered;
   a scoreboard by the first tee shows the card in beads. Only the current hole has the ball.
 - **Coaster**: a roller coaster through whichever world Places has up. The course is random
-  each ride and always a closed loop of about two minutes: four banked turns make a racetrack
-  whose two long sides carry the features drawn at random (a chain lift and its drop, hills,
-  dips, loops), padded with straights so opposite sides match and the shape closes, the
-  straights scaled and padded until a simulated lap takes two minutes, the last stretch pulled
-  onto the start. The car waits at the station with its controls window up (Next world cycles
+  each ride and one smooth closed curve (2026-11-08; the earlier segment-laid lap dragged its
+  last stretch up onto the start and jumped the car back to the station): a plan that wobbles
+  round a centre, and a height profile along it joined by smoothsteps (zero slope at every
+  join), flat at the station, a chain lift of 16-24 m, a first drop into a flat valley that
+  carries a vertical loop when the drop gives the speed for one (offset sideways so it never
+  meets itself), smaller hills, and a run back to station level. Speed comes from energy less
+  friction and drag, the chain on the lift, and the brakes, which bring the car to rest exactly
+  where it boarded; the size is tuned until a ride takes about two minutes. At the end the
+  ride stops at the station and shows its summary (time, distance, top speed, highest point,
+  loops) with Ride again. `GamesTests` checks the course has no gap, no sudden turn and ends
+  at rest. The car waits at the station with its controls window up (Next world cycles
   the bundled photospheres, New course draws another, Ride starts); once riding the camera
   moves by the car's pose relative to where the ride began (a point at the rider's start head
   maps to the seat), so the whole world climbs, tilts and spins round them, the interface stays
@@ -295,8 +306,12 @@ furniture like the panels do. The games (`Games/Games.swift`):
   would run through the rails), arch lamps, the car's tub, nose, wheels and lap bar.
   Passthrough is off while the coaster runs: it is a ride through the scene.
 - **Portal**: a stone archway (fluted columns on plinths, a lintel, a glowing keystone) with a
-  shimmering disc of the next world's colour in it and motes swirling in the doorway; walk
-  through and the surroundings change palette, with a burst; back again for the previous.
+  shimmering disc in it and motes swirling in the doorway. It stands where there is room to
+  walk through and on (2.6 m clear by the room scan's walls, doors and furniture, ahead first,
+  else the nearest clear direction round the player; logged as `[Games] Portal: placed`).
+  Walk through, or press Step through, and the room gives way to one of the photospheres;
+  walk back through, or Back to the room, and the room returns. Move it in front of me
+  re-places it.
 - **Rhythm** (`Games/RhythmGame.swift`): glossy gems travel in along four lane rails to rings
   that pulse on the beat; punch or pinch one as it reaches its ring, or select with the gaze on
   the lane, to score with combos; hits flare. When the Music app has Apple Music playing, the
@@ -455,6 +470,40 @@ it reaches the camera's edge.
 - **Branding**: the bundle id is now `com.wemiller.afterglow`, the same as the Unity app's, so
   installing the native app replaces it on the phone; the icon is the Unity app's
   (copied from the Unity app's branding into the asset catalog); version 2.0.0.
+
+## Eighth phone round (2026-11-08)
+
+- **The floor**: ARKit's own floor plane wins (the largest, since stairs and a sunken step are
+  floor too), else the lowest large level plane 90 cm below the head (never a table, seat or
+  ceiling), else a ray straight down from the camera once a second; level planes are always
+  detected, walls only with Surfaces. The neon floor, games and dock read the same height.
+- **6DoF and 3DoF switches**: the new tracker's frame is not the old one's, so 0.6 s after a
+  switch every open window is hung again in an arc round the way the head faces, in its old
+  order (`WindowManager.rearrange`), and a WebXR session's world is re-zeroed. The dock is hung
+  ahead of the head each time it opens.
+- **WebXR facing**: the page's world starts at the head and faces where it faces (pose and
+  hand joints sent in that frame), set on the session's first frame and after a switch.
+- **Pinch**: 2 cm to start over three results (four in WebXR), 4.5 cm to release; the phone's
+  log had real pinches start at a median 1.6 cm and early ones between 2.2 and 3 cm.
+- **Games**: picking a game while another runs is a change too (the menu minimizes and the
+  controls follow; the menu is only the games now). Every game has a controls window. A pinch
+  that begins on a window, the dock or a summary never paints, spawns or fires. Games that end
+  show a summary panel ahead (Blobs: score, wave, popped, accuracy, time; Vacuum; Golf's
+  card; the coaster's ride) with Play again and Exit game. Toys: a big glowing button on the
+  box's rim, pressed by gaze or a pinch near it before anything else, and Come alive, New toy
+  and Tidy up in the controls; a pinch spawns a toy only at the box's open top.
+- **Browser text**: the size setting now applies live (it saved but never reached the page),
+  starts at 220%, and has smaller and larger buttons on the browser's bar; never during a
+  WebXR session.
+- **Music** opens at 1.0 m. **The dock**: six tiles, with minimized windows and the music's
+  controls on a tray row above.
+- **Voice unlock**: Say your passcode on the lock listens on the phone only (it refuses where
+  only server recognition exists) and turns the spoken digits into the passcode; what was
+  heard is never logged or shown.
+- **Harness**: the Simulator app is installed by name and the build output lives off iCloud
+  (`~/Library/Developer/Afterglow/native-derived`): an iCloud "Afterglow 2.app" copy sorted
+  first and ran stale code. The last run's log is removed before launch, so screenshots fire
+  at their own steps. New verb `dock`.
 
 ## Apple Watch as a controller
 

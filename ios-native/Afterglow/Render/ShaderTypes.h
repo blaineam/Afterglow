@@ -19,6 +19,9 @@ typedef struct {
     // (x right, y up, -z forward), and the image's intrinsics as fractions of its size:
     // (fx / width, fy / height, cx / width, cy / height).
     matrix_float4x4 captureFromWorld;
+    // The camera that took the image, in the world (rotation and position), for laying the image
+    // over its depth map.
+    matrix_float4x4 worldFromCapture;
     vector_float4 captureIntrinsics;
     float time;                          // seconds since launch, for the environment's animation
     float floorHeight;                   // the virtual floor's y
