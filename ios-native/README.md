@@ -581,7 +581,8 @@ and floor are right now. This round fixes what was left.
   its chrome), so the bar over them stays in view, and the dock places itself below whatever hangs
   ahead, keyboards and filmstrips included.
 - **A gallery**: `Tools/capture_gallery.sh` renders what each experience looks like from inside to
-  `docs/gallery`, using the new `shot <name>` and `world <n>` script verbs.
+  `docs/gallery`, using the new `shot <name>` and `world <n>` script verbs. The marketing page's
+  drawn mockups are gone in favour of these captures.
 
 ## Apple Watch as a controller
 

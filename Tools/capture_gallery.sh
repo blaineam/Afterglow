@@ -59,6 +59,7 @@ step "dock"; step "look 0 -24"; step "wait 1.5"; step "shot dock"; step "look 0 
 step "open browser"; step "wait 3"; step "press new"; step "wait 1"; step "press tab:0"; step "wait 0.5"; step "press close"; step "wait 2"; step "shot browser-start"
 if [ -n "${SITE_URL:-}" ]; then step "js location.href='$SITE_URL'"; step "wait 7"; step "shot browser-page"; fi
 close browser
+step "open browser"; step "wait 2"; step "open music"; step "wait 2"; step "look -19 0"; step "wait 2"; step "shot windows"; step "look 0 0"; close music; close browser
 step "open files"; step "wait 2"; step "press album:0"; step "wait 4"; step "shot files"
 step "press item:0"; step "wait 4"; step "shot photo-360"; close files
 step "open places"; step "wait 3"; step "shot places"; step "world 2"; step "wait 3"; step "shot place-world"
