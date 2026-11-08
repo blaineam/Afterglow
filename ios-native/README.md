@@ -505,6 +505,30 @@ it reaches the camera's edge.
   first and ran stale code. The last run's log is removed before launch, so screenshots fire
   at their own steps. New verb `dock`.
 
+## Ninth phone round (2026-11-08)
+
+The owner's run of round eight: the coaster, toy box, games menu, paint, WebXR facing, portal
+and floor are right now. This round fixes what was left.
+
+- **Quick pinches**: a pinch and release registers without holding. In a real pinch the thumb
+  hides the index tip (or the other way round) and Vision rates the hidden one about 0.1; that
+  result had cleared the three-in-a-row count. Now a hidden tip counts when the other is sure,
+  both guessed pauses the count, a result between 2 and 4.5 cm pauses it, and only an open
+  hand or more than four paused results clear it. The tips' distance is taken before the joint
+  smoothing, which lagged a tenth of a second and flattened a quick pinch's dip.
+- **The wrist**: Vision now and then puts the wrist past the fingertips. A wrist always sits on
+  the far side of the knuckle line from the fingers' middle joints, however the hand turns or
+  faces, so one on the fingers' side is put back where the knuckles last had it, before the
+  palm's fit uses it. The five-second hands line counts them ("wrists put back").
+- **Files from a file provider**: a picked folder from a cloud drive or another app's remotes is
+  listed through file coordination (metadata only) and walked three levels deep, without
+  downloading its files. A file not on the phone is classified by its name, gets the
+  provider's thumbnail or (a picture up to 25 MB) is downloaded for one, and is downloaded when
+  opened ("Downloading…" on the controls), then classified from its contents. Stale bookmarks
+  are renewed at launch. A provider's folders can be picked only when its extension declares
+  folder picking (`NSExtensionFileProviderSupportsPickingFolders`); one that doesn't is greyed
+  out in the picker.
+
 ## Apple Watch as a controller
 
 `AfterglowWatch/` is a single-target watchOS app embedded in the iOS app. Its one button carries

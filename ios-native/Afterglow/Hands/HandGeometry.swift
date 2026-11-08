@@ -105,4 +105,39 @@ enum HandGeometry {
             return SIMD3(across.x, across.y, 0)
         }
     }
+
+    /// The knuckles' frame in the image: their centre, the unit line from the index finger's
+    /// knuckle to the little finger's, the unit direction across that line away from the fingers,
+    /// and the knuckles' width in pixels. The fingers' side is where their middle joints are,
+    /// which no bend of the knuckles can take across the line; nil when it cannot be told (a fist
+    /// seen end on, or the knuckles in line with the camera).
+    static func knuckleFrame(_ landmarks: [SIMD2<Float>]) -> (centre: SIMD2<Float>, along: SIMD2<Float>, away: SIMD2<Float>, width: Float)? {
+        let centre = [5, 9, 13, 17].reduce(SIMD2<Float>.zero) { $0 + landmarks[$1] } / 4
+        let line = landmarks[17] - landmarks[5]
+        let width = simd_length(line)
+        guard width > 1 else { return nil }
+        let along = line / width
+        let across = SIMD2(-along.y, along.x)
+        let fingers = [6, 10, 14, 18].reduce(Float(0)) { $0 + simd_dot(landmarks[$1] - centre, across) } / 4
+        guard abs(fingers) >= minFingerSide * width else { return nil }
+        return (centre, along, fingers > 0 ? -across : across, width)
+    }
+
+    /// The fingers' middle joints must sit this far from the knuckle line, in knuckle widths, for
+    /// their side to count; the wrist must sit at least this far on the other side.
+    static let minFingerSide: Float = 0.15
+    static let minWristAway: Float = 0.3
+    /// Where the wrist sits for a hand never seen with a believable one, in knuckle widths.
+    static let typicalWrist = SIMD2<Float>(0, 1.3)
+
+    /// The wrist in the knuckles' frame, in knuckle widths: along the line, and away from the fingers.
+    static func wristInKnuckles(_ landmarks: [SIMD2<Float>], frame: (centre: SIMD2<Float>, along: SIMD2<Float>, away: SIMD2<Float>, width: Float)) -> SIMD2<Float> {
+        let w = landmarks[wrist] - frame.centre
+        return SIMD2(simd_dot(w, frame.along), simd_dot(w, frame.away)) / frame.width
+    }
+
+    /// The wrist's pixel from its place in the knuckles' frame.
+    static func wristPixel(_ offset: SIMD2<Float>, frame: (centre: SIMD2<Float>, along: SIMD2<Float>, away: SIMD2<Float>, width: Float)) -> SIMD2<Float> {
+        frame.centre + (frame.along * offset.x + frame.away * offset.y) * frame.width
+    }
 }

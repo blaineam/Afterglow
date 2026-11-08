@@ -146,6 +146,8 @@ final class MediaApp {
     var onPickFolder: (() -> Void)?
     /// Files mode: folders instead of albums, with a search typed on the keyboard.
     private(set) var files: FileSource?
+    /// A provider's file being downloaded to view, or the download's failure, shown on the controls.
+    private var fetchState: String?
     private var folder: FileSource.Folder?
     private(set) var query = ""
     var isFiles: Bool { files != nil }
@@ -557,7 +559,23 @@ final class MediaApp {
         }
         formatIndex = Self.formats.firstIndex { $0.label == label } ?? 0
         log("[Media] Viewing \(item.kind.rawValue) \(item.title) as \(format.label)")
+        fetchState = nil
         Task { @MainActor in
+            // A file its provider keeps (a cloud drive, a remote) is downloaded first, then
+            // classified from its contents and viewed afresh.
+            if let url = item.fileURL, FileSource.isRemote(url) {
+                fetchState = "Downloading…"
+                layoutControls()
+                let ok = await FileSource.download(url)
+                guard current?.id == item.id else { return }
+                guard ok else { fetchState = "Couldn't download"; layoutControls(); return }
+                fetchState = nil
+                let fresh = await files?.classify(url, date: item.date) ?? item
+                guard current?.id == item.id else { return }
+                if let i = items.firstIndex(where: { $0.id == item.id }) { items[i] = fresh }
+                view(fresh)
+                return
+            }
             if item.isVideo {
                 await player.open(item: item, stereo: item.kind == .spatialVideo)
             } else {
@@ -636,8 +654,9 @@ final class MediaApp {
                 }
             }
             loadStripThumbnails()
-            let loading = current.map { $0.isVideo ? player.isLoading : (picture == nil && eyes == nil) } ?? false
+            let loading = fetchState != nil || (current.map { $0.isVideo ? player.isLoading : (picture == nil && eyes == nil) } ?? false)
             controls.render(FilmstripView(size: CGSize(width: 1600, height: 260), buttons: controls.buttons, hovered: controls.hovered, strip: strip, loading: loading,
+                                          loadingText: fetchState ?? "Loading…",
                                           scrub: scrubFraction, timeText: scrubFraction.map { _ in Self.clock(player.time) + "  /  " + Self.clock(player.duration) }))
         } else {
             var cells: [GridCell] = []
@@ -688,6 +707,7 @@ struct FilmstripView: View {
     let hovered: String?
     let strip: [(String, UIImage?)]
     var loading = false
+    var loadingText = "Loading…"
     var scrub: Double? = nil
     var timeText: String? = nil
 
@@ -697,7 +717,7 @@ struct FilmstripView: View {
             if loading {
                 HStack(spacing: 20) {
                     Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 48, weight: .medium)).foregroundStyle(PanelStyle.accent)
-                    Text("Loading…").font(.system(size: 54, weight: .medium, design: .rounded)).foregroundStyle(PanelStyle.text)
+                    Text(loadingText).font(.system(size: 54, weight: .medium, design: .rounded)).foregroundStyle(PanelStyle.text)
                 }
                 .padding(.horizontal, 36).padding(.vertical, 16)
                 .background(Capsule().fill(Color.black.opacity(0.7)))

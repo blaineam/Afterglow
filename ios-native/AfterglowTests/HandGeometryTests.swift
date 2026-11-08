@@ -90,6 +90,54 @@ final class HandGeometryTests: XCTestCase {
         XCTAssertFalse(pinch.isPinched)
     }
 
+    /// A quick pinch: a wobble between the distances or a guessed tip pauses the count instead of
+    /// clearing it (owner, 2026-11-08: pinches had to be held); a long pause or an open hand clears it.
+    func testQuickPinchSurvivesAWobble() {
+        var pinch = PinchDetector()
+        XCTAssertFalse(pinch.update(tipDistance: 0.015))
+        XCTAssertFalse(pinch.update(tipDistance: 0.03))                       // a wobble: paused
+        XCTAssertFalse(pinch.update(tipDistance: 0.015))
+        XCTAssertFalse(pinch.update(tipDistance: 0.015, startCounts: false))  // both tips guessed: paused
+        XCTAssertTrue(pinch.update(tipDistance: 0.015))                       // the third close result
+
+        var hover = PinchDetector()
+        XCTAssertFalse(hover.update(tipDistance: 0.015))
+        for _ in 0...PinchDetector.maxPausedResults { XCTAssertFalse(hover.update(tipDistance: 0.03)) }   // paused too long: cleared
+        XCTAssertFalse(hover.update(tipDistance: 0.015))
+        XCTAssertFalse(hover.update(tipDistance: 0.015))
+        XCTAssertTrue(hover.update(tipDistance: 0.015))
+
+        var opened = PinchDetector()
+        XCTAssertFalse(opened.update(tipDistance: 0.015))
+        XCTAssertFalse(opened.update(tipDistance: 0.015))
+        XCTAssertFalse(opened.update(tipDistance: 0.05))                      // the hand opened: cleared
+        XCTAssertFalse(opened.update(tipDistance: 0.015))
+    }
+
+    /// A wrist on the fingers' side of the knuckles is impossible, however the hand is turned in
+    /// the image or which way it faces; the real one is not (owner, 2026-11-08: the wrist flipped
+    /// past the fingertips and back).
+    func testWristBeyondTheFingersIsCaught() {
+        let image = project(shape(), at: SIMD3(0, 0, 0.4))
+        func check(_ landmarks: [SIMD2<Float>], file: StaticString = #filePath, line: UInt = #line) {
+            guard let frame = HandGeometry.knuckleFrame(landmarks) else { return XCTFail("no knuckle frame", file: file, line: line) }
+            let real = HandGeometry.wristInKnuckles(landmarks, frame: frame)
+            XCTAssertGreaterThan(real.y, HandGeometry.minWristAway, file: file, line: line)
+            // The wrist put past the middle fingertip.
+            var flipped = landmarks
+            flipped[0] = landmarks[12] + (landmarks[12] - landmarks[9]) * 0.5
+            XCTAssertLessThan(HandGeometry.wristInKnuckles(flipped, frame: frame).y, HandGeometry.minWristAway, file: file, line: line)
+            // Put back, it lands where the real one was.
+            let back = HandGeometry.wristPixel(real, frame: frame)
+            XCTAssertLessThan(simd_distance(back, landmarks[0]), 0.5, file: file, line: line)
+        }
+        check(image)
+        let centre = image[9]
+        check(image.map { centre - ($0 - centre) })                           // upside down
+        check(image.map { SIMD2(2 * centre.x - $0.x, $0.y) })                 // the palm towards the camera (mirrored)
+        check(image.map { p in let d = p - centre; return centre + SIMD2(-d.y, d.x) })   // turned a quarter
+    }
+
     func testOneEuroFollowsAndSmooths() {
         var filter = OneEuroFilter(minCutoff: 1.5, beta: 8)
         _ = filter.filter(SIMD3(0, 0, 0), time: 0)

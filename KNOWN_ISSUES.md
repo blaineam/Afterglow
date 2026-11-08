@@ -6,12 +6,16 @@
 
 ## Both platforms
 
-- **Round eight not yet on the headset (2026-11-08).** Simulator-proven: the coaster's closed
-  course and ride summary (unit test too), the games menu switch, Toys' button and controls,
-  the Blobs summary with Play again and Exit, the portal's Step through, the two-row dock,
-  window re-facing after a 3DoF switch, the browser's text buttons. Only the phone can prove
-  the 3D passthrough (no LiDAR in the Simulator), the floor choice, the pinch thresholds, the
-  WebXR facing, paint ignoring button pinches, and voice unlock (on-device speech).
+- **Round nine not yet on the headset (2026-11-08).** Unit-proven: the pinch count through a
+  hidden tip or a wobble, and the wrist check in any turn of the hand. Simulator-proven: the
+  Files window still lists, thumbnails and plays local files. Only the phone can prove the
+  pinch feel, the wrist fix on a real hand, and a provider folder (none in the Simulator).
+  Round eight's voice unlock has not been reported on yet.
+- **A provider's folders can be greyed out in the folder picker.** The provider's extension must
+  declare folder picking; one that doesn't (the owner's own remotes app, as of this round) needs
+  that key added and a new build of that app.
+- **A provider's videos have no thumbnails** unless the provider supplies them; they are not
+  downloaded for one.
 - **3D passthrough at edges.** Cells across a depth jump (a hand against a far wall) are dropped
   and the flat, at-infinity passthrough shows there, so an object's outline can shimmer. The
   depth map is 256 × 192, so thin things (chair legs, fingers) may float on their background.

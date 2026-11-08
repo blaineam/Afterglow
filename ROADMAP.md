@@ -273,6 +273,10 @@ foundation at all. The honest picture:
   pinch meant for a button, and end with a summary; the toy box button, the portal's placement
   and worlds, a smooth closed coaster that stops at its station; live browser text size;
   smaller Music window, a two-row dock, voice unlock. Still to come: the owner's run of it.
+- **Ninth phone round, 2026-11-08**: quick pinches register (a hidden tip or a wobble pauses
+  the count instead of clearing it; the tips judged before smoothing); an impossible wrist past
+  the fingertips is put back; Files lists and opens folders from file providers without
+  downloading them all. Still to come: the owner's run of it.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

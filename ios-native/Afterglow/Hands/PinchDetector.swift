@@ -14,6 +14,7 @@ struct PinchDetector {
     private(set) var isPinched = false
     private var openRun = 0
     private var closeRun = 0
+    private var pausedRun = 0
 
     /// 2 cm to close and three results in a row: the phone's log had real pinches start at a median
     /// 1.6 cm, and the quarter that started between 2.2 and 3 cm fired before the fingers met
@@ -26,12 +27,16 @@ struct PinchDetector {
     }
 
     /// Takes the fingertips' distance in metres. `allowStart` false keeps an open hand open (the
-    /// tips at the image's edge, where the model guesses); `tipsSure` false means a tip was not
-    /// really seen, so nothing changes.
+    /// tips at the image's edge, or the palm edge-on); `tipsSure` false means a tip was not really
+    /// seen, so a held pinch stays as it is; `startCounts` false (both tips guessed) neither counts
+    /// towards a start nor clears one under way.
+    ///
+    /// A start counts results under the close distance and keeps its count through results
+    /// between the close and open distances and through results that cannot count, for a few of
+    /// them: a quick pinch and release had to be held, since one guessed or wobbling result
+    /// anywhere in it cleared the count (owner, 2026-11-08: "I have to pinch and hold every time").
     @discardableResult
-    mutating func update(tipDistance: Float, allowStart: Bool = true, tipsSure: Bool = true) -> Bool {
-        // A guessed tip holds a pinch as it is; a start is governed by allowStart alone, since in
-        // a real pinch the index tip hides behind the thumb and Vision rates it low.
+    mutating func update(tipDistance: Float, allowStart: Bool = true, tipsSure: Bool = true, startCounts: Bool = true) -> Bool {
         if isPinched {
             guard tipsSure else { return isPinched }
             if tipDistance > openDistance {
@@ -43,29 +48,40 @@ struct PinchDetector {
             } else {
                 openRun = 0
             }
-        } else if allowStart && tipDistance < closeDistance {
+        } else if !allowStart || tipDistance > openDistance {
+            closeRun = 0
+            pausedRun = 0
+        } else if tipDistance < closeDistance && startCounts {
             closeRun += 1
+            pausedRun = 0
             if closeRun >= startResults {
                 isPinched = true
                 openRun = 0
                 closeRun = 0
             }
-        } else {
-            closeRun = 0
+        } else if closeRun > 0 {
+            // Between the distances, or a guessed tip: the count waits, for a few results.
+            pausedRun += 1
+            if pausedRun > Self.maxPausedResults { closeRun = 0; pausedRun = 0 }
         }
         return isPinched
     }
+
+    /// Results a start's count waits through before it clears: about a sixth of a second.
+    static let maxPausedResults = 4
 
     /// A hand back in view: its pinch stands only if the tips are still together.
     mutating func resume(tipDistance: Float) {
         if isPinched && tipDistance > closeDistance { isPinched = false }
         openRun = 0
         closeRun = 0
+        pausedRun = 0
     }
 
     mutating func reset() {
         isPinched = false
         openRun = 0
         closeRun = 0
+        pausedRun = 0
     }
 }

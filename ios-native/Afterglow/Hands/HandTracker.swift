@@ -51,6 +51,7 @@ final class HandTracker: @unchecked Sendable {
     private static let edgeMargin: Float = 0.04   // of the image's width, where a pinch may not start
     private static let sureTipConfidence: Float = 0.4   // a fingertip Vision was less sure of was hidden, and guessed
     private static let seenTipConfidence: Float = 0.15  // below this a tip was not seen at all, so no pinch starts on it
+    private static let hiddenTipConfidence: Float = 0.05  // a tip hidden behind the other, which is sure: still a pinch
     /// A palm reading smaller than this share of the hand's own flat-on size, at the measured
     /// depth, is edge-on: the fingers are in line with the camera, which sees only the thumb and
     /// guesses the index tip beside it, which read as a pinch (owner, 2026-11-06). No pinch starts.
@@ -88,6 +89,8 @@ final class HandTracker: @unchecked Sendable {
         /// The wrist relative to the knuckles' centre, kept from results where the wrist was seen,
         /// for results where it is at the image's edge and guessed.
         var wristOffset: SIMD3<Float>?
+        /// The wrist in the knuckles' frame in the image, from the last result where it was believable.
+        var wristInKnuckles: SIMD2<Float>?
         /// Set when the hand has just come back into view: the pinch is re-judged from the tips.
         var resumed = false
         /// The finger bones' lengths relative to the palm span, averaged over results, and how
@@ -138,6 +141,7 @@ final class HandTracker: @unchecked Sendable {
     private var confidenceMin: Float = 1, confidenceMax: Float = 0
     private var distanceMin: Float = 100, distanceMax: Float = 0
     private var depthSamples = 0
+    private var wristsPutBack = 0
     private var depthTaught = 0
     private var pinches = 0
     private var swaps = 0
@@ -350,6 +354,23 @@ final class HandTracker: @unchecked Sendable {
         for (i, hand) in seen.enumerated() {
             guard let s = assigned[i] else { continue }
             let slot = slots[s]
+            var hand = hand
+
+            // Vision now and then puts the wrist past the fingertips, on the fingers' side of the
+            // knuckles, where no wrist can be, and the drawn hand flipped there and back (owner,
+            // 2026-11-08). Such a wrist is put back where the knuckles last had it, before it
+            // spoils the palm's fit, span and bones.
+            if let frame = HandGeometry.knuckleFrame(hand.landmarks) {
+                let offset = HandGeometry.wristInKnuckles(hand.landmarks, frame: frame)
+                if offset.y >= HandGeometry.minWristAway {
+                    if hand.confidences[HandGeometry.wrist] >= Self.sureTipConfidence { slot.wristInKnuckles = offset }
+                } else {
+                    let held = slot.wristInKnuckles ?? HandGeometry.typicalWrist
+                    hand.landmarks[HandGeometry.wrist] = HandGeometry.wristPixel(held, frame: frame)
+                    wristsPutBack += 1
+                    if wristsPutBack <= 3 { log(String(format: "[Hands] Wrist on the fingers' side (%.1f knuckle widths) put back", offset.y)) }
+                }
+            }
 
             // Is this a pose the tracked hand can have taken since its last result?
             let span = HandGeometry.palmSpan(hand.landmarks)
@@ -520,21 +541,29 @@ final class HandTracker: @unchecked Sendable {
                 // together, else the hand is open (WebXR saw a hand pinched for good, 2026-11-07).
                 slot.resumed = false
                 let was = slot.pinch.isPinched
-                slot.pinch.resume(tipDistance: simd_distance(thumb, index))
+                slot.pinch.resume(tipDistance: simd_distance(rawJoints[HandGeometry.thumbTip], rawJoints[HandGeometry.indexTip]))
                 if was != slot.pinch.isPinched { log("[Pinch] Hand back in view, released: tips apart") } else if was { log("[Pinch] Hand back in view, still pinched") }
             }
             let wasPinched = slot.pinch.isPinched
             let tipsSure = hand.confidences[HandGeometry.thumbTip] >= Self.sureTipConfidence
                 && hand.confidences[HandGeometry.indexTip] >= Self.sureTipConfidence
-            let tipsSeen = hand.confidences[HandGeometry.thumbTip] >= Self.seenTipConfidence
-                && hand.confidences[HandGeometry.indexTip] >= Self.seenTipConfidence
+            // In a real pinch the thumb hides the index tip (or the other way round) and Vision
+            // rates the hidden one 0.1 or so while the other is sure: that counts towards a start.
+            // Both guessed neither counts nor clears it (log 2026-11-08: real pinches at 0.7 cm
+            // blocked as "a tip not seen (0.11, 0.71)").
+            let tipConfidences = (hand.confidences[HandGeometry.thumbTip], hand.confidences[HandGeometry.indexTip])
+            let tipsSeen = min(tipConfidences.0, tipConfidences.1) >= Self.seenTipConfidence
+                || (max(tipConfidences.0, tipConfidences.1) >= Self.sureTipConfidence && min(tipConfidences.0, tipConfidences.1) >= Self.hiddenTipConfidence)
             let isEdgeOn = openness < Self.edgeOnOpenness
             if isEdgeOn { edgeOn += 1 }
             // Edge-on only stops a pinch starting; a held one still follows the tips, so it can end.
-            let tipDistance = simd_distance(thumb, index)
+            // The tips' distance before smoothing: the smoothed joints lag by a tenth of a second
+            // and a quick pinch's dip never reached the close distance in them; the results in a
+            // row are what steady it.
+            let tipDistance = simd_distance(rawJoints[HandGeometry.thumbTip], rawJoints[HandGeometry.indexTip])
             slot.pinch.startResults = pinchStartResults
-            let pinched = slot.pinch.update(tipDistance: tipDistance, allowStart: tipsInside && !isEdgeOn && indexBent && tipsSeen,
-                                            tipsSure: tipsSure)
+            let pinched = slot.pinch.update(tipDistance: tipDistance, allowStart: tipsInside && !isEdgeOn && indexBent,
+                                            tipsSure: tipsSure, startCounts: tipsSeen)
             // A pinch the tips are making that cannot start: say why, once a second, so a real pinch
             // that fails to register can be read off the log.
             if !pinched && tipDistance < 0.025 && !(tipsInside && !isEdgeOn && indexBent && tipsSeen) && now - lastBlockedLog > 1 {
@@ -552,7 +581,7 @@ final class HandTracker: @unchecked Sendable {
                 let p = (thumb + index) / 2
                 log(String(format: "[Pinch] %@ %@ hand at (%.2f, %.2f, %.2f), tips %.1f cm apart (confidence %.2f, %.2f, depth gap %@), palm %.0f%% open",
                            pinched ? "Pinch" : "Release", slot.handedness >= 0.5 ? "right" : "left", p.x, p.y, p.z,
-                           simd_distance(thumb, index) * 100, hand.confidences[HandGeometry.thumbTip],
+                           tipDistance * 100, hand.confidences[HandGeometry.thumbTip],
                            hand.confidences[HandGeometry.indexTip], tipDepthGap.map { String(format: "%.1f cm", $0 * 100) } ?? "none", openness * 100))
             }
 
@@ -586,13 +615,13 @@ final class HandTracker: @unchecked Sendable {
             if handsSeen > 0 {
                 text += String(format: ", confidence %.2f-%.2f, %.2f-%.2f m away", confidenceMin, confidenceMax, distanceMin, distanceMax)
             }
-            text += String(format: ", palm %.1f cm (%d depth samples, %d taught), %d pinches, %d handedness swaps, %d edge-on results, %d impossible poses dropped", palmSize * 100,
-                           depthSamples, depthTaught, pinches, swaps, edgeOn, rejected)
+            text += String(format: ", palm %.1f cm (%d depth samples, %d taught), %d pinches, %d handedness swaps, %d edge-on results, %d impossible poses dropped, %d wrists put back", palmSize * 100,
+                           depthSamples, depthTaught, pinches, swaps, edgeOn, rejected, wristsPutBack)
             log(text)
             lastLog = now
             images = 0; visionMs = 0; handsSeen = 0
             confidenceMin = 1; confidenceMax = 0; distanceMin = 100; distanceMax = 0
-            depthSamples = 0; depthTaught = 0; pinches = 0; swaps = 0; edgeOn = 0; rejected = 0
+            depthSamples = 0; depthTaught = 0; pinches = 0; swaps = 0; edgeOn = 0; rejected = 0; wristsPutBack = 0
         }
     }
 
