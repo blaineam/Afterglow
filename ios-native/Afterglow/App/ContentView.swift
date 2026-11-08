@@ -1,91 +1,45 @@
 import SwiftUI
 
-/// The stereo view with a control strip over it that a tap shows and hides: passthrough on or off,
-/// the render scale, the frame rate asked for. The strip is for the desk; in the viewer the screen
-/// is covered, so every setting also has a launch option.
+/// The stereo view with one thing over it: a cog in the top-right corner, outside what the lenses
+/// show, with the three settings that matter outside the viewer as checked items in its dropdown
+/// (owner, 2026-11-08: instead of a strip hidden behind a two-finger tap). The rest of the
+/// settings live in the Settings window inside the viewer.
 struct ContentView: View {
     @StateObject private var settings = Settings.shared
     @StateObject private var model = StereoModel()
-    @State private var controlsShown = true
-    @State private var hideTask: Task<Void, Never>?
 
     var body: some View {
-        // The strip is an overlay, so its size never changes the Metal view's: as a sibling in a
-        // stack it stretched the view past the screen and SwiftUI animated the drawable's width.
+        // An overlay, so its size never changes the Metal view's: as a sibling in a stack the old
+        // strip stretched the view past the screen and SwiftUI animated the drawable's width.
         MetalView(model: model)
             .ignoresSafeArea()
             .contentShape(Rectangle())
-            .onReceive(NotificationCenter.default.publisher(for: .afterglowToggleStrip)) { _ in toggleControls() }
-            .overlay(alignment: .bottom) {
-                if controlsShown {
-                    controls
-                        .padding(14)
-                        .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 16))
-                        .padding(.bottom, 24)
-                        .transition(.opacity)
-                }
-            }
+            .overlay(alignment: .topTrailing) { cog }
             .background(Color.black)
-            .onAppear { scheduleHide() }
     }
 
-    private var controls: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 24) {
-                Toggle("Phone view", isOn: $settings.phoneView)
-                    .toggleStyle(.switch)
-                    .fixedSize()
-                Toggle("Passthrough", isOn: $settings.passthrough)
-                    .toggleStyle(.switch)
-                    .fixedSize()
-                Stepper("Render scale \(settings.renderScalePercent)%", value: $settings.renderScalePercent, in: 25...200, step: 10)
-                    .fixedSize()
-                Stepper("\(settings.targetFrameRate) fps", value: $settings.targetFrameRate, in: 30...120, step: 30)
-                    .fixedSize()
-            }
-            HStack(spacing: 24) {
-                Toggle("3DoF ultra-wide", isOn: Binding(get: { settings.degreesOfFreedom == 3 },
-                                                        set: { settings.degreesOfFreedom = $0 ? 3 : 6 }))
-                    .toggleStyle(.switch)
-                    .fixedSize()
-                Stepper("Predict +\(settings.extraPredictionMs) ms", value: $settings.extraPredictionMs, in: 0...60, step: 4)
-                    .fixedSize()
-                Text(model.status)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-            }
+    private var cog: some View {
+        Menu {
+            Toggle("Passthrough", isOn: $settings.passthrough)
+            Toggle("3DoF", isOn: Binding(get: { settings.degreesOfFreedom == 3 },
+                                         set: { settings.degreesOfFreedom = $0 ? 3 : 6 }))
+            Toggle("Phone view", isOn: $settings.phoneView)
+        } label: {
+            Image(systemName: "gearshape.fill")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(.white.opacity(0.8))
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
         }
-        .font(.callout)
-        .foregroundStyle(.white)
-        .onChange(of: settings.passthrough) { _, _ in scheduleHide() }
-        .onChange(of: settings.renderScalePercent) { _, _ in scheduleHide() }
-        .onChange(of: settings.targetFrameRate) { _, _ in scheduleHide() }
-        .onChange(of: settings.extraPredictionMs) { _, _ in scheduleHide() }
-        .onChange(of: settings.degreesOfFreedom) { _, _ in scheduleHide() }
-        .onChange(of: settings.phoneView) { _, _ in scheduleHide() }
-    }
-
-    private func toggleControls() {
-        withAnimation { controlsShown.toggle() }
-        if controlsShown { scheduleHide() }
-    }
-
-    // In the viewer nothing should be drawn over the eyes, so the strip goes after a few seconds.
-    private func scheduleHide() {
-        hideTask?.cancel()
-        hideTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(8))
-            if !Task.isCancelled {
-                withAnimation { controlsShown = false }
-            }
-        }
+        .accessibilityLabel("Settings")
+        .padding(.top, 4)
+        .padding(.trailing, 4)
     }
 }
 
-/// Owns the renderer and the AR session for the view's lifetime, and a one-line status for the strip.
+/// Owns the renderer and the AR session for the view's lifetime.
 @MainActor
 final class StereoModel: ObservableObject {
-    @Published var status = "starting"
     let thermal = ThermalLog()
     let dictation = Dictation()
     private(set) var renderer: Renderer?
@@ -97,10 +51,7 @@ final class StereoModel: ObservableObject {
         guard !started else { return }
         started = true
         renderer = Renderer(settings: Settings.shared, thermal: thermal, screen: screen)
-        guard let renderer else {
-            status = "no renderer; see the session log"
-            return
-        }
+        guard let renderer else { return }
         renderer.onDictate = { [weak self] in self?.dictate() }
         renderer.startSource()
         NotificationCenter.default.addObserver(forName: .afterglowBackground, object: nil, queue: .main) { _ in MainActor.assumeIsolated { renderer.appBackgrounded() } }
@@ -123,11 +74,6 @@ final class StereoModel: ObservableObject {
             }
         }
     }
-
-    func updateStatus(fps: Double) {
-        let camera = renderer?.source.cameraName ?? "-"
-        status = String(format: "%.0f fps, %dDoF %@ camera, %@", fps, renderer?.source.degreesOfFreedom ?? 0, camera, thermal.currentState)
-    }
 }
 
 /// A UIView whose layer is a CAMetalLayer at the screen's native resolution, driven by a display
@@ -148,8 +94,6 @@ final class MetalLayerView: UIView, UIKeyInput {
     var model: StereoModel?
     private var displayLink: CADisplayLink?
     private var frameRate = 0
-    private var fpsFrames = 0
-    private var fpsSince: Double = 0
     private var lastSizeLog: Double = 0
 
     override class var layerClass: AnyClass { CAMetalLayer.self }
@@ -212,18 +156,13 @@ final class MetalLayerView: UIView, UIKeyInput {
     // A tap selects where it lands (the phone view) or at the gaze, a double tap brings up the
     // system keyboard for typing, a long press ends an immersive session, a drag turns the head
     // when nothing tracks it (the Simulator) and otherwise scrolls the page or swipes between
-    // pictures. The SwiftUI tap on the view (the control strip) stays as well.
+    // pictures.
     private func installGestures() {
         guard !gesturesInstalled else { return }
         gesturesInstalled = true
         let doubleTap = UITapGestureRecognizer(target: self, action: #selector(doubleTapped(_:)))
         doubleTap.numberOfTapsRequired = 2
         addGestureRecognizer(doubleTap)
-        // Two fingers show and hide the control strip; one finger selects (owner, 2026-11-07: the
-        // strip could not be reached after launch).
-        let twoFinger = UITapGestureRecognizer(target: self, action: #selector(twoFingerTapped(_:)))
-        twoFinger.numberOfTouchesRequired = 2
-        addGestureRecognizer(twoFinger)
         let tap = UITapGestureRecognizer(target: self, action: #selector(tapped(_:)))
         tap.cancelsTouchesInView = false
         tap.require(toFail: doubleTap)
@@ -244,10 +183,6 @@ final class MetalLayerView: UIView, UIKeyInput {
         } else {
             model?.renderer?.screenTapped()
         }
-    }
-
-    @objc private func twoFingerTapped(_ gesture: UITapGestureRecognizer) {
-        NotificationCenter.default.post(name: .afterglowToggleStrip, object: nil)
     }
 
     @objc private func doubleTapped(_ gesture: UITapGestureRecognizer) {
@@ -301,16 +236,5 @@ final class MetalLayerView: UIView, UIKeyInput {
         guard let renderer = model?.renderer else { return }
         applyFrameRate()
         renderer.draw(to: metalLayer, timestamp: link.timestamp, targetTimestamp: link.targetTimestamp)
-        fpsFrames += 1
-        if fpsSince == 0 { fpsSince = link.timestamp }
-        if link.timestamp - fpsSince >= 1 {
-            model?.updateStatus(fps: Double(fpsFrames) / (link.timestamp - fpsSince))
-            fpsFrames = 0
-            fpsSince = link.timestamp
-        }
     }
-}
-
-extension Notification.Name {
-    static let afterglowToggleStrip = Notification.Name("afterglowToggleStrip")
 }

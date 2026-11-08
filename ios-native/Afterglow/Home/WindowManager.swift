@@ -97,12 +97,13 @@ final class WindowManager {
 
     init(device: MTLDevice) { self.device = device }
 
+    static let lift: Float = 0.04
     func window(_ kind: WindowKind) -> AppWindow? { windows.first { $0.kind == kind } }
 
     /// Opens a window (or brings it back from the dock), hung ahead of the head or beside the
     /// last window.
     @discardableResult
-    func open(_ kind: WindowKind, head: simd_float4x4, aspect: Float, width: Float? = nil) -> AppWindow {
+    func open(_ kind: WindowKind, head: simd_float4x4, aspect: Float, width: Float? = nil, headroom: Float = 0) -> AppWindow {
         if let existing = window(kind) {
             existing.minimized = false
             return existing
@@ -111,7 +112,10 @@ final class WindowManager {
         if let width { w.pane.widthMeters = width }
         let open = windows.filter { !$0.minimized }
         w.pane.place(ahead: head, distance: 1.4)
-        w.pane.centre.y += 0.12
+        // A little above the eyes, with the bar over it and what hangs under it both in view: the
+        // lenses show about 58 degrees up and down, and 12 cm cut the bar off (owner, 2026-11-08).
+        let lift = Self.lift - headroom / 2
+        w.pane.centre.y += lift
         if !open.isEmpty {
             // Round the user: the nearest free arc, ahead first, then alternately right and left,
             // where "free" means no open window's arc (its width at its distance, plus a gap)
@@ -143,7 +147,7 @@ final class WindowManager {
                 stepIndex += 1
             }
             let forward = SIMD3(sin(yaw), 0, -cos(yaw))
-            w.pane.centre = position + forward * distance + SIMD3(0, 0.12, 0)
+            w.pane.centre = position + forward * distance + SIMD3(0, lift, 0)
             w.pane.right = simd_normalize(simd_cross(forward, SIMD3(0, 1, 0)))
             w.pane.up = SIMD3(0, 1, 0)
         }
@@ -178,7 +182,7 @@ final class WindowManager {
             let w = open[i]
             yaw += arcs[k]
             let forward = SIMD3(sin(yaw), 0, -cos(yaw))
-            let lift: Float = w.kind == .gameControls ? -0.3 : 0.1
+            let lift: Float = w.kind == .gameControls ? -0.3 : Self.lift - w.barGap / 2
             w.pane.centre = position + forward * distance + SIMD3(0, lift, 0)
             w.pane.right = simd_normalize(simd_cross(forward, SIMD3(0, 1, 0)))
             w.pane.up = SIMD3(0, 1, 0)

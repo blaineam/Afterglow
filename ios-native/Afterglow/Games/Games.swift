@@ -965,7 +965,13 @@ final class GolfGame: Game {
 
     private var hole: Hole { Self.holes[min(holeIndex, Self.holes.count - 1)] }
 
-    private func walls(for hole: Hole) -> [Wall] {
+    /// The turn that lays a box's long side (its x, the course's right) along a wall's direction
+    /// in the course (x right, y ahead). A wall's box was turned a quarter off its wall, so the
+    /// back wall's box ran up the fairway over the tee and the side walls' lay across the
+    /// fairway, with the ball bouncing off walls elsewhere (owner, 2026-11-08).
+    static func wallYaw(_ direction: SIMD2<Float>) -> Float { atan2(direction.y, direction.x) }
+
+    func walls(for hole: Hole) -> [Wall] {
         var w: [Wall] = []
         for i in hole.fairway.indices { w.append(Wall(a: hole.fairway[i], b: hole.fairway[(i + 1) % hole.fairway.count])) }
         for b in hole.blocks where b.height < 0.4 {
@@ -1177,8 +1183,7 @@ final class GolfGame: Game {
                 let mid = (wall.a + wall.b) / 2
                 let len = simd_distance(wall.a, wall.b)
                 let dir = simd_normalize(wall.b - wall.a)
-                let yaw = atan2(dir.x, dir.y)
-                scene.add(m.box, at: world(mid, hole: i, up: 0.07 + height(at: mid, hole: hole)), rotation: rot * G.yaw(-yaw), scale: SIMD3(len + 0.1, 0.14, 0.1), color: wood, roughness: 0.6, pattern: 2, shadow: false)
+                scene.add(m.box, at: world(mid, hole: i, up: 0.07 + height(at: mid, hole: hole)), rotation: rot * G.yaw(Self.wallYaw(dir)), scale: SIMD3(len + 0.1, 0.14, 0.1), color: wood, roughness: 0.6, pattern: 2, shadow: false)
                 // A rounded rail along the top of each bumper.
                 scene.rod(m, world(wall.a, hole: i, up: 0.15 + height(at: wall.a, hole: hole)), world(wall.b, hole: i, up: 0.15 + height(at: wall.b, hole: hole)), radius: 0.03, color: wood * SIMD4(1.15, 1.15, 1.1, 1), roughness: 0.5)
             }
@@ -1274,6 +1279,7 @@ final class GolfGame: Game {
 /// double tap, or the controls window's Stop before the ride, ends it.
 @MainActor
 final class GridRide: Game {
+    var hidesRoom: Bool { riding }
     let title = "🎢 Coaster"
     struct Pose { var position: SIMD3<Float>; var orientation: simd_quatf }
 

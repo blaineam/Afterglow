@@ -47,6 +47,7 @@
   <div class="tip"><b>Look at the page's edge</b> to scroll; the keyboard key brings the keys up under the window.</div>
   <div class="tip"><b>A page's Enter VR</b> takes the screen; a double tap on the viewer, or a three-second press, comes back.</div>
 </div>
+<p id="webxr-rate" hidden style="opacity:.7;margin-top:2em"></p>
 <script>
   var afterglowLists = null;
   function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -63,7 +64,13 @@
     if (afterglowLists.history.length) h.innerHTML = items(afterglowLists.history);
     document.getElementById('clear').style.display = afterglowLists.history.length ? '' : 'none';
   }
-  window.__afterglowLists = function (lists) { afterglowLists = lists; draw(); };
+  window.__afterglowLists = function (lists) {
+    afterglowLists = lists;
+    draw();
+    // What to expect: the rate this phone actually drew the last WebXR session at.
+    var rate = document.getElementById('webxr-rate');
+    if (rate && lists.webxrFps) { rate.textContent = 'Your last WebXR session ran at ' + lists.webxrFps + ' frames a second. Pages with heavy scenes run slower, and a hot phone slower still.'; rate.hidden = false; }
+  };
   document.addEventListener('DOMContentLoaded', function () {
     // The app clears the history on this address, and sends the lists when told the page is up.
     document.getElementById('clear').addEventListener('click', function () { location.href = 'afterglow://clear-history'; });

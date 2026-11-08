@@ -17,6 +17,8 @@ struct GameContext {
     /// and a game must not paint, spawn or swing with it (owner, 2026-11-08: changing colours
     /// painted strokes).
     var pointerOnInterface: Bool = false
+    /// A paired controller's left stick, for the games that steer.
+    var stick: SIMD2<Float> = .zero
     var meshes: MeshLibrary
     var headPosition: SIMD3<Float> { head.columns.3.xyz }
     var forward: SIMD3<Float> { -head.columns.2.xyz }
@@ -44,12 +46,15 @@ protocol Game: AnyObject {
     var summary: GameSummary? { get }
     /// Play again after a summary.
     func again()
+    /// The game is its own world just now: the room's passthrough makes no sense behind it.
+    var hidesRoom: Bool { get }
 }
 
 extension Game {
     func draw(into overlay: inout HandOverlay, context: GameContext) {}
     var summary: GameSummary? { nil }
     func again() { reset() }
+    var hidesRoom: Bool { false }
 }
 
 /// The games panel (a launcher of the games, with the running game's status and a reset) and
@@ -77,12 +82,13 @@ final class GameHost {
     init(device: MTLDevice) {
         self.device = device
         meshes = MeshLibrary(device: device)
-        panel = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 560)
+        panel = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 760)
         panel.pane.widthMeters = 1.2
         controlsPanel = ScenePanel(device: device, pixelWidth: 1600, pixelHeight: 300)
         summaryPanel = ScenePanel(device: device, pixelWidth: 1200, pixelHeight: 900)
         summaryPanel.pane.widthMeters = 0.9
-        games = [PaintGame(), BlobShooter(), VacuumGame(), ToyBox(), GolfGame(), GridRide(), PortalGame(), RhythmGame()]
+        games = [PaintGame(), BlobShooter(), VacuumGame(), ToyBox(), GolfGame(), GridRide(), PortalGame(), RhythmGame(),
+                 TowerGame(), GardenGame(), OrbitalPong(), SkylineDrive()]
         layout()
     }
 
@@ -101,7 +107,7 @@ final class GameHost {
         for (i, game) in games.enumerated() {
             let col = i % 4, row = i / 4
             let parts = game.title.split(separator: " ", maxSplits: 1).map(String.init)
-            b.append(.init(id: "game:\(i)", rect: CGRect(x: 0.02 + CGFloat(col) * 0.245, y: 0.32 + CGFloat(row) * 0.34, width: 0.235, height: 0.32),
+            b.append(.init(id: "game:\(i)", rect: CGRect(x: 0.02 + CGFloat(col) * 0.245, y: 0.24 + CGFloat(row) * 0.25, width: 0.235, height: 0.235),
                            label: parts.last ?? game.title, wide: true, icon: parts.first, style: .tile, accent: current === game))
         }
         panel.set(buttons: b, version: "games|\(current?.title ?? "")")
@@ -153,7 +159,7 @@ final class GameHost {
             b.append(.init(id: "portal:here", rect: CGRect(x: 0.52, y: 0.06, width: 0.46, height: 0.42), label: "Move it in front of me", wide: true, icon: "scope", style: .pill))
             b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: "Back to the room", wide: true, icon: "house.fill", style: .pill))
             b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
-        } else if current is BlobShooter || current is VacuumGame {
+        } else if current is BlobShooter || current is VacuumGame || current is TowerGame || current is GardenGame || current is OrbitalPong || current is SkylineDrive {
             b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.3, width: 0.46, height: 0.42), label: "Restart", wide: true, icon: "arrow.counterclockwise", style: .pill))
             b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.3, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
         } else if current is GolfGame {
@@ -251,7 +257,7 @@ final class GameHost {
     }
 
     func render() {
-        panel.render(ButtonsView(size: CGSize(width: 1600, height: 560), buttons: panel.buttons, hovered: panel.hovered,
+        panel.render(ButtonsView(size: CGSize(width: 1600, height: 760), buttons: panel.buttons, hovered: panel.hovered,
                                  title: "Games", titleHighlight: false, subtitle: current.map { "Playing \($0.title): its controls have their own window" } ?? "Pick a game"))
     }
 }

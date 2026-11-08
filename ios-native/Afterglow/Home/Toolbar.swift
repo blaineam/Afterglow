@@ -102,13 +102,19 @@ final class Toolbar {
     }
 
     /// Hangs the toolbar low ahead of the head and the menu above it.
-    func place(ahead head: simd_float4x4) {
+    func place(ahead head: simd_float4x4, below ceiling: Float? = nil) {
         var w = BrowserWindow()
         w.place(ahead: head, distance: 1.1)
         let position = head.columns.3.xyz
         panel.pane.right = w.right
         panel.pane.up = w.up
         panel.pane.centre = w.centre - SIMD3(0, 0.55, 0)
+        // Under the windows: the top of the dock with its tray stays below `ceiling`, as far down
+        // as can still be looked at.
+        if let ceiling {
+            let top = panel.pane.centre.y + panel.pane.heightMeters / 2 + tray.pane.heightMeters + 0.05
+            if top > ceiling { panel.pane.centre.y = max(panel.pane.centre.y - (top - ceiling), w.centre.y - 1.05) }
+        }
         // Tilted up to face a head looking down at it.
         let tilt = simd_quatf(angle: -0.5, axis: w.right)
         panel.pane.up = tilt.act(w.up)

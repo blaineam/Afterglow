@@ -31,6 +31,8 @@ final class AppLock {
     /// The passcode can be spoken: digits heard on the phone fill the dots (owner, 2026-11-08:
     /// the gaze keypad was hard to use). Nothing heard is logged or shown.
     private let dictation = Dictation()
+    /// Why the voice entry can't run, shown on its button.
+    private var voiceProblem: String?
     private var heardNothing = false
 
     var isSet: Bool { Self.stored() != nil }
@@ -142,13 +144,13 @@ final class AppLock {
         let keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "✕"]
         let listening = dictation.listening
         b.append(.init(id: "voice", rect: CGRect(x: 0.08, y: 0.17, width: 0.84, height: 0.13),
-                       label: listening ? "Listening… say the six digits" : (heardNothing ? "Didn't catch six digits. Try again" : "Say your passcode"),
+                       label: listening ? "Listening… say the six digits" : (voiceProblem ?? (heardNothing ? "Didn't catch six digits. Try again" : "Say your passcode")),
                        wide: true, icon: listening ? "waveform" : "mic.fill", style: .pill, accent: true))
         for (i, k) in keys.enumerated() {
             let col = i % 3, row = i / 3
             b.append(.init(id: "key:\(k)", rect: CGRect(x: 0.08 + CGFloat(col) * 0.29, y: 0.33 + CGFloat(row) * 0.16, width: 0.26, height: 0.145), label: k))
         }
-        panel.set(buttons: b, version: "lock|\(entered.count)|\(settingNew)|\(wrong)|\(firstNew.isEmpty)|\(listening)|\(heardNothing)")
+        panel.set(buttons: b, version: "lock|\(entered.count)|\(settingNew)|\(wrong)|\(firstNew.isEmpty)|\(listening)|\(heardNothing)|\(voiceProblem ?? "")")
     }
 
     /// The digits in what was heard: numerals, and the spoken words for them.
@@ -168,9 +170,21 @@ final class AppLock {
     private func listen() {
         if dictation.listening { dictation.stop(); return }
         heardNothing = false
+        voiceProblem = nil
         Task { @MainActor [weak self] in
             guard let self else { return }
-            guard await self.dictation.requestPermission() else { log("[Lock] Voice entry needs the microphone and speech recognition"); return }
+            guard await self.dictation.requestPermission() else {
+                log("[Lock] Voice entry needs the microphone and speech recognition")
+                self.voiceProblem = "Allow the microphone and speech in Settings"
+                self.layout()
+                return
+            }
+            if let problem = self.dictation.privateEntryProblem {
+                log("[Lock] Voice entry unavailable: \(problem)")
+                self.voiceProblem = problem
+                self.layout()
+                return
+            }
             self.entered = ""
             self.dictation.start(private: true) { [weak self] heard in
                 guard let self else { return }

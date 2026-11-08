@@ -24,6 +24,8 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
     private(set) var tabs: [WebTab] = []
     @Published private(set) var currentIndex = 0
     @Published private(set) var isImmersive = false
+    /// The session is immersive-ar: the page draws over the app's passthrough, in 6DoF.
+    private(set) var isAR = false
     @Published var typed = ""
     @Published private(set) var prompt: Prompt?
     @Published private(set) var fieldFocused = false
@@ -258,7 +260,8 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
     /// Called every frame with the head and the hands. Pushes the pose during a session, hovers
     /// the page at the gaze, scrolls at the page's edges. `select` is a pinch starting or a
     /// double tap: a click on the page (windowed) or a select (immersive).
-    func frame(head: simd_float4x4, hands: [TrackedHandState], select: Bool, time: Double, deltaTime: Float) -> Gaze? {
+    func frame(head: simd_float4x4, hands: [TrackedHandState], select: Bool, time: Double, deltaTime: Float,
+               eyeAboveFloor: Float? = nil, room: RoomModel? = nil) -> Gaze? {
         guard let tab = current else { return nil }
         if isImmersive {
             // The page's world starts where the head is and faces where it faces: a page's
@@ -274,6 +277,7 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
             let local = fromWorld * head
             let p = local.columns.3.xyz
             let q = simd_quatf(local.rotationOnly)
+            sendRoom(head: local, fromWorld: fromWorld, eyeAboveFloor: eyeAboveFloor, room: room, time: time)
             let exit = placeExit(head: local, hands: hands.map { $0.pinchPoint }.map { (fromWorld * SIMD4($0, 1)).xyz }, time: time)
             run(WebBridge.pose(p, q) + ";" + WebBridge.exit(exit.centre, exit.orientation, size: Self.exitSize, hovered: exit.hovered))
             if select && exit.hovered {
@@ -321,6 +325,38 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
         return gaze.map { Gaze(uv: $0.uv, point: $0.point) }
     }
 
+    // MARK: The real room, for a session
+
+    /// How far the eyes are above the real floor, while it is known in the session (the last
+    /// value stands through the switch to 3DoF, where the floor is no longer tracked).
+    private var sessionEyeHeight: Float?
+    private var lastPlanesSent: Double = 0
+
+    /// The floor's height for local-floor and, in AR, the room's planes for hit tests.
+    private func sendRoom(head: simd_float4x4, fromWorld: simd_float4x4, eyeAboveFloor: Float?, room: RoomModel?, time: Double) {
+        if let eyeAboveFloor, eyeAboveFloor > 0.4, eyeAboveFloor < 2.4, abs(eyeAboveFloor - (sessionEyeHeight ?? -1)) > 0.02 {
+            if sessionEyeHeight == nil { log(String(format: "[WebXR] Eyes %.2f m above the floor", eyeAboveFloor)) }
+            sessionEyeHeight = eyeAboveFloor
+            run(WebBridge.floor(eyeAbove: eyeAboveFloor))
+        }
+        guard isAR, time - lastPlanesSent > 0.5 else { return }
+        lastPlanesSent = time
+        var values: [Float] = []
+        for surface in (room?.all ?? []).prefix(40) {
+            let plane = fromWorld * surface.transform
+            let locals = surface.vertices.map(\.local)
+            guard let minX = locals.map(\.x).min(), let maxX = locals.map(\.x).max(),
+                  let minZ = locals.map(\.y).min(), let maxZ = locals.map(\.y).max() else { continue }
+            let c = plane.columns.3.xyz
+            let q = simd_quatf(plane.rotationOnly)
+            values += [c.x, c.y, c.z, q.vector.x, q.vector.y, q.vector.z, q.vector.w, minX, maxX, minZ, maxZ]
+        }
+        // The floor runs on past the planes found so far, so a reticle always has somewhere to land.
+        let floorY = head.columns.3.y - (sessionEyeHeight ?? 1.5)
+        values += [0, floorY, 0, 0, 0, 0, 1, -50, 50, -50, 50]
+        run(WebBridge.planes(values))
+    }
+
     // MARK: The exit button
 
     /// The exit button lies at the feet, a little ahead, tilted to face the eyes, and follows
@@ -329,7 +365,7 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
     /// button to pinch was wanted, always there). Looking at it and pinching or tapping, or
     /// pinching with the fingers on it, ends the session.
     static let exitSize = SIMD2<Float>(0.36, 0.12)
-    private static let exitDrop: Float = 1.2        // below the eyes, metres
+    private static let defaultExitDrop: Float = 1.2  // below the eyes, metres, with no floor known
     private static let exitAhead: Float = 0.55
     private var exitAnchor: (position: SIMD3<Float>, forward: SIMD3<Float>)?
     private var exitTarget: (position: SIMD3<Float>, forward: SIMD3<Float>)?
@@ -344,7 +380,10 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
         var forward = -head.columns.2.xyz + head.columns.1.xyz
         forward.y = 0
         forward = simd_length(forward) > 1e-3 ? simd_normalize(forward) : (exitAnchor?.forward ?? SIMD3(0, 0, -1))
-        let ground = SIMD3(eye.x, eye.y - Self.exitDrop, eye.z)
+        // A hand's breadth or two above the real floor where it is known, sitting or standing,
+        // and never too far down to look at.
+        let drop = sessionEyeHeight.map { min(max($0 - 0.25, 0.6), 1.5) } ?? Self.defaultExitDrop
+        let ground = SIMD3(eye.x, eye.y - drop, eye.z)
         if exitTarget == nil || !isImmersive || exitAnchor == nil {
             exitTarget = (ground, forward)
             exitAnchor = exitTarget
@@ -402,7 +441,11 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
     /// session starts the page is laid out at 1:1, and gets the owner's zoom back when it ends.
     /// The page waits for this (a resize during a session made a player end it, 2026-11-07).
     private var zoomHeldForSession = false
-    private func prepareSession() {
+    private func prepareSession(ar: Bool) {
+        if ar {
+            current?.setTransparent(true)
+            veil.backgroundColor = .clear
+        }
         let zoomed = textScalePercent != 100
         if zoomed {
             current?.setTextScale(percent: 100)
@@ -412,15 +455,20 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + (zoomed ? 0.3 : 0)) { [weak self] in self?.run(WebBridge.sessionReady) }
         // A page that asked and never started gets its zoom back.
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
-            guard let self, self.zoomHeldForSession, !self.isImmersive else { return }
+            guard let self, !self.isImmersive else { return }
+            if ar { self.current?.setTransparent(false); self.veil.backgroundColor = .black }
+            guard self.zoomHeldForSession else { return }
             self.zoomHeldForSession = false
             for tab in self.tabs { tab.setTextScale(percent: self.textScalePercent) }
             log("[WebXR] No session after the request: text scale \(self.textScalePercent)% back")
         }
     }
 
-    private func beginSession() {
+    private func beginSession(ar: Bool) {
         guard !isImmersive else { return }
+        isAR = ar
+        sessionEyeHeight = nil
+        lastPlanesSent = 0
         isImmersive = true
         xrOrigin = nil
         exitAnchor = nil
@@ -441,7 +489,7 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
         veil.center = CGPoint(x: screenBounds.midX, y: screenBounds.midY)
         veil.superview?.bringSubviewToFront(veil)
         handsWereSent = false
-        log("[WebXR] Immersive session started: the page has the screen")
+        log("[WebXR] Immersive session started: " + (ar ? "AR, the page over the passthrough" : "the page has the screen"))
     }
 
     func endSession() {
@@ -453,6 +501,11 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
     private func sessionEnded(why: String) {
         guard isImmersive else { return }
         isImmersive = false
+        if isAR {
+            isAR = false
+            for tab in tabs { tab.setTransparent(false) }
+            veil.backgroundColor = .black
+        }
         if zoomHeldForSession {
             zoomHeldForSession = false
             for tab in tabs { tab.setTextScale(percent: textScalePercent) }
@@ -475,9 +528,14 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
 
     private func handle(_ event: String, _ body: [String: Any]) {
         switch event {
-        case "sessionrequest": prepareSession()
-        case "sessionstart": beginSession()
-        case "sessionend": sessionEnded(why: (body["why"] as? String).map { String($0.prefix(120)) } ?? "the page ended it")
+        case "sessionrequest": prepareSession(ar: body["mode"] as? String == "immersive-ar")
+        case "sessionstart": beginSession(ar: body["mode"] as? String == "immersive-ar")
+        case "sessionend":
+            if let fps = (body["fps"] as? NSNumber)?.floatValue, fps > 0 {
+                UserDefaults.standard.set(fps, forKey: "webxr.lastFps")
+                log(String(format: "[WebXR] The session averaged %.1f frames a second", fps))
+            }
+            sessionEnded(why: (body["why"] as? String).map { String($0.prefix(120)) } ?? "the page ended it")
         case "startpage": sendLists()
         case "console":
             let level = body["level"] as? String ?? "log"
@@ -537,7 +595,9 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
                  "host": URL(string: r.url)?.host ?? "", "when": ISO8601DateFormatter().string(from: r.date)]
             }
         }
-        let lists: [String: Any] = ["bookmarks": items(state.bookmarks), "history": items(state.history)]
+        var lists: [String: Any] = ["bookmarks": items(state.bookmarks), "history": items(state.history)]
+        let fps = UserDefaults.standard.float(forKey: "webxr.lastFps")
+        if fps > 0 { lists["webxrFps"] = Int(fps.rounded()) }
         if let data = try? JSONSerialization.data(withJSONObject: lists), let json = String(data: data, encoding: .utf8) {
             run(WebBridge.lists(json))
         }

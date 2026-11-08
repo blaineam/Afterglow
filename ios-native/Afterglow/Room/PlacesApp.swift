@@ -33,6 +33,58 @@ final class PlacesApp {
     var onWantPrompt: (() -> Void)?
     private var page = 0
 
+    // The place the user chose, across launches (owner, 2026-11-08). A file is remembered by name:
+    // its path holds the app's container, which changes with each install. The portal's and the
+    // coaster's passing worlds are not the user's choice, and are not saved.
+    private static let savedKey = "places.choice"
+    private static let savedNightKey = "places.night"
+    private var saving = true
+    private var pendingSaved: String?
+    /// What a launch has to bring back, if anything but the default.
+    static var hasSavedPlace: Bool {
+        guard let saved = UserDefaults.standard.string(forKey: savedKey) else { return false }
+        return saved != "synth"
+    }
+
+    private func save(_ value: String) {
+        guard saving else { return }
+        UserDefaults.standard.set(value, forKey: Self.savedKey)
+    }
+    /// Without saving: a place the user passes through in a game.
+    private func passing(_ body: () -> Void) {
+        saving = false
+        body()
+        saving = true
+    }
+
+    /// Back to the place chosen last time. A file or library photo waits for the scan.
+    func restoreSaved() {
+        night = UserDefaults.standard.bool(forKey: Self.savedNightKey)
+        guard let saved = UserDefaults.standard.string(forKey: Self.savedKey) else { return }
+        log("[Places] Bringing back the last place")
+        if saved == "room" { restoring = true; _ = press("room"); restoring = false }
+        else if saved != "synth" { pendingSaved = saved; applyPendingSaved() }
+    }
+
+    private func applyPendingSaved() {
+        guard let saved = pendingSaved else { return }
+        if saved.hasPrefix("file:") {
+            let name = String(saved.dropFirst(5))
+            guard !panoramas.isEmpty else { return }
+            pendingSaved = nil
+            if let url = panoramas.first(where: { $0.lastPathComponent == name }) { restoring = true; _ = press("pano:" + url.path); restoring = false }
+            else { log("[Places] The last place, \(name), is gone") }
+        } else if saved.hasPrefix("lib:") {
+            guard libraryLoaded else { return }
+            pendingSaved = nil
+            if libraryItems.contains(where: { $0.id == String(saved.dropFirst(4)) }) { restoring = true; _ = press(saved); restoring = false }
+            else { log("[Places] The last place's library photo is gone") }
+        }
+    }
+    private var libraryLoaded = false
+    /// Bringing a place back: the passthrough setting was saved too, and stands as it was left.
+    private(set) var restoring = false
+
     init(device: MTLDevice) {
         self.device = device
         library = MediaLibrary(device: device)
@@ -55,6 +107,7 @@ final class PlacesApp {
             found += items.filter { $0.kind == .photo360 || $0.kind == .panorama }.compactMap(\.fileURL)
         }
         panoramas = found
+        applyPendingSaved()
         // A world asked for before the list was in (the portal opens Places and steps through at once).
         if let pending = pendingWorld { pendingWorld = nil; showWorld(pending) }
         if await library.requestAccess() {
@@ -65,6 +118,8 @@ final class PlacesApp {
             var seen = Set<String>()
             libraryItems = items.filter { seen.insert($0.id).inserted }
         }
+        libraryLoaded = true
+        applyPendingSaved()
         log("[Places] \(panoramas.count) 360 files, \(libraryItems.count) 360 photos in the library")
         layout()
     }
@@ -155,17 +210,17 @@ final class PlacesApp {
         var index = -1
         if case .panorama(let url) = choice, let i = panoramas.firstIndex(where: { $0.path == url.path }) { index = i }
         let next = index + 1
-        if next < panoramas.count { _ = press("pano:" + panoramas[next].path) } else { _ = press("synth") }
+        passing { if next < panoramas.count { _ = press("pano:" + panoramas[next].path) } else { _ = press("synth") } }
     }
 
     /// The test script: the first 360 file whose name contains `name` becomes the surroundings.
     /// The portal game's way home: the room again, with passthrough.
-    func chooseRoom() { _ = press("room") }
+    func chooseRoom() { passing { _ = press("room") } }
     /// The portal game's other worlds: one of the photospheres, spread across them by number.
     private var pendingWorld: Int?
     func showWorld(_ index: Int) {
         guard !panoramas.isEmpty else { pendingWorld = index; return }
-        _ = press("pano:" + panoramas[(max(index, 1) * 5 + 2) % panoramas.count].path)
+        passing { _ = press("pano:" + panoramas[(max(index, 1) * 5 + 2) % panoramas.count].path) }
     }
     func choose(named name: String) {
         if let url = panoramas.first(where: { $0.lastPathComponent.localizedCaseInsensitiveContains(name) }) { _ = press("pano:" + url.path) }
@@ -174,10 +229,10 @@ final class PlacesApp {
 
     func press(_ id: String) -> Bool {
         switch id {
-        case "synth": choice = .synthwave; panoramaTexture = nil
-        case "room": choice = .room; panoramaTexture = nil
+        case "synth": choice = .synthwave; panoramaTexture = nil; save("synth")
+        case "room": choice = .room; panoramaTexture = nil; save("room")
         case "scan": return true
-        case "night": night.toggle()
+        case "night": night.toggle(); UserDefaults.standard.set(night, forKey: Self.savedNightKey)
         case "prevpage": page = max(0, page - 1)
         case "nextpage": if (page + 1) * Self.perPage < panoramas.count + libraryItems.count { page += 1 }
         case "rescan": Task { @MainActor in await self.scan() }
@@ -185,6 +240,7 @@ final class PlacesApp {
             if id.hasPrefix("pano:") {
                 let url = URL(fileURLWithPath: String(id.dropFirst(5)))
                 choice = .panorama(url)
+                save("file:" + url.lastPathComponent)
                 Task { @MainActor in
                     let item = await files.classify(url, date: nil)
                     panoramaItem = item
@@ -194,6 +250,7 @@ final class PlacesApp {
             }
             if id.hasPrefix("lib:"), let item = libraryItems.first(where: { $0.id == String(id.dropFirst(4)) }) {
                 choice = .libraryPhoto(item.id)
+                save(id)
                 Task { @MainActor in
                     panoramaItem = item
                     panoramaTexture = await library.picture(for: item).texture

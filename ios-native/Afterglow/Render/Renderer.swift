@@ -192,8 +192,45 @@ final class Renderer {
     }
 
     /// The window the app is in: the browser's veiled web view lives in it.
+    /// The dock ahead of the head, below whatever hangs there: the windows' bottoms, and what
+    /// hangs under them. Windows taller than the dock's usual height came down over it (owner,
+    /// 2026-11-08).
+    private func placeDock(_ head: simd_float4x4) {
+        var ceiling: Float?
+        let position = head.columns.3.xyz
+        let forward = G.flat(-head.columns.2.xyz)
+        for w in windows?.visible ?? [] {
+            let to = G.flat(w.pane.centre - position)
+            guard simd_dot(to, forward) > cos(Float.pi / 3.5) else { continue }
+            var bottom = w.pane.centre.y - w.pane.heightMeters / 2
+            let typing = (w.kind == .files && media?.screen == .items) || (w.kind == .browser && (browser?.keyboardShown ?? false)) || (w.kind == .places && promptingForPlace)
+            if typing, let keyboard { bottom -= keyboard.panel.pane.heightMeters + 0.03 }
+            if w.kind == .media || w.kind == .files, media?.screen == .viewing, let media { bottom -= media.controls.pane.heightMeters + 0.05 }
+            ceiling = min(ceiling ?? bottom, bottom)
+        }
+        toolbar?.place(ahead: head, below: ceiling)
+    }
+
+    /// The places, made when first wanted: their window, the portal, or a place to bring back.
+    @discardableResult
+    private func makePlaces() -> PlacesApp {
+        if let places { return places }
+        let p = PlacesApp(device: device)
+        p.onChoice = { [weak self, weak p] choice in
+            self?.environment = choice
+            if p?.restoring == true { return }
+            self?.settings.passthrough = (choice == .room)
+            if case .room = choice { self?.settings.surfaces = true }
+        }
+        p.onWantPrompt = { [weak self] in self?.promptingForPlace = true; self?.placePrompt = "" }
+        places = p
+        return p
+    }
+
     func attach(window: UIWindow) {
         uiWindow = window
+        // The place chosen last time, with no window opened for it.
+        if PlacesApp.hasSavedPlace, places == nil { makePlaces().restoreSaved() }
         keyboard = KeyboardPanel(device: device)
         controllers.start()
         watch.onSelect = { [weak self] in self?.tapRequests.value = 2 }
@@ -263,7 +300,7 @@ final class Renderer {
         switch kind {
         case .browser: aspect = 1280.0 / 800.0
         case .media, .files: aspect = 1.6
-        case .games: aspect = 1600.0 / 560.0
+        case .games: aspect = 1600.0 / 760.0
         case .gameControls: aspect = 1600.0 / 300.0
         case .places: aspect = 1600.0 / 900.0
         case .settings: aspect = 1.4
@@ -271,7 +308,8 @@ final class Renderer {
         case .home: aspect = 1600.0 / 900.0
         }
         // Music is a small remote, not a wall (owner, 2026-11-08: still giant).
-        let window = windows.open(kind, head: lastHead, aspect: aspect, width: kind == .music ? 1.0 : nil)
+        // The browser's bar stands above its chrome, so it hangs lower for the whole to stay centred.
+        let window = windows.open(kind, head: lastHead, aspect: aspect, width: kind == .music ? 1.0 : nil, headroom: kind == .browser ? 0.26 : 0)
         switch kind {
         case .browser:
             toolbar?.noteOpened(.browser)
@@ -322,17 +360,7 @@ final class Renderer {
             }
         case .places:
             toolbar?.noteOpened(.environments)
-            if places == nil {
-                let p = PlacesApp(device: device)
-                p.open(head: lastHead)
-                p.onChoice = { [weak self] choice in
-                    self?.environment = choice
-                    self?.settings.passthrough = (choice == .room)
-                    if case .room = choice { self?.settings.surfaces = true }
-                }
-                p.onWantPrompt = { [weak self] in self?.promptingForPlace = true; self?.placePrompt = "" }
-                places = p
-            }
+            makePlaces().open(head: lastHead)
         case .music:
             if music == nil { music = MusicApp(device: device) }
             games?.music = music
@@ -377,7 +405,7 @@ final class Renderer {
     /// Re-hangs the window and the toolbar where the head looks now.
     func recentre() {
         browser?.window.place(ahead: lastHead)
-        toolbar?.place(ahead: lastHead)
+        placeDock(lastHead)
         layoutPanels()
         log("[Home] Recentred")
     }
@@ -496,8 +524,15 @@ final class Renderer {
             else if argument == "punch" { fakeHand = (fakeHand?.pinched ?? false, now + 0.2) }
             else { fakeHand = (argument == "1", 0) }
         case "open": if let kind = WindowKind(rawValue: argument) { launch(kind) }
-        case "dock": toolbar?.place(ahead: lastHead); toolbar?.showDock(time: CACurrentMediaTime())
+        case "dock": placeDock(lastHead); toolbar?.showDock(time: CACurrentMediaTime())
         case "lock": lock?.lock(reason: "the script")
+        case "voice": lock?.press("voice")
+        case "shot":
+            // A named picture of the left eye for the gallery (Tools/capture_gallery.sh).
+            shotName = argument
+            actionWaitUntil = now + 0.5
+        case "world": if let places, let n = Int(argument) { places.showWorld(n) }
+        case "tower": if let n = Int(argument) { (games?.current as? TowerGame)?.stackUp(n) }
         case "place": places?.choose(named: argument)
         case "fakeplanes": (source as? ARController)?.room.addFake(floorY: floorHeight); settings.surfaces = true
         case "js":
@@ -508,6 +543,7 @@ final class Renderer {
         }
     }
     private var dumpNext = false
+    private var shotName: String?
 
     private func layoutPanels() {
         guard let browser, let chrome, let keyboard else { return }
@@ -518,10 +554,9 @@ final class Renderer {
         chrome.panel.pane.centre = w.centre + w.up * (w.heightMeters / 2 + chrome.panel.pane.heightMeters / 2 + 0.02)
         keyboard.panel.pane.widthMeters = w.widthMeters
         keyboard.panel.pane.right = w.right
-        // Tilted up a little, below the window and nearer.
-        let tilt = simd_quatf(angle: -0.35, axis: w.right)
-        keyboard.panel.pane.up = tilt.act(w.up)
-        keyboard.panel.pane.centre = w.centre - w.up * (w.heightMeters / 2 + keyboard.panel.pane.heightMeters / 2 * 0.9 + 0.03) - w.normal * 0.15
+        let hung = w.hanging(height: keyboard.panel.pane.heightMeters)
+        keyboard.panel.pane.up = hung.up
+        keyboard.panel.pane.centre = hung.centre
     }
 
     /// The predictor's callbacks (the lock's motion, the viewer's taps): set on whichever source
@@ -752,7 +787,9 @@ final class Renderer {
         lastDrawTime = t2
         // Passthrough for this frame: the setting, except on the coaster, which is a ride through
         // the scene and makes no sense over the room (owner, 2026-11-07).
-        let passthroughNow = settings.passthrough && !((games?.current as? GridRide)?.riding ?? false)
+        // A game that is its own world hides the room; an AR session always shows it.
+        let arNow = browser?.isAR ?? false
+        let passthroughNow = arNow || (settings.passthrough && !(games?.current?.hidesRoom ?? false))
         let target: Float = passthroughNow ? 1 : 0
         eyesAtCamera += min(max(target - eyesAtCamera, -step), step)
         let headInWorld = cameraInWorld * simd_float4x4.translation(cameraToEyes * (1 - eyesAtCamera))
@@ -814,6 +851,8 @@ final class Renderer {
                 immersiveSince = t2
                 source.hands?.pinchStartResults = 4
                 dofBeforeSession = settings.degreesOfFreedom
+                // AR is world-locked over the room and hits its planes: that takes 6DoF.
+                if arNow, settings.degreesOfFreedom != 6 { settings.degreesOfFreedom = 6; log("[WebXR] 6DoF for the AR session") }
                 handHzBeforeSession = settings.handHzLive
                 // More hand images a second while a page's pointer rides on them.
                 settings.handHzLive = min(settings.handHzLive, 20)
@@ -827,7 +866,7 @@ final class Renderer {
         }
         // The switch to the ultra-wide 3DoF camera waits two seconds, so a session that is still
         // settling is not disturbed by the camera changing under it.
-        if immersiveNow, dofBeforeSession != nil, settings.degreesOfFreedom != 3, t2 - immersiveSince > 2 {
+        if immersiveNow, !arNow, dofBeforeSession != nil, settings.degreesOfFreedom != 3, t2 - immersiveSince > 2 {
             settings.degreesOfFreedom = 3
             log("[WebXR] 3DoF ultra-wide for the session")
         }
@@ -932,7 +971,7 @@ final class Renderer {
             recentreAfterSwitch = nil
             windows?.rearrange(head: headInWorld)
             browser?.recentreSession()
-            toolbar?.place(ahead: headInWorld)
+            placeDock(headInWorld)
             if let games, games.current?.summary != nil { games.placeSummary(head: headInWorld) }
         }
         // The windows: title bars, drags, sizes; the app panes follow their windows.
@@ -1001,8 +1040,11 @@ final class Renderer {
             }
             // A prompt for a generated place: the keyboard types it, Go sends it.
             if promptingForPlace, let keyboard, let places {
-                keyboard.panel.pane = places.panel.pane
-                keyboard.panel.pane.centre = places.panel.pane.centre - places.panel.pane.up * (places.panel.pane.heightMeters / 2 + keyboard.panel.pane.heightMeters * 0.5)
+                keyboard.panel.pane.widthMeters = places.panel.pane.widthMeters
+                keyboard.panel.pane.right = places.panel.pane.right
+                let hung = places.panel.pane.hanging(height: keyboard.panel.pane.heightMeters)
+                keyboard.panel.pane.up = hung.up
+                keyboard.panel.pane.centre = hung.centre
                 let hit = keyboard.panel.pane.hit(origin: origin, direction: forward)
                 _ = keyboard.panel.hover(hit?.uv)
                 if select, hit != nil, let id = keyboard.panel.hovered {
@@ -1053,7 +1095,7 @@ final class Renderer {
                     }
                 } else {
                     windows?.close(.gameControls)
-                    windows?.open(.games, head: headInWorld, aspect: 1600.0 / 560.0)
+                    windows?.open(.games, head: headInWorld, aspect: 1600.0 / 760.0)
                     if let before = dofBeforeGame { settings.degreesOfFreedom = before; dofBeforeGame = nil }
                 }
             }
@@ -1089,6 +1131,7 @@ final class Renderer {
             var context = GameContext(head: headInWorld, hands: tracked, floorHeight: room?.floorHeight ?? floorHeight,
                                       surfaces: room?.all ?? [], time: t2, dt: frameDt, select: gameSelect, meshes: games.meshes)
             context.pointerOnInterface = onWindow || onDock || summaryHit
+            context.stick = pad.stick
             scene3D.clear()
             scene3D.floorHeight = context.floorHeight
             games.frame(context, overlay: &overlay, scene: &scene3D)
@@ -1132,7 +1175,7 @@ final class Renderer {
                     else {
                         // The dock opens where the head looks now (it stayed where it was first hung,
                         // which after a turn or a 3DoF switch was off to the side).
-                        toolbar.place(ahead: headInWorld)
+                        placeDock(headInWorld)
                         toolbar.showDock(time: t2)
                     }
                 } else { toolbar.press(id); toolbar.showDock(time: t2) }
@@ -1206,9 +1249,10 @@ final class Renderer {
             let filesKeys = media.isFiles && media.screen == .items
             if filesKeys, let keyboard {
                 keyboard.panel.pane.right = media.grid.pane.right
-                keyboard.panel.pane.up = simd_quatf(angle: -0.35, axis: media.grid.pane.right).act(media.grid.pane.up)
                 keyboard.panel.pane.widthMeters = media.grid.pane.widthMeters
-                keyboard.panel.pane.centre = media.grid.pane.centre - media.grid.pane.up * (media.grid.pane.heightMeters / 2 + keyboard.panel.pane.heightMeters * 0.45) - media.grid.pane.normal * 0.15
+                let hung = media.grid.pane.hanging(height: keyboard.panel.pane.heightMeters)
+                keyboard.panel.pane.up = hung.up
+                keyboard.panel.pane.centre = hung.centre
                 let keyHit = keyboard.panel.pane.hit(origin: origin, direction: forward)
                 _ = keyboard.panel.hover(keyHit?.uv)
                 if select, keyHit != nil, let id = keyboard.panel.hovered {
@@ -1260,7 +1304,9 @@ final class Renderer {
             }
             if doubleTapPending && select { doubleTapPending = false }
             let gaze = browser.frame(head: pointerHead, hands: tracked, select: pageSelect || (select && browser.isImmersive), time: predictTo,
-                                     deltaTime: frameDt)
+                                     deltaTime: frameDt,
+                                     eyeAboveFloor: (source as? ARController)?.room.floorHeight.map { pointerHead.columns.3.y - $0 },
+                                     room: (source as? ARController)?.room)
             if !browser.isImmersive {
                 chrome.update(browser: browser)
                 chrome.render(typing: !browser.typed.isEmpty)
@@ -1345,8 +1391,9 @@ final class Renderer {
         }
 
         // Pass 1: the scene, both eyes at once (or one pass per eye without amplification). In an
-        // immersive session the page has the screen, so the scene is skipped.
-        let passes: [Int?] = (browser?.isImmersive ?? false) ? [] : (phone ? [0] : (amplifies ? [nil] : [0, 1]))
+        // immersive session the page has the screen, so the scene is skipped; in AR the page draws
+        // over the passthrough, so only that is drawn, under its see-through view.
+        let passes: [Int?] = (browser?.isImmersive ?? false) && !arNow ? [] : (phone ? [0] : (amplifies ? [nil] : [0, 1]))
         for slice in passes {
             let scenePass = MTLRenderPassDescriptor()
             scenePass.colorAttachments[0].texture = eyeTexture
@@ -1421,6 +1468,7 @@ final class Renderer {
                 encoder.setRenderPipelineState(floorPipeline)
                 encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
             }
+            if arNow { encoder.endEncoding(); continue }
             // The real room's depth, so what follows can hide behind it; then its surfaces.
             if settings.occlusion, passthroughNow, let frame, let depth = frame.depth, let confidence = frame.depthConfidence {
                 encoder.setRenderPipelineState(occlusionPipeline)
@@ -1565,6 +1613,10 @@ final class Renderer {
             dumpEye(0, from: eyeTexture, in: commandBuffer)
             dumpEye(1, from: eyeTexture, in: commandBuffer)
         }
+        if let name = shotName {
+            shotName = nil
+            dumpEye(0, from: eyeTexture, in: commandBuffer, named: name)
+        }
         if settings.dumpAfterSeconds > 0 && !dumped && t2 - launchTime >= Double(settings.dumpAfterSeconds) {
             dumped = true
             dumpEye(0, from: eyeTexture, in: commandBuffer)
@@ -1639,7 +1691,7 @@ extension Renderer {
 
     /// Copies an eye's slice into a readable texture and writes it as a PNG once the GPU is done,
     /// for checking the picture from the Mac (`--ei dump 3`): eye-left.png and eye-right.png.
-    fileprivate func dumpEye(_ slice: Int, from eyeTexture: MTLTexture, in commandBuffer: MTLCommandBuffer) {
+    fileprivate func dumpEye(_ slice: Int, from eyeTexture: MTLTexture, in commandBuffer: MTLCommandBuffer, named name: String? = nil) {
         let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: eyeTexture.width,
                                                          height: eyeTexture.height, mipmapped: false)
         d.storageMode = .shared
@@ -1654,7 +1706,13 @@ extension Renderer {
             let width = copied.width, height = copied.height
             var bytes = [UInt8](repeating: 0, count: width * height * 4)
             copied.getBytes(&bytes, bytesPerRow: width * 4, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
-            let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent(slice == 0 ? "eye-left.png" : "eye-right.png")
+            let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            var url = documents.appendingPathComponent(slice == 0 ? "eye-left.png" : "eye-right.png")
+            if let name {
+                let gallery = documents.appendingPathComponent("gallery", isDirectory: true)
+                try? FileManager.default.createDirectory(at: gallery, withIntermediateDirectories: true)
+                url = gallery.appendingPathComponent(name + ".png")
+            }
             guard let provider = CGDataProvider(data: Data(bytes) as CFData),
                   let image = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
                                       space: CGColorSpaceCreateDeviceRGB(),

@@ -12,6 +12,16 @@ struct BrowserWindow {
     var heightMeters: Float { widthMeters / aspect }
     var normal: SIMD3<Float> { simd_cross(right, up) }
 
+    /// Where a panel of this height hangs under this pane, tilted like a desk (its top edge away
+    /// from the viewer): its top edge just under this pane's bottom edge and a little nearer, so
+    /// the two never overlap from where the viewer stands (owner, 2026-11-08: the keyboard rode
+    /// up over the window it types into).
+    func hanging(height: Float, gap: Float = 0.025, tilt: Float = 0.35) -> (centre: SIMD3<Float>, up: SIMD3<Float>) {
+        let tilted = simd_quatf(angle: -tilt, axis: right).act(up)
+        let edge = centre - up * (heightMeters / 2 + gap) + normal * 0.02
+        return (edge - tilted * (height / 2), tilted)
+    }
+
     /// Places the pane `distance` ahead of a head transform, level, facing it.
     mutating func place(ahead head: simd_float4x4, distance: Float = 1.3) {
         let position = head.columns.3.xyz

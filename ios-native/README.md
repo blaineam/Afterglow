@@ -413,8 +413,8 @@ screen through the blit pipeline. The head is still tracked, so the phone is a w
 around the room. A tap selects what it lands on (the tap's pixel becomes the pointer ray for
 that frame), a double tap brings up the system keyboard (the view is a `UIKeyInput`; text goes
 where dictation goes, Return is Go), a drag scrolls the page or swipes between pictures in the
-viewer, a three-second press ends a WebXR session, and a two-finger tap shows or hides the
-control strip. A single tap selects what the cursor at the screen's centre is on (the phone is
+viewer, and a three-second press ends a WebXR session. The cog in the top-right corner drops down
+Passthrough, 3DoF and Phone view as checked items. A single tap selects what the cursor at the screen's centre is on (the phone is
 aimed like a torch; `tapAtPoint 1` selects where the tap lands instead).
 Without tracking (the Simulator) a drag still turns the head.
 
@@ -545,6 +545,44 @@ and floor are right now. This round fixes what was left.
   turn keeps up; a jump (a recentre, a tracking switch) is taken at once. The prediction past
   the newest gyro reading now uses the last three readings' average rate instead of one.
 
+## Eleventh phone round (2026-11-08)
+
+- **Voice unlock's crash**: the speech permission's answer arrives on another thread, and a closure
+  written inside a main-actor class is main-actor isolated, so Swift 6 stopped the app the moment
+  it ran. The permission, the microphone's tap and the recognizer's results are now made outside
+  that isolation (a test runs each off the main thread). A silent microphone format no longer
+  raises, the audio category goes back when listening ends, and the button says why when it
+  can't listen (no permission, on-device speech not installed).
+- **Golf bumpers**: each wall's box was turned a quarter off its wall, so the back wall's box ran up
+  the fairway over the tee and the side walls' lay across it. They now lie along the walls the
+  ball bounces off; a test checks that, and that no hole's tee is near a bumper.
+- **WebXR AR**: `immersive-ar` sessions. The page's view goes see-through and the app draws only the
+  passthrough beneath it, in 6DoF (no switch to the ultra-wide). Everything of the page but its
+  canvas is hidden for the session. Hit tests (`requestHitTestSource`, `XRRay`) land on the room's
+  planes, with the floor running on past them, so a reticle always has somewhere to go. A required
+  feature that can't be given rejects the session honestly.
+- **The real floor**: `local-floor` starts at the height ARKit measured instead of a fixed 1.6 m, and
+  it stands through the switch to 3DoF. The Exit VR button sits by the real floor too.
+- **Frame rate**: the page's drawn rate is logged every five seconds, and the start page says what
+  the last session averaged.
+- **Four more games** (`MoreGames.swift`): Tower (drop sliding slabs on a real table, or a plinth;
+  what misses breaks off), Glow garden (plants grow where you point), Orbital pong (a ball spirals
+  out from a sun; palms, the gaze or a stick knock it back), Skyline drive (steer by looking, or with
+  the stick; rings, pylons, three shields; the room gives way to the synthwave surroundings). A
+  game can say `hidesRoom`, as the coaster does while riding.
+- **The phone overlay**: the strip and its two-finger tap are gone. A cog in the top-right corner
+  drops down Passthrough, 3DoF and Phone view as checked items. The rest is in Settings.
+- **The place you chose stays**: it comes back at launch with no window opened, a file by name (its
+  path changes with each install). The portal's and the coaster's passing worlds aren't saved, and
+  the passthrough setting stands as you left it.
+- **Nothing collides top or bottom**: a keyboard hangs from its window's bottom edge, tilted like a
+  desk (`BrowserWindow.hanging`): it used a rough offset and sat behind the window's plane, so it
+  rode up over the window. Windows hang lower (4 cm above the eyes, and the browser lower still for
+  its chrome), so the bar over them stays in view, and the dock places itself below whatever hangs
+  ahead, keyboards and filmstrips included.
+- **A gallery**: `Tools/capture_gallery.sh` renders what each experience looks like from inside to
+  `docs/gallery`, using the new `shot <name>` and `world <n>` script verbs.
+
 ## Apple Watch as a controller
 
 `AfterglowWatch/` is a single-target watchOS app embedded in the iOS app. Its one button carries
@@ -599,7 +637,7 @@ screen shows a control strip for the first four, whose values are kept between r
 | `ultraTest` | 0 | an experiment: open the ultra-wide through AVFoundation this many seconds in and log what ARKit does (it stops) |
 | `web`, `url`, `textScale` | 1, –, 150 | the browser open at launch, a page to open, the page zoom in percent |
 | `surfaces`, `occlusion` | 0, 1 | scan and show the room's surfaces; hide placed things behind the real room (LiDAR, 6DoF, passthrough) |
-| `actions` | – | a test script: `wait N; press <button>; type <text>; key <Backspace\|Clear\|Enter>; look <yaw> <pitch>; tap; dump; screenshot; immersive; end; js <expr>; record <eye>; fakeplanes; fakehand <1\|0\|punch\|off>; open <window>; lock; press win:<window>:<move\|larger\|smaller\|minimize\|close>` |
+| `actions` | – | a test script: `wait N; press <button>; type <text>; key <Backspace\|Clear\|Enter>; look <yaw> <pitch>; tap; dump; screenshot; immersive; end; js <expr>; record <eye>; fakeplanes; fakehand <1\|0\|punch\|off>; open <window>; lock; voice; shot <name>; world <n>; press win:<window>:<move\|larger\|smaller\|minimize\|close>` |
 | `cold` | 0 | 1 vouches the phone is cold, so `[Thermal]` times the run from cold despite a recent run |
 | `hands`, `handHz`, `handDepth`, `showHands` | 1, 20, 1, 1 | hand tracking on, its image rate, LiDAR depth for the hands, the hands drawn |
 

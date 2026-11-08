@@ -170,6 +170,23 @@
         pose.q[0] = qx; pose.q[1] = qy; pose.q[2] = qz; pose.q[3] = qw;
     };
 
+    // ---------------------------------------------------------------- the real room
+    // How far the eyes were above the floor ARKit found, for local-floor (a fixed 1.6 m put a
+    // seated owner's world at the wrong height), and the room's planes in the session's space,
+    // for hit tests.
+    var eyeLift = cfg.eyeHeight || 1.6;
+    window.__afterglowFloor = function (metres) { eyeLift = metres; };
+    var roomPlanes = [];
+    // Eleven numbers a plane: centre, orientation (its +y is the normal), and its bounds in its
+    // own x and z.
+    window.__afterglowPlanes = function (v) {
+        var out = [];
+        for (var i = 0; i + 11 <= v.length; i += 11)
+            out.push({ c: [v[i], v[i + 1], v[i + 2]], q: [v[i + 3], v[i + 4], v[i + 5], v[i + 6]],
+                       minX: v[i + 7], maxX: v[i + 8], minZ: v[i + 9], maxZ: v[i + 10] });
+        roomPlanes = out;
+    };
+
     // ---------------------------------------------------------------- the exit button
     // A button the app places at the user's feet, in the session's own space, and draws into
     // both eyes over the page, so a session can always be left (owner, 2026-11-08: the pinch
@@ -274,6 +291,8 @@
         this._ended = false;
         this.renderState = { depthNear: 0.1, depthFar: 1000, baseLayer: null };
         this.environmentBlendMode = 'opaque';
+        this.interactionMode = 'world-space';
+        this.enabledFeatures = [];
         this.visibilityState = 'visible';
         this.inputSources = [];
         this.domOverlayState = null;
@@ -321,7 +340,7 @@
         this._poseSeen = true;
         var q = pose.q;
         // A floor-relative space puts the origin under the user rather than at the head.
-        var lift = space && space._kind === 'local-floor' ? (cfg.eyeHeight || 1.6) : 0;
+        var lift = space && space._kind === 'local-floor' ? eyeLift : 0;
         var head = new XRRigidTransform(
             { x: pose.p[0], y: pose.p[1] + lift, z: pose.p[2] },
             { x: q[0], y: q[1], z: q[2], w: q[3] });
@@ -341,6 +360,67 @@
         }
         return new XRViewerPose(head, views);
     };
+    // Hit tests against the room's planes, for a page placing things on real surfaces.
+    function XRRay(origin, direction) {
+        if (origin && origin.matrix) {          // the XRRigidTransform form
+            var m = origin.matrix;
+            this.origin = { x: m[12], y: m[13], z: m[14], w: 1 };
+            this.direction = { x: -m[8], y: -m[9], z: -m[10], w: 0 };
+        } else {
+            var o = origin || {}, d = direction || {};
+            var n = norm([d.x === undefined ? 0 : d.x, d.y === undefined ? 0 : d.y, d.z === undefined ? -1 : d.z]);
+            this.origin = { x: o.x || 0, y: o.y || 0, z: o.z || 0, w: 1 };
+            this.direction = { x: n[0], y: n[1], z: n[2], w: 0 };
+        }
+    }
+    function XRHitTestSource(space, ray) { this._space = space; this._ray = ray || new XRRay(); this._cancelled = false; }
+    XRHitTestSource.prototype.cancel = function () { this._cancelled = true; };
+    function XRHitTestResult(p, q) { this._p = p; this._q = q; }
+    XRHitTestResult.prototype.getPose = function (base) { return intoBase(this._p, this._q, base); };
+    // Where a space is, in the app's space (the session's "local").
+    function spaceInLocal(space) {
+        if (!space || space._kind === 'viewer') return { p: pose.p, q: pose.q };
+        if (space._kind === 'local') return { p: [0, 0, 0], q: [0, 0, 0, 1] };
+        if (space._kind === 'local-floor') return { p: [0, -eyeLift, 0], q: [0, 0, 0, 1] };
+        var hand = handSpacePose(space, { _kind: 'local' });
+        if (!hand) return null;
+        var t = hand.transform;
+        return { p: [t.position.x, t.position.y, t.position.z], q: [t.orientation.x, t.orientation.y, t.orientation.z, t.orientation.w] };
+    }
+    XRFrame.prototype.getHitTestResults = function (source) {
+        if (!source || source._cancelled) return [];
+        var from = spaceInLocal(source._space);
+        if (!from) return [];
+        var r = source._ray;
+        var local = rotateVec(from.q, [r.origin.x, r.origin.y, r.origin.z]);
+        var o = [from.p[0] + local[0], from.p[1] + local[1], from.p[2] + local[2]];
+        var d = rotateVec(from.q, [r.direction.x, r.direction.y, r.direction.z]);
+        var hits = [];
+        for (var i = 0; i < roomPlanes.length; i++) {
+            var pl = roomPlanes[i];
+            var n = rotateVec(pl.q, [0, 1, 0]);
+            var facing = d[0] * n[0] + d[1] * n[1] + d[2] * n[2];
+            if (Math.abs(facing) < 1e-4) continue;
+            var to = sub(pl.c, o);
+            var t = (to[0] * n[0] + to[1] * n[1] + to[2] * n[2]) / facing;
+            if (t <= 0) continue;
+            var h = [o[0] + d[0] * t, o[1] + d[1] * t, o[2] + d[2] * t];
+            var inPlane = rotateVec(conj(pl.q), sub(h, pl.c));
+            if (inPlane[0] < pl.minX || inPlane[0] > pl.maxX || inPlane[2] < pl.minZ || inPlane[2] > pl.maxZ) continue;
+            hits.push({ t: t, result: new XRHitTestResult(h, pl.q) });
+        }
+        hits.sort(function (a, b) { return a.t - b.t; });
+        return hits.map(function (x) { return x.result; });
+    };
+    XRFrame.prototype.getHitTestResultsForTransientInput = function () { return []; };
+    XRSession.prototype.requestHitTestSource = function (options) {
+        if (!options || !options.space) return Promise.reject(new TypeError('requestHitTestSource needs a space'));
+        return Promise.resolve(new XRHitTestSource(options.space, options.offsetRay));
+    };
+    XRSession.prototype.requestHitTestSourceForTransientInput = function () {
+        return Promise.reject(new DOMException('Afterglow has no transient hit tests', 'NotSupportedError'));
+    };
+
     // The viewer's own spaces have the head's pose: the gaze ray starts at the head. A hand's
     // spaces (its ray, its grip, its joints) have poses while the app tracks that hand. Anything
     // else returns null, which is what a page should see for a space this cannot locate.
@@ -538,7 +618,7 @@
     // viewer pose is, viewer relative to the head.
     function intoBase(p, q, base) {
         var kind = base ? base._kind : 'local';
-        if (kind === 'local-floor') p = [p[0], p[1] + (cfg.eyeHeight || 1.6), p[2]];
+        if (kind === 'local-floor') p = [p[0], p[1] + eyeLift, p[2]];
         if (kind === 'viewer') {
             var hq = pose.q, inv = conj(hq);
             p = rotateVec(inv, sub(p, pose.p));
@@ -862,6 +942,21 @@
             document.body.appendChild(canvas);
             console.log('[Afterglow] layer canvas moved to the end of the body for the session');
         }
+        // AR: only the layer over the room. The page and whatever it set behind the canvas go
+        // transparent until the session ends.
+        if (this._ar) {
+            var attrs = gl.getContextAttributes ? gl.getContextAttributes() : null;
+            if (attrs && attrs.alpha === false) console.warn('[Afterglow] AR: the page made its context without alpha, so the room cannot show through');
+            var hidden = [];
+            for (var child = document.body.firstElementChild; child; child = child.nextElementSibling) {
+                if (child === canvas || child.contains(canvas)) continue;
+                hidden.push({ el: child, was: child.style.visibility });
+                child.style.visibility = 'hidden';
+            }
+            this._arWas = { hidden: hidden, html: document.documentElement.style.background, body: document.body.style.background };
+            document.documentElement.style.background = 'transparent';
+            document.body.style.background = 'transparent';
+        }
         this._fbWidth = w;
         this._fbHeight = h;
 
@@ -920,6 +1015,15 @@
             catch (e) { console.error('[Afterglow] frame callback: ' + (e && e.message) + ' ' + (e && e.stack ? String(e.stack).split('\n').slice(0, 3).join(' | ') : '')); }
         }
         this._frames = (this._frames || 0) + 1;
+        // An honest frame rate: what the page actually drew, for the log and the start page.
+        var nowMs = performance.now();
+        if (!this._rateStart) { this._rateStart = nowMs; this._sessionStart = nowMs; this._rateFrames = 0; }
+        this._rateFrames++;
+        if (nowMs - this._rateStart >= 5000) {
+            console.log('[Afterglow] session drawing ' + (this._rateFrames * 1000 / (nowMs - this._rateStart)).toFixed(1) + ' frames a second');
+            this._rateStart = nowMs;
+            this._rateFrames = 0;
+        }
         if (gl && this._fbo) { this._drawExit(); this._composite(); }
         // The first frames, and then one in a hundred, say whether the page is drawing at all.
         if (this._frames <= 3 || this._frames % 100 === 0)
@@ -989,8 +1093,9 @@
         gl.disable(gl.CULL_FACE);
         gl.disable(gl.BLEND);
         gl.disable(gl.SCISSOR_TEST);
-        // Black outside the lens's reach, which is what the viewer's shell shows anyway.
-        gl.clearColor(0, 0, 0, 1);
+        // Black outside the lens's reach, which is what the viewer's shell shows anyway; in AR
+        // clear, for the app's passthrough underneath to show.
+        gl.clearColor(0, 0, 0, this._ar ? 0 : 1);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.useProgram(d.program);
         gl.activeTexture(gl.TEXTURE0);
@@ -1015,14 +1120,22 @@
         if (this._ended) return Promise.resolve();
         this._ended = true;
         exitButton.shown = false;
+        roomPlanes = [];
+        var was = this._arWas;
+        if (was) {
+            was.hidden.forEach(function (h) { h.el.style.visibility = h.was; });
+            document.documentElement.style.background = was.html;
+            document.body.style.background = was.body;
+            this._arWas = null;
+        }
         this._callbacks = [];
         for (var side in handSources) if (handSources[side]) { handSources[side]._present = false; handSources[side]._pinching = false; }
         var gl = this._gl;
-        var was = this._canvasWas;
-        if (was && gl && gl.canvas) {
-            if (was.style === null) gl.canvas.removeAttribute('style'); else gl.canvas.setAttribute('style', was.style);
-            gl.canvas.width = was.width;
-            gl.canvas.height = was.height;
+        var canvasWas = this._canvasWas;
+        if (canvasWas && gl && gl.canvas) {
+            if (canvasWas.style === null) gl.canvas.removeAttribute('style'); else gl.canvas.setAttribute('style', canvasWas.style);
+            gl.canvas.width = canvasWas.width;
+            gl.canvas.height = canvasWas.height;
             this._canvasWas = null;
         }
         var home = this._canvasHome;
@@ -1045,7 +1158,8 @@
         var why = '';
         try { why = String((new Error('end')).stack || '').split('\n').slice(1, 7).join(' | '); } catch (e) { why = ''; }
         if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.afterglow)
-            window.webkit.messageHandlers.afterglow.postMessage({ event: 'sessionend', why: why });
+            window.webkit.messageHandlers.afterglow.postMessage({ event: 'sessionend', why: why,
+                fps: this._sessionStart && performance.now() - this._sessionStart > 3000 ? this._frames * 1000 / (performance.now() - this._sessionStart) : 0 });
         return Promise.resolve();
     };
 
@@ -1091,16 +1205,25 @@
     window.addEventListener('orientationchange', swallowIfUnchanged, true);
     navigator.xr = {
         isSessionSupported: function (mode) {
-            return Promise.resolve(mode === 'immersive-vr' || mode === 'inline');
+            return Promise.resolve(mode === 'immersive-vr' || mode === 'inline' || (mode === 'immersive-ar' && !!cfg.ar));
         },
-        requestSession: function (mode) {
-            if (mode !== 'immersive-vr' && mode !== 'inline')
-                return Promise.reject(new Error('Afterglow supports immersive-vr and inline only'));
+        requestSession: function (mode, options) {
+            var ar = mode === 'immersive-ar' && !!cfg.ar;
+            if (mode !== 'immersive-vr' && mode !== 'inline' && !ar)
+                return Promise.reject(new DOMException('Afterglow supports immersive-vr, immersive-ar and inline only', 'NotSupportedError'));
+            // What an AR page needs and this can give; one that requires more should fail honestly.
+            var known = ['viewer', 'local', 'local-floor', 'hit-test', 'hand-tracking'];
+            var required = (options && options.requiredFeatures) || [];
+            if (ar) for (var i = 0; i < required.length; i++) if (known.indexOf(required[i]) < 0)
+                return Promise.reject(new DOMException('Afterglow has no "' + required[i] + '" feature', 'NotSupportedError'));
+            var enabled = required.concat(((options && options.optionalFeatures) || []).filter(function (f) { return known.indexOf(f) >= 0; }));
             var post = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.afterglow;
             function start() {
                 active = new XRSession();
                 active.inputSources = [new XRInputSource()];
-                if (post) post.postMessage({ event: 'sessionstart' });
+                active.enabledFeatures = enabled;
+                if (ar) { active._ar = true; active.environmentBlendMode = 'alpha-blend'; }
+                if (post) post.postMessage({ event: 'sessionstart', mode: mode });
                 return active;
             }
             // The native app first lays the page out at 1:1 (its text zoom made the page small and
@@ -1112,7 +1235,7 @@
                 function go() { if (done) return; done = true; window.__afterglowSessionReady = null; resolve(start()); }
                 window.__afterglowSessionReady = function () { requestAnimationFrame(function () { requestAnimationFrame(go); }); };
                 setTimeout(go, 1000);
-                post.postMessage({ event: 'sessionrequest' });
+                post.postMessage({ event: 'sessionrequest', mode: mode });
             });
         },
         addEventListener: function () {},
@@ -1128,6 +1251,9 @@
 
     window.XRWebGLLayer = XRWebGLLayer;
     window.XRRigidTransform = XRRigidTransform;
+    window.XRRay = XRRay;
+    window.XRHitTestSource = XRHitTestSource;
+    window.XRHitTestResult = XRHitTestResult;
     window.XRSession = XRSession;
     window.XRFrame = XRFrame;
     window.XRView = XRView;

@@ -62,6 +62,13 @@ final class WebTab: NSObject, WKNavigationDelegate, WKUIDelegate {
         webView.load(URLRequest(url: url))
     }
 
+    /// See-through for an AR session, over the app's passthrough; back to white paper after.
+    func setTransparent(_ clear: Bool) {
+        webView.isOpaque = !clear
+        webView.backgroundColor = clear ? .clear : .white
+        webView.scrollView.backgroundColor = clear ? .clear : .white
+    }
+
     /// The layout size for a text scale: the page's size over the scale.
     func setTextScale(percent: Int) {
         let zoom = max(CGFloat(percent) / 100, 0.25)

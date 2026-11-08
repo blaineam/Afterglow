@@ -98,6 +98,7 @@ if [ $MODE = sim ]; then
     DATA=$(xcrun simctl get_app_container $SIM $BUNDLE data)
     SHOTS=0
     rm -f $LOGS/native-sim-screen-*.png
+    rm -rf "$DATA/Documents/gallery"
     for i in $(seq 1 $(( 8 + DUMP ))); do
         sleep 1
         COUNT=$(grep -c "\[Actions\] screenshot" "$DATA/Documents/session.log" 2>/dev/null | head -1); COUNT=${COUNT:-0}
@@ -107,6 +108,7 @@ if [ $MODE = sim ]; then
         done
     done
     cp "$DATA/Documents/session.log" $LOGS/native-sim-session.log 2>/dev/null && { echo "== session log ($LOGS/native-sim-session.log)"; grep -vE "Drawable" $LOGS/native-sim-session.log | cut -c1-220 | head -30; }
+    [ -d "$DATA/Documents/gallery" ] && { rm -rf $LOGS/gallery; cp -R "$DATA/Documents/gallery" $LOGS/gallery; echo "== gallery: $LOGS/gallery"; }
     [ -f "$DATA/Documents/eye-left.png" ] && { cp "$DATA/Documents/eye-left.png" $LOGS/native-sim-eye-left.png; echo "== left eye: $LOGS/native-sim-eye-left.png"; }
     xcrun simctl io $SIM screenshot $LOGS/native-sim-screen.png >/dev/null 2>&1 && echo "== screen: $LOGS/native-sim-screen.png"
     xcrun simctl terminate $SIM $BUNDLE 2>/dev/null

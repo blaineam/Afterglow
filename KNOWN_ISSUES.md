@@ -6,18 +6,17 @@
 
 ## Both platforms
 
-- **Rounds nine and ten not yet on the headset (2026-11-08).** Unit-proven: the pinch count
-  through a hidden tip or a wobble, the wrist check in any turn of the hand, and the head
-  smoother (a 12 Hz shake damped, a steady turn followed). Simulator-proven: Files still lists,
-  thumbnails and plays local files; a WebXR sample laid out at 100% for its session and back to
-  240% after; the Exit VR button drawn in both eyes, lit when looked at and ending the session
-  on a pinch. Only the phone can prove the pinch feel, the wrist fix, a provider folder, and
-  how the head smoothing feels. Round eight's voice unlock has not been reported on yet.
+- **Rounds nine to eleven not yet all on the headset (2026-11-08).** The owner's run confirmed the
+  exit button era's coaster, toys, paint and floor. Only the phone can prove the pinch feel, the
+  wrist fix, a provider folder, head smoothing, `immersive-ar` over the real camera and its hit tests
+  on real planes, and the voice unlock end to end. The Simulator could not answer the speech
+  permission's prompt without access to its panel, so the crash's fix is proven by a test that runs
+  each callback off the main thread, not by speaking to it.
 - **Head smoothing trails fast turns a little.** It is a low-pass: half its lag is predicted
   back, so a turn at Medium trails by about 15 ms. Off restores the old behaviour; Max trails more.
 - **A provider's folders can be greyed out in the folder picker.** The provider's extension must
-  declare folder picking. The owner's own remotes app has the key from its next release on;
-  until that release is on the phone, its folders stay greyed out.
+  declare folder picking. The owner's own remotes app has the key from 7.5.0 on; until that build
+  is on the phone, its folders stay greyed out.
 - **A provider's videos have no thumbnails** unless the provider supplies them; they are not
   downloaded for one.
 - **3D passthrough at edges.** Cells across a depth jump (a hand against a far wall) are dropped

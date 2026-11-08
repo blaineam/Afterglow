@@ -133,15 +133,19 @@ Everything else sits on this, and three of the newest features have never run on
   only) and a page with a login form brings *Fill the saved login?*. Verified in the Simulator up
   to the prompt; the fill wants a real sign-in on the phone. To do: a web view per tab so a tab
   keeps its scroll and its typing (today a tab left behind reloads when returned to).
-- `immersive-ar` over the passthrough, which exists and is wasted on a browser that only does VR.
+- `immersive-ar` over the passthrough — done 2026-11-08: the page draws see-through over the app's
+  own passthrough in 6DoF, with hit tests against the room's planes and the floor. To be confirmed
+  on the phone (the Simulator has no camera).
 - **Hand input sources** — done 2026-11-06: an input source per tracked hand with the 25 WebXR joint spaces
   (`getJointPose`, `fillPoses`, `fillJointRadii`, `inputsourceschange`), posed every frame from the
   tracker's 21 joints (metacarpals midway between wrist and knuckle), a pinch as that hand's select.
   Confirmed on the phone 2026-11-06. The pointing ray was too jittery to aim a wand, so it now runs from
   an estimated shoulder (down and to the side of the head) through the palm, and both it and the joints
   go through One Euro filters in the shim (steady at rest, quick in a sweep); to be confirmed.
-- `local-floor` from the floor ARKit found rather than a fixed 1.6 m.
-- Measure an immersive session's frame rate honestly and say in the start page what to expect.
+- `local-floor` from the floor ARKit found rather than a fixed 1.6 m — done 2026-11-08.
+- Measure an immersive session's frame rate honestly and say in the start page what to expect —
+  done 2026-11-08: the page's drawn rate goes to the log every five seconds, and the start page
+  says what the last session averaged.
 
 ## Phase 5 — Distribution
 
@@ -280,6 +284,10 @@ foundation at all. The honest picture:
 - **Tenth phone round, 2026-11-08**: WebXR pages laid out at 1:1 for the session with the text
   zoom restored after; an Exit VR button at the feet in every session; head smoothing with a
   setting. Still to come: the owner's run of it.
+- **Eleventh phone round, 2026-11-08**: the voice unlock's crash fixed; golf bumpers drawn where
+  they are; the roadmap's WebXR list closed out (`immersive-ar` with hit tests, the real floor, an
+  honest frame rate); four more games; the phone overlay reduced to a cog with three checked items;
+  the chosen place kept across launches; a rendered gallery. Still to come: the owner's run of it.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the
@@ -345,14 +353,13 @@ generator the owner likes is chosen.
   last marker goes. Needs the floor mesh kept per room and the hand or the phone as the vacuum.
 - **App PIN** — done 2026-11-06 (`AppLock`): six digits, asked for at launch and after a minute
   away, a salted hash in the Keychain; on and off from Settings. To be confirmed on the phone.
-- **More games**, since the hands, the room and the passthrough are the point: a rhythm game
-  with hits on incoming neon shapes to the beat (Apple Music streams can't be analysed, so the
-  beat maps come from bundled synthwave tracks or the user's own files, with MusicKit for
-  playback of their library later), a skyline drive along the neon grid with the head steering,
-  a tower-stacking game on a real table, an orbital pong between two hands, and a "glow garden"
-  that grows where you point. Each is a catalog entry and a scene, like the four here.
+- **More games** — done 2026-11-08 (`MoreGames.swift`): the rhythm game was already in; a skyline
+  drive along the neon grid with the head steering, a tower-stacking game on a real table, an
+  orbital pong between two hands, and a glow garden that grows where you point.
 
-- Gamepad support for the games (a Bluetooth controller already scrolls the browser).
+- Gamepad support for the games — started 2026-11-08: A selects in every game, and the left stick
+  steers the drive and moves the pong paddle. Still to come: a controller's aim as a pointer in
+  the games that want a hand (paint, golf, the blaster's punch).
 - SteamVR streaming as an ALVR client: seated and gamepad games only, since there are no
   controllers.
 - HDMI capture is **not possible on iPhone** (no UVC); a network encoder to the flat screen is the

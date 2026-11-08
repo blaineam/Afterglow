@@ -46,6 +46,7 @@
 		80531BEAA4C2E3BD43B155AB /* FrameTimingLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42BBF82DA32DCFE7BA0AD50 /* FrameTimingLog.swift */; };
 		807788B2D8EEBE3F6D84194F /* sequoia-ferns.jpg in Resources */ = {isa = PBXBuildFile; fileRef = BE47F3737D0629A0F102BD8C /* sequoia-ferns.jpg */; };
 		81CE956448CD4D2CC6F3861F /* fjord-village.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 0E4D62799C1BFC30A6A04742 /* fjord-village.jpg */; };
+		857EA4E5040D4B46FF3FEE21 /* MoreGames.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5CFC81CF38C246ACC0B0C1 /* MoreGames.swift */; };
 		85FC0F60F815AACB5EB653D6 /* afterglow-helper.js in Resources */ = {isa = PBXBuildFile; fileRef = C4592C811D59569C81790593 /* afterglow-helper.js */; };
 		8600C1861C53352DF6521570 /* PolynomialRadialDistortion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 078E21E05BF54EC00E0F4308 /* PolynomialRadialDistortion.swift */; };
 		87FA55609E5C45D423B33A4C /* ViewerParams.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB1258CEE15BE1B0F0A68046 /* ViewerParams.swift */; };
@@ -145,6 +146,7 @@
 		1558F78E920E5997115FF985 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		16BBDD1B2CF15D129C4B076F /* clear-night.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "clear-night.jpg"; sourceTree = "<group>"; };
 		1E2E34385880FD6215E765AF /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
+		1E5CFC81CF38C246ACC0B0C1 /* MoreGames.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreGames.swift; sourceTree = "<group>"; };
 		1F1932938E01769D5BD70302 /* ExternalDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalDisplay.swift; sourceTree = "<group>"; };
 		229FF7FB92EB617B3FAE073F /* PlacesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacesApp.swift; sourceTree = "<group>"; };
 		27D58785E652A50828B3FA73 /* ARController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARController.swift; sourceTree = "<group>"; };
@@ -401,6 +403,7 @@
 			children = (
 				5703D6F0702885C2F804B15B /* GameHost.swift */,
 				04A39A4CC8DC935824223E5A /* Games.swift */,
+				1E5CFC81CF38C246ACC0B0C1 /* MoreGames.swift */,
 				7F6B9BCCCC55995285EE0920 /* RhythmGame.swift */,
 				318D2A1B213CEF1FE5055CA0 /* Scene3D.swift */,
 				2934622527C2244ADFA7A160 /* TempoAnalyzer.swift */,
@@ -675,6 +678,7 @@
 				ADFAB9F747817AFE897DE790 /* MediaApp.swift in Sources */,
 				BACE2FF920E1A6E965CE609E /* MediaLibrary.swift in Sources */,
 				11C794030430803513B767C4 /* MediaMetadata.swift in Sources */,
+				857EA4E5040D4B46FF3FEE21 /* MoreGames.swift in Sources */,
 				C98279B37E7AA0E328071EA7 /* MusicApp.swift in Sources */,
 				7A38FB3AAA8E460C9F4F65D7 /* OneEuroFilter.swift in Sources */,
 				1084C85F476B2C5EB0582CBF /* Panels.swift in Sources */,
