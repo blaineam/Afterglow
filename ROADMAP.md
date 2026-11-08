@@ -288,6 +288,9 @@ foundation at all. The honest picture:
   they are; the roadmap's WebXR list closed out (`immersive-ar` with hit tests, the real floor, an
   honest frame rate); four more games; the phone overlay reduced to a cog with three checked items;
   the chosen place kept across launches; a rendered gallery. Still to come: the owner's run of it.
+- **Focus click-and-lock, 2026-11-08** (`Hardware/focus-brake/`): a new focus wheel with 60 rim
+  teeth (0.50 mm a click) and a clip whose pawl holds it, with a slider that locks it solid, because
+  the carriage back-drove under gravity. Checked against the printed meshes, not yet printed.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

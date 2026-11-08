@@ -43,6 +43,8 @@ lenses loose, and those are the right lenses by construction.
 | **Counterweight** | The iPhone 18 Pro Max is 249 g against the 15 Pro's 187 g, +33%, all of it on a lever in front of the face. A 100–150 g weight at the back of the strap balances it and is the difference between twenty minutes and five. Lead tape, a roll of coins in tape, or a small power bank | 1 |
 | **Top strap** | Takes the load off the cheekbones once the phone is this heavy | 1 |
 
+Focus carriage sliding on its own? The printed fix is in [focus-brake/](focus-brake/).
+
 ## Not needed
 
 - **No magnet or trigger.** Classic Cardboard viewers have one because the phone's screen is

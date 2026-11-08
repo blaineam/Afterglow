@@ -19,6 +19,9 @@
   is on the phone, its folders stay greyed out.
 - **A provider's videos have no thumbnails** unless the provider supplies them; they are not
   downloaded for one.
+- **The focus carriage slides when you look up or down.** The fix is designed
+  (`Hardware/focus-brake/`) but not printed: its forces are calculated, and the slicer could not be
+  run headless, so review the slice before printing.
 - **3D passthrough at edges.** Cells across a depth jump (a hand against a far wall) are dropped
   and the flat, at-infinity passthrough shows there, so an object's outline can shimmer. The
   depth map is 256 × 192, so thin things (chair legs, fingers) may float on their background.
