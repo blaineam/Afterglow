@@ -25,6 +25,8 @@ surroundings**, twenty-four bundled photospheres, a visionOS-style interface of 
 with a launcher, a dock and a phone view, and twelve games with lit 3D graphics. It is built and
 tested on the **iPhone 18 Pro Max** with its own printed viewer.
 
+**Get it**: [Afterglow XR on the App Store](https://apps.apple.com/us/app/afterglow-xr/id6832358037), or build it yourself below.
+
 ## Gallery
 
 From inside the viewer, one eye without the lens warp, except where it says through the lenses.
@@ -50,16 +52,15 @@ has no camera, so the app's synthwave surroundings stand in for your room's pass
 
 | Where | What |
 |---|---|
-| [`ios-native/`](ios-native/) | The app: the Xcode project (generated from `project.yml`), the Swift sources, the Watch app, the unit tests and the app's own [README](ios-native/README.md), which is the full reference. |
+| [`app/`](app/) | The app: the Xcode project (generated from `project.yml`), the Swift sources, the Watch app, the unit tests and the app's own [README](app/README.md), which is the full reference. |
 | [`Tools/`](Tools/) | `native_build_and_run.sh` (build, install, launch, log, test, Simulator harness), the fixture-media makers and the EXR converter. |
 | [`Hardware/`](Hardware/) | The printed viewer: OpenSCAD source, STLs, bill of materials, listing text. |
 | [`docs/`](docs/) | The project site and its images. |
-| [`unity/`](unity/) | The earlier Unity app, kept whole for reference with its own README, tools and (disabled) workflows. It is no longer developed; the native app replaced it on the phone on 2026-11-06. |
 
 ## Start here
 
-1. **Print the viewer**: the three parts in [`Hardware/`](Hardware/) (OpenSCAD source, STLs,
-   [bill of materials](Hardware/BOM.md), [MakerWorld listing](Hardware/MAKERWORLD.md)).
+1. **Print the viewer**: [ready to print on MakerWorld](https://makerworld.com/en/models/3559894-afterglow-cardboardxr-viewer-for-iphone-18-pro-max#profileId-4073827),
+   or from [`Hardware/`](Hardware/) (OpenSCAD source, [bill of materials](Hardware/BOM.md)).
 2. **Build the app** on a Mac with Xcode 27 and [xcodegen](https://github.com/yonaskolb/XcodeGen)
    (`brew install xcodegen`), signed into an Apple ID (a free personal team is enough), the phone
    unlocked and plugged in:
@@ -75,7 +76,7 @@ has no camera, so the app's synthwave surroundings stand in for your room's pass
    the round button at your feet to bring the dock. Pinch to select, or tap the viewer's button.
 
 Everything else, from the stereo rig and the pinch rules to each app and game, the phone view,
-the launch options and the Simulator harness, is in [`ios-native/README.md`](ios-native/README.md).
+the launch options and the Simulator harness, is in [`app/README.md`](app/README.md).
 
 ## Requirements
 
@@ -111,5 +112,5 @@ Song tempo data for the rhythm game is provided by [audiometa.io](https://audiom
 
 ## License
 
-Apache-2.0, as the upstream project. Third-party notices, including the Unity app's packages,
+Apache-2.0, as the upstream project. Third-party notices
 are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -18,7 +18,7 @@ OUT=$P/docs/gallery
 LOGS=${TMPDIR:-/tmp}/afterglow
 BUNDLE=${AFTERGLOW_NATIVE_BUNDLE_ID:-com.wemiller.afterglow}
 HARNESS=$P/Tools/native_build_and_run.sh
-PLACES=$P/ios-native/Afterglow/Places
+PLACES=$P/app/Afterglow/Places
 mkdir -p $OUT
 rm -f $OUT/*.jpg
 

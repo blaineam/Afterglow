@@ -4,7 +4,7 @@ images in them): the iPhone on its side, as Afterglow runs, and the watch; the s
 captions, as across the owner's other listings. `monkr render` fills in the screenshots."""
 import json, os
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-out = os.path.join(root, 'ios-native/docs/appstore-screenshots')
+out = os.path.join(root, 'app/docs/appstore-screenshots')
 os.makedirs(out, exist_ok=True)
 GRADIENT = ('radial-gradient(ellipse 60% 70% at 50% 108%, rgba(255,110,168,0.62) 0%, transparent 70%), '
             'radial-gradient(ellipse 40% 42% at 50% 18%, rgba(255,212,92,0.20) 0%, transparent 72%), '

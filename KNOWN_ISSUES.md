@@ -1,7 +1,7 @@
 # Known issues
 
-> The repository was restructured on 2026-11-07: the native app is in `ios-native/`, the earlier
-> Unity app whole in `unity/`. Entries below about the Unity app refer to that folder.
+> The earlier Unity app was removed from the tree on 2026-11-08, and the native app now lives in
+> `app/`. Entries below about the Unity app stay as history; its code is in git history.
 
 
 ## Both platforms
@@ -243,7 +243,7 @@ With the browser window open in the Simulator (2026-11-05), the page itself is a
 faintly and at full screen, behind the two eye views: the web view sits in the view hierarchy under
 Unity's and is not fully covered. Not checked on the phone. The window on the quad is unaffected.
 
-## The native port (`ios-native/`, phase 1)
+## The native port (`app/`, phase 1)
 
 ### No ultra-wide with 6DoF on the iPhone 18 Pro Max
 

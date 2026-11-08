@@ -1,6 +1,5 @@
-# The native app: the project is generated from ios-native/project.yml, built for the iOS
-# Simulator with warnings as errors, and its unit tests run there. No signing is needed. The
-# Unity app's workflows live on in unity/ (disabled) with the rest of that project.
+# The native app: the project is generated from app/project.yml, built for the iOS
+# Simulator with warnings as errors, and its unit tests run there. No signing is needed.
 name: CI
 
 on:
@@ -17,7 +16,7 @@ jobs:
       - name: Install xcodegen
         run: brew install xcodegen
       - name: Generate the project
-        working-directory: ios-native
+        working-directory: app
         run: xcodegen generate
       - name: Pick a simulator
         id: sim
@@ -26,7 +25,7 @@ jobs:
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
       - name: Build and test
         run: |
-          xcodebuild -project ios-native/Afterglow.xcodeproj -scheme Afterglow -configuration Debug \
+          xcodebuild -project app/Afterglow.xcodeproj -scheme Afterglow -configuration Debug \
             -destination "id=${{ steps.sim.outputs.udid }}" -derivedDataPath Builds/ci CODE_SIGNING_ALLOWED=NO test | tail -40
       - name: Parse the scripts
         run: |

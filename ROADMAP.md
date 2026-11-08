@@ -1,6 +1,6 @@
 # Roadmap: from a demo lobby to a product
 
-> The repository was restructured on 2026-11-07: the native app is in `ios-native/`, the earlier
+> The repository was restructured on 2026-11-07: the native app is in `app/`, the earlier
 > Unity app whole in `unity/`. Entries below about the Unity app refer to that folder.
 
 
@@ -178,7 +178,7 @@ foundation at all. The honest picture:
   work, phased so the Unity app stays usable until the native one reaches it: (1) stereo rig,
   head tracking and passthrough; (2) hands and pinch; (3) the browser and WebXR; (4) media;
   (5) Home, settings, the lock and the environments; (6) games.
-- **Phase 1 started 2026-11-06** in [`ios-native/`](ios-native/) (Swift, SwiftUI, Metal, ARKit;
+- **Phase 1 started 2026-11-06** in [`app/`](app/) (Swift, SwiftUI, Metal, ARKit;
   `Tools/native_build_and_run.sh`): both eyes in one pass by vertex amplification, the lens warp
   ported from `LensDistortion.cs` and unit-tested against this app's logged field of view, ARKit
   world tracking with the head predicted ahead by the gyroscope, passthrough at the camera's true
@@ -294,7 +294,9 @@ foundation at all. The honest picture:
 - **The App Store, 2026-11-08**: Afterglow XR's listing, framed screenshots and first TestFlight
   build; iPhone only. The tempo lookup moves to audiometa.io. Still to come: the owner's submission,
   and the privacy answers only App Store Connect's site can take.
-- **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
+- **The tree, 2026-11-08**: the Unity app removed (it remains in git history), and the native app
+  moved to `app/`.
+- **Recommendation**: do it, in a new repository or an `app/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the
   ultra-wide camera) show what Unity can still give; if the phone still runs hot with those,

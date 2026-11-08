@@ -1,6 +1,6 @@
-# An EXR HDRI (equirectangular) to a 4096x2048 sRGB JPEG for ios-native/Afterglow/Places:
+# An EXR HDRI (equirectangular) to a 4096x2048 sRGB JPEG for app/Afterglow/Places:
 #   python3 -m venv venv && venv/bin/pip install OpenEXR numpy pillow
-#   venv/bin/python -I Tools/exr_to_place.py in.exr ios-native/Afterglow/Places/name.jpg 1.0
+#   venv/bin/python -I Tools/exr_to_place.py in.exr app/Afterglow/Places/name.jpg 1.0
 # The last argument multiplies the exposure before an ACES filmic curve.
 import sys, numpy as np, OpenEXR
 from PIL import Image

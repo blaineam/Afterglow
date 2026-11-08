@@ -5,9 +5,14 @@
 #   security add-generic-password -U -a "$USER" -s afterglow-audiometa-key -w
 OUT="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/tempo-key.dat"
 rm -f "$OUT"
-KEY=$(/usr/bin/security find-generic-password -a "$USER" -s afterglow-audiometa-key -w 2>/dev/null)
+# Xcode Cloud leaves it in a file (ci_scripts/ci_pre_xcodebuild.sh); a Mac has it in the Keychain.
+if [ -f "$SRCROOT/.audiometa-key" ]; then
+    KEY=$(cat "$SRCROOT/.audiometa-key")
+else
+    KEY=$(/usr/bin/security find-generic-password -a "$USER" -s afterglow-audiometa-key -w 2>/dev/null)
+fi
 if [ -z "$KEY" ]; then
-    echo "note: no afterglow-audiometa-key in the Keychain; this build skips the online tempo lookup"
+    echo "note: no tempo catalogue key; this build skips the online tempo lookup"
     exit 0
 fi
 printf %s "$KEY" | /usr/bin/perl -pe 's/(.)/chr(ord($1) ^ 0x5A)/ges' > "$OUT"

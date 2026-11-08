@@ -1,11 +1,11 @@
 #!/bin/zsh
 # The raw App Store screenshots, from a finished gallery run (Tools/capture_gallery.sh) and a new
-# one of the watch app, into ios-native/screenshots/<device key>. Then builds the Monkr projects
+# one of the watch app, into app/screenshots/<device key>. Then builds the Monkr projects
 # that frame them, since those embed the images and are not committed.
 #   zsh Tools/capture_store_screenshots.sh       # from anywhere; rocket shots runs it
 set -eu
 P=${0:A:h:h}
-N=$P/ios-native
+N=$P/app
 LOGS=${TMPDIR:-/tmp}/afterglow
 OUT=$N/screenshots/iphone-6.9
 rm -rf $OUT; mkdir -p $OUT

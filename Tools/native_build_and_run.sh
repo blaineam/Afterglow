@@ -1,8 +1,8 @@
 #!/bin/zsh
-# Builds the native iOS app in ios-native/, signs it, installs it and launches it on the iPhone,
+# Builds the native iOS app in app/, signs it, installs it and launches it on the iPhone,
 # then prints the start of its session log. The native counterpart of ios_build_and_run.sh.
 #   zsh Tools/native_build_and_run.sh                       # build, install, launch
-#   zsh Tools/native_build_and_run.sh --ei passthrough 1    # with launch options (see ios-native/README.md)
+#   zsh Tools/native_build_and_run.sh --ei passthrough 1    # with launch options (see app/README.md)
 #   zsh Tools/native_build_and_run.sh --launch              # skip the build; launch what's installed
 #   zsh Tools/native_build_and_run.sh --log                 # only copy the session log back
 #   zsh Tools/native_build_and_run.sh --test                # run the unit tests on a simulator instead
@@ -16,7 +16,7 @@
 # generated. Signing: the same team detection as ios_build_and_run.sh (TEAM=... overrides).
 set -u
 P=${0:A:h:h}
-N=$P/ios-native
+N=$P/app
 # The same bundle id as the Unity app: installing this replaces that one on the phone.
 BUNDLE=${AFTERGLOW_NATIVE_BUNDLE_ID:-com.wemiller.afterglow}
 PROJECT=$N/Afterglow.xcodeproj

@@ -1,26 +1,11 @@
 # Xcode and the native build
 /Builds/
-/ios-native/Afterglow.xcodeproj/xcuserdata/
-/ios-native/Afterglow.xcodeproj/project.xcworkspace/xcuserdata/
+/app/Afterglow.xcodeproj/xcuserdata/
+/app/Afterglow.xcodeproj/project.xcworkspace/xcuserdata/
 DerivedData/
 *.xcuserstate
 .DS_Store
 
-# The archived Unity project's generated folders
-/unity/[Ll]ibrary/
-/unity/[Tt]emp/
-/unity/[Oo]bj/
-/unity/[Bb]uild/
-/unity/[Bb]uilds/
-/unity/[Ll]ogs/
-/unity/[Uu]ser[Ss]ettings/
-/unity/[Mm]emoryCaptures/
-/unity/[Rr]ecordings/
-/unity/[Aa]ssets/Plugins/Editor/JetBrains*
-/Library/
-/Temp/
-/Logs/
-/UserSettings/
 
 # IDE and tool caches
 .vs/
@@ -33,6 +18,9 @@ ExportedObj/
 * 2.*
 
 # App Store screenshots: rebuilt by Tools/capture_store_screenshots.sh and Monkr (the .monkr embeds them)
-/ios-native/screenshots/
-/ios-native/docs/appstore-screenshots/*.monkr
-/ios-native/build/
+/app/screenshots/
+/app/docs/appstore-screenshots/*.monkr
+/app/build/
+
+# The tempo catalogue's key, written by Xcode Cloud's ci_pre_xcodebuild.sh
+/app/.audiometa-key
