@@ -70,6 +70,11 @@ final class PaintGame: Game {
     /// log showed re-pinches 0.7 s apart) or a hand whose side flips carries on the same stroke
     /// instead of leaving dots (owner, 2026-11-07).
     private var strokeGrewAt: [Int: Double] = [:]
+    /// The brush point smoothed per hand (the flat hand fit jitters in depth when the hand moves
+    /// fast, which painted jets into the distance, owner 2026-11-07); a jump past 30 cm between
+    /// results is dropped as noise.
+    private var brushFilters: [Bool: OneEuroFilter] = [:]
+    private var lastRaw: [Bool: SIMD3<Float>] = [:]
     private var particles = ParticleSystem()
     static let swatches: [(String, SIMD4<Float>)] = [("🔴", SIMD4(1, 0.25, 0.25, 1)), ("🟠", SIMD4(1, 0.55, 0.15, 1)), ("🟡", SIMD4(1, 0.9, 0.2, 1)), ("🟢", SIMD4(0.3, 0.9, 0.4, 1)),
                                                      ("🔵", SIMD4(0.25, 0.55, 1, 1)), ("🟣", SIMD4(0.7, 0.4, 1, 1)), ("🩷", SIMD4(1, 0.4, 0.75, 1)), ("⚪", SIMD4(0.95, 0.95, 0.95, 1))]
@@ -109,7 +114,12 @@ final class PaintGame: Game {
 
     func update(_ c: GameContext) {
         for hand in c.hands {
-            let tip = hand.pinchPoint
+            let raw = hand.pinchPoint
+            if let last = lastRaw[hand.isRight], simd_distance(raw, last) > 0.3 { lastRaw[hand.isRight] = raw; continue }
+            lastRaw[hand.isRight] = raw
+            var filter = brushFilters[hand.isRight] ?? OneEuroFilter(minCutoff: 1.0, beta: 0.3)
+            let tip = filter.filter(raw, time: c.time)
+            brushFilters[hand.isRight] = filter
             var speed: Float = 0
             if let (last, t) = lastPoint[hand.isRight], c.time > t { speed = simd_distance(tip, last) / Float(min(c.time - t, 0.1)) }
             lastPoint[hand.isRight] = (tip, c.time)
@@ -877,9 +887,12 @@ final class GolfGame: Game {
         return ramp.rise * (p.y - ramp.from) / (ramp.to - ramp.from)
     }
 
+    /// The course stands on a deck 5 cm above the floor: at floor level the room's own depth
+    /// (passthrough occlusion) swallowed the felt and left only the walls (owner, 2026-11-07).
+    static let deck: Float = 0.05
     private func world(_ p: SIMD2<Float>, hole i: Int? = nil, up: Float = 0) -> SIMD3<Float> {
         let off = Self.offsets[min(i ?? holeIndex, Self.offsets.count - 1)]
-        return origin + right * (p.x + off.x) + ahead * (p.y + off.y) + SIMD3(0, up, 0)
+        return origin + right * (p.x + off.x) + ahead * (p.y + off.y) + SIMD3(0, up + Self.deck, 0)
     }
     private func course(_ w: SIMD3<Float>) -> SIMD2<Float> {
         let d = w - origin
@@ -957,7 +970,7 @@ final class GolfGame: Game {
     private func club(for hand: TrackedHandState, floor: Float, eye: SIMD3<Float>) -> (grip: SIMD3<Float>, head: SIMD3<Float>, facing: SIMD3<Float>) {
         let grip = hand.joints[HandGeometry.wrist]
         let lean = G.flat(grip - eye)
-        let head = SIMD3(grip.x, floor + 0.035, grip.z) + lean * 0.22
+        let head = SIMD3(grip.x, floor + Self.deck + 0.035, grip.z) + lean * 0.22
         return (grip, head, lean)
     }
 
@@ -1063,7 +1076,7 @@ final class GolfGame: Game {
             let isCurrent = i == currentIndex
             let feltMesh = m.mesh("golf-felt-\(i)") { Self.feltMesh(hole.fairway) }
             scene.add(feltMesh, at: world(SIMD2(0, 0), hole: i, up: 0.006), rotation: rot, scale: SIMD3(1, 1, 1), color: isCurrent ? felt : felt * SIMD4(0.85, 0.85, 0.85, 1), roughness: 0.95, pattern: 3, shadow: false)
-            scene.add(m.box, at: world(centre, hole: i, up: -0.02), rotation: rot, scale: SIMD3(xs.max()! - xs.min()! + 0.4, 0.04, ys.max()! - ys.min()! + 0.4), color: SIMD4(0.25, 0.22, 0.2, 1), roughness: 0.9, pattern: 5, shadow: false)
+            scene.add(m.box, at: world(centre, hole: i, up: -Self.deck / 2 - 0.004), rotation: rot, scale: SIMD3(xs.max()! - xs.min()! + 0.4, Self.deck, ys.max()! - ys.min()! + 0.4), color: SIMD4(0.25, 0.22, 0.2, 1), roughness: 0.9, pattern: 5, shadow: false)
             for wall in walls(for: hole) {
                 let mid = (wall.a + wall.b) / 2
                 let len = simd_distance(wall.a, wall.b)
@@ -1112,8 +1125,12 @@ final class GolfGame: Game {
             scene.add(m.torus, at: world(hole.cup, hole: i, up: cupUp + 0.014), scale: SIMD3(0.06, 0.06, 0.06), color: G.white, roughness: 0.5, shadow: false)
             let pole = world(hole.cup, hole: i, up: cupUp)
             scene.rod(m, pole, pole + SIMD3(0, 1.1, 0), radius: 0.01, color: SIMD4(0.9, 0.9, 0.95, 1), roughness: 0.3, metallic: 0.6)
-            let wave = sin(Float(c.time) * 3 + Float(i)) * 0.1
-            scene.add(m.box, at: pole + SIMD3(0, 0.96, 0) + right * 0.17, rotation: rot * G.yaw(wave), scale: SIMD3(0.32, 0.2, 0.01), color: isCurrent ? SIMD4(1, 0.3, 0.35, 1) : SIMD4(0.95, 0.85, 0.3, 1), roughness: 0.8, shadow: false)
+            // The flag hangs from the pole and waves about it, so its edge stays on the pole.
+            let wave = sin(Float(c.time) * 3 + Float(i)) * 0.12
+            let flagRot = rot * G.yaw(wave)
+            let flagCentre = pole + SIMD3(0, 0.96, 0) + flagRot.act(SIMD3(0.17, 0, 0))
+            scene.add(m.box, at: flagCentre, rotation: flagRot, scale: SIMD3(0.32, 0.2, 0.012), color: isCurrent ? SIMD4(1, 0.3, 0.35, 1) : SIMD4(0.95, 0.85, 0.3, 1), roughness: 0.8, shadow: false)
+            scene.add(m.smallSphere, at: pole + SIMD3(0, 1.12, 0), scale: SIMD3(repeating: 0.025), color: SIMD4(1, 0.85, 0.3, 1), roughness: 0.3, metallic: 0.8, shadow: false)
             for k in 0..<min(i + 1, 9) {
                 scene.add(m.smallSphere, at: pole + SIMD3(0, 1.03 - Float(k / 3) * 0.055, 0) + right * (0.07 + Float(k % 3) * 0.055), scale: SIMD3(repeating: 0.014), color: SIMD4(0.1, 0.1, 0.12, 1), shadow: false)
             }
@@ -1153,11 +1170,12 @@ final class GolfGame: Game {
 // MARK: - Coaster
 
 /// A roller coaster over the grid. The course is laid out from segments (a chain lift, drops,
-/// hills, a loop, banked turns) as poses half a metre apart; the rider's car follows them,
-/// gaining speed down the drops and losing it up the climbs. The rider stays where they stood
-/// in the room, in a car drawn round them, and the track and the world's furniture move past
-/// through the car's inverse pose, so the room's panels (and the way out) stay in reach and
-/// the view never leaves the car (the first version moved the camera and lost both, 2026-11-07).
+/// hills, a loop, banked turns) as poses half a metre apart in the world; the rider's car
+/// follows them, gaining speed down the drops and losing it up the climbs. The rider is carried:
+/// the renderer moves the camera by the car's pose relative to where the ride began, so the
+/// whole world (the floor, the sky, the track) tilts, climbs and spins round the rider, while
+/// the car is drawn at the seat. The interface stays out of the way while riding; the viewer's
+/// double tap, or the controls window's Stop before the ride, ends it.
 @MainActor
 final class GridRide: Game {
     let title = "🎢 Coaster"
@@ -1175,14 +1193,14 @@ final class GridRide: Game {
     private(set) var bank: Float = 0
     private var particles = ParticleSystem()
     private var built = false
-    /// Identity: the rider no longer moves; kept for the renderer's hook.
+    /// The car's pose relative to the rider's start: the renderer moves the camera by it.
     private(set) var riderTransform = matrix_identity_float4x4
-    private var anchorHead = SIMD3<Float>.zero     // where the rider's head was when the ride began
+    private var anchorHead = SIMD3<Float>.zero
     private var anchorYaw: simd_quatf = simd_quatf(angle: 0, axis: SIMD3(0, 1, 0))
     private static let seatHeight: Float = 1.1
     var status: String { String(format: "%.0f m at %.0f km/h", distance, speed * 3.6) }
 
-    func reset() { poses.removeAll(); along = 0; speed = 4; distance = 0; built = false }
+    func reset() { poses.removeAll(); along = 0; speed = 4; distance = 0; built = false; riderTransform = matrix_identity_float4x4 }
 
     private static let step: Float = 0.5
 
@@ -1232,20 +1250,17 @@ final class GridRide: Game {
                     orientation: simd_slerp(poses[i].orientation, poses[j].orientation, t))
     }
 
-    /// A track point as the rider sees it: the car's pose undone, the seat under the rider's head.
-    private func view(_ q: SIMD3<Float>, car: Pose) -> SIMD3<Float> {
-        anchorHead + anchorYaw.act(car.orientation.inverse.act(q - car.position)) - SIMD3(0, Self.seatHeight, 0)
-    }
-
     func update(_ c: GameContext) {
         if !built {
+            // The track starts under the rider's feet, heading the way they face; the first
+            // pose's seat is where their head is now, so the ride begins from where they stand.
             anchorHead = c.headPosition
             let f = G.flat(c.forward)
             anchorYaw = G.look(f)
-            // The track is built in its own frame: it starts at the origin heading -z.
+            let start = Pose(position: anchorHead - SIMD3(0, Self.seatHeight, 0) - f * 1.0, orientation: anchorYaw)
             poses.removeAll()
-            build(from: Pose(position: .zero, orientation: simd_quatf(angle: 0, axis: SIMD3(0, 1, 0))), laps: 3)
-            along = 0
+            build(from: start, laps: 3)
+            along = 1.0
             built = true
             log("[Games] Coaster: \(poses.count) poses, \(Int(Float(poses.count) * Self.step)) m of track")
         }
@@ -1263,10 +1278,16 @@ final class GridRide: Game {
             along -= 600 * Self.step
         }
         bank = 0
+        // The camera's move: the seat's pose in the world, from the rider's start pose. A point
+        // at the rider's start head maps to the seat; the room turns with the car.
+        let car = pose(at: along)
+        let seat = car.position + car.orientation.act(SIMD3(0, Self.seatHeight, 0))
+        let toSeat = simd_float4x4.translation(seat) * simd_float4x4(car.orientation)
+        let fromStart = simd_float4x4(anchorYaw.inverse) * simd_float4x4.translation(-anchorHead)
+        riderTransform = toSeat * fromStart
         particles.update(dt: c.dt)
         if speed > 12 {
-            let car = pose(at: along)
-            particles.burst(at: view(car.position + car.orientation.act(SIMD3(Float.random(in: -0.8...0.8), 0.2, -3)), car: car), count: 1, speed: 0.1, color: SIMD4(0.6, 0.9, 1, 0.7), life: 0.4, size: 0.02, gravity: 0)
+            particles.burst(at: car.position + car.orientation.act(SIMD3(Float.random(in: -0.8...0.8), 0.2, -3)), count: 1, speed: 0.1, color: SIMD4(0.6, 0.9, 1, 0.7), life: 0.4, size: 0.02, gravity: 0)
         }
         if c.select { speed = max(4, speed - 4) }
     }
@@ -1277,24 +1298,20 @@ final class GridRide: Game {
         let eye = c.headPosition
         let rail = SIMD4<Float>(0.95, 0.35, 1, 1)
         let steel = SIMD4<Float>(0.3, 0.3, 0.4, 1)
-        let car = pose(at: along)
+        let floor = c.floorHeight
         let from = max(0, Int((along - 10) / Self.step)), to = min(poses.count - 1, Int((along + 90) / Self.step))
         guard from < to else { return }
         var i = from
         while i < to {
             let p0 = poses[i], p1 = poses[i + 1]
             let r0 = p0.orientation.act(SIMD3(0.55, 0, 0)), r1 = p1.orientation.act(SIMD3(0.55, 0, 0))
-            let l0 = view(p0.position - r0, car: car), l1 = view(p1.position - r1, car: car)
-            let q0 = view(p0.position + r0, car: car), q1 = view(p1.position + r1, car: car)
-            scene.rod(m, l0, l1, radius: 0.06, color: rail, roughness: 0.2, metallic: 0.6, emissive: 0.4)
-            scene.rod(m, q0, q1, radius: 0.06, color: rail, roughness: 0.2, metallic: 0.6, emissive: 0.4)
-            if i % 4 == 0 { scene.rod(m, l0, q0, radius: 0.04, color: steel, roughness: 0.6, metallic: 0.3) }
+            scene.rod(m, p0.position - r0, p1.position - r1, radius: 0.06, color: rail, roughness: 0.2, metallic: 0.6, emissive: 0.4)
+            scene.rod(m, p0.position + r0, p1.position + r1, radius: 0.06, color: rail, roughness: 0.2, metallic: 0.6, emissive: 0.4)
+            if i % 4 == 0 { scene.rod(m, p0.position - r0, p0.position + r0, radius: 0.04, color: steel, roughness: 0.6, metallic: 0.3) }
             if i % 8 == 0 {
-                // A pylon to the ground under the track, in the rider's view of it; none where the
-                // track is upside down or passes under itself (a loop), where a pylon would run
-                // through the rails (owner, 2026-11-07).
-                let upright = p0.orientation.act(SIMD3(0, 1, 0)).y > 0.75
-                var clear = upright
+                // A pylon to the ground; none where the track is upside down or passes under
+                // itself (the loop), where it would run through the rails.
+                var clear = p0.orientation.act(SIMD3(0, 1, 0)).y > 0.75
                 if clear {
                     var j = max(0, i - 40)
                     while j < min(poses.count, i + 40) {
@@ -1303,33 +1320,30 @@ final class GridRide: Game {
                         j += 1
                     }
                 }
-                if clear {
-                    let top = view(p0.position - SIMD3(0, 0.1, 0), car: car)
-                    let foot = SIMD3(top.x, c.floorHeight, top.z)
-                    if top.y - c.floorHeight > 0.3 { scene.rod(m, foot, top, radius: 0.09, color: steel, roughness: 0.6, metallic: 0.3) }
+                if clear, p0.position.y - floor > 0.3 {
+                    scene.rod(m, SIMD3(p0.position.x, floor, p0.position.z), p0.position - SIMD3(0, 0.1, 0), radius: 0.09, color: steel, roughness: 0.6, metallic: 0.3)
                 }
             }
             if i % 48 == 0 {
                 let up = p0.orientation.act(SIMD3(0, 1, 0))
-                let centre = view(p0.position + up * 2.0, car: car)
-                let lamp = view(p0.position + up * 3.9, car: car)
-                let ringRot = anchorYaw * car.orientation.inverse * p0.orientation * G.pitch(.pi / 2)
-                scene.add(m.ring, at: centre, rotation: ringRot, scale: SIMD3(1.8, 1, 1.8), color: SIMD4(0.3, 0.9, 1, 1), roughness: 0.3, emissive: 0.8, shadow: false)
-                scene.add(m.smallSphere, at: lamp, scale: SIMD3(repeating: 0.15), color: G.white, emissive: 1.5, shadow: false)
-                scene.glow(lamp, size: 0.9, eye: eye, color: SIMD4(0.3, 0.9, 1, 0.5))
+                let centre = p0.position + up * 2.0
+                scene.add(m.ring, at: centre, rotation: p0.orientation * G.pitch(.pi / 2), scale: SIMD3(1.8, 1, 1.8), color: SIMD4(0.3, 0.9, 1, 1), roughness: 0.3, emissive: 0.8, shadow: false)
+                scene.add(m.smallSphere, at: centre + up * 1.9, scale: SIMD3(repeating: 0.15), color: G.white, emissive: 1.5, shadow: false)
+                scene.glow(centre + up * 1.9, size: 0.9, eye: eye, color: SIMD4(0.3, 0.9, 1, 0.5))
             }
             i += 1
         }
-        // The car round the rider, fixed in the room: a tub, a nose, a lap bar, wheels.
-        let base = anchorHead - SIMD3(0, Self.seatHeight, 0)
-        let o = anchorYaw
+        // The car at the seat: a tub, a nose, a lap bar, wheels, in the car's own frame.
+        let car = pose(at: along)
+        let o = car.orientation
+        let base = car.position
         let pink = SIMD4<Float>(1, 0.3, 0.55, 1)
-        scene.add(m.box, at: base + o.act(SIMD3(0, 0.45, 0)), rotation: o, scale: SIMD3(1.3, 0.5, 1.6), color: pink, roughness: 0.3, metallic: 0.3)
+        scene.add(m.box, at: base + o.act(SIMD3(0, 0.45, 0)), rotation: o, scale: SIMD3(1.3, 0.5, 1.6), color: pink, roughness: 0.3, metallic: 0.3, shadow: false)
         scene.add(m.box, at: base + o.act(SIMD3(0, 0.75, 0.75)), rotation: o, scale: SIMD3(1.3, 0.9, 0.12), color: pink, roughness: 0.3, metallic: 0.3, shadow: false)
         scene.add(m.sphere, at: base + o.act(SIMD3(0, 0.55, -1.1)), rotation: o, scale: SIMD3(0.6, 0.3, 0.6), color: pink, roughness: 0.3, metallic: 0.3, shadow: false)
-        scene.rod(m, base + o.act(SIMD3(-0.5, 0.95, -0.35)), base + o.act(SIMD3(0.5, 0.95, -0.35)), radius: 0.04, color: SIMD4(0.85, 0.85, 0.9, 1), roughness: 0.2, metallic: 0.9)
+        scene.rod(m, base + o.act(SIMD3(-0.5, 0.72, -0.55)), base + o.act(SIMD3(0.5, 0.72, -0.55)), radius: 0.04, color: SIMD4(0.85, 0.85, 0.9, 1), roughness: 0.2, metallic: 0.9)
         for s: Float in [-0.5, 0.5] {
-            scene.rod(m, base + o.act(SIMD3(s, 0.7, -0.35)), base + o.act(SIMD3(s, 0.95, -0.35)), radius: 0.03, color: SIMD4(0.85, 0.85, 0.9, 1), roughness: 0.2, metallic: 0.9)
+            scene.rod(m, base + o.act(SIMD3(s, 0.5, -0.55)), base + o.act(SIMD3(s, 0.72, -0.55)), radius: 0.03, color: SIMD4(0.85, 0.85, 0.9, 1), roughness: 0.2, metallic: 0.9)
         }
         for (x, z) in [(Float(-0.55), Float(0.6)), (0.55, 0.6), (-0.55, -0.6), (0.55, -0.6)] {
             scene.add(m.cylinder, at: base + o.act(SIMD3(x, 0.08, z)), rotation: o * G.roll(.pi / 2), scale: SIMD3(0.16, 0.1, 0.16), color: SIMD4(0.1, 0.1, 0.12, 1), roughness: 0.9, shadow: false)

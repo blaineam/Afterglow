@@ -250,8 +250,14 @@ foundation at all. The honest picture:
   and a projection picker; the 360 collection over the whole library; the coaster's pylons kept
   out of its loop and passthrough off on it; the whole mini golf course laid out at real scale
   with a scoreboard; the WebXR session kept alive (no resize at its start) with a steadier
-  pinch; a second tempo catalogue. Still to come: the 3DoF camera at 10 fps, WebXR AR, the
-  next phone round.
+  pinch; a second tempo catalogue.
+- **Sixth phone round, 2026-11-07**: the media viewer pauses when its window is away, has a
+  scrub bar with a thumb and even spacing, and hides its bar with its controls; the coaster
+  carries the rider through the world with the right seat math and the interface away; the golf
+  course stands on a deck the room's depth cannot hide, with the flag on its pole; paint filters
+  depth noise; every game but the coaster runs in 6DoF; the lock fires only after ten still
+  seconds. The 3DoF camera's 10 fps traced to hand tracking at 30 images a second. Still to
+  come: WebXR AR, the next phone round.
 - **Recommendation**: do it, in a new repository or an `ios-native/` tree beside this one, with
   this Unity app frozen at parity-or-better per phase rather than developed further in parallel.
   Before that, the three levers already pulled here (Vision-only hands, thermal caps, the

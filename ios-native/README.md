@@ -236,8 +236,11 @@ furniture like the panels do. The games (`Games/Games.swift`):
   window, picks the colour (eight swatches, or a rainbow by the hand's height), the size, the
   brush (a glossy tube, a flat ribbon facing you, or a glowing bead trail) and dynamics (the
   stroke thins as the hand speeds up); undo takes the last stroke. Sparks trail the brush. A
-  stroke carries on through a pinch that flickers open for half a second (dots were left
-  before), and the game runs in 6DoF, since painting in the air needs the head's position.
+  stroke carries on through a pinch that flickers open for up to a second (dots were left
+  before), the brush point is smoothed per hand and a jump past 30 cm between results is
+  dropped (the flat hand fit jitters in depth when the hand moves fast, which painted jets
+  into the distance). Every game but the coaster runs in 6DoF: hands and a body in the room
+  need the head's position.
 - **Blobs**: scaled, squashing blobs with eyes that follow you and glowing antennae squelch in
   by waves (each faster and larger); a punch forward (the hand moving ahead faster than 1.5 m/s)
   fires a plasma bolt from the hand along the gaze; hits splash goo, kills burst; a blob that
@@ -267,16 +270,20 @@ furniture like the panels do. The games (`Games/Games.swift`):
   off the bumpers with three quarters of its speed, and drops in the cup. When it comes to
   rest more than a stride away the course shifts so it lies a step ahead again (the teleport
   between putts, also on the controls window's Step to the ball); the next hole lays out when
-  the ball drops, or on Next hole. The whole course is laid out round the player at once,
+  the ball drops, or on Next hole. The course stands on a deck 5 cm above the floor: at floor
+  level the room's own LiDAR depth swallowed the felt and left only the walls on the phone. The
+  flag hangs from its pole and waves about it. The whole course is laid out round the player at once,
   three holes abreast and six deep in a serpentine, 1.6 times the first draft's size, each on
   its dark base with rounded rails on the bumpers, lamps at its corners and its flag numbered;
   a scoreboard by the first tee shows the card in beads. Only the current hole has the ball.
 - **Coaster**: a roller coaster over the grid. The course is poses half a metre apart from a
   list of segments (a chain lift, a drop, hills, a loop, banked turns, dips), repeated as the
   rider nears its end; the car follows it, gaining speed down the drops, losing it up the
-  climbs, lifted by the chain on the way up. The rider stays where they stood, in a car drawn
-  round them, and the track moves past through the car's inverse pose, so the room's panels
-  (the Stop button among them) stay in reach and the view never leaves the car. Rails on
+  climbs, lifted by the chain on the way up. The rider is carried: the camera moves by the
+  car's pose relative to where the ride began (a point at the rider's start head maps to the
+  seat, so the view never leaves the car), and the whole world, floor and sky included, climbs,
+  tilts and spins round them through the loop. The interface stays out of the way while riding;
+  the viewer's double tap ends the ride, as does Stop beforehand. Rails on
   sleepers and pylons (none where the track passes under itself, as in the loop, where a pylon
   would run through the rails), arch lamps, the car's tub, nose, wheels and lap bar.
   Passthrough is off while the coaster runs: it is a ride through the scene.
@@ -358,9 +365,11 @@ and the whole thing a pile of button grids, so the interface was remade on one d
   counts, eight in view. Scroll with the arrows at the grid's side, by holding the gaze at its
   top or bottom edge, by holding a pinch on it and moving the hand up or down, or by dragging
   on the phone. The viewer's controls: back to the grid, previous and next, the format (a
-  picker of the twelve projections, not a cycle), recentre and turn, hide (the controls go
-  away until the next select, so the picture is all there is), with the transport and a seek
-  bar for videos and, for pictures, a filmstrip of the neighbouring pictures to press. The 360
+  picker of the twelve projections, not a cycle), recentre and turn, hide (the controls and
+  the window's bar go away until the next select, so the picture is all there is), spread
+  evenly from margin to margin; for videos the transport and a scrub bar with a thumb (a pinch
+  held on it drags, a select jumps, the times read beneath), for pictures a filmstrip of the
+  neighbouring pictures to press. A viewer window closed or minimized pauses what it played. The 360
   collection is found by shape over the whole library, not its newest two thousand. A 360, 180
   or panorama picture is the surroundings while it plays, passthrough or not.
 - **Windows open in free slots**: a new window takes the nearest free arc round the user,
@@ -421,8 +430,9 @@ it reaches the camera's edge.
   the passcode as toggles.
 - **Lock** (`Home/AppLock.swift`): a six-digit passcode kept as `salt$hash` in the Keychain (the
   Unity app's format); asked for at launch, after a minute in the background, and when the
-  viewer comes off, which the motion sensors tell: the phone laid flat for two seconds, or held
-  still for thirty. While locked only the keypad draws and takes the gaze. Set and removed from
+  phone is perfectly still for ten seconds (a head holding a viewer never is; a phone on a
+  table is). The earlier "laid flat" rule fired when the wearer looked down at the dock. While
+  locked only the keypad draws and takes the gaze. Set and removed from
   Settings; the Home menu locks on demand.
 - **Music** (`Home/MusicApp.swift`): Apple Music through MusicKit (authorization asked on first
   open): what is playing with its artwork and the transport, and the library (playlists, then

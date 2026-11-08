@@ -43,6 +43,8 @@ final class AppWindow {
     let titleBar: ScenePanel
     var minimized = false
     var moving = false
+    /// The bar hidden with the app's own controls (the media viewer's hide), out of the gaze too.
+    var barHidden = false
     var grabDistance: Float = 1.3
     var sizeIndex = 1
     /// Extra room above the pane for the app's own bar (the browser's tabs and address).
@@ -186,7 +188,7 @@ final class WindowManager {
         var hovered: AppWindow?
         for w in visible {
             w.placeBar()
-            if let hit = w.titleBar.pane.hit(origin: origin, direction: forward) {
+            if !w.barHidden, let hit = w.titleBar.pane.hit(origin: origin, direction: forward) {
                 _ = w.titleBar.hover(hit.uv)
                 hovered = w
                 onFocus?(w.kind)

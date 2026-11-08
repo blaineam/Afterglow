@@ -25,6 +25,7 @@ final class AppLock {
     var onLocked: ((Bool) -> Void)?
     private var stillSince: Double = 0
     private var flatSince: Double = 0
+    private var lastGravity = SIMD3<Double>.zero
     private var lastMotionCheck: Double = 0
     private var lastUnlockOrLock: Double = 0
 
@@ -120,12 +121,14 @@ final class AppLock {
     /// long axis (the phone upright in landscape) and some movement.
     func motion(gravity: SIMD3<Double>, rotationRate: SIMD3<Double>, time: Double) {
         guard isSet, !locked, time - lastUnlockOrLock > 5 else { return }
-        let flat = abs(gravity.z) > 0.8        // the screen facing up or down: put down
-        let still = simd_length(rotationRate) < 0.02
-        if flat { if flatSince == 0 { flatSince = time } } else { flatSince = 0 }
+        // A head holds a viewer still only so still: ten seconds under 0.02 rad/s with gravity
+        // unchanged is a phone on a table. The old "screen facing up or down" rule fired when
+        // the wearer looked down at the dock (owner, 2026-11-07).
+        let still = simd_length(rotationRate) < 0.02 && simd_length(gravity - lastGravity) < 0.01
+        lastGravity = gravity
         if still { if stillSince == 0 { stillSince = time } } else { stillSince = 0 }
-        if flatSince > 0 && time - flatSince > 2 { lock(reason: "the phone was put down") }
-        else if stillSince > 0 && time - stillSince > 30 { lock(reason: "no movement for thirty seconds") }
+        if stillSince > 0 && time - stillSince > 10 { lock(reason: "perfectly still for ten seconds") }
+        _ = flatSince
     }
 
     // MARK: The keypad

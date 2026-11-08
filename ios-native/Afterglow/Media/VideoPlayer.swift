@@ -115,6 +115,8 @@ final class VideoPlayer: @unchecked Sendable {
         log("[Video] Playing \(item.kind.rawValue) \(Int(naturalSize.width))x\(Int(naturalSize.height)), \(Int(item.duration)) s\(stereo ? ", asking for both eyes" : "")")
     }
 
+    func pause() { player.pause() }
+
     func togglePlay() {
         if isPlaying { player.pause() } else { player.play() }
     }

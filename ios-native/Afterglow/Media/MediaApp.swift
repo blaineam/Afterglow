@@ -390,16 +390,20 @@ final class MediaApp {
             items += [("back10", "Back 10 s", "gobackward.10", 0.07), ("play", player.isPlaying ? "Pause" : "Play", player.isPlaying ? "pause.fill" : "play.fill", 0.07), ("fwd10", "Ahead 10 s", "goforward.10", 0.07)]
         }
         items += [("nextItem", "Next", "forward.end.fill", 0.07), ("format", format.label, "", 0.2), ("recentre", "Recentre", "scope", 0.07), ("yawL", "Turn left", "rotate.left", 0.07), ("yawR", "Turn right", "rotate.right", 0.07), ("hide", "Hide the controls", "eye.slash", 0.07)]
-        var x: CGFloat = 0.01
-        for (id, label, icon, w) in items {
+        // The round controls spread from the left margin to the right one (0.03 each side), the
+        // format pill taking what is left in the middle.
+        let margin: CGFloat = 0.03, gap: CGFloat = 0.012, round: CGFloat = 0.07
+        let rounds = items.filter { !$0.2.isEmpty }
+        let pillWidth = max(0.12, 1 - 2 * margin - CGFloat(rounds.count) * (round + gap) - gap)
+        var x: CGFloat = margin
+        for (id, label, icon, _) in items {
+            let w = icon.isEmpty ? pillWidth : round
             b.append(.init(id: id, rect: CGRect(x: x, y: y, width: w, height: h), label: label, wide: true, icon: icon.isEmpty ? nil : icon, style: icon.isEmpty ? .pill : .round, accent: id == "play" || id == "exit"))
-            x += w + 0.01
+            x += w + gap
         }
         if isVideo {
-            // The seek bar: ten steps.
-            for i in 0..<10 {
-                b.append(.init(id: "seek:\(i)", rect: CGRect(x: 0.02 + CGFloat(i) * 0.096, y: 0.55, width: 0.09, height: 0.4), label: "", wide: true))
-            }
+            // The scrub bar: one control the gaze lands on; the view draws its track and thumb.
+            b.append(.init(id: "seekbar", rect: CGRect(x: margin, y: 0.55, width: 1 - 2 * margin, height: 0.4), label: "", wide: true, style: .label))
         } else if let current, let i = items0(current) {
             // The filmstrip: the pictures round this one in the album, pressable.
             let around = max(0, i - 3)...min(self.items.count - 1, i + 3)
@@ -408,7 +412,7 @@ final class MediaApp {
                 b.append(.init(id: "strip:\(j)", rect: CGRect(x: 0.02 + CGFloat(slot) * w, y: 0.52, width: w - 0.008, height: 0.45), label: "", wide: true, accent: j == i))
             }
         }
-        controls.set(buttons: b, version: "controls|\(format.label)|\(player.isPlaying)|\(Int(player.time))|\(Int(player.duration))|\(player.isLoading)|\(picture == nil && eyes == nil)")
+        controls.set(buttons: b, version: "controls|\(format.label)|\(player.isPlaying)|\(Int(player.time * 4))|\(Int(player.duration))|\(player.isLoading)|\(picture == nil && eyes == nil)")
     }
 
     func press(_ id: String) {
@@ -439,7 +443,7 @@ final class MediaApp {
                 else if userAlbums.indices.contains(i) { openAlbum(userAlbums[i]) }
             }
             else if id.hasPrefix("item:"), let i = Int(id.dropFirst(5)), items.indices.contains(i) { view(items[i]) }
-            else if id.hasPrefix("seek:"), let i = Int(id.dropFirst(5)) { player.seek(fraction: Double(i) / 10) }
+            else if id == "seekbar" { }   // handled by scrub(uv:pinchHeld:select:) with the gaze's place
             else if id.hasPrefix("strip:"), let i = Int(id.dropFirst(6)), items.indices.contains(i) { view(items[i]) }
             else if id.hasPrefix("fmt:"), let i = Int(id.dropFirst(4)), Self.formats.indices.contains(i) {
                 formatIndex = i
@@ -499,6 +503,7 @@ final class MediaApp {
     }
 
     private func items0(_ item: MediaItem) -> Int? { items.firstIndex { $0.id == item.id } }
+    static func clock(_ seconds: Double) -> String { let s = Int(seconds.isFinite ? seconds : 0); return s >= 3600 ? String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60) : String(format: "%d:%02d", s / 60, s % 60) }
 
     private func step(_ delta: Int) {
         guard let current, let i = items.firstIndex(where: { $0.id == current.id }) else { return }
@@ -509,6 +514,27 @@ final class MediaApp {
     /// Opens an item in the viewer with the format its kind implies.
     /// A select while the controls are hidden shows them again.
     func showControls() { controlsHidden = false }
+    /// The window out of sight (minimized or closed): nothing plays on (the owner heard a video
+    /// carry on after closing it, 2026-11-07).
+    func pausePlayback() { if player.isPlaying { player.pause(); log("[Media] Paused: the window is away") } }
+    var scrubFraction: Double? { current?.isVideo == true && player.duration > 0 ? player.time / player.duration : nil }
+
+    /// A pinch held on the scrub bar drags its thumb; a select on it jumps there.
+    private var scrubbing = false
+    func scrub(uv: SIMD2<Float>?, pinchHeld: Bool, select: Bool) -> Bool {
+        guard screen == .viewing, !formatMenu, let uv, controls.buttons.contains(where: { $0.id == "seekbar" && $0.rect.contains(CGPoint(x: Double(uv.x), y: Double(uv.y))) }) else {
+            scrubbing = false
+            return false
+        }
+        let fraction = Double(min(max((uv.x - 0.03) / 0.94, 0), 1))
+        if pinchHeld || select {
+            scrubbing = true
+            player.seek(fraction: fraction)
+            return true
+        }
+        scrubbing = false
+        return false
+    }
 
     func view(_ item: MediaItem) {
         player.close()
@@ -611,7 +637,8 @@ final class MediaApp {
             }
             loadStripThumbnails()
             let loading = current.map { $0.isVideo ? player.isLoading : (picture == nil && eyes == nil) } ?? false
-            controls.render(FilmstripView(size: CGSize(width: 1600, height: 260), buttons: controls.buttons, hovered: controls.hovered, strip: strip, loading: loading))
+            controls.render(FilmstripView(size: CGSize(width: 1600, height: 260), buttons: controls.buttons, hovered: controls.hovered, strip: strip, loading: loading,
+                                          scrub: scrubFraction, timeText: scrubFraction.map { _ in Self.clock(player.time) + "  /  " + Self.clock(player.duration) }))
         } else {
             var cells: [GridCell] = []
             switch screen {
@@ -661,6 +688,8 @@ struct FilmstripView: View {
     let hovered: String?
     let strip: [(String, UIImage?)]
     var loading = false
+    var scrub: Double? = nil
+    var timeText: String? = nil
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -685,7 +714,21 @@ struct FilmstripView: View {
                         .position(x: r.midX, y: r.midY)
                 }
             }
-            ButtonsView(size: size, buttons: buttons.filter { b in !strip.contains { $0.0 == b.id && $0.1 != nil } }, hovered: hovered, title: nil, titleHighlight: false, transparent: true)
+            if let scrub, let bar = buttons.first(where: { $0.id == "seekbar" }) {
+                // The scrub bar: a track, the played part lit, a round thumb, the times under it.
+                let r = CGRect(x: bar.rect.minX * size.width, y: bar.rect.minY * size.height, width: bar.rect.width * size.width, height: bar.rect.height * size.height)
+                let trackY = r.minY + r.height * 0.38
+                let hot = hovered == "seekbar"
+                Capsule().fill(Color.white.opacity(0.18)).frame(width: r.width, height: 14).position(x: r.midX, y: trackY)
+                Capsule().fill(hot ? PanelStyle.pink : PanelStyle.accent).frame(width: max(14, r.width * scrub), height: 14).position(x: r.minX + max(14, r.width * scrub) / 2, y: trackY)
+                Circle().fill(Color.white).frame(width: hot ? 54 : 44, height: hot ? 54 : 44).shadow(color: .black.opacity(0.4), radius: 8)
+                    .position(x: r.minX + r.width * scrub, y: trackY)
+                if let timeText {
+                    Text(timeText).font(.system(size: 40, weight: .medium, design: .rounded).monospacedDigit()).foregroundStyle(PanelStyle.dim)
+                        .position(x: r.midX, y: r.minY + r.height * 0.8)
+                }
+            }
+            ButtonsView(size: size, buttons: buttons.filter { b in b.id != "seekbar" && !strip.contains { $0.0 == b.id && $0.1 != nil } }, hovered: hovered, title: nil, titleHighlight: false, transparent: true)
         }
     }
 }

@@ -873,8 +873,9 @@ final class Renderer {
         if tap != 0 {
             tapRequests.value = 0
             if tap == 1 {
-                // A double tap on the viewer ends a WebXR session: distinct from any pinch.
+                // A double tap on the viewer ends a WebXR session, or the coaster: distinct from any pinch.
                 if browser?.isImmersive == true { browser?.endSession(); log("[WebXR] Session ended by the viewer's double tap") }
+                if games?.current is GridRide { games?.press("stop"); log("[Games] Coaster stopped by the viewer's double tap") }
                 doubleTapPending = true
                 doubleTapTarget = browser?.window.gaze(from: pointerHead)?.uv
             } else {
@@ -890,7 +891,8 @@ final class Renderer {
         // The windows: title bars, drags, sizes; the app panes follow their windows.
         var pinchHeld = tracked.contains { $0.pinched }
         if fakeHand?.pinched == true { pinchHeld = true }
-        if let windows, !lockedNow {
+        let ridingNow = games?.current is GridRide
+        if let windows, !lockedNow, !ridingNow {
             let result = windows.frame(head: pointerHead, select: select, pinchHeld: pinchHeld, time: t2)
             if result.consumed { select = false }
             for w in windows.visible {
@@ -920,7 +922,9 @@ final class Renderer {
                 case .home:
                     if let home { home.panel.pane = w.pane }
                 }
-                if let t = w.titleBar.texture { toolbarQuads.append((t, 8 + windows.visible.firstIndex { $0 === w }!)) }
+                // A media viewer with its controls hidden hides its bar too.
+                let barHidden = (w.kind == .media || w.kind == .files) && (media?.controlsHidden ?? false) && media?.screen == .viewing
+                if !barHidden, let t = w.titleBar.texture { toolbarQuads.append((t, 8 + windows.visible.firstIndex { $0 === w }!)) }
             }
             // The home menu, the settings and music windows: panels with buttons.
             let origin = pointerOrigin
@@ -990,8 +994,9 @@ final class Renderer {
             if (games.current != nil) != gameWasRunning {
                 gameWasRunning = games.current != nil
                 if gameWasRunning {
-                    // Painting in the air needs the head's position: 6DoF while it runs.
-                    if games.current is PaintGame, settings.degreesOfFreedom == 3 { dofBeforeGame = 3; settings.degreesOfFreedom = 6; log("[Games] 6DoF for painting") }
+                    // Hands and a body in the room need the head's position: 6DoF while a game runs
+                    // (the coaster is the one that does without).
+                    if !(games.current is GridRide), settings.degreesOfFreedom == 3 { dofBeforeGame = 3; settings.degreesOfFreedom = 6; log("[Games] 6DoF for the game") }
                     windows?.minimize(.games)
                     if games.hasControls { let w = windows?.open(.gameControls, head: headInWorld, aspect: 1600.0 / 300.0, width: 1.4); w?.pane.centre.y -= 0.35 }
                 } else {
@@ -1000,7 +1005,7 @@ final class Renderer {
                     if let before = dofBeforeGame { settings.degreesOfFreedom = before; dofBeforeGame = nil }
                 }
             }
-            if windows?.window(.gameControls)?.minimized == false {
+            if windows?.window(.gameControls)?.minimized == false, !ridingNow {
                 let hit = games.controlsPanel.pane.hit(origin: origin, direction: forward)
                 _ = games.controlsPanel.hover(hit?.uv)
                 if select, hit != nil, let id = games.controlsPanel.hovered { games.press(id); select = false; gameSelect = false }
@@ -1030,7 +1035,7 @@ final class Renderer {
         var quads: [(MTLBuffer?, MTLTexture, SIMD4<Float>, Int)] = []
         // The dock: hidden while the keyboard hangs where it would be.
         // The dock and its Apps button at the feet: neither during a WebXR session or 360 playback.
-        if let toolbar, !(browser?.isImmersive ?? false), !lockedNow, !(browser?.keyboardShown ?? false), !(media?.isProjected ?? false) {
+        if let toolbar, !(browser?.isImmersive ?? false), !lockedNow, !ridingNow, !(browser?.keyboardShown ?? false), !(media?.isProjected ?? false) {
             let origin = pointerOrigin
             let forward = pointerDirection
             toolbar.tick(time: t2)
@@ -1096,6 +1101,7 @@ final class Renderer {
         }
         var mediaTextures: (picture: MTLTexture?, eyes: MTLTexture?) = (nil, nil)
         var mediaUniforms = MediaUniforms()
+        if let media, windows?.visible.contains(where: { $0.kind == .media || $0.kind == .files }) == false { media.pausePlayback() }
         if let media, windows?.visible.contains(where: { $0.kind == .media || $0.kind == .files }) == true, !lockedNow {
             let origin = pointerOrigin
             let forward = pointerDirection
@@ -1103,7 +1109,10 @@ final class Renderer {
             var hit = media.controlsHidden && media.screen == .viewing ? nil : panel.pane.hit(origin: origin, direction: forward)
             _ = panel.hover(hit?.uv)
             media.gaze(uv: hit?.uv, pinchHeld: pinchHeld, time: t2)
+            if media.scrub(uv: hit?.uv, pinchHeld: pinchHeld, select: select) { select = false }
             if media.controlsHidden, media.screen == .viewing, select { media.showControls(); select = false }
+            windows?.window(.media)?.barHidden = media.controlsHidden && media.screen == .viewing
+            windows?.window(.files)?.barHidden = media.controlsHidden && media.screen == .viewing
             // The keyboard under the Files grid types the search.
             let filesKeys = media.isFiles && media.screen == .items
             if filesKeys, let keyboard {
