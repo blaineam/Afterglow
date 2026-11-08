@@ -23,7 +23,6 @@
 		236DFF0648D3937CF4BA8D85 /* WindowManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A831ACB0D368CC926A366F /* WindowManager.swift */; };
 		2DD06DB7B09858DE25C7D2C7 /* starship-cabin.jpg in Resources */ = {isa = PBXBuildFile; fileRef = DD058E5F1F960588FAF96C98 /* starship-cabin.jpg */; };
 		347582F364588BCF278B1C27 /* AppLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E2E34385880FD6215E765AF /* AppLock.swift */; };
-		348FA203915A0E073B48490F /* afterglow-webxr.js in Resources */ = {isa = PBXBuildFile; fileRef = 1AA30D699725082AF000DBAB /* afterglow-webxr.js */; };
 		3720F035D5F83000098B192C /* baroque-church.jpg in Resources */ = {isa = PBXBuildFile; fileRef = C24522852A68EEFCA5D68816 /* baroque-church.jpg */; };
 		394A0218C3895C0013CC40EC /* WatchReceiver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B577727CAF3A49AE4D41D83 /* WatchReceiver.swift */; };
 		3A9F4891C6C4D686BE8F5017 /* country-kitchen.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 8F16A4AEA3051438B872ACAF /* country-kitchen.jpg */; };
@@ -37,6 +36,7 @@
 		5FADCF4942F922DF8FD0C5C4 /* HandOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7854AEB3ED92FB2970560611 /* HandOverlay.swift */; };
 		63D96A7059EA72FC002BF7E8 /* GameHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5703D6F0702885C2F804B15B /* GameHost.swift */; };
 		660CAFA8E43B59C599427893 /* mountain-temple.jpg in Resources */ = {isa = PBXBuildFile; fileRef = C77DD93DBA27C98BC20F3841 /* mountain-temple.jpg */; };
+		6657C0197BF45E835AA34984 /* afterglow-webxr.js in Resources */ = {isa = PBXBuildFile; fileRef = BB5BD4CD52BF44A8460DA506 /* afterglow-webxr.js */; };
 		733020827646768CFE810FF2 /* treehouse-night.jpg in Resources */ = {isa = PBXBuildFile; fileRef = C92416996DB5208F771C8CBB /* treehouse-night.jpg */; };
 		75ADA160809141FED2BF671A /* ExternalDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F1932938E01769D5BD70302 /* ExternalDisplay.swift */; };
 		75BE77AC84FBAB02AE1C6FB8 /* BrowserWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 407B733E5D15B248CD512A98 /* BrowserWindow.swift */; };
@@ -57,7 +57,6 @@
 		93D6C51CE90E1CC4F24D1091 /* Controllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = E35E9E8510A0D1E59C07510F /* Controllers.swift */; };
 		97305D4E9B52CAA27CC13956 /* Browser.swift in Sources */ = {isa = PBXBuildFile; fileRef = D47EDB0FC1E0D6EF4E3D1AE0 /* Browser.swift */; };
 		998F8E4E9A185C881C5B74DC /* SessionLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97890D6EB3536CA74C71E09 /* SessionLog.swift */; };
-		A60D870018233AC8AD7E288C /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = ECB85CC898B2F8A77E2B54A9 /* index.html */; };
 		ADFAB9F747817AFE897DE790 /* MediaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57EB9465CB5A756B4F53BEC0 /* MediaApp.swift */; };
 		AED9AC2DB5CA264371AF1869 /* HandGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */; };
 		B11BEA3C83C4B14B3E457065 /* LensDistortion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4402EC68CCA81B671B468EE8 /* LensDistortion.swift */; };
@@ -142,7 +141,6 @@
 		135AAF215BBE3C9874DB7911 /* HandTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandTracker.swift; sourceTree = "<group>"; };
 		1558F78E920E5997115FF985 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		16BBDD1B2CF15D129C4B076F /* clear-night.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "clear-night.jpg"; sourceTree = "<group>"; };
-		1AA30D699725082AF000DBAB /* afterglow-webxr.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "afterglow-webxr.js"; sourceTree = "<group>"; };
 		1E2E34385880FD6215E765AF /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
 		1F1932938E01769D5BD70302 /* ExternalDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalDisplay.swift; sourceTree = "<group>"; };
 		229FF7FB92EB617B3FAE073F /* PlacesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacesApp.swift; sourceTree = "<group>"; };
@@ -194,6 +192,7 @@
 		B81BBB54C49B3845F94E2832 /* Toolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toolbar.swift; sourceTree = "<group>"; };
 		B8B3564A698DE6CBC60A74CF /* VideoPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayer.swift; sourceTree = "<group>"; };
 		BB1258CEE15BE1B0F0A68046 /* ViewerParams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerParams.swift; sourceTree = "<group>"; };
+		BB5BD4CD52BF44A8460DA506 /* afterglow-webxr.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "afterglow-webxr.js"; sourceTree = "<group>"; };
 		BD814411B9CA51DA02EA8186 /* japanese-garden-autumn.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "japanese-garden-autumn.jpg"; sourceTree = "<group>"; };
 		BE47F3737D0629A0F102BD8C /* sequoia-ferns.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "sequoia-ferns.jpg"; sourceTree = "<group>"; };
 		BF67DFEAB12B2149E6F36069 /* BrowserStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserStore.swift; sourceTree = "<group>"; };
@@ -218,7 +217,6 @@
 		E35E9E8510A0D1E59C07510F /* Controllers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Controllers.swift; sourceTree = "<group>"; };
 		E430EDBD572B0C5A3B147DBA /* evening-meadow.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "evening-meadow.jpg"; sourceTree = "<group>"; };
 		E6E228A4BDCA0F8FA306C667 /* UltraWideProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UltraWideProbe.swift; sourceTree = "<group>"; };
-		ECB85CC898B2F8A77E2B54A9 /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
 		F03EB15525A4EC358532B829 /* UltraWideController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UltraWideController.swift; sourceTree = "<group>"; };
 		F3791EB1A750663D58286739 /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
 		F383C9716F8214D0A4E65E7D /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
@@ -227,15 +225,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		0565E438A2808EBA81B29229 /* webxr */ = {
-			isa = PBXGroup;
-			children = (
-				1AA30D699725082AF000DBAB /* afterglow-webxr.js */,
-				ECB85CC898B2F8A77E2B54A9 /* index.html */,
-			);
-			path = webxr;
-			sourceTree = "<group>";
-		};
 		1AFE8A8B31701757B0E378F8 /* AfterglowTests */ = {
 			isa = PBXGroup;
 			children = (
@@ -263,7 +252,6 @@
 			isa = PBXGroup;
 			children = (
 				9BFC2DC2C15F790660B215F4 /* Afterglow */,
-				F95164F99F7AEB622525CE32 /* Afterglow */,
 				1AFE8A8B31701757B0E378F8 /* AfterglowTests */,
 				E14A0E1DFFDF7DA488C6205C /* AfterglowWatch */,
 				B9BDD00DF717B7759B21B2AC /* Products */,
@@ -286,6 +274,7 @@
 			isa = PBXGroup;
 			children = (
 				C4592C811D59569C81790593 /* afterglow-helper.js */,
+				BB5BD4CD52BF44A8460DA506 /* afterglow-webxr.js */,
 				59B24A5435D6E0888F87049B /* start.html */,
 			);
 			path = web;
@@ -410,22 +399,6 @@
 			path = Games;
 			sourceTree = "<group>";
 		};
-		C91B7EF79664E589DD136246 /* StreamingAssets */ = {
-			isa = PBXGroup;
-			children = (
-				0565E438A2808EBA81B29229 /* webxr */,
-			);
-			path = StreamingAssets;
-			sourceTree = "<group>";
-		};
-		C9CEDFE8FCD11D10F84C6D09 /* Assets */ = {
-			isa = PBXGroup;
-			children = (
-				C91B7EF79664E589DD136246 /* StreamingAssets */,
-			);
-			path = Assets;
-			sourceTree = "<group>";
-		};
 		D089D7A15A6C2FEA7F5D1C46 /* Media */ = {
 			isa = PBXGroup;
 			children = (
@@ -486,15 +459,6 @@
 				67A818255D526B59948B967F /* ShaderTypes.h */,
 			);
 			path = Render;
-			sourceTree = "<group>";
-		};
-		F95164F99F7AEB622525CE32 /* Afterglow */ = {
-			isa = PBXGroup;
-			children = (
-				C9CEDFE8FCD11D10F84C6D09 /* Assets */,
-			);
-			name = Afterglow;
-			path = ..;
 			sourceTree = "<group>";
 		};
 		FEF5E09E6BBB32ED16C89585 /* Browser */ = {
@@ -619,7 +583,7 @@
 				D2DF1EF2F8AE43E483DE4DA9 /* Assets.xcassets in Resources */,
 				5EEE72D16F54283324E12570 /* Places in Resources */,
 				85FC0F60F815AACB5EB653D6 /* afterglow-helper.js in Resources */,
-				348FA203915A0E073B48490F /* afterglow-webxr.js in Resources */,
+				6657C0197BF45E835AA34984 /* afterglow-webxr.js in Resources */,
 				3720F035D5F83000098B192C /* baroque-church.jpg in Resources */,
 				1D902A725EF3300FF36A28A2 /* beach-bungalows-sunset.jpg in Resources */,
 				21ED85F6B9E48ADF702FFA39 /* beach-cottage-night.jpg in Resources */,
@@ -630,7 +594,6 @@
 				81CE956448CD4D2CC6F3861F /* fjord-village.jpg in Resources */,
 				B446BA54C32BA333B6EBFAC9 /* forest-cabin-night.jpg in Resources */,
 				52505BE6706917719D30E6FE /* grand-library.jpg in Resources */,
-				A60D870018233AC8AD7E288C /* index.html in Resources */,
 				0EAFCD29ABB6F398F2D5A100 /* japanese-garden-autumn.jpg in Resources */,
 				00B2DB7C887E41AEAF9AB2C5 /* japanese-house-garden.jpg in Resources */,
 				E521ACBFFD1AD70FD1F63F92 /* mountain-lake-dawn.jpg in Resources */,

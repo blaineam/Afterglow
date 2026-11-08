@@ -1,5 +1,9 @@
 # Known issues
 
+> The repository was restructured on 2026-11-07: the native app is in `ios-native/`, the earlier
+> Unity app whole in `unity/`. Entries below about the Unity app refer to that folder.
+
+
 ## Both platforms
 
 - **The browser's two crosshairs disagree.** The gaze reticle (the ring the app draws at the

@@ -1,5 +1,9 @@
 # Roadmap: from a demo lobby to a product
 
+> The repository was restructured on 2026-11-07: the native app is in `ios-native/`, the earlier
+> Unity app whole in `unity/`. Entries below about the Unity app refer to that folder.
+
+
 Fork of [brenpoly/CardboardXR](https://github.com/brenpoly/CardboardXR) (upstream `v1.0.0`,
 Apache-2.0), built for the **iPhone 18 Pro Max** in brenpoly's printed viewer. Upstream is a
 very good prototype: 6DoF, passthrough, camera-tracked hands and a handful of demos in a Cardboard
@@ -42,7 +46,7 @@ Everything else sits on this, and three of the newest features have never run on
   real panorama, library videos, the passthrough's shape and fill, the browser's taps and tabs, an
   immersive WebXR session. Each gets a session-log line that proves it, and a
   KNOWN_ISSUES entry for what it does badly. The current build was installed on the iPhone 18 Pro
-  Max on 2026-11-05 but not launched: the phone was locked (`zsh Tools/ios_launch.sh` once it
+  Max on 2026-11-05 but not launched: the phone was locked (`zsh unity/Tools/ios_launch.sh` once it
   isn't).
 - **Default optics** — done: `ViewerParams.AfterglowViewer` (Cardboard v2 lenses centred on the
   phone's width, which is where brenpoly's carriage puts them: bores at x = 0.0 in the STEP,
@@ -349,7 +353,7 @@ generator the owner likes is chosen.
 |---|---|---|---|
 | **Editor, XR Simulation on** (default after `ProjectSetup.Apply`) | 6DoF in a synthetic room, keyboard and mouse | A synthetic camera; planes are found; no hands | Photos: none (not iOS). Video files and the Editor's fallbacks only |
 | **Editor, no provider** | 3DoF: right-drag or the arrows to look, W A S D / Q E to move, R to face forward (`DeskHeadLook`) | None | As above |
-| **iOS Simulator** (`Tools/ios_sim_build_and_run.sh`) | 3DoF: drag or the Mac's arrow keys to look (the Simulator's mouse is a touch), click to tap | None: ARKit does not run in the Simulator | Photos **yes** — `xcrun simctl addmedia booted photo.HEIC`; MV-HEVC decode and WKWebView run; dictation reports unavailable |
+| **iOS Simulator** (`unity/Tools/ios_sim_build_and_run.sh`) | 3DoF: drag or the Mac's arrow keys to look (the Simulator's mouse is a touch), click to tap | None: ARKit does not run in the Simulator | Photos **yes** — `xcrun simctl addmedia booted photo.HEIC`; MV-HEVC decode and WKWebView run; dictation reports unavailable |
 | **Phone** | Everything | Everything | Everything |
 
 `Capabilities.SixDof` is the one question everything asks: whether XR Plug-in Management started

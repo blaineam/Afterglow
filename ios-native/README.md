@@ -87,7 +87,7 @@ steady load the hands add, whether or not a hand is in view, so the default rate
 
 The Unity app's browser, on WebKit directly (`Browser.swift`, `WebTab.swift`, `WebBridge.swift`),
 with the JavaScript shared as it is: the WebXR shim and the start page come from
-`Assets/StreamingAssets/webxr/` (referenced by the project, not copied) and the helper script is a
+`Afterglow/Browser/web/` (the app's own copy since the repository was restructured round it; the Unity app's original is under `unity/`) and the helper script is a
 copy of the plugin's `kHelperSource` (`Browser/web/afterglow-helper.js`). The contract is the
 plugin's: three user scripts at document start (helper, `window.__afterglowConfig`, shim), one
 message handler `afterglow`, and the `window.__afterglow*` calls for pose, hands, hover, click,
@@ -453,7 +453,7 @@ it reaches the camera's edge.
   music keeps playing under the other apps.
 - **Branding**: the bundle id is now `com.wemiller.afterglow`, the same as the Unity app's, so
   installing the native app replaces it on the phone; the icon is the Unity app's
-  (`Assets/_Project/Branding/AppIcon.png`) in an asset catalog; version 2.0.0.
+  (copied from the Unity app's branding into the asset catalog); version 2.0.0.
 
 ## Apple Watch as a controller
 
@@ -486,8 +486,8 @@ keep the iPhone 18 Pro Max free for the runs that matter.
 
 The project is generated from `project.yml` by [xcodegen](https://github.com/yonaskolb/XcodeGen)
 (`brew install xcodegen`); the script regenerates it when the spec is newer. Signing uses the same
-team detection as `Tools/ios_build_and_run.sh`. Bundle id `com.wemiller.afterglow.native`, so it
-installs beside the Unity app rather than over it. Warnings are errors.
+team detection as the Unity app's `unity/Tools/ios_build_and_run.sh`. Bundle id `com.wemiller.afterglow` (since 2026-11-06), so it
+installs over the Unity app, replacing it. Warnings are errors.
 
 ### Launch options
 

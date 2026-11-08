@@ -1,99 +1,34 @@
-# Every push to main and every pull request.
-#
-# "Checks" needs nothing: it parses the scripts, lints the workflows and makes sure the Unity
-# version is the same everywhere. "EditMode tests" needs a Unity licence in the repository's
-# secrets (README.md, "Continuous integration"); without one it is skipped, and says so.
+# The native app: the project is generated from ios-native/project.yml, built for the iOS
+# Simulator with warnings as errors, and its unit tests run there. No signing is needed. The
+# Unity app's workflows live on in unity/ (disabled) with the rest of that project.
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  UNITY_VERSION: 6000.6.0f1
 
 jobs:
-  checks:
-    name: Checks
-    runs-on: ubuntu-latest
+  native:
+    name: Native app (Simulator build and tests)
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
-
-      - name: Install zsh
-        run: sudo apt-get install -y --no-install-recommends zsh
-
+      - name: Install xcodegen
+        run: brew install xcodegen
+      - name: Generate the project
+        working-directory: ios-native
+        run: xcodegen generate
+      - name: Pick a simulator
+        id: sim
+        run: |
+          udid=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k in sorted(d, reverse=True) if "iOS" in k for x in d[k] if "iPhone" in x["name"]))')
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+      - name: Build and test
+        run: |
+          xcodebuild -project ios-native/Afterglow.xcodeproj -scheme Afterglow -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" -derivedDataPath Builds/ci CODE_SIGNING_ALLOWED=NO test | tail -40
       - name: Parse the scripts
         run: |
           for script in Tools/*.sh; do zsh -n "$script"; done
           python3 -m py_compile Tools/*.py
-
-      - name: Lint the workflows
-        run: docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:latest -color
-
-      - name: One Unity version everywhere
-        run: |
-          project=$(sed -n 's/^m_EditorVersion: //p' ProjectSettings/ProjectVersion.txt)
-          echo "ProjectVersion.txt says $project"
-          [ "$project" = "$UNITY_VERSION" ] || { echo "::error::The workflows say $UNITY_VERSION"; exit 1; }
-          stale=$(grep -l "Hub/Editor/" README.md Tools/*.sh | xargs grep -L "Hub/Editor/$project" || true)
-          [ -z "$stale" ] || { echo "::error::Another Unity version in: $stale"; exit 1; }
-
-  license:
-    name: Unity licence present?
-    runs-on: ubuntu-latest
-    outputs:
-      present: ${{ steps.check.outputs.present }}
-    steps:
-      - id: check
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-        run: |
-          if [ -n "$UNITY_LICENSE" ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::No UNITY_LICENSE secret, so the Unity jobs are skipped. README.md, \"Continuous integration\", says how to add one."
-          fi
-
-  tests:
-    name: EditMode tests
-    needs: license
-    if: needs.license.outputs.present == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      checks: write
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/cache@v6
-        with:
-          path: Library
-          key: Library-tests-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
-          restore-keys: Library-tests-
-
-      - uses: game-ci/unity-test-runner@v4
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        with:
-          unityVersion: ${{ env.UNITY_VERSION }}
-          testMode: editmode
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
-          checkName: EditMode test results
-
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: test-results
-          path: artifacts

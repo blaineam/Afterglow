@@ -10,7 +10,7 @@ P=${0:A:h:h}
 SIMULATOR=${SIMULATOR:-iPhone 18 Pro Max}
 OUT=${TMPDIR:-/tmp}/afterglow/fixtures
 UDID=$(xcrun simctl list devices booted | grep -E "^ *$SIMULATOR \(" | grep -oE '[0-9A-F-]{36}' | head -1)
-if [ -z "$UDID" ]; then echo "No booted simulator named $SIMULATOR; Tools/ios_sim_build_and_run.sh boots one"; exit 1; fi
+if [ -z "$UDID" ]; then echo "No booted simulator named $SIMULATOR; Tools/native_build_and_run.sh --sim boots one"; exit 1; fi
 
 mkdir -p $OUT
 python3 $P/Tools/make_fixture_media.py $OUT || exit 1
