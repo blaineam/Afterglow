@@ -299,6 +299,8 @@ foundation at all. The honest picture:
   media grids, and the first real message no longer stops the phone app. Still to do: a real watch.
 - **The store art, 2026-11-08**: header and search result art in all nine languages, the watch shot
   in its Monkr frame, and no mention of price anywhere in the listing.
+- **Languages and QA, 2026-11-08**: the app, watch app, permission prompts, listing, screenshots and
+  web page in nine languages, and Soren's four suites required for a release.
 - **The tree, 2026-11-08**: the Unity app removed (it remains in git history), and the native app
   moved to `app/`.
 - **Recommendation**: do it, in a new repository or an `app/` tree beside this one, with

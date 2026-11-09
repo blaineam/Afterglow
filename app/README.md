@@ -640,6 +640,29 @@ watch presses Select and turns the crown by itself (the Debug-only launch option
 and is still running. From a cold boot nothing arrives for about 2.5 minutes, then everything at
 once. Not tried on a real watch yet: its double tap and Digital Crown are what the test can't press.
 
+## Languages
+
+The app, the watch app, the permission prompts, the listing and the web page are in English, German,
+Spanish, French, Italian, Japanese, Korean, Brazilian Portuguese and Simplified Chinese.
+
+Panels render with `ImageRenderer` and `Text(String)` shows a `String` as it is, so every interface
+string goes through `String(localized:)` where it is written. Internal ids stay plain. The catalogs are
+`Afterglow/Localizable.xcstrings`, `Afterglow/InfoPlist.xcstrings` and
+`AfterglowWatch/Localizable.xcstrings`; `levi translate "Afterglow XR" --surface catalogs` fills them.
+`Browser/web/start.html` keeps its English, and `WebBridge` swaps in the catalog's words and writes the result
+to the caches once a launch. Bundled place names come from their file names, added to the catalog by
+hand. The lock's spoken digits understand all nine languages.
+
+A game's title starts with its emoji and a space, because the games menu splits it there.
+
+## QA
+
+`node ../_shared/soren/soren.mjs run Afterglow`, from the folder above, runs the four suites in
+`soren.config.mjs`, and all four are required for a release: `unit`, `l10n` (`Tools/check_l10n.py`:
+catalogs complete, specifiers, tags and emoji kept, no bare label in the source), `languages`
+(`Tools/test_languages.sh`: launches in each language from a bundle holding its strings) and
+`watch-link` (`Tools/test_watch_link.sh`). The dashboard shows the app and its QA results by itself.
+
 ## Build and run
 
 ```sh

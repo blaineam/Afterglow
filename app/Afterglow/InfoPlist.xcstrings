@@ -1,0 +1,301 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSAppleMusicUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow zeigt und steuert, was in Apple Music läuft, sodass du deine Musik direkt im Viewer bedienen kannst."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow shows and controls what Apple Music is playing, so you can run your music from inside the viewer."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow muestra y controla lo que suena en Apple Music para que dirijas tu música desde el visor."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow affiche et contrôle la lecture d’Apple Music, pour que vous puissiez gérer votre musique depuis le visualiseur."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow mostra e controlla ciò che è in riproduzione su Apple Music, così puoi gestire la musica dall'interno del visore."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow は Apple Music の再生中の曲を表示・操作できるため、ビューアの中から音楽を操作できます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow는 Apple Music에서 재생 중인 음악을 표시하고 제어하므로 뷰어 안에서 음악을 조작할 수 있습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Afterglow mostra e controla o que está tocando no Apple Music, para você comandar suas músicas de dentro do visor."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow 可显示并控制 Apple Music 正在播放的内容，让你在查看器内即可掌控音乐。"
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow nutzt die Kamera, um deinem Kopf und deinen Händen zu folgen und den Raum um dich herum zu zeigen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow uses the camera to follow your head and hands, and to show the room around you."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow usa la cámara para seguir tu cabeza y tus manos, y para mostrar la habitación que te rodea."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow utilise la caméra pour suivre votre tête et vos mains, et pour afficher la pièce autour de vous."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow usa la fotocamera per seguire testa e mani e per mostrarti la stanza intorno a te."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow はカメラを使って頭と手の動きを追跡し、周囲の部屋を表示します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow는 카메라를 사용해 머리와 손의 움직임을 추적하고 주변 공간을 보여줍니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Afterglow usa a câmera para acompanhar sua cabeça e suas mãos e para mostrar o ambiente ao seu redor."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow 使用相机追踪你的头部和双手，并显示你周围的房间。"
+          }
+        }
+      }
+    },
+    "NSMicrophoneUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow hört nur zu, während du in den Browser diktierst oder auf dem Sperrbildschirm deinen Code sprichst."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow listens only while you dictate into the browser or say your passcode on the lock screen."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow solo escucha mientras dictas en el navegador o dices tu código en la pantalla de bloqueo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow n’écoute que lorsque vous dictez dans le navigateur ou prononcez votre code sur l’écran de verrouillage."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow ascolta solo mentre detti nel browser o pronunci il codice nella schermata di blocco."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow が音声を聞き取るのは、ブラウザへの音声入力中とロック画面でのパスコード発話中のみです。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow는 브라우저에 받아쓰기를 하거나 잠금 화면에서 암호를 말할 때만 음성을 듣습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Afterglow só escuta enquanto você dita no navegador ou fala seu código na tela de bloqueio."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow 仅在你向浏览器听写或在锁定屏幕上说出密码时才会聆听。"
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow zeigt die Fotos und Videos deiner Mediathek im Viewer: räumliche Fotos in 3D, Panoramen und 360°-Bilder rund um dich herum."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow shows the photos and videos in your library through the viewer: spatial photos in 3D, panoramas and 360 stills all around you."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow muestra las fotos y vídeos de tu fototeca en el visor: fotos espaciales en 3D, y panorámicas y fotos 360 a tu alrededor."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow affiche les photos et vidéos de votre bibliothèque dans le visualiseur : photos spatiales en 3D, panoramas et images à 360° tout autour de vous."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow mostra foto e video della tua libreria nel visore: foto spaziali in 3D, panorami e immagini a 360° tutto intorno a te."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow はライブラリ内の写真やビデオをビューアで表示します。空間写真は 3D で、パノラマや 360 度の静止画は周囲を囲むように表示されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow는 보관함의 사진과 비디오를 뷰어로 보여줍니다. 공간 사진은 3D로, 파노라마와 360 사진은 사용자를 둘러싸듯 표시됩니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Afterglow mostra as fotos e os vídeos da sua biblioteca no visor: fotos espaciais em 3D, panoramas e imagens 360 ao seu redor."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow 通过查看器显示你图库中的照片和视频：空间照片以 3D 呈现，全景照片和 360 度静态照片环绕在你四周。"
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow wandelt deine Sprache in Text für den Browser und deinen Code um. Die Erkennung erfolgt möglichst auf diesem iPhone, und deine Stimme wird nicht gespeichert. Ein gesprochener Code bleibt immer auf diesem iPhone."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow turns what you say into text for the browser and your passcode. Recognition happens on this iPhone where it can, and your voice is not kept. A spoken passcode always stays on this iPhone."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow convierte lo que dices en texto para el navegador y tu código. El reconocimiento se hace en este iPhone siempre que es posible y tu voz no se guarda. Un código dicho en voz alta siempre se queda en este iPhone."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow transforme vos paroles en texte pour le navigateur et votre code. La reconnaissance s’effectue sur cet iPhone si possible, et votre voix n’est pas conservée. Un code prononcé reste toujours sur cet iPhone."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow trasforma in testo ciò che dici per il browser e il codice. Il riconoscimento avviene su questo iPhone quando possibile e la tua voce non viene conservata. Un codice pronunciato resta sempre su questo iPhone."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow は話した内容をブラウザやパスコード用のテキストに変換します。音声認識は可能な限りこの iPhone 上で行われ、音声は保存されません。発話したパスコードは常にこの iPhone から外に出ません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow는 사용자가 말한 내용을 브라우저 및 암호 입력용 텍스트로 변환합니다. 음성 인식은 가능한 경우 이 iPhone에서 처리되며 음성은 저장되지 않습니다. 말로 입력한 암호는 항상 이 iPhone에만 유지됩니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Afterglow transforma o que você fala em texto para o navegador e para seu código. O reconhecimento ocorre neste iPhone sempre que possível, e sua voz não é guardada. Um código falado nunca sai deste iPhone."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afterglow 将你说的话转换为文字，用于浏览器和密码输入。语音识别会尽可能在这台 iPhone 上进行，且不会保留你的语音。说出的密码始终只保留在这台 iPhone 上。"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

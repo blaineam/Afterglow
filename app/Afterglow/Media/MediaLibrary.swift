@@ -67,14 +67,14 @@ final class MediaLibrary {
             guard wanted.contains(collection.assetCollectionSubtype) else { return }
             let count = PHAsset.fetchAssets(in: collection, options: options).count
             if count > 0 {
-                result.append(MediaAlbum(id: collection.localIdentifier, title: collection.localizedTitle ?? "Album", count: count, collection: collection))
+                result.append(MediaAlbum(id: collection.localIdentifier, title: collection.localizedTitle ?? String(localized: "Album"), count: count, collection: collection))
             }
         }
         let user = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: nil)
         user.enumerateObjects { collection, _, _ in
             let count = PHAsset.fetchAssets(in: collection, options: options).count
             if count > 0 {
-                result.append(MediaAlbum(id: collection.localIdentifier, title: collection.localizedTitle ?? "Album", count: count, collection: collection))
+                result.append(MediaAlbum(id: collection.localIdentifier, title: collection.localizedTitle ?? String(localized: "Album"), count: count, collection: collection))
             }
         }
         // 360 pictures and videos have no smart album of their own: a collection found by shape

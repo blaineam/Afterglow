@@ -28,6 +28,7 @@
 		3A9F4891C6C4D686BE8F5017 /* country-kitchen.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 8F16A4AEA3051438B872ACAF /* country-kitchen.jpg */; };
 		3B611AB1D9B01C012F739B97 /* WebBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C758612B9495CD314D59EF61 /* WebBridge.swift */; };
 		3C5D52A1580439FA628A5336 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1558F78E920E5997115FF985 /* ContentView.swift */; };
+		3EED057EC73F471DAD79DE07 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = BA39D35C6F2C71D52E01C46D /* Localizable.xcstrings */; };
 		41D13DAC96C560971D3E2F8C /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE734763626DCDC395851D92 /* CredentialStore.swift */; };
 		44349A8E8C2D2B5B72308FA2 /* FileSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9E0657D69D500D52FC6B5D /* FileSource.swift */; };
 		4752687B06DCC27E53D2DE95 /* LensDistortionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF1B1551816943414CE5C4E /* LensDistortionTests.swift */; };
@@ -62,6 +63,7 @@
 		998F8E4E9A185C881C5B74DC /* SessionLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = D97890D6EB3536CA74C71E09 /* SessionLog.swift */; };
 		9CB61EB8DC68234EE67D85A2 /* HeadSmootherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B231E30F358ACE88A50B67AE /* HeadSmootherTests.swift */; };
 		AA4124763EA8066921050E7A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DB726C448FF24E5BD33CEF68 /* Assets.xcassets */; };
+		AB550E17D32F12616F1B7D09 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 2163DE711B058E29725B2454 /* InfoPlist.xcstrings */; };
 		ADFAB9F747817AFE897DE790 /* MediaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57EB9465CB5A756B4F53BEC0 /* MediaApp.swift */; };
 		AED9AC2DB5CA264371AF1869 /* HandGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A248C3FFD6F9A933F128173 /* HandGeometryTests.swift */; };
 		B11BEA3C83C4B14B3E457065 /* LensDistortion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4402EC68CCA81B671B468EE8 /* LensDistortion.swift */; };
@@ -98,6 +100,7 @@
 		ED5D8F15E38998A94A259426 /* MediaMetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 959D50A1EB5EED9EC6FE9AF1 /* MediaMetadataTests.swift */; };
 		EE2AE67EB8156EB501AED089 /* SettingsWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1BE27FFB5F7BF0CBB5D4956 /* SettingsWindow.swift */; };
 		EED18ACE5F4CD68F6C9AFE06 /* storybook-station.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 8AA45D6DDB4AD16C783197CB /* storybook-station.jpg */; };
+		EF5C731C036E356F9261CD31 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 2123E0E322ADF6FB67541B77 /* Localizable.xcstrings */; };
 		F0433297A0D001C5C4CA77C7 /* HandGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12EF0275572665780B091BD3 /* HandGeometry.swift */; };
 		F36D3CB29CBD862A26231676 /* space-station.jpg in Resources */ = {isa = PBXBuildFile; fileRef = FCC83EA17C676F2D8C04C833 /* space-station.jpg */; };
 		F3B74C3204EEAC6ACF229472 /* storybook-coast.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 409FE7FB8B013D4751674CA7 /* storybook-coast.jpg */; };
@@ -154,6 +157,8 @@
 		1E2E34385880FD6215E765AF /* AppLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLock.swift; sourceTree = "<group>"; };
 		1E5CFC81CF38C246ACC0B0C1 /* MoreGames.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreGames.swift; sourceTree = "<group>"; };
 		1F1932938E01769D5BD70302 /* ExternalDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExternalDisplay.swift; sourceTree = "<group>"; };
+		2123E0E322ADF6FB67541B77 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		2163DE711B058E29725B2454 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		229FF7FB92EB617B3FAE073F /* PlacesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacesApp.swift; sourceTree = "<group>"; };
 		27D58785E652A50828B3FA73 /* ARController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARController.swift; sourceTree = "<group>"; };
 		2934622527C2244ADFA7A160 /* TempoAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TempoAnalyzer.swift; sourceTree = "<group>"; };
@@ -205,6 +210,7 @@
 		B6AC401557A336764D2FF405 /* pink-beach-town.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "pink-beach-town.jpg"; sourceTree = "<group>"; };
 		B81BBB54C49B3845F94E2832 /* Toolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toolbar.swift; sourceTree = "<group>"; };
 		B8B3564A698DE6CBC60A74CF /* VideoPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayer.swift; sourceTree = "<group>"; };
+		BA39D35C6F2C71D52E01C46D /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		BB1258CEE15BE1B0F0A68046 /* ViewerParams.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerParams.swift; sourceTree = "<group>"; };
 		BB5BD4CD52BF44A8460DA506 /* afterglow-webxr.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "afterglow-webxr.js"; sourceTree = "<group>"; };
 		BD814411B9CA51DA02EA8186 /* japanese-garden-autumn.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "japanese-garden-autumn.jpg"; sourceTree = "<group>"; };
@@ -381,6 +387,8 @@
 			children = (
 				B1DF1BAF17D795352DAC505E /* Assets.xcassets */,
 				937E65EAEBF6C26F50ED3B34 /* Info.plist */,
+				2163DE711B058E29725B2454 /* InfoPlist.xcstrings */,
+				2123E0E322ADF6FB67541B77 /* Localizable.xcstrings */,
 				E34AF1523B2C160E1CAD5784 /* Places */,
 				3697417D4E459E87FD52EAC2 /* PrivacyInfo.xcprivacy */,
 				6977E4302D248A13F4C272D6 /* App */,
@@ -452,6 +460,7 @@
 				C733774A6D18BA201F8F99F1 /* AfterglowWatchApp.swift */,
 				DB726C448FF24E5BD33CEF68 /* Assets.xcassets */,
 				AB1DC4E70B80488B9E5CCA30 /* Info.plist */,
+				BA39D35C6F2C71D52E01C46D /* Localizable.xcstrings */,
 			);
 			path = AfterglowWatch;
 			sourceTree = "<group>";
@@ -613,6 +622,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA4124763EA8066921050E7A /* Assets.xcassets in Resources */,
+				3EED057EC73F471DAD79DE07 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -621,6 +631,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				D2DF1EF2F8AE43E483DE4DA9 /* Assets.xcassets in Resources */,
+				AB550E17D32F12616F1B7D09 /* InfoPlist.xcstrings in Resources */,
+				EF5C731C036E356F9261CD31 /* Localizable.xcstrings in Resources */,
 				5EEE72D16F54283324E12570 /* Places in Resources */,
 				C028E40140B5E682ED04B0EE /* PrivacyInfo.xcprivacy in Resources */,
 				85FC0F60F815AACB5EB653D6 /* afterglow-helper.js in Resources */,
@@ -843,6 +855,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
@@ -945,6 +958,7 @@
 				MTL_TREAT_WARNINGS_AS_ERRORS = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;

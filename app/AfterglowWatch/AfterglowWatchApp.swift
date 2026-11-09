@@ -46,10 +46,10 @@ struct WatchView: View {
 @MainActor
 final class WatchLink: NSObject, ObservableObject, WCSessionDelegate {
     static let shared = WatchLink()
-    private static let ready = "Ready: double tap to select"
-    private static let openThePhoneApp = "Open Afterglow on your iPhone"
+    private static let ready = String(localized: "Ready: double tap to select")
+    private static let openThePhoneApp = String(localized: "Open Afterglow on your iPhone")
 
-    @Published var status = "Connecting…"
+    @Published var status = String(localized: "Connecting…")
     private var selects = 0
 
     override init() {
@@ -71,7 +71,7 @@ final class WatchLink: NSObject, ObservableObject, WCSessionDelegate {
     func select() {
         guard send(["action": "select"]) else { return }
         selects += 1
-        status = "Selected \(selects)"
+        status = String(localized: "Selected \(selects)")
     }
 
     func scroll(dy: Double) {
@@ -96,7 +96,7 @@ final class WatchLink: NSObject, ObservableObject, WCSessionDelegate {
         let reachable = session.isReachable
         let active = activationState == .activated
         Task { @MainActor in
-            if !active { self.status = "Connecting…" } else { self.status = reachable ? Self.ready : Self.openThePhoneApp }
+            if !active { self.status = String(localized: "Connecting…") } else { self.status = reachable ? Self.ready : Self.openThePhoneApp }
         }
     }
 

@@ -17,6 +17,15 @@ for shot in through-the-lenses windows place-world photo-360 browser-page games 
     src=$LOGS/gallery/$shot.png
     [ -f "$src" ] || { echo "No $src: run Tools/capture_gallery.sh first" >&2; exit 1; }
     sips -r 90 "$src" --out "$OUT/$(printf %02d $i)-$shot.png" >/dev/null
+    # A language's folder is its whole set in the store: its own run's shot, or the English one for
+    # the games with no words on the screen (blobs, coaster, drive).
+    for pair in de-DE:de es-ES:es fr-FR:fr it:it ja:ja ko:ko pt-BR:pt-BR zh-Hans:zh-Hans; do
+        localized=$LOGS/gallery-${pair#*:}/$shot.png
+        [ -d $LOGS/gallery-${pair#*:} ] || continue
+        mkdir -p $OUT/${pair%%:*}
+        [ -f "$localized" ] || localized=$src
+        sips -r 90 "$localized" --out "$OUT/${pair%%:*}/$(printf %02d $i)-$shot.png" >/dev/null
+    done
 done
 ls $OUT | wc -l
 
@@ -34,6 +43,12 @@ xcrun simctl install $WATCH $DERIVED/Debug-watchsimulator/AfterglowWatch.app
 SIMCTL_CHILD_AFTERGLOW_WATCH_SHOT=1 xcrun simctl launch --terminate-running-process $WATCH com.wemiller.afterglow.watchkitapp >/dev/null
 sleep 6
 xcrun simctl io $WATCH screenshot $WATCHDIR/01-select.png >/dev/null 2>&1
+for pair in de-DE:de es-ES:es fr-FR:fr it:it ja:ja ko:ko pt-BR:pt-BR zh-Hans:zh-Hans; do
+    mkdir -p $WATCHDIR/${pair%%:*}
+    SIMCTL_CHILD_AFTERGLOW_WATCH_SHOT=1 xcrun simctl launch --terminate-running-process $WATCH com.wemiller.afterglow.watchkitapp -AppleLanguages "(${pair#*:})" -AppleLocale "${pair#*:}" >/dev/null
+    sleep 5
+    xcrun simctl io $WATCH screenshot $WATCHDIR/${pair%%:*}/01-select.png >/dev/null 2>&1
+done
 xcrun simctl shutdown $WATCH
 
 python3 $P/Tools/make_store_monkr.py

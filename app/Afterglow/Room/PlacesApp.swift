@@ -14,7 +14,7 @@ final class PlacesApp {
         case place(Int)     // an EnvironmentKind other than synthwave
         case libraryPhoto(String)
     }
-    static let places: [(Int, String)] = [(1, "🌲 Forest"), (2, "🏜 Desert"), (3, "🏖 Beach"), (4, "🏛 Ruins"), (5, "🌆 City"), (6, "🌕 Moon"), (7, "🔴 Mars")]
+    static let places: [(Int, String)] = [(1, String(localized: "🌲 Forest")), (2, String(localized: "🏜 Desert")), (3, String(localized: "🏖 Beach")), (4, String(localized: "🏛 Ruins")), (5, String(localized: "🌆 City")), (6, String(localized: "🌕 Moon")), (7, String(localized: "🔴 Mars"))]
     private(set) var night = false
     let panel: ScenePanel
     private(set) var choice = Choice.synthwave
@@ -101,7 +101,7 @@ final class PlacesApp {
         // The photospheres shipped in the app come first, then the user's own.
         var found: [URL] = (Bundle.main.urls(forResourcesWithExtension: "jpg", subdirectory: "Places") ?? []).sorted { $0.lastPathComponent < $1.lastPathComponent }
         let environments = SkyboxGenerator.environmentsFolder
-        let envFolder = FileSource.Folder(id: "environments", name: "Environments", url: environments, bookmark: nil)
+        let envFolder = FileSource.Folder(id: "environments", name: String(localized: "Environments"), url: environments, bookmark: nil)
         for folder in [envFolder] + files.folders {
             let items = await files.items(in: folder)
             found += items.filter { $0.kind == .photo360 || $0.kind == .panorama }.compactMap(\.fileURL)
@@ -134,10 +134,10 @@ final class PlacesApp {
 
     private func layout() {
         var b: [ScenePanel.Button] = []
-        b.append(.init(id: "synth", rect: CGRect(x: 0.03, y: 0.04, width: 0.22, height: 0.12), label: "Synthwave", wide: true, icon: "sun.horizon.fill", style: .pill, accent: choice == .synthwave))
-        b.append(.init(id: "room", rect: CGRect(x: 0.27, y: 0.04, width: 0.22, height: 0.12), label: "Your room", wide: true, icon: "eye.fill", style: .pill, accent: choice == .room))
-        b.append(.init(id: "scan", rect: CGRect(x: 0.51, y: 0.04, width: 0.22, height: 0.12), label: "Scan room", wide: true, icon: "viewfinder", style: .pill))
-        b.append(.init(id: "night", rect: CGRect(x: 0.75, y: 0.04, width: 0.22, height: 0.12), label: night ? "Night" : "Day", wide: true, icon: night ? "moon.stars.fill" : "sun.max.fill", style: .pill, accent: night))
+        b.append(.init(id: "synth", rect: CGRect(x: 0.03, y: 0.04, width: 0.22, height: 0.12), label: String(localized: "Synthwave"), wide: true, icon: "sun.horizon.fill", style: .pill, accent: choice == .synthwave))
+        b.append(.init(id: "room", rect: CGRect(x: 0.27, y: 0.04, width: 0.22, height: 0.12), label: String(localized: "Your room"), wide: true, icon: "eye.fill", style: .pill, accent: choice == .room))
+        b.append(.init(id: "scan", rect: CGRect(x: 0.51, y: 0.04, width: 0.22, height: 0.12), label: String(localized: "Scan room"), wide: true, icon: "viewfinder", style: .pill))
+        b.append(.init(id: "night", rect: CGRect(x: 0.75, y: 0.04, width: 0.22, height: 0.12), label: night ? String(localized: "Night") : String(localized: "Day"), wide: true, icon: night ? "moon.stars.fill" : "sun.max.fill", style: .pill, accent: night))
         // The 360 pictures as picture tiles, eight a page, with the page arrows.
         let all = tiles
         let shown = all.dropFirst(page * Self.perPage).prefix(Self.perPage)
@@ -147,10 +147,10 @@ final class PlacesApp {
                            label: tile.label, wide: true, style: .tile, accent: tile.on))
         }
         let pages = max(1, (all.count + Self.perPage - 1) / Self.perPage)
-        b.append(.init(id: "prevpage", rect: CGRect(x: 0.03, y: 0.885, width: 0.1, height: 0.1), label: "Previous", icon: "chevron.left", style: .round))
-        b.append(.init(id: "pagelabel", rect: CGRect(x: 0.15, y: 0.885, width: 0.3, height: 0.1), label: "\(page + 1) of \(pages)", wide: true, style: .label))
-        b.append(.init(id: "nextpage", rect: CGRect(x: 0.46, y: 0.885, width: 0.1, height: 0.1), label: "Next", icon: "chevron.right", style: .round))
-        b.append(.init(id: "rescan", rect: CGRect(x: 0.75, y: 0.885, width: 0.22, height: 0.1), label: "Rescan", wide: true, icon: "arrow.clockwise", style: .pill))
+        b.append(.init(id: "prevpage", rect: CGRect(x: 0.03, y: 0.885, width: 0.1, height: 0.1), label: String(localized: "Previous"), icon: "chevron.left", style: .round))
+        b.append(.init(id: "pagelabel", rect: CGRect(x: 0.15, y: 0.885, width: 0.3, height: 0.1), label: String(localized: "\(page + 1) of \(pages)"), wide: true, style: .label))
+        b.append(.init(id: "nextpage", rect: CGRect(x: 0.46, y: 0.885, width: 0.1, height: 0.1), label: String(localized: "Next"), icon: "chevron.right", style: .round))
+        b.append(.init(id: "rescan", rect: CGRect(x: 0.75, y: 0.885, width: 0.22, height: 0.1), label: String(localized: "Rescan"), wide: true, icon: "arrow.clockwise", style: .pill))
         panel.set(buttons: b, version: "places|\(choice)|\(night)|\(panoramas.count)|\(libraryItems.count)|\(page)|\(thumbnails.count)")
     }
 
@@ -164,7 +164,8 @@ final class PlacesApp {
             let id = "pano:" + url.path
             var on = false
             if case .panorama(let u) = choice, u.path == url.path { on = true }
-            let name = url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "-", with: " ").capitalized
+            // A bundled place's name is in the catalog; a place of the wearer's own passes through as it is.
+            let name = Bundle.main.localizedString(forKey: url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "-", with: " ").capitalized, value: nil, table: nil)
             t.append(Tile(id: id, label: name, on: on, image: thumbnails[id]))
         }
         for item in libraryItems {
@@ -268,7 +269,7 @@ final class PlacesApp {
     func generate(prompt: String) {
         guard !generating, !prompt.isEmpty else { return }
         generating = true
-        generatorStatus = "Asking…"
+        generatorStatus = String(localized: "Asking…")
         layout()
         Task { @MainActor [weak self] in
             guard let self else { return }

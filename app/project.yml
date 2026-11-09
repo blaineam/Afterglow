@@ -4,6 +4,7 @@
 name: Afterglow
 options:
   bundleIdPrefix: com.wemiller
+  developmentLanguage: en
   deploymentTarget:
     iOS: "26.0"
     watchOS: "11.0"
@@ -14,6 +15,7 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_EMIT_LOC_STRINGS: YES
     # Warnings are errors here, as in the Unity app's C#.
     SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
     GCC_TREAT_WARNINGS_AS_ERRORS: YES

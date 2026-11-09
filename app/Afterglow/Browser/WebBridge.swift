@@ -50,7 +50,32 @@ enum WebBridge {
     }
 
     /// The native app's own start page, else the one shared with the Unity app.
-    static var startPage: URL? { Bundle.main.url(forResource: "start", withExtension: "html") ?? Bundle.main.url(forResource: "index", withExtension: "html") }
+    static var startPage: URL? { localizedStartPage }
+
+    /// The start page in the wearer's language: the bundled page's English swapped for the catalog's,
+    /// and written to the caches once a launch. Falls back on the bundled page.
+    private static let localizedStartPage: URL? = {
+        guard let bundled = Bundle.main.url(forResource: "start", withExtension: "html") ?? Bundle.main.url(forResource: "index", withExtension: "html") else { return nil }
+        guard var html = try? String(contentsOf: bundled, encoding: .utf8) else { return bundled }
+        let strings: [(String, String)] = [
+            ("Pinch the <b>address pill</b> above and type, or pick a page below.", String(localized: "Pinch the <b>address pill</b> above and type, or pick a page below.")),
+            ("<h2>Bookmarks</h2>", "<h2>" + String(localized: "Bookmarks") + "</h2>"),
+            ("Pages you star appear here.", String(localized: "Pages you star appear here.")),
+            ("<h2>History ", "<h2>" + String(localized: "History") + " "),
+            (">Clear</button>", ">" + String(localized: "Clear") + "</button>"),
+            ("Pages you visit appear here.", String(localized: "Pages you visit appear here.")),
+            ("<h2>In the viewer</h2>", "<h2>" + String(localized: "In the viewer") + "</h2>"),
+            ("<b>Pinch</b> to select what the cursor is on; hold it on the window's name to move the window.", String(localized: "<b>Pinch</b> to select what the cursor is on; hold it on the window's name to move the window.")),
+            ("<b>Look at the page's edge</b> to scroll; the keyboard key brings the keys up under the window.", String(localized: "<b>Look at the page's edge</b> to scroll; the keyboard key brings the keys up under the window.")),
+            ("<b>A page's Enter VR</b> takes the screen; a double tap on the viewer, or a three-second press, comes back.", String(localized: "<b>A page's Enter VR</b> takes the screen; a double tap on the viewer, or a three-second press, comes back.")),
+        ]
+        for (english, translated) in strings { html = html.replacingOccurrences(of: english, with: translated) }
+        let rate = String(localized: "Your last WebXR session ran at {fps} frames a second. Pages with heavy scenes run slower, and a hot phone slower still.")
+        html = html.replacingOccurrences(of: "'Your last WebXR session ran at ' + lists.webxrFps + ' frames a second. Pages with heavy scenes run slower, and a hot phone slower still.'",
+                                         with: jsString(rate) + ".replace('{fps}', lists.webxrFps)")
+        let page = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("start-page.html")
+        do { try html.write(to: page, atomically: true, encoding: .utf8); return page } catch { return bundled }
+    }()
     static let startPageAddress = "afterglow://start"
 
     /// A JavaScript string literal, escaped the way the plugin does it.
@@ -105,7 +130,7 @@ enum WebBridge {
 
     /// A page URL shortened for the address bar: the host and a little of the path.
     static func shorten(_ url: String) -> String {
-        if url == startPageAddress || url.hasPrefix("file://") { return "Start" }
+        if url == startPageAddress || url.hasPrefix("file://") { return String(localized: "Start") }
         guard let u = URL(string: url), let host = u.host else { return url }
         let path = u.path == "/" ? "" : u.path
         let shown = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host

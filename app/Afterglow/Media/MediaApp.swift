@@ -87,18 +87,18 @@ final class MediaApp {
     }
 
     static let formats: [Format] = [
-        Format(projection: MediaProjectionFlat, layout: MediaLayoutMono, label: "Flat"),
-        Format(projection: MediaProjectionFlat, layout: MediaLayoutSideBySide, label: "Flat SBS"),
-        Format(projection: MediaProjectionFlat, layout: MediaLayoutTopBottom, label: "Flat TB"),
+        Format(projection: MediaProjectionFlat, layout: MediaLayoutMono, label: String(localized: "Flat")),
+        Format(projection: MediaProjectionFlat, layout: MediaLayoutSideBySide, label: String(localized: "Flat SBS")),
+        Format(projection: MediaProjectionFlat, layout: MediaLayoutTopBottom, label: String(localized: "Flat TB")),
         Format(projection: MediaProjectionEquirect360, layout: MediaLayoutMono, label: "360"),
-        Format(projection: MediaProjectionEquirect360, layout: MediaLayoutSideBySide, label: "360 SBS"),
-        Format(projection: MediaProjectionEquirect360, layout: MediaLayoutTopBottom, label: "360 TB"),
+        Format(projection: MediaProjectionEquirect360, layout: MediaLayoutSideBySide, label: String(localized: "360 SBS")),
+        Format(projection: MediaProjectionEquirect360, layout: MediaLayoutTopBottom, label: String(localized: "360 TB")),
         Format(projection: MediaProjectionEquirect180, layout: MediaLayoutMono, label: "180"),
-        Format(projection: MediaProjectionEquirect180, layout: MediaLayoutSideBySide, label: "180 SBS"),
-        Format(projection: MediaProjectionEquirect180, layout: MediaLayoutTopBottom, label: "180 TB"),
-        Format(projection: MediaProjectionFisheye180, layout: MediaLayoutMono, label: "Fisheye"),
-        Format(projection: MediaProjectionFisheye180, layout: MediaLayoutSideBySide, label: "Fisheye SBS"),
-        Format(projection: MediaProjectionCylinder, layout: MediaLayoutMono, label: "Panorama"),
+        Format(projection: MediaProjectionEquirect180, layout: MediaLayoutSideBySide, label: String(localized: "180 SBS")),
+        Format(projection: MediaProjectionEquirect180, layout: MediaLayoutTopBottom, label: String(localized: "180 TB")),
+        Format(projection: MediaProjectionFisheye180, layout: MediaLayoutMono, label: String(localized: "Fisheye")),
+        Format(projection: MediaProjectionFisheye180, layout: MediaLayoutSideBySide, label: String(localized: "Fisheye SBS")),
+        Format(projection: MediaProjectionCylinder, layout: MediaLayoutMono, label: String(localized: "Panorama")),
     ]
 
     let library: MediaLibrary
@@ -115,7 +115,7 @@ final class MediaApp {
     /// the gaze held at its top or bottom edge, a pinch dragged up or down over it, or a drag
     /// on the phone (the owner's 687 albums could not be browsed eight names a page, 2026-11-07).
     enum Tab: String, CaseIterable { case library, albums, spatial, panoramas, threeSixty, videos
-        var title: String { switch self { case .library: return "Library"; case .albums: return "Albums"; case .spatial: return "Spatial"; case .panoramas: return "Panoramas"; case .threeSixty: return "360°"; case .videos: return "Videos" } }
+        var title: String { switch self { case .library: return String(localized: "Library"); case .albums: return String(localized: "Albums"); case .spatial: return String(localized: "Spatial"); case .panoramas: return String(localized: "Panoramas"); case .threeSixty: return "360°"; case .videos: return String(localized: "Videos") } }
         var icon: String { switch self { case .library: return "photo.on.rectangle"; case .albums: return "rectangle.stack"; case .spatial: return "cube.transparent"; case .panoramas: return "pano"; case .threeSixty: return "globe"; case .videos: return "film" } }
     }
     private(set) var tab = Tab.library
@@ -326,9 +326,9 @@ final class MediaApp {
         var buttons: [ScenePanel.Button] = []
         // The tabs (or, for Files, the folder button), then the grid with its arrows at the side.
         if files != nil {
-            buttons.append(.init(id: "addfolder", rect: CGRect(x: 0.01, y: 0.012, width: 0.24, height: 0.095), label: "Add folder", wide: true, icon: "folder.badge.plus", style: .pill))
+            buttons.append(.init(id: "addfolder", rect: CGRect(x: 0.01, y: 0.012, width: 0.24, height: 0.095), label: String(localized: "Add folder"), wide: true, icon: "folder.badge.plus", style: .pill))
             if screen == .items {
-                buttons.append(.init(id: "back", rect: CGRect(x: 0.27, y: 0.012, width: 0.2, height: 0.095), label: "Folders", wide: true, icon: "chevron.left", style: .pill))
+                buttons.append(.init(id: "back", rect: CGRect(x: 0.27, y: 0.012, width: 0.2, height: 0.095), label: String(localized: "Folders"), wide: true, icon: "chevron.left", style: .pill))
             }
         } else {
             var x: CGFloat = 0.01
@@ -360,8 +360,8 @@ final class MediaApp {
             let id = screen == .albums ? "album:\(first + i)" : "item:\(first + i)"
             buttons.append(.init(id: id, rect: CGRect(x: left + CGFloat(col) * (cellW + gap), y: top + CGFloat(r) * (cellH + gap), width: cellW, height: cellH), label: ""))
         }
-        buttons.append(.init(id: "up", rect: CGRect(x: 0.925, y: top, width: 0.065, height: 0.11), label: "Up", icon: "chevron.up", style: .round))
-        buttons.append(.init(id: "down", rect: CGRect(x: 0.925, y: 0.87, width: 0.065, height: 0.11), label: "Down", icon: "chevron.down", style: .round))
+        buttons.append(.init(id: "up", rect: CGRect(x: 0.925, y: top, width: 0.065, height: 0.11), label: String(localized: "Up"), icon: "chevron.up", style: .round))
+        buttons.append(.init(id: "down", rect: CGRect(x: 0.925, y: 0.87, width: 0.065, height: 0.11), label: String(localized: "Down"), icon: "chevron.down", style: .round))
         grid.set(buttons: buttons, version: "grid\(gridVersion)|\(screen)|\(tab)|\(row)|\(albumRow)|\(thumbnails.count)|\(covers.count)|\(items.count)")
     }
 
@@ -387,16 +387,16 @@ final class MediaApp {
                 let col = i % 4, row = i / 4
                 b.append(.init(id: "fmt:\(i)", rect: CGRect(x: 0.02 + CGFloat(col) * 0.2, y: 0.04 + CGFloat(row) * 0.32, width: 0.19, height: 0.29), label: f.label, wide: true, style: .pill, accent: i == formatIndex))
             }
-            b.append(.init(id: "fmtclose", rect: CGRect(x: 0.84, y: 0.04, width: 0.14, height: 0.29), label: "Done", wide: true, icon: "xmark", style: .pill))
+            b.append(.init(id: "fmtclose", rect: CGRect(x: 0.84, y: 0.04, width: 0.14, height: 0.29), label: String(localized: "Done"), wide: true, icon: "xmark", style: .pill))
             controls.set(buttons: b, version: "fmtmenu|\(formatIndex)")
             return
         }
         let isVideo = current.map { $0.kind == .video || $0.kind == .video180 || $0.kind == .video360 || $0.kind == .spatialVideo } ?? false
-        var items: [(String, String, String, CGFloat)] = [("exit", "Back to the album", "chevron.left", 0.07), ("prevItem", "Previous", "backward.end.fill", 0.07)]
+        var items: [(String, String, String, CGFloat)] = [("exit", String(localized: "Back to the album"), "chevron.left", 0.07), ("prevItem", String(localized: "Previous"), "backward.end.fill", 0.07)]
         if isVideo {
-            items += [("back10", "Back 10 s", "gobackward.10", 0.07), ("play", player.isPlaying ? "Pause" : "Play", player.isPlaying ? "pause.fill" : "play.fill", 0.07), ("fwd10", "Ahead 10 s", "goforward.10", 0.07)]
+            items += [("back10", String(localized: "Back 10 s"), "gobackward.10", 0.07), ("play", player.isPlaying ? String(localized: "Pause") : String(localized: "Play"), player.isPlaying ? "pause.fill" : "play.fill", 0.07), ("fwd10", String(localized: "Ahead 10 s"), "goforward.10", 0.07)]
         }
-        items += [("nextItem", "Next", "forward.end.fill", 0.07), ("format", format.label, "", 0.2), ("recentre", "Recentre", "scope", 0.07), ("yawL", "Turn left", "rotate.left", 0.07), ("yawR", "Turn right", "rotate.right", 0.07), ("hide", "Hide the controls", "eye.slash", 0.07)]
+        items += [("nextItem", String(localized: "Next"), "forward.end.fill", 0.07), ("format", format.label, "", 0.2), ("recentre", String(localized: "Recentre"), "scope", 0.07), ("yawL", String(localized: "Turn left"), "rotate.left", 0.07), ("yawR", String(localized: "Turn right"), "rotate.right", 0.07), ("hide", String(localized: "Hide the controls"), "eye.slash", 0.07)]
         // The round controls spread from the left margin to the right one (0.03 each side), the
         // format pill taking what is left in the middle.
         let margin: CGFloat = 0.03, gap: CGFloat = 0.012, round: CGFloat = 0.07
@@ -556,8 +556,8 @@ final class MediaApp {
         switch item.kind {
         case .photo360, .video360: label = "360"
         case .video180, .photo180: label = "180"
-        case .panorama: label = "Panorama"
-        default: label = "Flat"
+        case .panorama: label = String(localized: "Panorama")
+        default: label = String(localized: "Flat")
         }
         if let layout = item.fileLayout, label != "Panorama" {
             if layout == .sideBySide { label += " SBS" } else if layout == .topBottom { label += " TB" }
@@ -569,11 +569,11 @@ final class MediaApp {
             // A file its provider keeps (a cloud drive, a remote) is downloaded first, then
             // classified from its contents and viewed afresh.
             if let url = item.fileURL, FileSource.isRemote(url) {
-                fetchState = "Downloading…"
+                fetchState = String(localized: "Downloading…")
                 layoutControls()
                 let ok = await FileSource.download(url)
                 guard current?.id == item.id else { return }
-                guard ok else { fetchState = "Couldn't download"; layoutControls(); return }
+                guard ok else { fetchState = String(localized: "Couldn't download"); layoutControls(); return }
                 fetchState = nil
                 let fresh = await files?.classify(url, date: item.date) ?? item
                 guard current?.id == item.id else { return }
@@ -661,7 +661,7 @@ final class MediaApp {
             loadStripThumbnails()
             let loading = fetchState != nil || (current.map { $0.isVideo ? player.isLoading : (picture == nil && eyes == nil) } ?? false)
             controls.render(FilmstripView(size: CGSize(width: 1600, height: 260), buttons: controls.buttons, hovered: controls.hovered, strip: strip, loading: loading,
-                                          loadingText: fetchState ?? "Loading…",
+                                          loadingText: fetchState ?? String(localized: "Loading…"),
                                           scrub: scrubFraction, timeText: scrubFraction.map { _ in Self.clock(player.time) + "  /  " + Self.clock(player.duration) }))
         } else {
             var cells: [GridCell] = []
@@ -673,11 +673,11 @@ final class MediaApp {
                 cells = items.dropFirst(row * Self.itemColumns).prefix(Self.itemColumns * Self.itemRows).map { item in
                     let badge: String
                     switch item.kind {
-                    case .spatialPhoto, .spatialVideo: badge = "Spatial"
+                    case .spatialPhoto, .spatialVideo: badge = String(localized: "Spatial")
                     case .photo360, .video360: badge = "360°"
                     case .photo180, .video180: badge = "180°"
-                    case .panorama: badge = "Panorama"
-                    case .video: badge = item.duration > 0 ? String(format: "%d:%02d", Int(item.duration) / 60, Int(item.duration) % 60) : "Video"
+                    case .panorama: badge = String(localized: "Panorama")
+                    case .video: badge = item.duration > 0 ? String(format: "%d:%02d", Int(item.duration) / 60, Int(item.duration) % 60) : String(localized: "Video")
                     case .photo: badge = ""
                     }
                     return GridCell(id: item.id, image: thumbnails[item.id], label: badge)
@@ -686,7 +686,7 @@ final class MediaApp {
             }
             let title: String
             if files != nil {
-                title = screen == .albums ? "Files" : "\(folder?.name ?? "") · \(query.isEmpty ? "type to search" : "search: " + query + "▏")"
+                title = screen == .albums ? String(localized: "Files") : "\(folder?.name ?? "") · \(query.isEmpty ? String(localized: "type to search") : String(localized: "search: \(query)▏"))"
             } else {
                 title = ""
             }
@@ -699,7 +699,7 @@ final class MediaApp {
                 if h.hasPrefix("item:"), let i = Int(h.dropFirst(5)), items.indices.contains(i) { return items[i].id }
                 return nil
             }, title: title, columns: screen == .albums ? Self.albumColumns : Self.itemColumns, albums: screen == .albums, buttons: grid.buttons,
-               emptyText: screen == .albums ? (files != nil ? "Add a folder to browse" : "No albums of your own yet") : (tab == .spatial ? "No spatial photos or videos" : tab == .panoramas ? "No panoramas" : tab == .threeSixty ? "No 360° pictures" : "Nothing here")))
+               emptyText: screen == .albums ? (files != nil ? String(localized: "Add a folder to browse") : String(localized: "No albums of your own yet")) : (tab == .spatial ? String(localized: "No spatial photos or videos") : tab == .panoramas ? String(localized: "No panoramas") : tab == .threeSixty ? String(localized: "No 360° pictures") : String(localized: "Nothing here"))))
         }
     }
 }
@@ -712,7 +712,7 @@ struct FilmstripView: View {
     let hovered: String?
     let strip: [(String, UIImage?)]
     var loading = false
-    var loadingText = "Loading…"
+    var loadingText = String(localized: "Loading…")
     var scrub: Double? = nil
     var timeText: String? = nil
 

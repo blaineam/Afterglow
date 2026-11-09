@@ -33,7 +33,7 @@ final class FileSource: NSObject, UIDocumentPickerDelegate {
         var renewedBookmarks: [(Data, Data)] = []
         let media = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("Media")
         try? FileManager.default.createDirectory(at: media, withIntermediateDirectories: true)
-        folders = [Folder(id: "media", name: "Media folder", url: media, bookmark: nil)]
+        folders = [Folder(id: "media", name: String(localized: "Media folder"), url: media, bookmark: nil)]
         for data in UserDefaults.standard.array(forKey: Self.bookmarksKey) as? [Data] ?? [] {
             var stale = false
             if let url = try? URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &stale) {

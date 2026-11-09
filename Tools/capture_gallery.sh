@@ -7,6 +7,9 @@
 #   WEBXR_VR_URL=<a WebXR VR page> WEBXR_AR_URL=<a WebXR AR page> SITE_URL=<a page to browse> \
 #     zsh Tools/capture_gallery.sh
 #
+# GALLERY_LANGUAGE=de runs it in that language for the store: only the shots with words in them,
+# into $TMPDIR/afterglow/gallery-de, and nothing in docs/gallery changes.
+#
 # The Simulator has no camera, so the room's passthrough is never in these; the pictures show the
 # app's own surroundings. The URLs are given when it runs, so none is named in the repository;
 # without them those shots are skipped. The app's Media folder is borrowed for the run: its test
@@ -14,8 +17,10 @@
 set -u
 setopt NULL_GLOB
 P=${0:A:h:h}
-OUT=$P/docs/gallery
 LOGS=${TMPDIR:-/tmp}/afterglow
+LANGUAGE=${GALLERY_LANGUAGE:-}
+OUT=$P/docs/gallery
+[ -n "$LANGUAGE" ] && { OUT=$LOGS/gallery-$LANGUAGE; export AFTERGLOW_SIM_LANGUAGE=$LANGUAGE; }
 BUNDLE=${AFTERGLOW_NATIVE_BUNDLE_ID:-com.wemiller.afterglow}
 HARNESS=$P/Tools/native_build_and_run.sh
 PLACES=$P/app/Afterglow/Places
@@ -67,6 +72,9 @@ step "press synth"; step "wait 1"; close places
 step "open music"; step "wait 2"; step "shot music"; close music
 step "open settings"; step "wait 2"; step "shot settings"; step "press toggle:passcode"; step "wait 1"; step "shot lock"; step "press key:✕"; step "wait 0.5"; close settings
 step "open games"; step "wait 2"; step "shot games"; step "press win:games:close"; step "wait 0.5"
+if [ -n "$LANGUAGE" ]; then
+    game 4 controls; step "look 0 -22"; step "wait 2"; step "shot game-golf"; stopgame
+else
 # Paint: the hand follows the head, so a sweep of the gaze draws.
 game 0; step "fakehand 0"; step "wait 0.3"; step "fakehand 1"
 for a in "-20 -14" "-14 -4" "-8 -14" "-2 -4" "4 -14" "10 -4" "16 -14" "20 -6" "10 2" "0 -8" "-10 2" "-20 -6"; do step "look $a"; step "wait 0.25"; done
@@ -84,6 +92,7 @@ for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do step "tap"; step
 game 9; for a in "-24 -30" "-10 -38" "6 -34" "20 -30" "-16 -24" "12 -26"; do step "look $a"; step "wait 0.3"; step "tap"; step "wait 0.7"; done; step "look 0 -18"; step "wait 6"; step "shot game-garden"; stopgame
 game 10; step "wait 2.5"; step "shot game-pong"; stopgame
 game 11; step "wait 9"; step "shot game-drive"; stopgame
+fi
 step "end"
 SCRIPT=${(j:; :)GO}
 # The harness keeps the app up this many seconds: the script's waits, with room for its half-second
@@ -93,13 +102,14 @@ for s in $GO; do [[ $s == wait\ * ]] && WAITS=$(( WAITS + ${s#wait } )); done
 integer SHOTS=$(( WAITS * 1.2 + 40 ))
 echo "== phone-view run, up to $SHOTS seconds"
 zsh $HARNESS --sim --ei view 1 --ei passthrough 0 --ei dump $SHOTS --ei actions "$SCRIPT" | grep -E "error:|gallery" | head
-for f in $LOGS/gallery/*.png(N); do jpeg "$f" "${f:t:r}"; done
+if [ -n "$LANGUAGE" ]; then cp $LOGS/gallery/*.png(N) $OUT/; else for f in $LOGS/gallery/*.png(N); do jpeg "$f" "${f:t:r}"; done; fi
 
 # One run through the lenses: the two eyes on the screen, and the WebXR sessions.
 LENS="wait 5; screenshot; wait 2; end"
 echo "== through the lenses"
 zsh $HARNESS --sim --ei view 0 --ei passthrough 0 --ei dump 10 --ei actions "$LENS" | grep -E "error:" | head
-[ -f $LOGS/native-sim-screen-1.png ] && { jpeg $LOGS/native-sim-screen-1.png through-the-lenses; cp $LOGS/native-sim-screen-1.png $LOGS/gallery/through-the-lenses.png; }
+[ -n "$LANGUAGE" ] && [ -f $LOGS/native-sim-screen-1.png ] && cp $LOGS/native-sim-screen-1.png $OUT/through-the-lenses.png
+[ -z "$LANGUAGE" ] && [ -f $LOGS/native-sim-screen-1.png ] && { jpeg $LOGS/native-sim-screen-1.png through-the-lenses; cp $LOGS/native-sim-screen-1.png $LOGS/gallery/through-the-lenses.png; }
 webxr() {  # webxr <url> <name>
     [ -n "$1" ] || return 0
     echo "== WebXR: $2"
@@ -108,6 +118,8 @@ webxr() {  # webxr <url> <name>
     [ -f $LOGS/native-sim-screen-3.png ] && jpeg $LOGS/native-sim-screen-3.png $2
     grep -E "\[WebXR\] (Immersive|Session|Exit|Eyes|The session)|averaged" $LOGS/native-sim-session.log | cut -c1-140 | head -8
 }
-webxr "${WEBXR_VR_URL:-}" webxr-vr
-webxr "${WEBXR_AR_URL:-}" webxr-ar
+if [ -z "$LANGUAGE" ]; then
+    webxr "${WEBXR_VR_URL:-}" webxr-vr
+    webxr "${WEBXR_AR_URL:-}" webxr-ar
+fi
 echo "== $OUT"; ls $OUT | wc -l

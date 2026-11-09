@@ -28,7 +28,7 @@ struct GameContext {
 struct GameSummary {
     var title: String
     var lines: [(String, String)]
-    var again: String = "Play again"
+    var again: String = String(localized: "Play again")
 }
 
 /// A game: updated every frame and drawn as lit meshes, glows and shadows into the scene (and,
@@ -127,10 +127,10 @@ final class GameHost {
                 x += 0.09
             }
             b.append(.init(id: "paint:color:rainbow", rect: CGRect(x: x, y: 0.06, width: 0.085, height: 0.42), label: "🌈", style: .key, accent: paint.swatch == nil))
-            b.append(.init(id: "paint:size", rect: CGRect(x: 0.02, y: 0.54, width: 0.22, height: 0.42), label: "Size " + ["S", "M", "L"][paint.sizeIndex], wide: true, icon: "circle.fill", style: .pill))
+            b.append(.init(id: "paint:size", rect: CGRect(x: 0.02, y: 0.54, width: 0.22, height: 0.42), label: String(localized: "Size \(["S", "M", "L"][paint.sizeIndex])"), wide: true, icon: "circle.fill", style: .pill))
             b.append(.init(id: "paint:brush", rect: CGRect(x: 0.26, y: 0.54, width: 0.24, height: 0.42), label: paint.brush.name, wide: true, icon: paint.brush.icon, style: .pill))
-            b.append(.init(id: "paint:dyn", rect: CGRect(x: 0.52, y: 0.54, width: 0.24, height: 0.42), label: "Dynamics", wide: true, icon: paint.dynamics ? "waveform.path" : "minus", style: .pill, accent: paint.dynamics))
-            b.append(.init(id: "paint:undo", rect: CGRect(x: 0.78, y: 0.54, width: 0.2, height: 0.42), label: "Undo", wide: true, icon: "arrow.uturn.backward", style: .pill))
+            b.append(.init(id: "paint:dyn", rect: CGRect(x: 0.52, y: 0.54, width: 0.24, height: 0.42), label: String(localized: "Dynamics"), wide: true, icon: paint.dynamics ? "waveform.path" : "minus", style: .pill, accent: paint.dynamics))
+            b.append(.init(id: "paint:undo", rect: CGRect(x: 0.78, y: 0.54, width: 0.2, height: 0.42), label: String(localized: "Undo"), wide: true, icon: "arrow.uturn.backward", style: .pill))
         } else if let rhythm = current as? RhythmGame {
             if !(music?.isPlaying ?? false) {
                 // The built-in music's style; with Apple Music playing the song decides.
@@ -138,35 +138,35 @@ final class GameHost {
             } else {
                 b.append(.init(id: "music", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: "Apple Music", wide: true, icon: "music.note", style: .label))
             }
-            b.append(.init(id: "tempo:-", rect: CGRect(x: 0.52, y: 0.06, width: 0.12, height: 0.42), label: "Slower", icon: "minus", style: .round))
+            b.append(.init(id: "tempo:-", rect: CGRect(x: 0.52, y: 0.06, width: 0.12, height: 0.42), label: String(localized: "Slower"), icon: "minus", style: .round))
             b.append(.init(id: "tempo", rect: CGRect(x: 0.65, y: 0.06, width: 0.2, height: 0.42), label: "\(Int(rhythm.bpm)) bpm", wide: true, style: .label))
-            b.append(.init(id: "tempo:+", rect: CGRect(x: 0.86, y: 0.06, width: 0.12, height: 0.42), label: "Faster", icon: "plus", style: .round))
-            b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: "Restart", wide: true, icon: "arrow.counterclockwise", style: .pill))
-            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
+            b.append(.init(id: "tempo:+", rect: CGRect(x: 0.86, y: 0.06, width: 0.12, height: 0.42), label: String(localized: "Faster"), icon: "plus", style: .round))
+            b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: String(localized: "Restart"), wide: true, icon: "arrow.counterclockwise", style: .pill))
+            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: String(localized: "Stop"), wide: true, icon: "stop.fill", style: .pill))
         } else if current is GridRide {
-            b.append(.init(id: "ride:world", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: "Next world", wide: true, icon: "globe.americas.fill", style: .pill))
-            b.append(.init(id: "reset", rect: CGRect(x: 0.52, y: 0.06, width: 0.46, height: 0.42), label: "New course", wide: true, icon: "shuffle", style: .pill))
-            b.append(.init(id: "ride:go", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: "Ride", wide: true, icon: "play.fill", style: .pill, accent: true))
-            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
+            b.append(.init(id: "ride:world", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: String(localized: "Next world"), wide: true, icon: "globe.americas.fill", style: .pill))
+            b.append(.init(id: "reset", rect: CGRect(x: 0.52, y: 0.06, width: 0.46, height: 0.42), label: String(localized: "New course"), wide: true, icon: "shuffle", style: .pill))
+            b.append(.init(id: "ride:go", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: String(localized: "Ride"), wide: true, icon: "play.fill", style: .pill, accent: true))
+            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: String(localized: "Stop"), wide: true, icon: "stop.fill", style: .pill))
         } else if let toys = current as? ToyBox {
-            b.append(.init(id: "toy:wake", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: toys.awake ? "Back to sleep" : "Come alive!", wide: true, icon: toys.awake ? "moon.zzz.fill" : "sparkles", style: .pill, accent: !toys.awake))
-            b.append(.init(id: "toy:new", rect: CGRect(x: 0.52, y: 0.06, width: 0.22, height: 0.42), label: "New toy", wide: true, icon: "plus", style: .pill))
-            b.append(.init(id: "toy:tidy", rect: CGRect(x: 0.76, y: 0.06, width: 0.22, height: 0.42), label: "Tidy up", wide: true, icon: "shippingbox.fill", style: .pill))
-            b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: "Restart", wide: true, icon: "arrow.counterclockwise", style: .pill))
-            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
+            b.append(.init(id: "toy:wake", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: toys.awake ? String(localized: "Back to sleep") : String(localized: "Come alive!"), wide: true, icon: toys.awake ? "moon.zzz.fill" : "sparkles", style: .pill, accent: !toys.awake))
+            b.append(.init(id: "toy:new", rect: CGRect(x: 0.52, y: 0.06, width: 0.22, height: 0.42), label: String(localized: "New toy"), wide: true, icon: "plus", style: .pill))
+            b.append(.init(id: "toy:tidy", rect: CGRect(x: 0.76, y: 0.06, width: 0.22, height: 0.42), label: String(localized: "Tidy up"), wide: true, icon: "shippingbox.fill", style: .pill))
+            b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: String(localized: "Restart"), wide: true, icon: "arrow.counterclockwise", style: .pill))
+            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: String(localized: "Stop"), wide: true, icon: "stop.fill", style: .pill))
         } else if current is PortalGame {
-            b.append(.init(id: "portal:through", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: "Step through", wide: true, icon: "figure.walk.motion", style: .pill, accent: true))
-            b.append(.init(id: "portal:here", rect: CGRect(x: 0.52, y: 0.06, width: 0.46, height: 0.42), label: "Move it in front of me", wide: true, icon: "scope", style: .pill))
-            b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: "Back to the room", wide: true, icon: "house.fill", style: .pill))
-            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
+            b.append(.init(id: "portal:through", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: String(localized: "Step through"), wide: true, icon: "figure.walk.motion", style: .pill, accent: true))
+            b.append(.init(id: "portal:here", rect: CGRect(x: 0.52, y: 0.06, width: 0.46, height: 0.42), label: String(localized: "Move it in front of me"), wide: true, icon: "scope", style: .pill))
+            b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: String(localized: "Back to the room"), wide: true, icon: "house.fill", style: .pill))
+            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: String(localized: "Stop"), wide: true, icon: "stop.fill", style: .pill))
         } else if current is BlobShooter || current is VacuumGame || current is TowerGame || current is GardenGame || current is OrbitalPong || current is SkylineDrive {
-            b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.3, width: 0.46, height: 0.42), label: "Restart", wide: true, icon: "arrow.counterclockwise", style: .pill))
-            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.3, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
+            b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.3, width: 0.46, height: 0.42), label: String(localized: "Restart"), wide: true, icon: "arrow.counterclockwise", style: .pill))
+            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.3, width: 0.46, height: 0.42), label: String(localized: "Stop"), wide: true, icon: "stop.fill", style: .pill))
         } else if current is GolfGame {
-            b.append(.init(id: "golf:next", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: "Next hole", wide: true, icon: "flag.fill", style: .pill))
-            b.append(.init(id: "golf:step", rect: CGRect(x: 0.52, y: 0.06, width: 0.46, height: 0.42), label: "Step to the ball", wide: true, icon: "figure.walk", style: .pill))
-            b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: "Restart the round", wide: true, icon: "arrow.counterclockwise", style: .pill))
-            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: "Stop", wide: true, icon: "stop.fill", style: .pill))
+            b.append(.init(id: "golf:next", rect: CGRect(x: 0.02, y: 0.06, width: 0.46, height: 0.42), label: String(localized: "Next hole"), wide: true, icon: "flag.fill", style: .pill))
+            b.append(.init(id: "golf:step", rect: CGRect(x: 0.52, y: 0.06, width: 0.46, height: 0.42), label: String(localized: "Step to the ball"), wide: true, icon: "figure.walk", style: .pill))
+            b.append(.init(id: "reset", rect: CGRect(x: 0.02, y: 0.54, width: 0.46, height: 0.42), label: String(localized: "Restart the round"), wide: true, icon: "arrow.counterclockwise", style: .pill))
+            b.append(.init(id: "stop", rect: CGRect(x: 0.52, y: 0.54, width: 0.46, height: 0.42), label: String(localized: "Stop"), wide: true, icon: "stop.fill", style: .pill))
         }
         let toyState = (current as? ToyBox).map { "\($0.awake)" } ?? ""
         let extra = toyState + ((current as? PaintGame).map { "\($0.swatch ?? -1)|\($0.sizeIndex)|\($0.brush)|\($0.dynamics)" } ?? ((current as? RhythmGame).map { "\($0.style)|\($0.bpm)|\(music?.isPlaying ?? false)" } ?? ""))
@@ -182,7 +182,7 @@ final class GameHost {
             b.append(.init(id: "sum:\(i)", rect: CGRect(x: 0.05, y: 0.2 + CGFloat(i) * (rowHeight + 0.01), width: 0.9, height: rowHeight), label: line.0, wide: true, style: .row, value: line.1))
         }
         b.append(.init(id: "again", rect: CGRect(x: 0.05, y: 0.78, width: 0.43, height: 0.17), label: summary.again, wide: true, icon: "arrow.counterclockwise", style: .pill, accent: true))
-        b.append(.init(id: "exit", rect: CGRect(x: 0.52, y: 0.78, width: 0.43, height: 0.17), label: "Exit game", wide: true, icon: "xmark", style: .pill))
+        b.append(.init(id: "exit", rect: CGRect(x: 0.52, y: 0.78, width: 0.43, height: 0.17), label: String(localized: "Exit game"), wide: true, icon: "xmark", style: .pill))
         summaryPanel.set(buttons: b, version: "summary|\(summary.title)|\(summary.lines.map { $0.0 + $0.1 }.joined())")
     }
 
@@ -258,7 +258,7 @@ final class GameHost {
 
     func render() {
         panel.render(ButtonsView(size: CGSize(width: 1600, height: 760), buttons: panel.buttons, hovered: panel.hovered,
-                                 title: "Games", titleHighlight: false, subtitle: current.map { "Playing \($0.title): its controls have their own window" } ?? "Pick a game"))
+                                 title: String(localized: "Games"), titleHighlight: false, subtitle: current.map { String(localized: "Playing \($0.title): its controls have their own window") } ?? String(localized: "Pick a game")))
     }
 }
 

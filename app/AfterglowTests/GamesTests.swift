@@ -47,6 +47,22 @@ final class GamesTests: XCTestCase {
         XCTAssertEqual(AppLock.digits(from: "Four, oh, Eight. Nine two zero"), "408920")
         XCTAssertEqual(AppLock.digits(from: "hello"), "")
         XCTAssertEqual(AppLock.digits(from: "12-34-56"), "123456")
+        // The other languages' digits.
+        XCTAssertEqual(AppLock.digits(from: "eins zwei drei vier fünf sechs"), "123456")
+        XCTAssertEqual(AppLock.digits(from: "zéro un deux trois quatre cinq"), "012345")
+        XCTAssertEqual(AppLock.digits(from: "uno dos tres cuatro cinco seis"), "123456")
+        XCTAssertEqual(AppLock.digits(from: "sette otto nove due tre sei"), "789236")
+        XCTAssertEqual(AppLock.digits(from: "um dois três quatro cinco seis"), "123456")
+        XCTAssertEqual(AppLock.digits(from: "一二三四五六"), "123456")
+        XCTAssertEqual(AppLock.digits(from: "零 七 八 九 两 幺"), "078921")
+        XCTAssertEqual(AppLock.digits(from: "일이삼사오육"), "123456")
+        XCTAssertEqual(AppLock.digits(from: "いち に さん よん ご ろく"), "123456")
+        XCTAssertEqual(AppLock.digits(from: "１２３４５６"), "123456")
+    }
+
+    /// A format string from the catalog keeps its specifiers until String(format:) fills them.
+    func testCatalogFormatsAreFormatted() {
+        XCTAssertEqual(String(format: String(localized: "%.0f km/h · %d rings · %d shields"), 10.0, 1, 2), "10 km/h · 1 rings · 2 shields")
     }
 
     /// A bumper's box lies along its wall, and no hole starts on a bumper (owner, 2026-11-08).

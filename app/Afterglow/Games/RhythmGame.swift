@@ -8,7 +8,7 @@ import simd
 /// with beat maps from bundled tracks, is the roadmap's next step for this game.
 @MainActor
 final class RhythmGame: Game {
-    let title = "🎵 Rhythm"
+    let title = String(localized: "🎵 Rhythm")
     private struct Note { var lane: Int; var time: Double; var hit: Bool; var missed: Bool }
     private var notes: [Note] = []
     private var startTime: Double = 0
@@ -18,7 +18,7 @@ final class RhythmGame: Game {
     /// The built-in music's styles, for playing without a song on the phone (owner, 2026-11-07).
     enum Style: Int, CaseIterable {
         case synthwave, techno, lofi, drumAndBass, chiptune
-        var name: String { switch self { case .synthwave: return "Synthwave"; case .techno: return "Techno"; case .lofi: return "Lo-fi"; case .drumAndBass: return "Drum & bass"; case .chiptune: return "Chiptune" } }
+        var name: String { switch self { case .synthwave: return String(localized: "Synthwave"); case .techno: return String(localized: "Techno"); case .lofi: return String(localized: "Lo-fi"); case .drumAndBass: return String(localized: "Drum & bass"); case .chiptune: return String(localized: "Chiptune") } }
         var bpm: Double { switch self { case .synthwave: return 112; case .techno: return 128; case .lofi: return 84; case .drumAndBass: return 172; case .chiptune: return 140 } }
     }
     private(set) var style = Style.synthwave
@@ -42,7 +42,7 @@ final class RhythmGame: Game {
     private var hits: [(lane: Int, time: Double)] = []
     /// Where the tempo came from, so a default never reads as a match (owner, 2026-11-07).
     private(set) var tempoSource = "style"
-    var status: String { started ? "Score \(score), combo \(combo) · \(Int(bpm)) bpm (\(tempoSource))" : "Starting…" }
+    var status: String { started ? String(localized: "Score \(score), combo \(combo) · \(Int(bpm)) bpm (\(tempoSource))") : String(localized: "Starting…") }
 
     /// The tempo, from the games panel; a change restarts the notes to it.
     private var tempoSet = false
@@ -69,7 +69,7 @@ final class RhythmGame: Game {
         usingMusic = music?.isPlaying ?? false
         if usingMusic {
             // The song's measured tempo, when its audio could be read; else the tempo set.
-            if let measured = music?.currentTempo { bpm = measured; tempoSource = tempoSet ? "set by you" : "from the song" } else { tempoSource = tempoSet ? "set by you" : "default, song unknown" }
+            if let measured = music?.currentTempo { bpm = measured; tempoSource = tempoSet ? String(localized: "set by you") : String(localized: "from the song") } else { tempoSource = tempoSet ? String(localized: "set by you") : String(localized: "default, song unknown") }
             // The beat grid starts on the next whole beat of the song's clock.
             let t = music?.playbackTime ?? 0
             startTime = time + (beat - t.truncatingRemainder(dividingBy: beat))

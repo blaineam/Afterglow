@@ -8,14 +8,14 @@ enum WindowKind: String, CaseIterable, Sendable {
     var title: String {
         switch self {
         case .home: return "Afterglow"
-        case .browser: return "Browser"
-        case .media: return "Media"
-        case .files: return "Files"
-        case .games: return "Games"
-        case .places: return "Places"
-        case .settings: return "Settings"
-        case .music: return "Music"
-        case .gameControls: return "Controls"
+        case .browser: return String(localized: "Browser")
+        case .media: return String(localized: "Media")
+        case .files: return String(localized: "Files")
+        case .games: return String(localized: "Games")
+        case .places: return String(localized: "Places")
+        case .settings: return String(localized: "Settings")
+        case .music: return String(localized: "Music")
+        case .gameControls: return String(localized: "Controls")
         }
     }
     var icon: String {
@@ -62,11 +62,11 @@ final class AppWindow {
     func layoutBar() {
         var b: [ScenePanel.Button] = []
         // Traffic lights at the top left (close, minimize, size), the name as a grab handle, move.
-        b.append(.init(id: "close", rect: CGRect(x: 0.02, y: 0.08, width: 0.08, height: 0.84), label: "Close", icon: "xmark", style: .round, light: 1))
-        b.append(.init(id: "minimize", rect: CGRect(x: 0.105, y: 0.08, width: 0.08, height: 0.84), label: "Minimize", icon: "minus", style: .round, light: 2))
-        b.append(.init(id: "larger", rect: CGRect(x: 0.19, y: 0.08, width: 0.08, height: 0.84), label: "Size", icon: "arrow.up.left.and.arrow.down.right", style: .round, light: 3))
+        b.append(.init(id: "close", rect: CGRect(x: 0.02, y: 0.08, width: 0.08, height: 0.84), label: String(localized: "Close"), icon: "xmark", style: .round, light: 1))
+        b.append(.init(id: "minimize", rect: CGRect(x: 0.105, y: 0.08, width: 0.08, height: 0.84), label: String(localized: "Minimize"), icon: "minus", style: .round, light: 2))
+        b.append(.init(id: "larger", rect: CGRect(x: 0.19, y: 0.08, width: 0.08, height: 0.84), label: String(localized: "Size"), icon: "arrow.up.left.and.arrow.down.right", style: .round, light: 3))
         b.append(.init(id: "title", rect: CGRect(x: 0.29, y: 0.05, width: 0.58, height: 0.9), label: kind.title, wide: true, icon: "line.3.horizontal", style: .pill, accent: moving))
-        b.append(.init(id: "move", rect: CGRect(x: 0.89, y: 0.05, width: 0.095, height: 0.9), label: "Move", icon: moving ? "mappin.and.ellipse" : "arrow.up.and.down.and.arrow.left.and.right", style: .round, accent: moving))
+        b.append(.init(id: "move", rect: CGRect(x: 0.89, y: 0.05, width: 0.095, height: 0.9), label: String(localized: "Move"), icon: moving ? "mappin.and.ellipse" : "arrow.up.and.down.and.arrow.left.and.right", style: .round, accent: moving))
         titleBar.set(buttons: b, version: "bar|\(kind.rawValue)|\(moving)|\(sizeIndex)")
     }
 
@@ -289,7 +289,7 @@ final class HomeMenu {
             b.append(.init(id: "app:\(app.rawValue)", rect: CGRect(x: 0.03 + CGFloat(col) * 0.2375, y: 0.06 + CGFloat(row) * 0.47, width: 0.2275, height: 0.44),
                            label: app.title, wide: true, icon: icon, style: .tile, accent: open.contains(app)))
         }
-        b.append(.init(id: "lock", rect: CGRect(x: 0.03 + 3 * 0.2375, y: 0.53, width: 0.2275, height: 0.44), label: "Lock", wide: true, icon: "lock.fill", style: .tile))
+        b.append(.init(id: "lock", rect: CGRect(x: 0.03 + 3 * 0.2375, y: 0.53, width: 0.2275, height: 0.44), label: String(localized: "Lock"), wide: true, icon: "lock.fill", style: .tile))
         panel.set(buttons: b, version: "home|\(open.map(\.rawValue).joined())")
     }
 

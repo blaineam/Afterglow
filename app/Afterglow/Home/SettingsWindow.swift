@@ -20,12 +20,12 @@ final class SettingsWindow {
     func layout() {
         var m: [ScenePanel.Button] = []
         let rows: [(String, String, String, String)] = [
-            ("renderScale", "Render scale", "\(settings.renderScalePercent)%", "sparkles.tv"),
-            ("fps", "Frame rate", "\(settings.targetFrameRate) fps", "speedometer"),
-            ("textScale", "Browser text", "\(settings.textScaleLive)%", "textformat.size"),
-            ("handHz", "Hand images a second", "\(settings.handHzLive)", "hand.raised"),
-            ("prediction", "Head prediction", "+\(settings.extraPredictionMs) ms", "clock"),
-            ("smoothing", "Head smoothing", Self.smoothingName(settings.headSmoothing), "water.waves"),
+            ("renderScale", String(localized: "Render scale"), "\(settings.renderScalePercent)%", "sparkles.tv"),
+            ("fps", String(localized: "Frame rate"), String(localized: "\(settings.targetFrameRate) fps"), "speedometer"),
+            ("textScale", String(localized: "Browser text"), "\(settings.textScaleLive)%", "textformat.size"),
+            ("handHz", String(localized: "Hand images a second"), "\(settings.handHzLive)", "hand.raised"),
+            ("prediction", String(localized: "Head prediction"), String(localized: "+\(settings.extraPredictionMs) ms"), "clock"),
+            ("smoothing", String(localized: "Head smoothing"), Self.smoothingName(settings.headSmoothing), "water.waves"),
         ]
         var ry: CGFloat = 0.04
         for (id, name, value, icon) in rows {
@@ -35,18 +35,18 @@ final class SettingsWindow {
             ry += 0.092
         }
         let toggles: [(String, String, Bool)] = [
-            ("passthrough", "Passthrough", settings.passthrough),
-            ("hands", "Show hands", settings.showHandsLive),
-            ("dof", "3DoF ultra-wide", settings.degreesOfFreedom == 3),
-            ("surfaces", "Surfaces", settings.surfaces),
-            ("occlusion", "Occlusion", settings.occlusion),
-            ("depth", "3D passthrough", settings.depthPassthrough),
-            ("phone", "Phone view", settings.phoneView),
-            ("passcode", "Passcode", hasPasscode()),
+            ("passthrough", String(localized: "Passthrough"), settings.passthrough),
+            ("hands", String(localized: "Show hands"), settings.showHandsLive),
+            ("dof", String(localized: "3DoF ultra-wide"), settings.degreesOfFreedom == 3),
+            ("surfaces", String(localized: "Surfaces"), settings.surfaces),
+            ("occlusion", String(localized: "Occlusion"), settings.occlusion),
+            ("depth", String(localized: "3D passthrough"), settings.depthPassthrough),
+            ("phone", String(localized: "Phone view"), settings.phoneView),
+            ("passcode", String(localized: "Passcode"), hasPasscode()),
         ]
         for (i, (id, label, on)) in toggles.enumerated() {
             m.append(.init(id: "toggle:\(id)", rect: CGRect(x: 0.03 + CGFloat(i % 2) * 0.485, y: 0.60 + CGFloat(i / 2) * 0.095, width: 0.465, height: 0.088),
-                           label: label, wide: true, style: .row, value: on ? "On" : "Off", accent: on))
+                           label: label, wide: true, style: .row, value: on ? String(localized: "On") : String(localized: "Off"), accent: on))
         }
         panel.set(buttons: m, version: "settings|\(rows.map { $0.2 }.joined())|\(toggles.map { "\($0.2)" }.joined())")
     }
@@ -80,11 +80,11 @@ final class SettingsWindow {
 
     static func smoothingName(_ percent: Int) -> String {
         switch percent {
-        case ..<1: "Off"
-        case ..<26: "Low"
-        case ..<51: "Medium"
-        case ..<76: "High"
-        default: "Max"
+        case ..<1: String(localized: "Off")
+        case ..<26: String(localized: "Low")
+        case ..<51: String(localized: "Medium")
+        case ..<76: String(localized: "High")
+        default: String(localized: "Max")
         }
     }
 

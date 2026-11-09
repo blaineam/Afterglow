@@ -90,7 +90,10 @@ if [ $MODE = sim ]; then
     # The last run's log goes first: the screenshot steps are counted in it, and a stale one with
     # more steps than this run made every screenshot fire at launch (2026-11-08).
     rm -f "$(xcrun simctl get_app_container $SIM $BUNDLE data 2>/dev/null)/Documents/session.log"
-    env "${SIMENV[@]}" xcrun simctl launch $SIM $BUNDLE >/dev/null || exit 1
+    # AFTERGLOW_SIM_LANGUAGE=de runs it in that language, as the localized screenshots do.
+    LANGARGS=()
+    [ -n "${AFTERGLOW_SIM_LANGUAGE:-}" ] && LANGARGS=(-AppleLanguages "($AFTERGLOW_SIM_LANGUAGE)" -AppleLocale "$AFTERGLOW_SIM_LANGUAGE")
+    env "${SIMENV[@]}" xcrun simctl launch $SIM $BUNDLE "${LANGARGS[@]}" >/dev/null || exit 1
     echo "== launched in the simulator ${ENVIRONMENT:+with {$ENVIRONMENT}}"
     # While the app runs, a screenshot of the Simulator's screen for every "screenshot" step the
     # test script logs (native-sim-screen-N.png), since the app's own eye dump cannot show a page

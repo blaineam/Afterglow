@@ -60,9 +60,9 @@ extension Scene3D {
 /// undo takes the last stroke. Sparks follow the brush.
 @MainActor
 final class PaintGame: Game {
-    let title = "🎨 Paint"
+    let title = String(localized: "🎨 Paint")
     enum Brush: Int, CaseIterable { case tube, ribbon, glow
-        var name: String { switch self { case .tube: return "Tube"; case .ribbon: return "Ribbon"; case .glow: return "Glow" } }
+        var name: String { switch self { case .tube: return String(localized: "Tube"); case .ribbon: return String(localized: "Ribbon"); case .glow: return String(localized: "Glow") } }
         var icon: String { switch self { case .tube: return "paintbrush.pointed.fill"; case .ribbon: return "scribble.variable"; case .glow: return "sparkles" } }
     }
     private struct Stroke { var color: SIMD4<Float>; var points: [SIMD3<Float>]; var radii: [Float]; var brush: Brush; var built = -1 }
@@ -87,7 +87,7 @@ final class PaintGame: Game {
     static let sizes: [Float] = [0.006, 0.012, 0.024]
     private(set) var brush = Brush.tube
     private(set) var dynamics = true
-    var status: String { "\(strokes.count) strokes · \(brush.name) · " + (swatch.map { Self.swatches[$0].0 } ?? "🌈") }
+    var status: String { String(localized: "\(strokes.count) strokes · \(brush.name) · ") + (swatch.map { Self.swatches[$0].0 } ?? "🌈") }
 
     private var ignored = Set<Bool>()
     func reset() { strokes.removeAll(); drawing.removeAll(); strokeGrewAt.removeAll(); ignored.removeAll() }
@@ -214,7 +214,7 @@ final class PaintGame: Game {
 /// life. Every wave is faster and bigger.
 @MainActor
 final class BlobShooter: Game {
-    let title = "👾 Blobs"
+    let title = String(localized: "👾 Blobs")
     private struct Blob { var position: SIMD3<Float>; var speed: Float; var phase: Float; var size: Float; var color: SIMD4<Float>; var hp: Int; var hurt: Float }
     private struct Bolt { var position: SIMD3<Float>; var velocity: SIMD3<Float>; var age: Float }
     private var blobs: [Blob] = []
@@ -233,17 +233,17 @@ final class BlobShooter: Game {
     private var hits = 0
     private var popped = 0
     private var survived: Float = 0
-    var status: String { over ? "Game over: \(score)" : "Wave \(wave) · Score \(score) · ♥ \(lives)" }
+    var status: String { over ? String(localized: "Game over: \(score)") : String(localized: "Wave \(wave) · Score \(score) · ♥ \(lives)") }
 
     var summary: GameSummary? {
         guard over else { return nil }
         let accuracy = shots > 0 ? Int((Float(hits) / Float(shots) * 100).rounded()) : 0
-        return GameSummary(title: "Game over", lines: [
-            ("Score", "\(score)"),
-            ("Wave reached", "\(wave)"),
-            ("Blobs popped", "\(popped)"),
-            ("Accuracy", "\(accuracy)% of \(shots) shots"),
-            ("Survived", String(format: "%d:%02d", Int(survived) / 60, Int(survived) % 60)),
+        return GameSummary(title: String(localized: "Game over"), lines: [
+            (String(localized: "Score"), "\(score)"),
+            (String(localized: "Wave reached"), "\(wave)"),
+            (String(localized: "Blobs popped"), "\(popped)"),
+            (String(localized: "Accuracy"), String(localized: "\(accuracy)% of \(shots) shots")),
+            (String(localized: "Survived"), String(format: "%d:%02d", Int(survived) / 60, Int(survived) % 60)),
         ])
     }
 
@@ -363,7 +363,7 @@ final class BlobShooter: Game {
 /// Walking over a pile cleans it too. Done when the last pile goes.
 @MainActor
 final class VacuumGame: Game {
-    let title = "🧹 Vacuum"
+    let title = String(localized: "🧹 Vacuum")
     private struct Pile { var position: SIMD3<Float>; var size: Float; var seed: Float }
     private var piles: [SIMD2<Int>: Pile] = [:]
     private var floor: Float = -1.6
@@ -372,15 +372,15 @@ final class VacuumGame: Game {
     private var cleaned = 0
     private var particles = ParticleSystem()
     private var elapsed: Float = 0
-    var status: String { piles.isEmpty && seeded ? "All clean! \(cleaned) piles" : (seeded ? "\(piles.count) piles left" : "No floor yet") }
+    var status: String { piles.isEmpty && seeded ? String(localized: "All clean! \(cleaned) piles") : (seeded ? String(localized: "\(piles.count) piles left") : String(localized: "No floor yet")) }
 
     var summary: GameSummary? {
         guard seeded, piles.isEmpty else { return nil }
-        return GameSummary(title: "All clean!", lines: [
-            ("Dust piles", "\(cleaned)"),
-            ("Time", String(format: "%d:%02d", Int(elapsed) / 60, Int(elapsed) % 60)),
-            ("Piles a minute", String(format: "%.0f", Float(cleaned) / max(elapsed / 60, 0.1))),
-        ], again: "More dust")
+        return GameSummary(title: String(localized: "All clean!"), lines: [
+            (String(localized: "Dust piles"), "\(cleaned)"),
+            (String(localized: "Time"), String(format: "%d:%02d", Int(elapsed) / 60, Int(elapsed) % 60)),
+            (String(localized: "Piles a minute"), String(format: "%.0f", Float(cleaned) / max(elapsed / 60, 0.1))),
+        ], again: String(localized: "More dust"))
     }
 
     func reset() { piles.removeAll(); seeded = false; cleaned = 0; elapsed = 0 }
@@ -458,7 +458,7 @@ final class VacuumGame: Game {
 /// would, until the button is pressed again.
 @MainActor
 final class ToyBox: Game {
-    let title = "🧸 Toys"
+    let title = String(localized: "🧸 Toys")
     enum Kind: Int, CaseIterable { case car, duck, rocket, robot, plane, ball, top }
     struct Toy {
         var kind: Kind
@@ -486,7 +486,7 @@ final class ToyBox: Game {
     private var lastButton: Double = 0
     private var nextKind = 0
     private let boxSize = SIMD3<Float>(0.7, 0.35, 0.5)
-    var status: String { awake ? "\(toys.count) toys, awake!" : "\(toys.count) toys" }
+    var status: String { awake ? String(localized: "\(toys.count) toys, awake!") : String(localized: "\(toys.count) toys") }
 
     func reset() { toys.removeAll(); held.removeAll(); placed = false; awake = false }
 
@@ -867,7 +867,7 @@ final class ToyBox: Game {
 /// teleport along the course), and the next hole lays out when it drops.
 @MainActor
 final class GolfGame: Game {
-    let title = "⛳ Mini golf"
+    let title = String(localized: "⛳ Mini golf")
     struct Wall { var a: SIMD2<Float>; var b: SIMD2<Float> }
     struct Block { var centre: SIMD2<Float>; var size: SIMD2<Float>; var height: Float; var spins: Bool }
     struct Hole {
@@ -896,9 +896,9 @@ final class GolfGame: Game {
     private var clubHeads: [Bool: (SIMD3<Float>, Double)] = [:]
     private var particles = ParticleSystem()
     var status: String {
-        if holeIndex >= Self.holes.count { return "Round over: \(card.reduce(0, +)) (par \(Self.holes.reduce(0) { $0 + $1.par }))" }
+        if holeIndex >= Self.holes.count { return String(localized: "Round over: \(card.reduce(0, +)) (par \(Self.holes.reduce(0) { $0 + $1.par }))") }
         let h = Self.holes[holeIndex]
-        return "Hole \(holeIndex + 1) of 18 · \(h.name) · par \(h.par) · \(strokes) strokes" + (card.isEmpty ? "" : " · total \(card.reduce(0, +))")
+        return String(localized: "Hole \(holeIndex + 1) of 18 · \(h.name) · par \(h.par) · \(strokes) strokes") + (card.isEmpty ? "" : String(localized: " · total \(card.reduce(0, +))"))
     }
 
     func reset() { holeIndex = 0; strokes = 0; card.removeAll(); placed = false; holed = false; sink = 0; velocity = .zero }
@@ -908,12 +908,12 @@ final class GolfGame: Game {
         let total = card.reduce(0, +), par = Self.holes.reduce(0) { $0 + $1.par }
         let best = card.enumerated().min { $0.element - Self.holes[$0.offset].par < $1.element - Self.holes[$1.offset].par }
         let aces = card.filter { $0 == 1 }.count
-        return GameSummary(title: "Round complete", lines: [
-            ("Strokes", "\(total)"),
-            ("Against par", total == par ? "Even" : (total < par ? "\(par - total) under" : "\(total - par) over")),
-            ("Holes in one", "\(aces)"),
-            ("Best hole", best.map { "\($0.offset + 1), \(Self.holes[$0.offset].name)" } ?? "None"),
-        ], again: "New round")
+        return GameSummary(title: String(localized: "Round complete"), lines: [
+            (String(localized: "Strokes"), "\(total)"),
+            (String(localized: "Against par"), total == par ? String(localized: "Even") : (total < par ? String(localized: "\(par - total) under") : String(localized: "\(total - par) over"))),
+            (String(localized: "Holes in one"), "\(aces)"),
+            (String(localized: "Best hole"), best.map { "\($0.offset + 1), \(Self.holes[$0.offset].name)" } ?? String(localized: "None")),
+        ], again: String(localized: "New round"))
     }
     private var stepRequested = false
     /// The controls window's step to the ball.
@@ -924,24 +924,24 @@ final class GolfGame: Game {
     private static func rect(_ w: Float, _ l: Float) -> [SIMD2<Float>] { [SIMD2(-w / 2, 0), SIMD2(w / 2, 0), SIMD2(w / 2, l), SIMD2(-w / 2, l)] }
     static let holes: [Hole] = {
         var h: [Hole] = []
-        h.append(Hole(name: "The Straight", par: 2, fairway: rect(1.0, 3.2), tee: SIMD2(0, 0.4), cup: SIMD2(0, 2.8)))
-        h.append(Hole(name: "Dogleg Right", par: 3, fairway: [SIMD2(-0.5, 0), SIMD2(0.5, 0), SIMD2(0.5, 1.6), SIMD2(2.0, 1.6), SIMD2(2.0, 2.6), SIMD2(-0.5, 2.6)], tee: SIMD2(0, 0.4), cup: SIMD2(1.6, 2.1)))
-        h.append(Hole(name: "The Island", par: 3, fairway: rect(1.4, 3.4), tee: SIMD2(0, 0.4), cup: SIMD2(0, 3.0), blocks: [Block(centre: SIMD2(0, 1.7), size: SIMD2(0.5, 0.5), height: 0.12, spins: false)]))
-        h.append(Hole(name: "The Ramp", par: 3, fairway: rect(1.0, 3.6), tee: SIMD2(0, 0.4), cup: SIMD2(0, 3.2), ramp: (from: 1.4, to: 2.2, rise: 0.18)))
-        h.append(Hole(name: "Windmill", par: 3, fairway: rect(1.1, 3.6), tee: SIMD2(0, 0.4), cup: SIMD2(0, 3.2), blocks: [Block(centre: SIMD2(0, 1.9), size: SIMD2(0.9, 0.25), height: 0.3, spins: true)]))
-        h.append(Hole(name: "Dogleg Left", par: 3, fairway: [SIMD2(-0.5, 0), SIMD2(0.5, 0), SIMD2(0.5, 2.6), SIMD2(-2.0, 2.6), SIMD2(-2.0, 1.6), SIMD2(-0.5, 1.6)], tee: SIMD2(0, 0.4), cup: SIMD2(-1.6, 2.1)))
-        h.append(Hole(name: "The Gates", par: 3, fairway: rect(1.4, 3.4), tee: SIMD2(0, 0.4), cup: SIMD2(0, 3.0), blocks: [Block(centre: SIMD2(-0.45, 1.5), size: SIMD2(0.4, 0.15), height: 0.1, spins: false), Block(centre: SIMD2(0.45, 1.5), size: SIMD2(0.4, 0.15), height: 0.1, spins: false)]))
-        h.append(Hole(name: "The Zigzag", par: 4, fairway: [SIMD2(-0.5, 0), SIMD2(0.5, 0), SIMD2(0.5, 1.2), SIMD2(1.6, 1.2), SIMD2(1.6, 2.2), SIMD2(0.2, 2.2), SIMD2(0.2, 3.2), SIMD2(-0.5, 3.2)], tee: SIMD2(0, 0.4), cup: SIMD2(-0.15, 2.9)))
-        h.append(Hole(name: "The Tunnel", par: 3, fairway: rect(1.0, 3.6), tee: SIMD2(0, 0.4), cup: SIMD2(0, 3.2), blocks: [Block(centre: SIMD2(0, 1.8), size: SIMD2(1.0, 0.6), height: 0.5, spins: false)]))
-        h.append(Hole(name: "Wide Open", par: 2, fairway: rect(2.2, 2.6), tee: SIMD2(-0.7, 0.4), cup: SIMD2(0.7, 2.2)))
-        h.append(Hole(name: "Two Islands", par: 4, fairway: rect(1.6, 3.8), tee: SIMD2(0, 0.4), cup: SIMD2(0, 3.4), blocks: [Block(centre: SIMD2(-0.35, 1.4), size: SIMD2(0.4, 0.4), height: 0.12, spins: false), Block(centre: SIMD2(0.35, 2.3), size: SIMD2(0.4, 0.4), height: 0.12, spins: false)]))
-        h.append(Hole(name: "The Hook", par: 3, fairway: [SIMD2(-0.5, 0), SIMD2(0.5, 0), SIMD2(0.5, 2.0), SIMD2(1.8, 2.0), SIMD2(1.8, 3.0), SIMD2(-0.5, 3.0)], tee: SIMD2(0, 0.4), cup: SIMD2(1.4, 2.5)))
-        h.append(Hole(name: "The Hill", par: 3, fairway: rect(1.2, 3.8), tee: SIMD2(0, 0.4), cup: SIMD2(0, 3.4), ramp: (from: 1.2, to: 2.6, rise: 0.25)))
-        h.append(Hole(name: "Double Windmill", par: 4, fairway: rect(1.2, 4.2), tee: SIMD2(0, 0.4), cup: SIMD2(0, 3.8), blocks: [Block(centre: SIMD2(0, 1.5), size: SIMD2(1.0, 0.25), height: 0.3, spins: true), Block(centre: SIMD2(0, 2.8), size: SIMD2(1.0, 0.25), height: 0.3, spins: true)]))
-        h.append(Hole(name: "The Corner", par: 3, fairway: [SIMD2(-0.5, 0), SIMD2(0.5, 0), SIMD2(0.5, 2.6), SIMD2(-1.6, 2.6), SIMD2(-1.6, 1.8), SIMD2(-0.5, 1.8)], tee: SIMD2(0, 0.4), cup: SIMD2(-1.2, 2.2), blocks: [Block(centre: SIMD2(0, 1.3), size: SIMD2(0.3, 0.3), height: 0.12, spins: false)]))
-        h.append(Hole(name: "The Long One", par: 4, fairway: rect(1.0, 5.0), tee: SIMD2(0, 0.4), cup: SIMD2(0, 4.6)))
-        h.append(Hole(name: "The Maze", par: 5, fairway: rect(2.0, 3.6), tee: SIMD2(-0.7, 0.4), cup: SIMD2(0.7, 3.2), blocks: [Block(centre: SIMD2(0.3, 1.0), size: SIMD2(1.2, 0.12), height: 0.12, spins: false), Block(centre: SIMD2(-0.3, 1.9), size: SIMD2(1.2, 0.12), height: 0.12, spins: false), Block(centre: SIMD2(0.3, 2.7), size: SIMD2(1.2, 0.12), height: 0.12, spins: false)]))
-        h.append(Hole(name: "The Finale", par: 4, fairway: rect(1.6, 4.4), tee: SIMD2(0, 0.4), cup: SIMD2(0, 4.0), blocks: [Block(centre: SIMD2(0, 2.0), size: SIMD2(1.1, 0.25), height: 0.3, spins: true)], ramp: (from: 2.6, to: 3.4, rise: 0.2)))
+        h.append(Hole(name: String(localized: "The Straight"), par: 2, fairway: rect(1.0, 3.2), tee: SIMD2(0, 0.4), cup: SIMD2(0, 2.8)))
+        h.append(Hole(name: String(localized: "Dogleg Right"), par: 3, fairway: [SIMD2(-0.5, 0), SIMD2(0.5, 0), SIMD2(0.5, 1.6), SIMD2(2.0, 1.6), SIMD2(2.0, 2.6), SIMD2(-0.5, 2.6)], tee: SIMD2(0, 0.4), cup: SIMD2(1.6, 2.1)))
+        h.append(Hole(name: String(localized: "The Island"), par: 3, fairway: rect(1.4, 3.4), tee: SIMD2(0, 0.4), cup: SIMD2(0, 3.0), blocks: [Block(centre: SIMD2(0, 1.7), size: SIMD2(0.5, 0.5), height: 0.12, spins: false)]))
+        h.append(Hole(name: String(localized: "The Ramp"), par: 3, fairway: rect(1.0, 3.6), tee: SIMD2(0, 0.4), cup: SIMD2(0, 3.2), ramp: (from: 1.4, to: 2.2, rise: 0.18)))
+        h.append(Hole(name: String(localized: "Windmill"), par: 3, fairway: rect(1.1, 3.6), tee: SIMD2(0, 0.4), cup: SIMD2(0, 3.2), blocks: [Block(centre: SIMD2(0, 1.9), size: SIMD2(0.9, 0.25), height: 0.3, spins: true)]))
+        h.append(Hole(name: String(localized: "Dogleg Left"), par: 3, fairway: [SIMD2(-0.5, 0), SIMD2(0.5, 0), SIMD2(0.5, 2.6), SIMD2(-2.0, 2.6), SIMD2(-2.0, 1.6), SIMD2(-0.5, 1.6)], tee: SIMD2(0, 0.4), cup: SIMD2(-1.6, 2.1)))
+        h.append(Hole(name: String(localized: "The Gates"), par: 3, fairway: rect(1.4, 3.4), tee: SIMD2(0, 0.4), cup: SIMD2(0, 3.0), blocks: [Block(centre: SIMD2(-0.45, 1.5), size: SIMD2(0.4, 0.15), height: 0.1, spins: false), Block(centre: SIMD2(0.45, 1.5), size: SIMD2(0.4, 0.15), height: 0.1, spins: false)]))
+        h.append(Hole(name: String(localized: "The Zigzag"), par: 4, fairway: [SIMD2(-0.5, 0), SIMD2(0.5, 0), SIMD2(0.5, 1.2), SIMD2(1.6, 1.2), SIMD2(1.6, 2.2), SIMD2(0.2, 2.2), SIMD2(0.2, 3.2), SIMD2(-0.5, 3.2)], tee: SIMD2(0, 0.4), cup: SIMD2(-0.15, 2.9)))
+        h.append(Hole(name: String(localized: "The Tunnel"), par: 3, fairway: rect(1.0, 3.6), tee: SIMD2(0, 0.4), cup: SIMD2(0, 3.2), blocks: [Block(centre: SIMD2(0, 1.8), size: SIMD2(1.0, 0.6), height: 0.5, spins: false)]))
+        h.append(Hole(name: String(localized: "Wide Open"), par: 2, fairway: rect(2.2, 2.6), tee: SIMD2(-0.7, 0.4), cup: SIMD2(0.7, 2.2)))
+        h.append(Hole(name: String(localized: "Two Islands"), par: 4, fairway: rect(1.6, 3.8), tee: SIMD2(0, 0.4), cup: SIMD2(0, 3.4), blocks: [Block(centre: SIMD2(-0.35, 1.4), size: SIMD2(0.4, 0.4), height: 0.12, spins: false), Block(centre: SIMD2(0.35, 2.3), size: SIMD2(0.4, 0.4), height: 0.12, spins: false)]))
+        h.append(Hole(name: String(localized: "The Hook"), par: 3, fairway: [SIMD2(-0.5, 0), SIMD2(0.5, 0), SIMD2(0.5, 2.0), SIMD2(1.8, 2.0), SIMD2(1.8, 3.0), SIMD2(-0.5, 3.0)], tee: SIMD2(0, 0.4), cup: SIMD2(1.4, 2.5)))
+        h.append(Hole(name: String(localized: "The Hill"), par: 3, fairway: rect(1.2, 3.8), tee: SIMD2(0, 0.4), cup: SIMD2(0, 3.4), ramp: (from: 1.2, to: 2.6, rise: 0.25)))
+        h.append(Hole(name: String(localized: "Double Windmill"), par: 4, fairway: rect(1.2, 4.2), tee: SIMD2(0, 0.4), cup: SIMD2(0, 3.8), blocks: [Block(centre: SIMD2(0, 1.5), size: SIMD2(1.0, 0.25), height: 0.3, spins: true), Block(centre: SIMD2(0, 2.8), size: SIMD2(1.0, 0.25), height: 0.3, spins: true)]))
+        h.append(Hole(name: String(localized: "The Corner"), par: 3, fairway: [SIMD2(-0.5, 0), SIMD2(0.5, 0), SIMD2(0.5, 2.6), SIMD2(-1.6, 2.6), SIMD2(-1.6, 1.8), SIMD2(-0.5, 1.8)], tee: SIMD2(0, 0.4), cup: SIMD2(-1.2, 2.2), blocks: [Block(centre: SIMD2(0, 1.3), size: SIMD2(0.3, 0.3), height: 0.12, spins: false)]))
+        h.append(Hole(name: String(localized: "The Long One"), par: 4, fairway: rect(1.0, 5.0), tee: SIMD2(0, 0.4), cup: SIMD2(0, 4.6)))
+        h.append(Hole(name: String(localized: "The Maze"), par: 5, fairway: rect(2.0, 3.6), tee: SIMD2(-0.7, 0.4), cup: SIMD2(0.7, 3.2), blocks: [Block(centre: SIMD2(0.3, 1.0), size: SIMD2(1.2, 0.12), height: 0.12, spins: false), Block(centre: SIMD2(-0.3, 1.9), size: SIMD2(1.2, 0.12), height: 0.12, spins: false), Block(centre: SIMD2(0.3, 2.7), size: SIMD2(1.2, 0.12), height: 0.12, spins: false)]))
+        h.append(Hole(name: String(localized: "The Finale"), par: 4, fairway: rect(1.6, 4.4), tee: SIMD2(0, 0.4), cup: SIMD2(0, 4.0), blocks: [Block(centre: SIMD2(0, 2.0), size: SIMD2(1.1, 0.25), height: 0.3, spins: true)], ramp: (from: 2.6, to: 3.4, rise: 0.2)))
         // Real mini golf is wider and longer than the first draft: everything 1.6 times.
         let k: Float = 1.6
         return h.map { hole in
@@ -1280,7 +1280,7 @@ final class GolfGame: Game {
 @MainActor
 final class GridRide: Game {
     var hidesRoom: Bool { riding }
-    let title = "🎢 Coaster"
+    let title = String(localized: "🎢 Coaster")
     struct Pose { var position: SIMD3<Float>; var orientation: simd_quatf }
 
     /// The course: random each ride and one smooth closed curve (owner, 2026-11-08: the old lap
@@ -1322,19 +1322,19 @@ final class GridRide: Game {
     var onNextWorld: (() -> Void)?
 
     var status: String {
-        if riding { return String(format: "%.0f m at %.0f km/h · %.0f s of %.0f", along, speed * 3.6, rideTime, lapSeconds) }
-        return String(format: "At the station · a %.0f s ride%@ · Ride when ready", lapSeconds, loopRange == nil ? "" : " with a loop")
+        if riding { return String(format: String(localized: "%.0f m at %.0f km/h · %.0f s of %.0f"), along, speed * 3.6, rideTime, lapSeconds) }
+        return String(format: loopRange == nil ? String(localized: "At the station · a %.0f s ride · Ride when ready") : String(localized: "At the station · a %.0f s ride with a loop · Ride when ready"), lapSeconds)
     }
 
     var summary: GameSummary? {
         guard finished else { return nil }
-        return GameSummary(title: "Ride complete", lines: [
-            ("Time", String(format: "%.0f s", rideTime)),
-            ("Distance", String(format: "%.0f m", lapLength)),
-            ("Top speed", String(format: "%.0f km/h", topSpeed * 3.6)),
-            ("Highest point", String(format: "%.0f m", topHeight)),
-            ("Loops", loopRange == nil ? "None this time" : "One"),
-        ], again: "Ride again")
+        return GameSummary(title: String(localized: "Ride complete"), lines: [
+            (String(localized: "Time"), String(format: "%.0f s", rideTime)),
+            (String(localized: "Distance"), String(format: "%.0f m", lapLength)),
+            (String(localized: "Top speed"), String(format: "%.0f km/h", topSpeed * 3.6)),
+            (String(localized: "Highest point"), String(format: "%.0f m", topHeight)),
+            (String(localized: "Loops"), loopRange == nil ? String(localized: "None this time") : String(localized: "One")),
+        ], again: String(localized: "Ride again"))
     }
 
     func reset() {
@@ -1709,7 +1709,7 @@ final class GridRide: Game {
 /// and the surroundings change to the next of the palettes; walk back for the previous.
 @MainActor
 final class PortalGame: Game {
-    let title = "🌀 Portal"
+    let title = String(localized: "🌀 Portal")
     private var placed = false
     private var centre = SIMD3<Float>.zero
     private var normal = SIMD3<Float>(0, 0, 1)
@@ -1723,7 +1723,7 @@ final class PortalGame: Game {
     static let worlds = 4
     static let palettes: [SIMD3<Float>] = [SIMD3(1, 0.2, 0.85), SIMD3(0.2, 0.7, 1), SIMD3(1, 0.5, 0.15), SIMD3(0.7, 0.9, 1)]
     var status: String {
-        world == 0 ? "In your room · walk through the gate, or Step through" : "Through the portal · walk back through to come home"
+        world == 0 ? String(localized: "In your room · walk through the gate, or Step through") : String(localized: "Through the portal · walk back through to come home")
     }
     /// The world now: 0 is the room, the rest are other places (the renderer shows them).
     var onWorldChange: ((Int) -> Void)?

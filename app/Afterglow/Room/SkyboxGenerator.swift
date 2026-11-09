@@ -23,7 +23,7 @@ final class SkyboxGenerator: @unchecked Sendable {
 
     /// Asks for a skybox and waits for it (a minute or two), returning the saved file.
     func generate(prompt: String, progress: @escaping @Sendable (String) -> Void) async throws -> URL {
-        guard let key = Self.key, !key.isEmpty else { throw Failure(description: "No API key in Documents/\(Self.keyFile)") }
+        guard let key = Self.key, !key.isEmpty else { throw Failure(description: String(localized: "No API key in Documents/\(Self.keyFile)")) }
         var request = URLRequest(url: base.appendingPathComponent("skybox"))
         request.httpMethod = "POST"
         request.setValue(key, forHTTPHeaderField: "x-api-key")
@@ -32,10 +32,10 @@ final class SkyboxGenerator: @unchecked Sendable {
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
               let json = try JSONSerialization.jsonObject(with: data) as? [String: Any], let id = json["id"] as? Int else {
-            throw Failure(description: "The generator refused the request (\((response as? HTTPURLResponse)?.statusCode ?? 0))")
+            throw Failure(description: String(localized: "The generator refused the request (\((response as? HTTPURLResponse)?.statusCode ?? 0))"))
         }
         log("[Skybox] Generating \(id): \(prompt)")
-        progress("Generating…")
+        progress(String(localized: "Generating…"))
         for attempt in 0..<90 {
             try await Task.sleep(for: .seconds(3))
             var poll = URLRequest(url: base.appendingPathComponent("imagine/requests/\(id)"))
@@ -55,6 +55,6 @@ final class SkyboxGenerator: @unchecked Sendable {
             }
             if status == "error" || status == "abort" { throw Failure(description: "The generator failed: \(req["error_message"] ?? status)") }
         }
-        throw Failure(description: "The generator took too long")
+        throw Failure(description: String(localized: "The generator took too long"))
     }
 }

@@ -144,7 +144,7 @@ final class AppLock {
         let keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "✕"]
         let listening = dictation.listening
         b.append(.init(id: "voice", rect: CGRect(x: 0.08, y: 0.17, width: 0.84, height: 0.13),
-                       label: listening ? "Listening… say the six digits" : (voiceProblem ?? (heardNothing ? "Didn't catch six digits. Try again" : "Say your passcode")),
+                       label: listening ? String(localized: "Listening… say the six digits") : (voiceProblem ?? (heardNothing ? String(localized: "Didn't catch six digits. Try again") : String(localized: "Say your passcode"))),
                        wide: true, icon: listening ? "waveform" : "mic.fill", style: .pill, accent: true))
         for (i, k) in keys.enumerated() {
             let col = i % 3, row = i / 3
@@ -158,10 +158,27 @@ final class AppLock {
         let words: [String: Character] = ["zero": "0", "oh": "0", "o": "0", "one": "1", "won": "1", "two": "2", "to": "2", "too": "2",
                                           "three": "3", "tree": "3", "four": "4", "for": "4", "fore": "4", "five": "5", "six": "6",
                                           "seven": "7", "eight": "8", "ate": "8", "nine": "9"]
+        // The other eight languages' digits. Chinese, Japanese and Korean run them together, so each
+        // of their characters counts by itself.
+        let spoken: [String: Character] = [
+            "null": "0", "eins": "1", "ein": "1", "eine": "1", "zwei": "2", "zwo": "2", "drei": "3", "vier": "4", "fünf": "5", "sechs": "6", "sieben": "7", "acht": "8", "neun": "9",
+            "cero": "0", "uno": "1", "una": "1", "dos": "2", "tres": "3", "cuatro": "4", "cinco": "5", "seis": "6", "siete": "7", "ocho": "8", "nueve": "9",
+            "zéro": "0", "un": "1", "une": "1", "deux": "2", "trois": "3", "quatre": "4", "cinq": "5", "sept": "7", "huit": "8", "neuf": "9",
+            "due": "2", "tre": "3", "quattro": "4", "cinque": "5", "sei": "6", "sette": "7", "otto": "8", "nove": "9",
+            "um": "1", "uma": "1", "dois": "2", "duas": "2", "três": "3", "sete": "7", "oito": "8",
+            "ゼロ": "0", "れい": "0", "いち": "1", "に": "2", "さん": "3", "よん": "4", "し": "4", "ご": "5", "ろく": "6", "なな": "7", "しち": "7", "はち": "8", "きゅう": "9", "く": "9",
+        ]
+        let characters: [Character: Character] = [
+            "〇": "0", "零": "0", "幺": "1", "两": "2",
+            "영": "0", "공": "0", "일": "1", "이": "2", "삼": "3", "사": "4", "오": "5", "육": "6", "칠": "7", "팔": "8", "구": "9",
+        ]
         var out = ""
         for token in text.lowercased().split(whereSeparator: { !$0.isLetter && !$0.isNumber }) {
-            if token.allSatisfy(\.isNumber) { out += token.filter(\.isASCII) }
-            else if let d = words[String(token)] { out.append(d) }
+            if let d = words[String(token)] ?? spoken[String(token)] { out.append(d); continue }
+            for ch in token {
+                if let value = ch.wholeNumberValue, (0...9).contains(value) { out += String(value) }
+                else if let d = characters[ch] { out.append(d) }
+            }
         }
         return out
     }
@@ -175,7 +192,7 @@ final class AppLock {
             guard let self else { return }
             guard await self.dictation.requestPermission() else {
                 log("[Lock] Voice entry needs the microphone and speech recognition")
-                self.voiceProblem = "Allow the microphone and speech in Settings"
+                self.voiceProblem = String(localized: "Allow the microphone and speech in Settings")
                 self.layout()
                 return
             }
@@ -229,9 +246,9 @@ final class AppLock {
 
     var title: String {
         let dots = String(repeating: "●", count: entered.count) + String(repeating: "○", count: 6 - entered.count)
-        if settingNew { return (firstNew.isEmpty ? "New passcode  " : "Again  ") + dots }
-        if dictation.listening { return "Listening  " + dots }
-        return (wrong > 0 ? "Try again  " : "Passcode  ") + dots
+        if settingNew { return (firstNew.isEmpty ? String(localized: "New passcode") : String(localized: "Again")) + "  " + dots }
+        if dictation.listening { return String(localized: "Listening") + "  " + dots }
+        return (wrong > 0 ? String(localized: "Try again") : String(localized: "Passcode")) + "  " + dots
     }
 
     func render() {

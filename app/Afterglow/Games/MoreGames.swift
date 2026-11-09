@@ -9,7 +9,7 @@ import simd
 /// tap drops the slab, the part past the stack below breaks off and falls, and the next is only
 /// as big as what stayed. Missing the stack ends the game. Logs [Games].
 final class TowerGame: Game {
-    let title = "🏗️ Tower"
+    let title = String(localized: "🏗️ Tower")
     struct Slab: Equatable { var centre: SIMD2<Float>; var size: SIMD2<Float> }
 
     /// What of a slab rests on the one below, or nil if none of it does.
@@ -39,13 +39,13 @@ final class TowerGame: Game {
     private var loweredTarget: Float { max(0, Float(stack.count) * Self.slabHeight - 0.3) }
 
     private var height: Int { max(0, stack.count - 1) }
-    var status: String { over ? "Fell at \(height)" : (placed ? "\(height) high" + (perfects > 0 ? " · \(perfects) perfect" : "") : "Finding a table") }
+    var status: String { over ? String(localized: "Fell at \(height)") : (placed ? String(localized: "\(height) high") + (perfects > 0 ? String(localized: " · \(perfects) perfect") : "") : String(localized: "Finding a table")) }
     var summary: GameSummary? {
         guard over else { return nil }
-        return GameSummary(title: "The tower stands at \(height)", lines: [
-            ("Height", String(format: "%d slabs, %.0f cm", height, Float(height) * Self.slabHeight * 100)),
-            ("Perfect drops", "\(perfects)"),
-            ("Built on", onTable ? "Your table" : "A plinth"),
+        return GameSummary(title: String(localized: "The tower stands at \(height)"), lines: [
+            (String(localized: "Height"), String(format: String(localized: "%d slabs, %.0f cm"), height, Float(height) * Self.slabHeight * 100)),
+            (String(localized: "Perfect drops"), "\(perfects)"),
+            (String(localized: "Built on"), onTable ? String(localized: "Your table") : String(localized: "A plinth")),
         ])
     }
 
@@ -163,14 +163,14 @@ final class TowerGame: Game {
 /// A garden that grows where you point: a pinch or tap plants a glowing stem on the surface the
 /// pointing hand (or the gaze) aims at; it grows for a few seconds and sways. Nothing to win.
 final class GardenGame: Game {
-    let title = "🌱 Glow garden"
+    let title = String(localized: "🌱 Glow garden")
     private struct Plant { var root: SIMD3<Float>; var born: Double; var seed: Float; var height: Float; var color: SIMD4<Float>; var leaves: Int }
     private static let growSeconds: Float = 5
     private static let most = 40
     private var plants: [Plant] = []
     private var planted = 0
     private var particles = ParticleSystem()
-    var status: String { plants.isEmpty ? "Pinch to plant" : "\(plants.count) growing" }
+    var status: String { plants.isEmpty ? String(localized: "Pinch to plant") : String(localized: "\(plants.count) growing") }
 
     func reset() { plants.removeAll(); planted = 0 }
 
@@ -244,7 +244,7 @@ final class GardenGame: Game {
 /// gaze, or a controller's stick) is the paddle that knocks it back in. Past the ring it is lost,
 /// and three lost ends the game; every return makes it faster.
 final class OrbitalPong: Game {
-    let title = "☄️ Orbital pong"
+    let title = String(localized: "☄️ Orbital pong")
     struct Ball { var position: SIMD2<Float>; var velocity: SIMD2<Float> }
     nonisolated static let ringRadius: Float = 0.42
     nonisolated private static let gravity: Float = 0.22
@@ -280,10 +280,10 @@ final class OrbitalPong: Game {
     private var over: Bool { lives <= 0 }
     private var thrust: Float { Self.baseThrust + Float(score) * 0.006 }
     nonisolated static let baseThrust: Float = 0.09
-    var status: String { over ? "Out at \(score)" : "\(score) returned · \(lives) left" }
+    var status: String { over ? String(localized: "Out at \(score)") : String(localized: "\(score) returned · \(lives) left") }
     var summary: GameSummary? {
         guard over else { return nil }
-        return GameSummary(title: "Out of orbit", lines: [("Returned", "\(score)"), ("Best run", "\(best)")])
+        return GameSummary(title: String(localized: "Out of orbit"), lines: [(String(localized: "Returned"), "\(score)"), (String(localized: "Best run"), "\(best)")])
     }
 
     func reset() { placed = false; score = 0; lives = 3; trail.removeAll(); paddles.removeAll() }
@@ -371,7 +371,7 @@ final class OrbitalPong: Game {
 /// stick): rings to collect, pylons to miss, three shields. The room gives way to the synthwave
 /// surroundings while it runs.
 final class SkylineDrive: Game {
-    let title = "🏎️ Skyline drive"
+    let title = String(localized: "🏎️ Skyline drive")
     private struct Thing { var ahead: Float; var x: Float; var ring: Bool }
     private struct Tower { var ahead: Float; var x: Float; var height: Float; var width: Float; var color: SIMD4<Float> }
     private static let roadHalf: Float = 5
@@ -391,14 +391,14 @@ final class SkylineDrive: Game {
     private var particles = ParticleSystem()
     private var over: Bool { shields <= 0 }
     var hidesRoom: Bool { started && !over }
-    var status: String { over ? "Crashed at \(Int(travelled)) m" : String(format: "%.0f km/h · %d rings · %d shields", speed * 3.6, rings, shields) }
+    var status: String { over ? String(localized: "Crashed at \(Int(travelled)) m") : String(format: String(localized: "%.0f km/h · %d rings · %d shields"), speed * 3.6, rings, shields) }
     var summary: GameSummary? {
         guard over else { return nil }
-        return GameSummary(title: "End of the road", lines: [
-            ("Distance", String(format: "%.2f km", travelled / 1000)),
-            ("Rings", "\(rings)"),
-            ("Top speed", String(format: "%.0f km/h", speed * 3.6)),
-        ], again: "Drive again")
+        return GameSummary(title: String(localized: "End of the road"), lines: [
+            (String(localized: "Distance"), String(format: "%.2f km", travelled / 1000)),
+            (String(localized: "Rings"), "\(rings)"),
+            (String(localized: "Top speed"), String(format: "%.0f km/h", speed * 3.6)),
+        ], again: String(localized: "Drive again"))
     }
 
     func reset() { started = false; carX = 0; speed = 12; travelled = 0; shields = 3; rings = 0; things.removeAll(); towers.removeAll(); nextSpawn = 30; flash = 0 }

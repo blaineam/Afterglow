@@ -283,9 +283,9 @@ final class KeyboardPanel {
     private func layout() {
         var buttons: [ScenePanel.Button] = []
         // The bar: everything typed so far, with the arrows that move the cursor through it.
-        buttons.append(.init(id: "ArrowLeft", rect: CGRect(x: 0.01, y: 0.012, width: 0.09, height: 0.125), label: "Cursor left", icon: "arrow.left", style: .round))
+        buttons.append(.init(id: "ArrowLeft", rect: CGRect(x: 0.01, y: 0.012, width: 0.09, height: 0.125), label: String(localized: "Cursor left"), icon: "arrow.left", style: .round))
         buttons.append(.init(id: "field", rect: CGRect(x: 0.115, y: 0.012, width: 0.77, height: 0.125), label: Self.fieldLine(before: fieldBefore, after: fieldAfter), style: .label))
-        buttons.append(.init(id: "ArrowRight", rect: CGRect(x: 0.90, y: 0.012, width: 0.09, height: 0.125), label: "Cursor right", icon: "arrow.right", style: .round))
+        buttons.append(.init(id: "ArrowRight", rect: CGRect(x: 0.90, y: 0.012, width: 0.09, height: 0.125), label: String(localized: "Cursor right"), icon: "arrow.right", style: .round))
         let rows = symbols ? Self.symbolRows : Self.letterRows
         let rowHeight: CGFloat = 0.194
         let top: CGFloat = 0.15
@@ -301,7 +301,7 @@ final class KeyboardPanel {
         }
         let bottom = top + 3 * rowHeight
         let bar: [(String, String, String?, CGFloat)] = [("shift", shifted ? "ABC" : "abc", "shift", 0.12), ("symbols", symbols ? "abc" : "#+=", nil, 0.12), ("space", "space", nil, 0.30),
-                                                         ("backspace", "", "delete.left", 0.12), ("clear", "clear", nil, 0.11), ("mic", "", "mic.fill", 0.09), ("go", "Go", nil, 0.12)]
+                                                         ("backspace", "", "delete.left", 0.12), ("clear", String(localized: "clear"), nil, 0.11), ("mic", "", "mic.fill", 0.09), ("go", String(localized: "Go"), nil, 0.12)]
         var x: CGFloat = 0.01
         for (id, label, icon, width) in bar {
             buttons.append(.init(id: id, rect: CGRect(x: x, y: bottom, width: width, height: rowHeight), label: label, wide: true, icon: icon, style: icon != nil && label.isEmpty ? .round : .key, accent: id == "go"))
@@ -359,52 +359,52 @@ final class ChromePanel {
             buttons.append(.init(id: id, rect: CGRect(x: x, y: row1, width: 0.075, height: h), label: label, icon: icon, style: .round, accent: accent))
             x += 0.08
         }
-        round("back", "chevron.left", "Back")
-        round("forward", "chevron.right", "Forward")
-        round("reload", "arrow.clockwise", "Reload")
+        round("back", "chevron.left", String(localized: "Back"))
+        round("forward", "chevron.right", String(localized: "Forward"))
+        round("reload", "arrow.clockwise", String(localized: "Reload"))
         // Text size on the bar itself, where it is needed (owner, 2026-11-08: pages too small).
-        round("text:-", "textformat.size.smaller", "Smaller text")
-        round("text:+", "textformat.size.larger", "Larger text")
+        round("text:-", "textformat.size.smaller", String(localized: "Smaller text"))
+        round("text:+", "textformat.size.larger", String(localized: "Larger text"))
         let progress = browser.current?.progress ?? 1
         let loading = progress < 1 && browser.typed.isEmpty
-        buttons.append(.init(id: "address", rect: CGRect(x: x, y: row1, width: 0.18, height: h), label: loading ? "Loading \(Int(progress * 100))%  ·  " + (address.isEmpty ? "" : address) : (address.isEmpty ? "Search or address" : address), wide: true,
+        buttons.append(.init(id: "address", rect: CGRect(x: x, y: row1, width: 0.18, height: h), label: loading ? String(localized: "Loading \(Int(progress * 100))%") + "  ·  " + (address.isEmpty ? "" : address) : (address.isEmpty ? String(localized: "Search or address") : address), wide: true,
                              icon: loading ? "arrow.triangle.2.circlepath" : (browser.current?.isPrivate == true ? "eyeglasses" : "globe"), style: .pill, accent: !browser.typed.isEmpty || loading))
         x += 0.19
-        round("keys", "keyboard", "Keyboard")
-        round("mic", "mic.fill", "Dictate")
+        round("keys", "keyboard", String(localized: "Keyboard"))
+        round("mic", "mic.fill", String(localized: "Dictate"))
         let handAccess = browser.handAccessHere
         round("handsite", handAccess == .always ? "hand.raised.fill" : (handAccess == .never ? "hand.raised.slash" : "hand.raised"),
-              handAccess == .always ? "This site always gets your hands" : (handAccess == .never ? "This site never gets your hands" : "This site asks for your hands"), accent: handAccess == .always)
-        round("star", browser.isBookmarked() ? "star.fill" : "star", "Bookmark", accent: browser.isBookmarked())
-        round("home", "house.fill", "Start")
+              handAccess == .always ? String(localized: "This site always gets your hands") : (handAccess == .never ? String(localized: "This site never gets your hands") : String(localized: "This site asks for your hands")), accent: handAccess == .always)
+        round("star", browser.isBookmarked() ? "star.fill" : "star", String(localized: "Bookmark"), accent: browser.isBookmarked())
+        round("home", "house.fill", String(localized: "Start"))
         // The second row: the tabs as pills, a new tab, a private tab; or a prompt.
         if case .hands(let host, _)? = browser.prompt {
-            buttons.append(.init(id: "prompt", rect: CGRect(x: 0.01, y: row2, width: 0.46, height: h), label: "Hands for \(WebBridge.shorten(host))?", wide: true, icon: "hand.raised.fill", style: .pill))
-            buttons.append(.init(id: "no", rect: CGRect(x: 0.48, y: row2, width: 0.15, height: h), label: "Not now", wide: true, style: .pill))
-            buttons.append(.init(id: "yes", rect: CGRect(x: 0.64, y: row2, width: 0.2, height: h), label: "Just this time", wide: true, style: .pill))
-            buttons.append(.init(id: "handsAlways", rect: CGRect(x: 0.85, y: row2, width: 0.14, height: h), label: "Always", wide: true, style: .pill, accent: true))
+            buttons.append(.init(id: "prompt", rect: CGRect(x: 0.01, y: row2, width: 0.46, height: h), label: String(localized: "Hands for \(WebBridge.shorten(host))?"), wide: true, icon: "hand.raised.fill", style: .pill))
+            buttons.append(.init(id: "no", rect: CGRect(x: 0.48, y: row2, width: 0.15, height: h), label: String(localized: "Not now"), wide: true, style: .pill))
+            buttons.append(.init(id: "yes", rect: CGRect(x: 0.64, y: row2, width: 0.2, height: h), label: String(localized: "Just this time"), wide: true, style: .pill))
+            buttons.append(.init(id: "handsAlways", rect: CGRect(x: 0.85, y: row2, width: 0.14, height: h), label: String(localized: "Always"), wide: true, style: .pill, accent: true))
         } else if let prompt = browser.prompt {
             let text: String
             switch prompt {
-            case .save(let c): text = "Save the password for \(c.host)\(c.username.isEmpty ? "" : " (\(c.username))")?"
-            case .fill(let host, let cs): text = "Fill the login for \(host)\(cs.first.map { $0.username.isEmpty ? "" : " (\($0.username))" } ?? "")?"
+            case .save(let c): text = String(localized: "Save the password for \(c.host)\(c.username.isEmpty ? "" : " (\(c.username))")?")
+            case .fill(let host, let cs): text = String(localized: "Fill the login for \(host)\(cs.first.map { $0.username.isEmpty ? "" : " (\($0.username))" } ?? "")?")
             case .hands: text = ""
             }
             buttons.append(.init(id: "prompt", rect: CGRect(x: 0.01, y: row2, width: 0.66, height: h), label: text, wide: true, icon: "key.fill", style: .pill))
-            buttons.append(.init(id: "yes", rect: CGRect(x: 0.68, y: row2, width: 0.15, height: h), label: "Yes", wide: true, style: .pill, accent: true))
-            buttons.append(.init(id: "no", rect: CGRect(x: 0.84, y: row2, width: 0.15, height: h), label: "No", wide: true, style: .pill))
+            buttons.append(.init(id: "yes", rect: CGRect(x: 0.68, y: row2, width: 0.15, height: h), label: String(localized: "Yes"), wide: true, style: .pill, accent: true))
+            buttons.append(.init(id: "no", rect: CGRect(x: 0.84, y: row2, width: 0.15, height: h), label: String(localized: "No"), wide: true, style: .pill))
         } else {
             var tx: CGFloat = 0.01
             for (i, tab) in browser.tabs.prefix(4).enumerated() {
-                let label = String(WebBridge.shorten(tab.url?.absoluteString ?? "Start").prefix(12))
+                let label = String(WebBridge.shorten(tab.url?.absoluteString ?? String(localized: "Start")).prefix(12))
                 buttons.append(.init(id: "tab:\(i)", rect: CGRect(x: tx, y: row2, width: 0.19, height: h), label: label, wide: true,
                                      icon: tab.isPrivate ? "eyeglasses" : nil, style: .pill, accent: i == browser.currentIndex))
                 tx += 0.195
             }
-            buttons.append(.init(id: "new", rect: CGRect(x: 0.80, y: row2, width: 0.095, height: h), label: "New tab", icon: "plus", style: .round))
-            buttons.append(.init(id: "private", rect: CGRect(x: 0.90, y: row2, width: 0.095, height: h), label: "Private tab", icon: "eyeglasses", style: .round))
+            buttons.append(.init(id: "new", rect: CGRect(x: 0.80, y: row2, width: 0.095, height: h), label: String(localized: "New tab"), icon: "plus", style: .round))
+            buttons.append(.init(id: "private", rect: CGRect(x: 0.90, y: row2, width: 0.095, height: h), label: String(localized: "Private tab"), icon: "eyeglasses", style: .round))
             if browser.tabs.count > 1 {
-                buttons.append(.init(id: "close", rect: CGRect(x: 0.80 - 0.1, y: row2, width: 0.095, height: h), label: "Close tab", icon: "xmark", style: .round))
+                buttons.append(.init(id: "close", rect: CGRect(x: 0.80 - 0.1, y: row2, width: 0.095, height: h), label: String(localized: "Close tab"), icon: "xmark", style: .round))
             }
         }
         panel.set(buttons: buttons, version: "chrome|\(address)|\(browser.tabs.count)|\(browser.currentIndex)|\(browser.prompt.map { "\($0)" } ?? "")|\(browser.handAccessHere.rawValue)|\(browser.placing)|\(browser.isBookmarked())|\(Int(progress * 20))")

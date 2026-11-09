@@ -19,7 +19,7 @@ final class MusicApp {
     private let perPage = 6
     private var showingLibrary = false
     private var observer: Task<Void, Never>?
-    private var nowTitle = "Nothing playing"
+    private var nowTitle = String(localized: "Nothing playing")
     private var nowSubtitle = ""
     private var artworkURL: URL?
     /// The playing song's tempo, measured from its audio when the device holds it unprotected.
@@ -72,7 +72,7 @@ final class MusicApp {
 
     private func refresh() {
         let entry = player.queue.currentEntry
-        let title = entry?.title ?? "Nothing playing"
+        let title = entry?.title ?? String(localized: "Nothing playing")
         let subtitle = entry?.subtitle ?? ""
         let url = entry?.artwork?.url(width: 400, height: 400)
         if title != nowTitle || subtitle != nowSubtitle || url != artworkURL {
@@ -95,7 +95,7 @@ final class MusicApp {
                     let bpm = await self.tempo.tempo(forTitle: title, artist: subtitle.components(separatedBy: " — ").first ?? "", id: id)
                     if self.nowTitle == title {
                         self.currentTempo = bpm
-                        self.tempoNote = bpm.map { String(format: "%.0f bpm", $0) } ?? "tempo unknown: not in the catalogues"
+                        self.tempoNote = bpm.map { String(format: "%.0f bpm", $0) } ?? String(localized: "tempo unknown: not in the catalogues")
                         self.version += 1
                         self.layout()
                     }
@@ -114,16 +114,16 @@ final class MusicApp {
                 b.append(.init(id: id, rect: CGRect(x: 0.03, y: 0.04 + CGFloat(i) * 0.135, width: 0.94, height: 0.125), label: name, wide: true, icon: icon, style: .row))
             }
             let pages = max(1, (entries.count + perPage - 1) / perPage)
-            b.append(.init(id: "prev", rect: CGRect(x: 0.03, y: 0.87, width: 0.12, height: 0.11), label: "Previous", icon: "chevron.left", style: .round))
-            b.append(.init(id: "pagelabel", rect: CGRect(x: 0.17, y: 0.87, width: 0.3, height: 0.11), label: "\(page + 1) of \(pages)", wide: true, style: .label))
-            b.append(.init(id: "next", rect: CGRect(x: 0.47, y: 0.87, width: 0.12, height: 0.11), label: "Next", icon: "chevron.right", style: .round))
-            b.append(.init(id: "nowplaying", rect: CGRect(x: 0.63, y: 0.87, width: 0.34, height: 0.11), label: "Now playing", wide: true, icon: "play.circle", style: .pill))
+            b.append(.init(id: "prev", rect: CGRect(x: 0.03, y: 0.87, width: 0.12, height: 0.11), label: String(localized: "Previous"), icon: "chevron.left", style: .round))
+            b.append(.init(id: "pagelabel", rect: CGRect(x: 0.17, y: 0.87, width: 0.3, height: 0.11), label: String(localized: "\(page + 1) of \(pages)"), wide: true, style: .label))
+            b.append(.init(id: "next", rect: CGRect(x: 0.47, y: 0.87, width: 0.12, height: 0.11), label: String(localized: "Next"), icon: "chevron.right", style: .round))
+            b.append(.init(id: "nowplaying", rect: CGRect(x: 0.63, y: 0.87, width: 0.34, height: 0.11), label: String(localized: "Now playing"), wide: true, icon: "play.circle", style: .pill))
         } else {
             let y: CGFloat = 0.50, h: CGFloat = 0.24
-            b.append(.init(id: "prevTrack", rect: CGRect(x: 0.14, y: y, width: 0.2, height: h), label: "Previous", icon: "backward.fill", style: .round))
-            b.append(.init(id: "play", rect: CGRect(x: 0.40, y: y, width: 0.2, height: h), label: isPlaying ? "Pause" : "Play", icon: isPlaying ? "pause.fill" : "play.fill", style: .round, accent: true))
-            b.append(.init(id: "nextTrack", rect: CGRect(x: 0.66, y: y, width: 0.2, height: h), label: "Next", icon: "forward.fill", style: .round))
-            b.append(.init(id: "library", rect: CGRect(x: 0.03, y: 0.78, width: 0.94, height: 0.19), label: authorized ? "Your library" : "Allow Apple Music in Settings", wide: true, icon: "music.note.list", style: .pill))
+            b.append(.init(id: "prevTrack", rect: CGRect(x: 0.14, y: y, width: 0.2, height: h), label: String(localized: "Previous"), icon: "backward.fill", style: .round))
+            b.append(.init(id: "play", rect: CGRect(x: 0.40, y: y, width: 0.2, height: h), label: isPlaying ? String(localized: "Pause") : String(localized: "Play"), icon: isPlaying ? "pause.fill" : "play.fill", style: .round, accent: true))
+            b.append(.init(id: "nextTrack", rect: CGRect(x: 0.66, y: y, width: 0.2, height: h), label: String(localized: "Next"), icon: "forward.fill", style: .round))
+            b.append(.init(id: "library", rect: CGRect(x: 0.03, y: 0.78, width: 0.94, height: 0.19), label: authorized ? String(localized: "Your library") : String(localized: "Allow Apple Music in Settings"), wide: true, icon: "music.note.list", style: .pill))
         }
         panel.set(buttons: b, version: "music|\(version)|\(isPlaying)|\(showingLibrary)|\(page)|\(playlists.count)|\(albums.count)|\(authorized)")
     }

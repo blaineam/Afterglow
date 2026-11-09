@@ -8,12 +8,12 @@ enum AppKind: String, CaseIterable, Codable, Sendable {
 
     var label: String {
         switch self {
-        case .browser: return "🌐 Browser"
-        case .media: return "🖼 Media"
-        case .files: return "📁 Files"
-        case .environments: return "🌄 Places"
-        case .games: return "🎮 Games"
-        case .settings: return "⚙ Settings"
+        case .browser: return String(localized: "🌐 Browser")
+        case .media: return String(localized: "🖼 Media")
+        case .files: return String(localized: "📁 Files")
+        case .environments: return String(localized: "🌄 Places")
+        case .games: return String(localized: "🎮 Games")
+        case .settings: return String(localized: "⚙ Settings")
         }
     }
 }
@@ -139,12 +139,12 @@ final class Toolbar {
         // The dock: six large tiles, an icon over a word each.
         var buttons: [ScenePanel.Button] = []
         let tiles: [(String, String, String)] = [
-            ("more", "square.grid.2x2.fill", "Apps"),
-            ("toggle:passthrough", settings.passthrough ? "eye.fill" : "sparkles", settings.passthrough ? "Room" : "Scene"),
-            ("toggle:hands", settings.showHandsLive ? "hand.raised.fill" : "hand.raised.slash", "Hands"),
-            ("recentre", "scope", "Recentre"),
-            ("record:0", isRecording() ? "stop.circle.fill" : "record.circle", isRecording() ? "Stop" : "Record"),
-            ("app:settings", "gearshape.fill", "Settings"),
+            ("more", "square.grid.2x2.fill", String(localized: "Apps")),
+            ("toggle:passthrough", settings.passthrough ? "eye.fill" : "sparkles", settings.passthrough ? String(localized: "Room") : String(localized: "Scene")),
+            ("toggle:hands", settings.showHandsLive ? "hand.raised.fill" : "hand.raised.slash", String(localized: "Hands")),
+            ("recentre", "scope", String(localized: "Recentre")),
+            ("record:0", isRecording() ? "stop.circle.fill" : "record.circle", isRecording() ? String(localized: "Stop") : String(localized: "Record")),
+            ("app:settings", "gearshape.fill", String(localized: "Settings")),
         ]
         let gap: CGFloat = 0.008
         let w = (1 - gap * CGFloat(tiles.count - 1)) / CGFloat(tiles.count)
@@ -169,7 +169,7 @@ final class Toolbar {
             tx += chipWidth + 0.01
         }
         if let playing = musicPlaying {
-            let controls: [(String, String, String)] = [("music:prev", "backward.fill", "Back"), ("music:play", playing ? "pause.fill" : "play.fill", playing ? "Pause" : "Play"), ("music:next", "forward.fill", "Next")]
+            let controls: [(String, String, String)] = [("music:prev", "backward.fill", String(localized: "Back")), ("music:play", playing ? "pause.fill" : "play.fill", playing ? String(localized: "Pause") : String(localized: "Play")), ("music:next", "forward.fill", String(localized: "Next"))]
             var mx: CGFloat = 1 - 0.01 - 3 * 0.08 - 2 * 0.005
             for (id, icon, label) in controls {
                 trayButtons.append(.init(id: id, rect: CGRect(x: mx, y: 0.1, width: 0.08, height: 0.8), label: label, icon: icon, style: .round, accent: id == "music:play"))
@@ -178,7 +178,7 @@ final class Toolbar {
         }
         tray.set(buttons: trayButtons, version: "tray|\(minimized.map(\.rawValue).joined())|\(String(describing: musicPlaying))")
         panel.set(buttons: buttons, version: "dock|\(settings.passthrough)|\(settings.showHandsLive)|\(isRecording())|\(minimized.map(\.rawValue).joined())|\(String(describing: musicPlaying))")
-        menu.set(buttons: [.init(id: "feet", rect: CGRect(x: 0.08, y: 0.08, width: 0.84, height: 0.84), label: riding ? "Exit ride" : "Apps", icon: riding ? "xmark" : "square.grid.2x2.fill", style: .round, accent: true, light: riding ? 1 : 0)], version: "feet|\(riding)")
+        menu.set(buttons: [.init(id: "feet", rect: CGRect(x: 0.08, y: 0.08, width: 0.84, height: 0.84), label: riding ? String(localized: "Exit ride") : String(localized: "Apps"), icon: riding ? "xmark" : "square.grid.2x2.fill", style: .round, accent: true, light: riding ? 1 : 0)], version: "feet|\(riding)")
     }
 
     func press(_ id: String) {

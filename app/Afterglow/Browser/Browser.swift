@@ -495,7 +495,7 @@ final class Browser: NSObject, WKScriptMessageHandler, ObservableObject {
     /// says whether it may have their hands, unless the site already has an answer.
     private func sessionRequested(ar: Bool) {
         run(WebBridge.sessionHold)
-        let host = current?.url?.host ?? "This page"
+        let host = current?.url?.host ?? String(localized: "This page")
         switch current?.isPrivate == true ? HandAccess.ask : HandAccess.policy(for: host) {
         case .always: handsAllowed = true; startPreparedSession(ar: ar)
         case .never: handsAllowed = false; startPreparedSession(ar: ar)

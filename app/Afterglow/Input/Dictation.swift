@@ -58,9 +58,9 @@ final class Dictation: ObservableObject {
 
     /// Why a private entry cannot start, or nil when it can.
     var privateEntryProblem: String? {
-        guard let recognizer else { return "No speech recognition for this language" }
-        if !recognizer.isAvailable { return "Speech recognition isn't available now" }
-        if !recognizer.supportsOnDeviceRecognition { return "On-device speech isn't installed: turn on Dictation in Settings" }
+        guard let recognizer else { return String(localized: "No speech recognition for this language") }
+        if !recognizer.isAvailable { return String(localized: "Speech recognition isn't available now") }
+        if !recognizer.supportsOnDeviceRecognition { return String(localized: "On-device speech isn't installed: turn on Dictation in Settings") }
         return nil
     }
 
