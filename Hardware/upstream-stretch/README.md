@@ -174,6 +174,13 @@ Stretching moved the shelves out with the walls, so a Pro Max seats on them but 
 through with nothing to stop it short of the carriage. Its door has to hold the glass, so those doors get four rigid
 clips 14 to 25 mm from each end, clear of Apple's button positions, each lapping the glass by 0.6 mm.
 
+**Phones up to 165 mm long fit, not 166.** The bay is 166.18 mm long. Take away the door's 0.228 mm clearance to the
+bay wall and the 0.35 mm gap to the phone at each end, and above about 163.4 mm there is no room left for the anchors'
+0.8 mm end walls. Past that point the generator drops whatever the bay trims thinner than a wall, and the bay's own ends
+locate the phone. On a clipped phone over about 164 mm, the clips would also run under the screen shelves, so they stop
+0.5 mm short of y 68. At 166 mm there would be 0.09 mm a side, which no printer holds. The checker builds three 165 mm
+phones: a Pro Max outline, the same size as a 12 mm-radius rectangle, and a clipped Pro outline.
+
 **MagSafe is not always central.** From the drawings, centre of the magnets from the phone's centre, toward the USB end:
 15 Pro 1.67, 16 Pro 0.37, 16 Pro Max 0.25, 17 Pro and 18 Pro 2.73, and 0 on the other Pro Max phones.
 
