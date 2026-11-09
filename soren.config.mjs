@@ -9,8 +9,10 @@ export default {
   suites: {
     unit: {
       type: 'xcodebuild-test',
-      project: 'Afterglow.xcodeproj', scheme: 'Afterglow', cwd: 'app',
-      destination: 'platform=iOS Simulator,name=iPhone 18 Pro Max',
+      project: 'app/Afterglow.xcodeproj', scheme: 'Afterglow',
+      // Its own Simulator: several share the plain name, and xcodebuild refuses an ambiguous one.
+      //   xcrun simctl create "Afterglow QA iPhone 18 Pro Max" com.apple.CoreSimulator.SimDeviceType.iPhone-18-Pro-Max com.apple.CoreSimulator.SimRuntime.iOS-27-2
+      destination: 'platform=iOS Simulator,name=Afterglow QA iPhone 18 Pro Max,OS=27.2',
       derivedDataPath: dd('unit'),
       description: 'Game logic, the lock\'s spoken digits, speech and watch callbacks off the main actor',
       tags: ['regression'],

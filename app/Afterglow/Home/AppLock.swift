@@ -165,7 +165,7 @@ final class AppLock {
             "cero": "0", "uno": "1", "una": "1", "dos": "2", "tres": "3", "cuatro": "4", "cinco": "5", "seis": "6", "siete": "7", "ocho": "8", "nueve": "9",
             "zéro": "0", "un": "1", "une": "1", "deux": "2", "trois": "3", "quatre": "4", "cinq": "5", "sept": "7", "huit": "8", "neuf": "9",
             "due": "2", "tre": "3", "quattro": "4", "cinque": "5", "sei": "6", "sette": "7", "otto": "8", "nove": "9",
-            "um": "1", "uma": "1", "dois": "2", "duas": "2", "três": "3", "sete": "7", "oito": "8",
+            "um": "1", "uma": "1", "dois": "2", "duas": "2", "três": "3", "quatro": "4", "sete": "7", "oito": "8",
             "ゼロ": "0", "れい": "0", "いち": "1", "に": "2", "さん": "3", "よん": "4", "し": "4", "ご": "5", "ろく": "6", "なな": "7", "しち": "7", "はち": "8", "きゅう": "9", "く": "9",
         ]
         let characters: [Character: Character] = [
