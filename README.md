@@ -54,13 +54,14 @@ has no camera, so the app's synthwave surroundings stand in for your room's pass
 |---|---|
 | [`app/`](app/) | The app: the Xcode project (generated from `project.yml`), the Swift sources, the Watch app, the unit tests and the app's own [README](app/README.md), which is the full reference. |
 | [`Tools/`](Tools/) | `native_build_and_run.sh` (build, install, launch, log, test, Simulator harness), the fixture-media makers and the EXR converter. |
-| [`Hardware/`](Hardware/) | The printed viewer: OpenSCAD source, STLs, bill of materials, listing text. |
+| [`Hardware/`](Hardware/) | The printed viewer: OpenSCAD source, STLs, bill of materials, listing text. Doors for the other LiDAR Pro iPhones come from the [door generator](https://wemiller.com/apps/afterglow/door/). |
 | [`docs/`](docs/) | The project site and its images. |
 
 ## Start here
 
 1. **Print the viewer**: [ready to print on MakerWorld](https://makerworld.com/en/models/3559894-afterglow-cardboardxr-viewer-for-iphone-18-pro-max#profileId-4073827),
-   or from [`Hardware/`](Hardware/) (OpenSCAD source, [bill of materials](Hardware/BOM.md)).
+   or from [`Hardware/`](Hardware/) (OpenSCAD source, [bill of materials](Hardware/BOM.md)). On an
+   iPhone other than the 18 Pro Max, [generate its door](https://wemiller.com/apps/afterglow/door/).
 2. **Build the app** on a Mac with Xcode 27 and [xcodegen](https://github.com/yonaskolb/XcodeGen)
    (`brew install xcodegen`), signed into an Apple ID (a free personal team is enough), the phone
    unlocked and plugged in:

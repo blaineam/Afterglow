@@ -31,6 +31,12 @@ export default {
         + 'bundle whose .lproj folders hold the phone, watch and permission strings',
       tags: ['regression'],
     },
+    door: {
+      type: 'cmd', cmd: 'zsh',
+      args: ['Tools/test_door_generator.sh'],
+      description: 'Every door the site generates, in one piece, clear of the phone and of the stretched shell, shut and on its hinge',
+      tags: ['regression'],
+    },
     'watch-link': {
       type: 'cmd', cmd: 'zsh',
       args: ['Tools/test_watch_link.sh'],

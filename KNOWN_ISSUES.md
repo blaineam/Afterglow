@@ -22,6 +22,9 @@
 - **The focus carriage slides when you look up or down.** The fix is designed
   (`Hardware/focus-brake/`) but not printed: its forces are calculated, and the slicer could not be
   run headless, so review the slice before printing.
+- **The door generator's clips have not been printed.** The 6.1-6.3" Pro phones pass inside the stretched shell's
+  screen shelves, so their doors hold the glass with four rigid PETG clips. Every door clears the shell's mesh, shut
+  and on its hinge, but the clips' grip and the phones from the 15 Pro to the 18 Pro have only been checked in CAD.
 - **3D passthrough at edges.** Cells across a depth jump (a hand against a far wall) are dropped
   and the flat, at-infinity passthrough shows there, so an object's outline can shimmer. The
   depth map is 256 × 192, so thin things (chair legs, fingers) may float on their background.

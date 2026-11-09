@@ -288,6 +288,10 @@ foundation at all. The honest picture:
   they are; the roadmap's WebXR list closed out (`immersive-ar` with hit tests, the real floor, an
   honest frame rate); four more games; the phone overlay reduced to a cog with three checked items;
   the chosen place kept across launches; a rendered gallery. Still to come: the owner's run of it.
+- **Door generator, 2026-11-08** (`wemiller.com/apps/afterglow/door/`, source in the site repo, check in
+  `Tools/test_door_generator.sh`): a one-piece PETG door for the stretched shell, for the eight LiDAR Pro iPhones from
+  the 15 Pro on or a custom size, read from Apple's drawings. Corner anchors instead of TPU, MagSafe placed per phone
+  as a ring groove or a cooler opening, and clips on the phones too small to seat on the shell's screen shelves.
 - **Focus click-and-lock, 2026-11-08** (`Hardware/focus-brake/`): a new focus wheel with 60 rim
   teeth (0.50 mm a click) and a clip whose pawl holds it, with a slider that locks it solid, because
   the carriage back-drove under gravity. Checked against the printed meshes, not yet printed.

@@ -155,6 +155,32 @@ camera island, which has to be cut through. And the only AMS-feedable flexible i
 AMS*, a Shore **68D** formulation — a semi-rigid engineering material that will not give up the
 0.6 mm a bumper needs. A rigid rib at a known clearance is what fits in 1 mm.
 
+## Doors for other iPhones
+
+[The door generator](https://wemiller.com/apps/afterglow/door/) builds this door for the LiDAR Pro iPhones from the
+15 Pro on, or for a custom size, in the browser. It is a modified copy of brenpoly's Apache-2.0 generator, so it
+contains none of the CC BY-NC-SA mesh: its frame is parametric. Against `door.scad`'s output for the 18 Pro Max, the
+frame outside the bay differs by 0.34 % of its volume and the bounding box is identical.
+
+**Below about 75.6 mm wide, a phone misses the screen shelves.** Measured on the stretched shell, in the assembly frame:
+
+| | |
+|---|---|
+| bay, up to z 7.9 | ±40.00 across, ±83.09 along, corner radius 11.5 |
+| shelves, z 8.4 to 10.3 | inner edge x 37.0 at \|y\| 68 to 72, y 80.5 at \|x\| 22 to 30 |
+| carriage flange lands on the rim at | about z 10.4 |
+
+Stretching moved the shelves out with the walls, so a Pro Max seats on them but a 71.9 mm iPhone 17 Pro passes straight
+through with nothing to stop it short of the carriage. Its door has to hold the glass, so those doors get four rigid
+clips 14 to 25 mm from each end, clear of Apple's button positions, each lapping the glass by 0.6 mm.
+
+**MagSafe is not always central.** From the drawings, centre of the magnets from the phone's centre, toward the USB end:
+15 Pro 1.67, 16 Pro 0.37, 16 Pro Max 0.25, 17 Pro and 18 Pro 2.73, and 0 on the other Pro Max phones.
+
+`scripts/check-door-generator.mjs` in the site repo tests every door against the shell's mesh, shut and at twelve
+hinge angles with the phone in it. `Tools/test_door_generator.sh` runs it, as Soren's `door` suite. The printed 18 Pro Max
+door passes the same hinge sweep, as a control.
+
 ## Printing the door
 
 **Outer face down, the way upstream prints theirs, and the STL already sits that way** — put it on
