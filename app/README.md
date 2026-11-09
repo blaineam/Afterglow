@@ -607,7 +607,11 @@ Listed as **Afterglow XR**, version 1.0.0, in nine languages, through rocket fro
   off iPads in compatibility mode too.
 - **Xcode Cloud**: `ci_scripts/` is ready for a workflow. It needs `AUDIOMETA_API_KEY` set as a secret
   in the workflow's Environment; `ci_pre_xcodebuild.sh` hands it to the build phase through a file
-  and fails an archive without it. Build numbers there start above the uploads made from a Mac.
+  and fails an archive without it.
+  **Releases are built by Xcode Cloud, not on a Mac:** a push to main starts a run, and its archive goes
+  to TestFlight with the run number as its build number, whatever `project.yml` says. A local upload takes
+  a number the next run then fails on, so `rocket build` goes through Xcode Cloud here. Keep
+  `CURRENT_PROJECT_VERSION` at the next run's number. Then `rocket submit "Afterglow XR" <version> --build <run>`.
 - **Screenshots**: run `Tools/capture_gallery.sh` (needs the three URLs, see its header), then
   `rocket shots "Afterglow XR" --upload`. `Tools/capture_store_screenshots.sh` picks the ten shots,
   turns them for Monkr's frame, captures the watch app, and writes the `.monkr` files, which embed

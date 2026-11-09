@@ -12,7 +12,3 @@ elif [ "${CI_XCODEBUILD_ACTION:-}" = "archive" ]; then
     echo "error: AUDIOMETA_API_KEY is not set in this Xcode Cloud workflow" >&2
     exit 1
 fi
-# Above the builds uploaded from a Mac (1 to 3 so far): a build number can't be reused.
-if [ "${CI_XCODEBUILD_ACTION:-}" = "archive" ]; then
-    xcrun agvtool new-version -all "$(( CI_BUILD_NUMBER + 100 ))"
-fi
