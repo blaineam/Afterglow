@@ -14,14 +14,19 @@ DERIVED=${AFTERGLOW_DERIVED:-$HOME/Library/Developer/Afterglow/native-derived}
 LOGS=${TMPDIR:-/tmp}/afterglow
 mkdir -p $LOGS
 
+# Its own pair: on a shared one the connectivity daemon can stay stuck for good, while the same app
+# passes on another (2026-11-08). Created once:
+#   xcrun simctl pair "$(xcrun simctl create 'Afterglow Link Watch' com.apple.CoreSimulator.SimDeviceType.Apple-Watch-Series-11-46mm com.apple.CoreSimulator.SimRuntime.watchOS-27-0)" \
+#     "$(xcrun simctl create 'Afterglow Link iPhone' com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro-Max com.apple.CoreSimulator.SimRuntime.iOS-27-0)"
 PAIR=$(xcrun simctl list -j pairs | python3 -I -c '
 import json, sys
 pairs = json.load(sys.stdin)["pairs"].values()
-good = [p for p in pairs if "iPhone" in p["phone"]["name"] and "Pro" in p["phone"]["name"] and p["state"].startswith("(active")]
-good.sort(key=lambda p: p["phone"]["name"], reverse=True)
-if good: print(good[0]["phone"]["udid"], good[0]["watch"]["udid"])
+for p in pairs:
+    if p["phone"]["name"] == "Afterglow Link iPhone": print(p["phone"]["udid"], p["watch"]["udid"])
 ')
-[ -n "$PAIR" ] || { echo "No paired iPhone and Apple Watch Simulator (Xcode: Devices and Simulators, Pair)" >&2; exit 1; }
+[ -n "${PAIR}${AFTERGLOW_WATCH_PAIR:-}" ] || { echo "No Afterglow Link pair: see the commands above" >&2; exit 1; }
+# AFTERGLOW_WATCH_PAIR="<phone udid> <watch udid>" picks another pair if this one's daemon is stuck.
+PAIR=${AFTERGLOW_WATCH_PAIR:-$PAIR}
 PHONE=${PAIR%% *}
 WATCH=${PAIR##* }
 trap 'xcrun simctl shutdown $WATCH >/dev/null 2>&1; xcrun simctl shutdown $PHONE >/dev/null 2>&1' EXIT
@@ -39,18 +44,21 @@ xcrun simctl terminate $PHONE $BUNDLE 2>/dev/null
 xcrun simctl terminate $WATCH $WATCH_BUNDLE 2>/dev/null
 SESSION_LOG=$(xcrun simctl get_app_container $PHONE $BUNDLE data)/Documents/session.log
 rm -f "$SESSION_LOG"
-xcrun simctl launch $PHONE $BUNDLE >/dev/null || exit 1
-sleep 5
-SIMCTL_CHILD_AFTERGLOW_WATCH_AUTOPRESS=3 xcrun simctl launch $WATCH $WATCH_BUNDLE >/dev/null || exit 1
-
-# Nothing arrives for about 2.5 minutes after a cold boot: the phone Simulator's connectivity daemon
-# fails its first setup ("initial set up failed. Awaiting trigger") until appconduitd is up. The
-# watch's presses wait in its queue and all arrive at once when it recovers.
+# After a cold boot the phone Simulator's connectivity daemon fails its first setup ("initial set up
+# failed. Awaiting trigger") until appconduitd is up: 2.5 minutes on a quiet machine, past 6 on a busy
+# one, with the app itself fine. A fresh launch of both sides is what gets it going again, so each
+# attempt relaunches them. The watch's presses wait in its queue and arrive together.
 RESULT=1
-for _ in {1..120}; do
-    sleep 3
-    if grep -q "\[Watch\] Select reached the frame" "$SESSION_LOG" 2>/dev/null \
-        && grep -q "\[Watch\] Scroll" "$SESSION_LOG" 2>/dev/null; then RESULT=0; break; fi
+for attempt in 1 2 3 4; do
+    xcrun simctl launch --terminate-running-process $PHONE $BUNDLE >/dev/null || exit 1
+    sleep 5
+    SIMCTL_CHILD_AFTERGLOW_WATCH_AUTOPRESS=3 xcrun simctl launch --terminate-running-process $WATCH $WATCH_BUNDLE >/dev/null || exit 1
+    for _ in {1..50}; do
+        sleep 3
+        if grep -q "\[Watch\] Select reached the frame" "$SESSION_LOG" 2>/dev/null \
+            && grep -q "\[Watch\] Scroll" "$SESSION_LOG" 2>/dev/null; then RESULT=0; break 2; fi
+    done
+    echo "attempt $attempt: nothing from the watch yet"
 done
 sleep 3
 grep "\[Watch\]" "$SESSION_LOG" 2>/dev/null

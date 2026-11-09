@@ -299,9 +299,10 @@ steady load the phase 1 run did not have; `handHz` lowers it.
 
 Its select and scroll are proven between paired Simulators by `Tools/test_watch_link.sh`, which
 presses Select itself. A real watch's double tap and Digital Crown, and the delay on real hardware,
-are untested. After a Simulator's cold boot nothing arrives for about 2.5 minutes (its connectivity
-daemon logs "initial set up failed"), and then everything arrives at once. That delay is the
-Simulator's own, seen with a minimal test app too.
+are untested. After a Simulator's cold boot nothing arrives for 2.5 minutes or more (its connectivity
+daemon logs "initial set up failed"), past 6 on a busy machine, and then everything arrives at once. A
+fresh launch of both sides gets it going, so the test relaunches them. That delay is the Simulator's
+own: the app stays healthy through it.
 
 ### Built in the Simulator, not yet run on the phone (2026-11-06 evening)
 
